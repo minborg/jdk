@@ -33,12 +33,13 @@ import java.util.Objects;
 /**
  * An arena allocates and manages the lifecycle of native segments.
  * <p>
- * An arena is a {@linkplain AutoCloseable closeable} segment allocator that has a bounded {@linkplain MemorySession memory session}.
+ * An arena is a {@linkplain AutoCloseable closeable} {@linkplain SegmentAllocator segment allocator} that has a bounded
+ * {@linkplain MemorySession memory session}.
  * The arena's session starts when the arena is created, and ends when the arena is {@linkplain #close() closed}.
  * All native segments {@linkplain #allocate(long, long) allocated} by the arena are associated with its session, and
  * cannot be accessed after the arena is closed.
  * <p>
- * An arena is extremely useful when interacting with foreign code, as shown below:
+ * Arena are useful when interacting with foreign code, as shown below:
  *
  * {@snippet lang = java:
  * try (Arena arena = Arena.openConfined()) {
@@ -74,6 +75,9 @@ import java.util.Objects;
  * can be {@linkplain MemorySession#isAccessibleBy(Thread) accessed} by multiple threads. This might be useful when
  * multiple threads need to access the same memory segment concurrently (e.g. in the case of parallel processing).
  * Moreover, a shared arena can be closed by any thread.
+ * @implSpec
+ * Implementations of this interface shall be thread-safe such that all threads that are allowed to use the
+ * associated {@linkplain #session() session} must also be allowed to concurrently invoke any and all arena methods.
  *
  * @since 20
  */
@@ -81,7 +85,8 @@ import java.util.Objects;
 public interface Arena extends SegmentAllocator, AutoCloseable {
 
     /**
-     * Creates a native memory segment with the given size (in bytes) and alignment constraint (in bytes).
+     * {@return a new native memory segment with the given size (in bytes) and alignment constraint (in bytes)}.
+     * <p>
      * The returned segment is associated with the arena's memory session.
      * The segment's {@link MemorySegment#address() address} is the starting address of the
      * allocated off-heap memory region backing the segment, and the address is 
@@ -92,10 +97,11 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      * {@snippet lang=java :
      * MemorySegment.allocateNative(bytesSize, byteAlignment, session());
      * }
+     * @implSpec
+     * The method shall return a {@linkplain MemorySegment#isNative() native} memory segment.
      *
      * @param byteSize the size (in bytes) of the off-heap memory block backing the native memory segment.
      * @param byteAlignment the alignment constraint (in bytes) of the off-heap region of memory backing the native memory segment.
-     * @return a new native memory segment.
      * @throws IllegalArgumentException if {@code bytesSize < 0}, {@code alignmentBytes <= 0}, or if {@code alignmentBytes}
      * is not a power of 2.
      * @throws IllegalStateException if the session associated with this arena is not {@linkplain MemorySession#isAlive() alive}.
@@ -109,7 +115,7 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
     }
 
     /**
-     * {@return the session associated with this arena}
+     * {@return the non-null session associated with this arena}.
      */
     MemorySession session();
 
@@ -117,6 +123,7 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      * Closes this arena. If this method completes normally, the arena session becomes not {@linkplain MemorySession#isAlive() alive},
      * and all the memory segments associated with it can no longer be accessed. Furthermore, any off-heap region of memory backing the
      * segments associated with that memory session are also released.
+     *
      * @throws IllegalStateException if the session associated with this arena is not {@linkplain MemorySession#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code isOwnedBy(T) == false}.
@@ -125,44 +132,23 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
     void close();
 
     /**
-     * {@return {@code true} if the provided thread can close this arena}
+     * {@return {@code true} if the provided thread can close this arena}.
      * @param thread the thread to be tested.
      */
     boolean isOwnedBy(Thread thread);
 
     /**
-     * Creates a new confined arena.
-     * @return a new confined arena.
+     * {@return a new arena, associated with a new confined session}.
      */
     static Arena openConfined() {
-        return makeArena(MemorySessionImpl.createConfined(Thread.currentThread()));
+        return MemorySessionImpl.createConfined(Thread.currentThread()).asArena();
     }
 
     /**
-     * Creates a new shared arena.
-     * @return a new shared arena.
+     * {@return a new arena, associated with a new shared session}.
      */
     static Arena openShared() {
-        return makeArena(MemorySessionImpl.createShared());
+        return MemorySessionImpl.createShared().asArena();
     }
 
-    private static Arena makeArena(MemorySessionImpl sessionImpl) {
-        return new Arena() {
-            @Override
-            public MemorySession session() {
-                return sessionImpl;
-            }
-
-            @Override
-            public void close() {
-                sessionImpl.close();
-            }
-
-            @Override
-            public boolean isOwnedBy(Thread thread) {
-                Objects.requireNonNull(thread);
-                return sessionImpl.ownerThread() == thread;
-            }
-        };
-    }
 }
