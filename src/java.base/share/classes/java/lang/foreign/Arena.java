@@ -39,7 +39,7 @@ import java.util.Objects;
  * All native segments {@linkplain #allocate(long, long) allocated} by the arena are associated with its session, and
  * cannot be accessed after the arena is closed.
  * <p>
- * Arena are useful when interacting with foreign code, as shown below:
+ * Arenas are useful when interacting with foreign code, as shown below:
  *
  * {@snippet lang = java:
  * try (Arena arena = Arena.openConfined()) {
