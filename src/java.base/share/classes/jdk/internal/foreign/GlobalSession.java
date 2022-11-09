@@ -36,7 +36,7 @@ final class GlobalSession extends MemorySessionImpl {
 
     final Object ref;
 
-    public GlobalSession(Object ref) {
+    GlobalSession(Object ref) {
         super(null, null);
         this.ref = ref;
     }

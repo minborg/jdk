@@ -28,6 +28,7 @@ package java.lang.foreign;
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.foreign.SessionFactory;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.NativeLibrary;
@@ -160,7 +161,7 @@ public interface SymbolLookup {
                 ClassLoader.getSystemClassLoader();
         MemorySession loaderSession = (loader == null || loader instanceof BuiltinClassLoader) ?
                 MemorySession.global() : // builtin loaders never go away
-                MemorySessionImpl.heapSession(loader);
+                SessionFactory.createHeap(loader);
         return name -> {
             Objects.requireNonNull(name);
             JavaLangAccess javaLangAccess = SharedSecrets.getJavaLangAccess();

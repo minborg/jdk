@@ -51,7 +51,7 @@ final class ConfinedSession extends MemorySessionImpl {
         }
     }
 
-    public ConfinedSession(Thread owner) {
+    ConfinedSession(Thread owner) {
         super(owner, new ConfinedResourceList());
     }
 

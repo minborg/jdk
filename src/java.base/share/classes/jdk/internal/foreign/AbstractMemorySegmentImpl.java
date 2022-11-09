@@ -479,7 +479,7 @@ public abstract sealed class AbstractMemorySegmentImpl
         if (bufferSegment != null) {
             bufferSession = bufferSegment.session;
         } else {
-            bufferSession = MemorySessionImpl.heapSession(bb);
+            bufferSession = SessionFactory.createHeap(bb);
         }
         boolean readOnly = bb.isReadOnly();
         int scaleFactor = getScaleFactor(bb);

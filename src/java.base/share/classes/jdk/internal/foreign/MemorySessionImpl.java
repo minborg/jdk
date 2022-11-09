@@ -59,8 +59,6 @@ public abstract sealed class MemorySessionImpl
     static final VarHandle STATE;
     static final int MAX_FORKS = Integer.MAX_VALUE;
 
-    public static final MemorySessionImpl GLOBAL = new GlobalSession(null);
-
     static final ScopedMemoryAccess.ScopedAccessError ALREADY_CLOSED = new ScopedMemoryAccess.ScopedAccessError(MemorySessionImpl::alreadyClosed);
     static final ScopedMemoryAccess.ScopedAccessError WRONG_THREAD = new ScopedMemoryAccess.ScopedAccessError(MemorySessionImpl::wrongThread);
 
@@ -114,18 +112,6 @@ public abstract sealed class MemorySessionImpl
     protected MemorySessionImpl(Thread owner, ResourceList resourceList) {
         this.owner = owner;
         this.resourceList = resourceList;
-    }
-
-    public static MemorySessionImpl createConfined(Thread thread) {
-        return new ConfinedSession(thread);
-    }
-
-    public static MemorySessionImpl createShared() {
-        return new SharedSession();
-    }
-
-    public static MemorySessionImpl createImplicit(Cleaner cleaner) {
-        return new ImplicitSession(cleaner);
     }
 
     @Override
@@ -224,9 +210,6 @@ public abstract sealed class MemorySessionImpl
 
     abstract void justClose();
 
-    public static MemorySessionImpl heapSession(Object ref) {
-        return new GlobalSession(ref);
-    }
 
     /**
      * A list of all cleanup actions associated with a memory session. Cleanup actions are modelled as instances

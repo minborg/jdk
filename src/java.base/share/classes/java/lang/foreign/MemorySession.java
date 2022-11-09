@@ -26,6 +26,7 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.foreign.SessionFactory;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.ref.CleanerFactory;
 
@@ -108,7 +109,7 @@ public sealed interface MemorySession permits MemorySessionImpl {
      * @return a new bounded memory session that is managed, implicitly, by the garbage collector.
      */
     static MemorySession implicit() {
-        return MemorySessionImpl.createImplicit(CleanerFactory.cleaner());
+        return SessionFactory.createImplicit(CleanerFactory.cleaner());
     }
 
     /**
@@ -118,6 +119,6 @@ public sealed interface MemorySession permits MemorySessionImpl {
      * @return an unbounded memory session.
      */
     static MemorySession global() {
-        return MemorySessionImpl.GLOBAL;
+        return SessionFactory.global();
     }
 }

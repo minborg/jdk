@@ -76,7 +76,7 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
     @Override
     ByteBuffer makeByteBuffer() {
         return NIO_ACCESS.newDirectByteBuffer(min, (int) this.length, null,
-                session == MemorySessionImpl.GLOBAL ? null : this);
+                session == SessionFactory.global() ? null : this);
     }
 
     @Override

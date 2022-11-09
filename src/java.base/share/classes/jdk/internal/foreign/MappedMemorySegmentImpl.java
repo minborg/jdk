@@ -51,7 +51,7 @@ public sealed class MappedMemorySegmentImpl extends NativeMemorySegmentImpl {
     @Override
     ByteBuffer makeByteBuffer() {
         return NIO_ACCESS.newMappedByteBuffer(unmapper, min, (int)length, null,
-                session == MemorySessionImpl.GLOBAL ? null : this);
+                session == SessionFactory.global() ? null : this);
     }
 
     @Override

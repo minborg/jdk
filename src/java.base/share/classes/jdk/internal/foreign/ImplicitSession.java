@@ -40,7 +40,7 @@ import java.lang.ref.Reference;
  */
 final class ImplicitSession extends SharedSession {
 
-    public ImplicitSession(Cleaner cleaner) {
+    ImplicitSession(Cleaner cleaner) {
         super();
         cleaner.register(this, resourceList);
     }
