@@ -77,6 +77,7 @@ import com.sun.jdi.event.EventQueue;
 import com.sun.jdi.request.BreakpointRequest;
 import com.sun.jdi.request.EventRequest;
 import com.sun.jdi.request.EventRequestManager;
+import jdk.internal.lazy.LazyReference;
 
 class VirtualMachineImpl extends MirrorImpl
              implements PathSearchingVirtualMachine, ThreadListener {
@@ -136,16 +137,16 @@ class VirtualMachineImpl extends MirrorImpl
 
     // Per-vm singletons for primitive types and for void.
     // singleton-ness protected by "synchronized(this)".
-    private BooleanType theBooleanType;
-    private ByteType    theByteType;
-    private CharType    theCharType;
-    private ShortType   theShortType;
-    private IntegerType theIntegerType;
-    private LongType    theLongType;
-    private FloatType   theFloatType;
-    private DoubleType  theDoubleType;
+    private LazyReference<BooleanType> theBooleanType = LazyReference.create();
+    private LazyReference<ByteType>    theByteType = LazyReference.create();
+    private LazyReference<CharType>    theCharType = LazyReference.create();
+    private LazyReference<ShortType>   theShortType = LazyReference.create();
+    private LazyReference<IntegerType> theIntegerType = LazyReference.create();
+    private LazyReference<LongType>    theLongType = LazyReference.create();
+    private LazyReference<FloatType>   theFloatType = LazyReference.create();
+    private LazyReference<DoubleType>  theDoubleType = LazyReference.create();
 
-    private VoidType    theVoidType;
+    private LazyReference<VoidType>    theVoidType = LazyReference.create();
 
     private VoidValue voidVal;
 
@@ -1193,102 +1194,48 @@ class VirtualMachineImpl extends MirrorImpl
     }
 
     BooleanType theBooleanType() {
-        if (theBooleanType == null) {
-            synchronized(this) {
-                if (theBooleanType == null) {
-                    theBooleanType = new BooleanTypeImpl(this);
-                }
-            }
-        }
-        return theBooleanType;
+        return theBooleanType.supplyIfAbsent(
+                () -> new BooleanTypeImpl(this));
     }
 
     ByteType theByteType() {
-        if (theByteType == null) {
-            synchronized(this) {
-                if (theByteType == null) {
-                    theByteType = new ByteTypeImpl(this);
-                }
-            }
-        }
-        return theByteType;
+        return theByteType.supplyIfAbsent(
+                () -> new ByteTypeImpl(this));
     }
 
     CharType theCharType() {
-        if (theCharType == null) {
-            synchronized(this) {
-                if (theCharType == null) {
-                    theCharType = new CharTypeImpl(this);
-                }
-            }
-        }
-        return theCharType;
+        return theCharType.supplyIfAbsent(
+                () -> new CharTypeImpl(this));
     }
 
     ShortType theShortType() {
-        if (theShortType == null) {
-            synchronized(this) {
-                if (theShortType == null) {
-                    theShortType = new ShortTypeImpl(this);
-                }
-            }
-        }
-        return theShortType;
+        return theShortType.supplyIfAbsent(
+                () -> new ShortTypeImpl(this));
     }
 
     IntegerType theIntegerType() {
-        if (theIntegerType == null) {
-            synchronized(this) {
-                if (theIntegerType == null) {
-                    theIntegerType = new IntegerTypeImpl(this);
-                }
-            }
-        }
-        return theIntegerType;
+        return theIntegerType.supplyIfAbsent(
+                () -> new IntegerTypeImpl(this));
     }
 
     LongType theLongType() {
-        if (theLongType == null) {
-            synchronized(this) {
-                if (theLongType == null) {
-                    theLongType = new LongTypeImpl(this);
-                }
-            }
-        }
-        return theLongType;
+        return theLongType.supplyIfAbsent(
+                () -> new LongTypeImpl(this));
     }
 
     FloatType theFloatType() {
-        if (theFloatType == null) {
-            synchronized(this) {
-                if (theFloatType == null) {
-                    theFloatType = new FloatTypeImpl(this);
-                }
-            }
-        }
-        return theFloatType;
+        return theFloatType.supplyIfAbsent(
+                () -> new FloatTypeImpl(this));
     }
 
     DoubleType theDoubleType() {
-        if (theDoubleType == null) {
-            synchronized(this) {
-                if (theDoubleType == null) {
-                    theDoubleType = new DoubleTypeImpl(this);
-                }
-            }
-        }
-        return theDoubleType;
+        return theDoubleType.supplyIfAbsent(
+                () -> new DoubleTypeImpl(this));
     }
 
     VoidType theVoidType() {
-        if (theVoidType == null) {
-            synchronized(this) {
-                if (theVoidType == null) {
-                    theVoidType = new VoidTypeImpl(this);
-                }
-            }
-        }
-        return theVoidType;
+        return theVoidType.supplyIfAbsent(
+                () -> new VoidTypeImpl(this));
     }
 
     PrimitiveType primitiveTypeMirror(byte tag) {

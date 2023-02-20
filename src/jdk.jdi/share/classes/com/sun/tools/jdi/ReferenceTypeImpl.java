@@ -51,6 +51,7 @@ import com.sun.jdi.ReferenceType;
 import com.sun.jdi.Type;
 import com.sun.jdi.Value;
 import com.sun.jdi.VirtualMachine;
+import jdk.internal.lazy.LazyReference;
 
 public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceType {
     protected long ref;
@@ -67,7 +68,7 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
 
     private boolean isClassLoaderCached = false;
     private ClassLoaderReference classLoader = null;
-    private ClassObjectReference classObject = null;
+    private LazyReference<ClassObjectReference> classObject = LazyReference.create();
     private ModuleReference module = null;
 
     private int status = 0;
@@ -693,21 +694,16 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
     }
 
     public ClassObjectReference classObject() {
-        if (classObject == null) {
+        return classObject.supplyIfAbsent(() -> {
             // Are classObjects unique for an Object, or
             // created each time? Is this spec'ed?
-            synchronized(this) {
-                if (classObject == null) {
-                    try {
-                        classObject = JDWP.ReferenceType.ClassObject.
-                            process(vm, this).classObject;
-                    } catch (JDWPException exc) {
-                        throw exc.toJDIException();
-                    }
-                }
+            try {
+                return JDWP.ReferenceType.ClassObject.
+                        process(vm, this).classObject;
+            } catch (JDWPException exc) {
+                throw exc.toJDIException();
             }
-        }
-        return classObject;
+        });
     }
 
     SDE.Stratum stratum(String stratumID) {

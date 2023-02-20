@@ -25,6 +25,8 @@
 
 package sun.font;
 
+import jdk.internal.lazy.LazyReference;
+
 import java.awt.Font;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.GeneralPath;
@@ -70,7 +72,7 @@ public abstract class PhysicalStrike extends FontStrike {
      * request involves scaling and hinting the glyph outline potentially
      * over and over again.
      */
-    ConcurrentHashMap<Integer, Point2D.Float> glyphPointMapCache;
+    final LazyReference<ConcurrentHashMap<Integer, Point2D.Float>> glyphPointMapCache = LazyReference.create();
 
     protected boolean getImageWithAdvance;
     protected static final int complexTX =
@@ -121,23 +123,15 @@ public abstract class PhysicalStrike extends FontStrike {
     /* Used by the OpenType engine for mark positioning.
      */
     Point2D.Float getGlyphPoint(int glyphCode, int ptNumber) {
-        Point2D.Float gp = null;
         Integer ptKey = Integer.valueOf(glyphCode<<16|ptNumber);
-        if (glyphPointMapCache == null) {
-            synchronized (this) {
-                if (glyphPointMapCache == null) {
-                    glyphPointMapCache =
-                        new ConcurrentHashMap<Integer, Point2D.Float>();
-                }
-            }
-        } else {
-            gp = glyphPointMapCache.get(ptKey);
-        }
+        var cache = glyphPointMapCache.supplyIfAbsent(ConcurrentHashMap::new);
+        Point2D.Float gp = cache.get(ptKey);
+        gp = cache.get(ptKey);
 
         if (gp == null) {
             gp = (physicalFont.getGlyphPoint(pScalerContext, glyphCode, ptNumber));
             adjustPoint(gp);
-            glyphPointMapCache.put(ptKey, gp);
+            cache.put(ptKey, gp);
         }
         return gp;
     }

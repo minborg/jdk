@@ -32,8 +32,10 @@ import java.awt.ImageCapabilities;
 import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.internal.lazy.LazyReference;
 import sun.java2d.InvalidPipeException;
 import sun.java2d.SurfaceData;
 import sun.java2d.SurfaceDataProxy;
@@ -89,7 +91,7 @@ public abstract class SurfaceManager {
         imgaccessor.setSurfaceManager(img, mgr);
     }
 
-    private ConcurrentHashMap<Object,Object> cacheMap;
+    private final LazyReference<ConcurrentHashMap<Object,Object>> cacheMap = LazyReference.create();
 
     /**
      * Return an arbitrary cached object for an arbitrary cache key.
@@ -112,7 +114,7 @@ public abstract class SurfaceManager {
      * method is ever called.
      */
     public Object getCacheData(Object key) {
-        return (cacheMap == null) ? null : cacheMap.get(key);
+        return cacheMap.mapOr(m -> m.get(key), null);
     }
 
     /**
