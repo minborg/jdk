@@ -51,7 +51,7 @@ import com.sun.jdi.ReferenceType;
 import com.sun.jdi.Type;
 import com.sun.jdi.Value;
 import com.sun.jdi.VirtualMachine;
-import jdk.internal.lazy.LazyReference;
+import jdk.internal.lazy.Lazy;
 
 public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceType {
     protected long ref;
@@ -68,7 +68,7 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
 
     private boolean isClassLoaderCached = false;
     private ClassLoaderReference classLoader = null;
-    private LazyReference<ClassObjectReference> classObject = LazyReference.create();
+    private Lazy<ClassObjectReference> classObject = Lazy.create();
     private ModuleReference module = null;
 
     private int status = 0;
@@ -694,7 +694,7 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
     }
 
     public ClassObjectReference classObject() {
-        return classObject.supplyIfAbsent(() -> {
+        return classObject.supplyIfEmpty(() -> {
             // Are classObjects unique for an Object, or
             // created each time? Is this spec'ed?
             try {

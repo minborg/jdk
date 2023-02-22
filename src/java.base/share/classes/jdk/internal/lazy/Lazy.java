@@ -30,6 +30,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -41,18 +42,12 @@ import java.util.function.Supplier;
  * <p>
  * This class is thread-safe.
  * <p>
- * The JVM may apply certain optimizations as it knows a component is updated just once
- * as described by {@link Stable}.
- * <p>
- * This is a <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>
- * class; programmers should treat instances that are
- * {@linkplain #equals(Object) equal} as interchangeable and should not
- * use instances for synchronization, or unpredictable behavior may
- * occur. For example, in a future release, synchronization may fail.
+ * The JVM may apply certain optimizations as it knows the value is updated just once
+ * at most as described by {@link Stable}.
  *
  * @param <E> The type of element held
  */
-public final class LazyReference<E> {
+public final class Lazy<E> {
 
     @Stable
     private Object value;
@@ -61,7 +56,8 @@ public final class LazyReference<E> {
 
     static {
         try {
-            VALUE_VH = MethodHandles.lookup().findVarHandle(LazyReference.class, "value", Object.class);
+            VALUE_VH = MethodHandles.lookup()
+                    .findVarHandle(Lazy.class, "value", Object.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -69,10 +65,18 @@ public final class LazyReference<E> {
 
     /**
      * Creates a new LazyReference with its
-     * elements initially set to null.
-     *
+     * element initially set to null. Intended
+     * to be used by a static constructor only.
      */
-    private LazyReference() {
+    private Lazy() {}
+
+    /**
+     * If a value is present, returns {@code true}, otherwise {@code false}.
+     *
+     * @return {@code true} if a value is present, otherwise {@code false}
+     */
+    public boolean isPresent() {
+        return getAcquire() != null;
     }
 
     /**
@@ -105,28 +109,24 @@ public final class LazyReference<E> {
     }
 
     /**
-     * If the specified index is not already associated with a value, atomically attempts
-     * to compute its value using the given mapping function and enters it into this
-     * array.
+     * If a value is not already present, atomically attempts
+     * to compute the value using the given {@code supplier}.
      *
-     * <p>If the mapping function returns {@code null}, an exception is thrown.
+     * <p>If the supplier returns {@code null}, an exception is thrown.
      * If the mapping function itself throws an (unchecked) exception, the
-     * exception is rethrown, and no mapping is recorded.  The most
-     * common usage is to construct a new object serving as an initial
-     * mapped value or memoized result, as in:
+     * exception is rethrown, and no value is recorded.  The most
+     * common usage is to construct a new object serving as a memoized result, as in:
      *
      * <pre> {@code
-     * array.computeIfAbsent(index, i -> new Value(f(i)));
+     * lazy.supplyIfAbsent(Value::new);
      * }</pre>
      *
-     * @param index to use as array index
      * @param supplier to apply if no previous value exists
-     * @return the element at the provided index (pre-existing or newly computed)
-     * @throws IndexOutOfBoundsException if {@code index < 0 or index >= length() }.
+     * @return the value (pre-existing or newly computed)
      * @throws NullPointerException      if the provided {@code supplier} is {@code null} or
      *                                   the provided {@code supplier} returns {@code null}.
      */
-    public E supplyIfAbsent(Supplier<? extends E> supplier) {
+    public E supplyIfEmpty(Supplier<? extends E> supplier) {
         Objects.requireNonNull(supplier);
 
         E value = getAcquire();
@@ -146,7 +146,7 @@ public final class LazyReference<E> {
     @Override
     public boolean equals(Object o) {
         return this == o ||
-                o instanceof LazyReference<?> that &&
+                o instanceof Lazy<?> that &&
                         Objects.equals(this.value, that.value);
     }
 
@@ -157,10 +157,10 @@ public final class LazyReference<E> {
 
     @Override
     public String toString() {
-        var v = value;
+        var v = getAcquire();
         return v != null
-                ? ("LazyReference[" + v + "]")
-                : "LazyReference.empty";
+                ? ("Lazy[" + v + "]")
+                : "Lazy.empty";
     }
 
     // Use acquire/release to ensure happens-before so that newly
@@ -174,11 +174,10 @@ public final class LazyReference<E> {
     }
 
     /**
-     * {@return a new LazyReference of the given length, with its
-     * elements initially null}.
+     * {@return a new empty Lazy}.
      */
-    public static <E> LazyReference<E> create() {
-        return new LazyReference<>();
+    public static <E> Lazy<E> create() {
+        return new Lazy<>();
     }
 
 }

@@ -30,7 +30,7 @@ import java.awt.geom.*;
 import java.awt.image.*;
 import java.nio.*;
 
-import jdk.internal.lazy.LazyReference;
+import jdk.internal.lazy.Lazy;
 import sun.awt.image.*;
 import sun.java2d.loops.*;
 import sun.java2d.pipe.*;
@@ -50,14 +50,14 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawLine(sg2d, (float) x1, (float) y1, (float) x2, (float) y2);
     }
 
-    final LazyReference<Line2D> lineToShape = LazyReference.create();
+    final Lazy<Line2D> lineToShape = Lazy.create();
 
     public void drawLine(SunGraphics2D sg2d, float x1, float y1, float x2, float y2) {
         OSXSurfaceData surfaceData = (OSXSurfaceData) sg2d.getSurfaceData();
         if ((sg2d.strokeState != SunGraphics2D.STROKE_CUSTOM) && (OSXSurfaceData.IsSimpleColor(sg2d.paint))) {
             surfaceData.doLine(this, sg2d, x1, y1, x2, y2);
         } else {
-            var shape = lineToShape.supplyIfAbsent(Line2D.Float::new);
+            var shape = lineToShape.supplyIfEmpty(Line2D.Float::new);
             synchronized (shape) {
                 shape.setLine(x1, y1, x2, y2);
                 drawfillShape(sg2d, sg2d.stroke.createStrokedShape(shape), true, true);
@@ -71,7 +71,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawRect(sg2d, (float) x, (float) y, (float) width, (float) height);
     }
 
-    final LazyReference<Rectangle2D> rectToShape = LazyReference.create();
+    final Lazy<Rectangle2D> rectToShape = Lazy.create();
 
     public void drawRect(SunGraphics2D sg2d, float x, float y, float width, float height) {
         if ((width < 0) || (height < 0)) return;
@@ -80,7 +80,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         if ((sg2d.strokeState != SunGraphics2D.STROKE_CUSTOM) && (OSXSurfaceData.IsSimpleColor(sg2d.paint))) {
             surfaceData.doRect(this, sg2d, x, y, width, height, false);
         } else {
-            var shape = rectToShape.supplyIfAbsent(Rectangle2D.Float::new);
+            var shape = rectToShape.supplyIfEmpty(Rectangle2D.Float::new);
             synchronized (shape) {
                 shape.setRect(x, y, width, height);
                 drawfillShape(sg2d, sg2d.stroke.createStrokedShape(shape), true, true);
@@ -105,7 +105,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawRoundRect(sg2d, (float) x, (float) y, (float) width, (float) height, (float) arcWidth, (float) arcHeight);
     }
 
-    final LazyReference<RoundRectangle2D> roundrectToShape = LazyReference.create();
+    final Lazy<RoundRectangle2D> roundrectToShape = Lazy.create();
 
     public void drawRoundRect(SunGraphics2D sg2d, float x, float y, float width, float height, float arcWidth, float arcHeight) {
         if ((width < 0) || (height < 0)) return;
@@ -114,7 +114,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         if ((sg2d.strokeState != SunGraphics2D.STROKE_CUSTOM) && (OSXSurfaceData.IsSimpleColor(sg2d.paint))) {
             surfaceData.doRoundRect(this, sg2d, x, y, width, height, arcWidth, arcHeight, false);
         } else {
-            var shape = roundrectToShape.supplyIfAbsent(RoundRectangle2D.Float::new);
+            var shape = roundrectToShape.supplyIfEmpty(RoundRectangle2D.Float::new);
             synchronized (shape) {
                 shape.setRoundRect(x, y, width, height, arcWidth, arcHeight);
                 drawfillShape(sg2d, sg2d.stroke.createStrokedShape(shape), true, true);
@@ -138,7 +138,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawOval(sg2d, (float) x, (float) y, (float) width, (float) height);
     }
 
-    final LazyReference<Ellipse2D> ovalToShape = LazyReference.create();
+    final Lazy<Ellipse2D> ovalToShape = Lazy.create();
 
     public void drawOval(SunGraphics2D sg2d, float x, float y, float width, float height) {
         if ((width < 0) || (height < 0)) return;
@@ -147,7 +147,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         if ((sg2d.strokeState != SunGraphics2D.STROKE_CUSTOM) && (OSXSurfaceData.IsSimpleColor(sg2d.paint))) {
             surfaceData.doOval(this, sg2d, x, y, width, height, false);
         } else {
-            var shape = ovalToShape.supplyIfAbsent(Ellipse2D.Float::new);
+            var shape = ovalToShape.supplyIfEmpty(Ellipse2D.Float::new);
             synchronized (shape) {
                 shape.setFrame(x, y, width, height);
                 drawfillShape(sg2d, sg2d.stroke.createStrokedShape(shape), true, true);
@@ -171,7 +171,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawArc(sg2d, x, y, width, height, startAngle, arcAngle, Arc2D.OPEN);
     }
 
-    final LazyReference<Arc2D> arcToShape = LazyReference.create();
+    final Lazy<Arc2D> arcToShape = Lazy.create();
 
     public void drawArc(SunGraphics2D sg2d, float x, float y, float width, float height, float startAngle, float arcAngle, int type) {
         if ((width < 0) || (height < 0)) return;
@@ -180,7 +180,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         if ((sg2d.strokeState != SunGraphics2D.STROKE_CUSTOM) && (OSXSurfaceData.IsSimpleColor(sg2d.paint))) {
             surfaceData.doArc(this, sg2d, x, y, width, height, startAngle, arcAngle, type, false);
         } else {
-            var shape = arcToShape.supplyIfAbsent(Arc2D.Float::new);
+            var shape = arcToShape.supplyIfEmpty(Arc2D.Float::new);
             synchronized (shape) {
                 shape.setArc(x, y, width, height, startAngle, arcAngle, type);
                 drawfillShape(sg2d, sg2d.stroke.createStrokedShape(shape), true, true);

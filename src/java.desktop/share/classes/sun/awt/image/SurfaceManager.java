@@ -32,10 +32,9 @@ import java.awt.ImageCapabilities;
 import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.internal.lazy.LazyReference;
+import jdk.internal.lazy.Lazy;
 import sun.java2d.InvalidPipeException;
 import sun.java2d.SurfaceData;
 import sun.java2d.SurfaceDataProxy;
@@ -91,7 +90,7 @@ public abstract class SurfaceManager {
         imgaccessor.setSurfaceManager(img, mgr);
     }
 
-    private final LazyReference<ConcurrentHashMap<Object,Object>> cacheMap = LazyReference.create();
+    private final Lazy<ConcurrentHashMap<Object,Object>> cacheMap = Lazy.create();
 
     /**
      * Return an arbitrary cached object for an arbitrary cache key.
@@ -123,14 +122,8 @@ public abstract class SurfaceManager {
      * validity of data stored using this mechanism.
      */
     public void setCacheData(Object key, Object value) {
-        if (cacheMap == null) {
-            synchronized (this) {
-                if (cacheMap == null) {
-                    cacheMap = new ConcurrentHashMap<>(2);
-                }
-            }
-        }
-        cacheMap.put(key, value);
+        cacheMap.supplyIfEmpty(() -> new ConcurrentHashMap<>(2))
+                        .put(key, value);
     }
 
     /**
@@ -247,8 +240,9 @@ public abstract class SurfaceManager {
     }
 
     synchronized void flush(boolean deaccelerate) {
-        if (cacheMap != null) {
-            Iterator<Object> i = cacheMap.values().iterator();
+        var map = cacheMap.getOrNull();
+        if (map != null) {
+            Iterator<Object> i = map.values().iterator();
             while (i.hasNext()) {
                 Object o = i.next();
                 if (o instanceof FlushableCacheData) {

@@ -77,7 +77,7 @@ import com.sun.jdi.event.EventQueue;
 import com.sun.jdi.request.BreakpointRequest;
 import com.sun.jdi.request.EventRequest;
 import com.sun.jdi.request.EventRequestManager;
-import jdk.internal.lazy.LazyReference;
+import jdk.internal.lazy.Lazy;
 
 class VirtualMachineImpl extends MirrorImpl
              implements PathSearchingVirtualMachine, ThreadListener {
@@ -137,16 +137,16 @@ class VirtualMachineImpl extends MirrorImpl
 
     // Per-vm singletons for primitive types and for void.
     // singleton-ness protected by "synchronized(this)".
-    private LazyReference<BooleanType> theBooleanType = LazyReference.create();
-    private LazyReference<ByteType>    theByteType = LazyReference.create();
-    private LazyReference<CharType>    theCharType = LazyReference.create();
-    private LazyReference<ShortType>   theShortType = LazyReference.create();
-    private LazyReference<IntegerType> theIntegerType = LazyReference.create();
-    private LazyReference<LongType>    theLongType = LazyReference.create();
-    private LazyReference<FloatType>   theFloatType = LazyReference.create();
-    private LazyReference<DoubleType>  theDoubleType = LazyReference.create();
+    private Lazy<BooleanType> theBooleanType = Lazy.create();
+    private Lazy<ByteType> theByteType = Lazy.create();
+    private Lazy<CharType> theCharType = Lazy.create();
+    private Lazy<ShortType> theShortType = Lazy.create();
+    private Lazy<IntegerType> theIntegerType = Lazy.create();
+    private Lazy<LongType> theLongType = Lazy.create();
+    private Lazy<FloatType> theFloatType = Lazy.create();
+    private Lazy<DoubleType> theDoubleType = Lazy.create();
 
-    private LazyReference<VoidType>    theVoidType = LazyReference.create();
+    private Lazy<VoidType> theVoidType = Lazy.create();
 
     private VoidValue voidVal;
 
@@ -1194,47 +1194,47 @@ class VirtualMachineImpl extends MirrorImpl
     }
 
     BooleanType theBooleanType() {
-        return theBooleanType.supplyIfAbsent(
+        return theBooleanType.supplyIfEmpty(
                 () -> new BooleanTypeImpl(this));
     }
 
     ByteType theByteType() {
-        return theByteType.supplyIfAbsent(
+        return theByteType.supplyIfEmpty(
                 () -> new ByteTypeImpl(this));
     }
 
     CharType theCharType() {
-        return theCharType.supplyIfAbsent(
+        return theCharType.supplyIfEmpty(
                 () -> new CharTypeImpl(this));
     }
 
     ShortType theShortType() {
-        return theShortType.supplyIfAbsent(
+        return theShortType.supplyIfEmpty(
                 () -> new ShortTypeImpl(this));
     }
 
     IntegerType theIntegerType() {
-        return theIntegerType.supplyIfAbsent(
+        return theIntegerType.supplyIfEmpty(
                 () -> new IntegerTypeImpl(this));
     }
 
     LongType theLongType() {
-        return theLongType.supplyIfAbsent(
+        return theLongType.supplyIfEmpty(
                 () -> new LongTypeImpl(this));
     }
 
     FloatType theFloatType() {
-        return theFloatType.supplyIfAbsent(
+        return theFloatType.supplyIfEmpty(
                 () -> new FloatTypeImpl(this));
     }
 
     DoubleType theDoubleType() {
-        return theDoubleType.supplyIfAbsent(
+        return theDoubleType.supplyIfEmpty(
                 () -> new DoubleTypeImpl(this));
     }
 
     VoidType theVoidType() {
-        return theVoidType.supplyIfAbsent(
+        return theVoidType.supplyIfEmpty(
                 () -> new VoidTypeImpl(this));
     }
 
