@@ -25,11 +25,12 @@
 
 package sun.font;
 
-import jdk.internal.lazy.Lazy;
+import jdk.internal.lazy.LazyReference;
 
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 
 public abstract class PhysicalStrike extends FontStrike {
@@ -69,7 +70,8 @@ public abstract class PhysicalStrike extends FontStrike {
      * request involves scaling and hinting the glyph outline potentially
      * over and over again.
      */
-    final Lazy<ConcurrentHashMap<Integer, Point2D.Float>> glyphPointMapCache = Lazy.create();
+    final Supplier<ConcurrentHashMap<Integer, Point2D.Float>> glyphPointMapCache =
+            LazyReference.create(ConcurrentHashMap::new);
 
     protected boolean getImageWithAdvance;
     protected static final int complexTX =
@@ -121,7 +123,7 @@ public abstract class PhysicalStrike extends FontStrike {
      */
     Point2D.Float getGlyphPoint(int glyphCode, int ptNumber) {
         Integer ptKey = Integer.valueOf(glyphCode<<16|ptNumber);
-        var cache = glyphPointMapCache.supplyIfEmpty(ConcurrentHashMap::new);
+        var cache = glyphPointMapCache.get();
         Point2D.Float gp = cache.get(ptKey);
         gp = cache.get(ptKey);
 

@@ -51,7 +51,7 @@ import com.sun.jdi.ReferenceType;
 import com.sun.jdi.Type;
 import com.sun.jdi.Value;
 import com.sun.jdi.VirtualMachine;
-import jdk.internal.lazy.Lazy;
+import jdk.internal.lazy.LazyReference;
 
 public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceType {
     protected long ref;
@@ -68,7 +68,7 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
 
     private boolean isClassLoaderCached = false;
     private ClassLoaderReference classLoader = null;
-    private Lazy<ClassObjectReference> classObject = Lazy.create();
+    private LazyReference<ClassObjectReference> classObject = LazyReference.create();
     private ModuleReference module = null;
 
     private int status = 0;

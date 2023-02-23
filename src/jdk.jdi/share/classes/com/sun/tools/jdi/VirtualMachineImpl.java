@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import com.sun.jdi.BooleanType;
 import com.sun.jdi.BooleanValue;
@@ -77,7 +78,7 @@ import com.sun.jdi.event.EventQueue;
 import com.sun.jdi.request.BreakpointRequest;
 import com.sun.jdi.request.EventRequest;
 import com.sun.jdi.request.EventRequestManager;
-import jdk.internal.lazy.Lazy;
+import jdk.internal.lazy.LazyReference;
 
 class VirtualMachineImpl extends MirrorImpl
              implements PathSearchingVirtualMachine, ThreadListener {
@@ -137,16 +138,24 @@ class VirtualMachineImpl extends MirrorImpl
 
     // Per-vm singletons for primitive types and for void.
     // singleton-ness protected by "synchronized(this)".
-    private Lazy<BooleanType> theBooleanType = Lazy.create();
-    private Lazy<ByteType> theByteType = Lazy.create();
-    private Lazy<CharType> theCharType = Lazy.create();
-    private Lazy<ShortType> theShortType = Lazy.create();
-    private Lazy<IntegerType> theIntegerType = Lazy.create();
-    private Lazy<LongType> theLongType = Lazy.create();
-    private Lazy<FloatType> theFloatType = Lazy.create();
-    private Lazy<DoubleType> theDoubleType = Lazy.create();
-
-    private Lazy<VoidType> theVoidType = Lazy.create();
+    private Supplier<BooleanType> theBooleanType =
+            LazyReference.create(() -> new BooleanTypeImpl(this));
+    private Supplier<ByteType> theByteType =
+            LazyReference.create(() -> new ByteTypeImpl(this));
+    private Supplier<CharType> theCharType =
+            LazyReference.create(() -> new CharTypeImpl(this));
+    private Supplier<ShortType> theShortType =
+            LazyReference.create(() -> new ShortTypeImpl(this));
+    private Supplier<IntegerType> theIntegerType =
+            LazyReference.create(() -> new IntegerTypeImpl(this));
+    private Supplier<LongType> theLongType =
+            LazyReference.create(() -> new LongTypeImpl(this));
+    private Supplier<FloatType> theFloatType =
+            LazyReference.create(() -> new FloatTypeImpl(this));
+    private Supplier<DoubleType> theDoubleType =
+            LazyReference.create(() -> new DoubleTypeImpl(this));
+    private Supplier<VoidType> theVoidType =
+            LazyReference.create(() -> new VoidTypeImpl(this));
 
     private VoidValue voidVal;
 
@@ -1194,48 +1203,39 @@ class VirtualMachineImpl extends MirrorImpl
     }
 
     BooleanType theBooleanType() {
-        return theBooleanType.supplyIfEmpty(
-                () -> new BooleanTypeImpl(this));
+        return theBooleanType.get();
     }
 
     ByteType theByteType() {
-        return theByteType.supplyIfEmpty(
-                () -> new ByteTypeImpl(this));
+        return theByteType.get();
     }
 
     CharType theCharType() {
-        return theCharType.supplyIfEmpty(
-                () -> new CharTypeImpl(this));
+        return theCharType.get();
     }
 
     ShortType theShortType() {
-        return theShortType.supplyIfEmpty(
-                () -> new ShortTypeImpl(this));
+        return theShortType.get();
     }
 
     IntegerType theIntegerType() {
-        return theIntegerType.supplyIfEmpty(
-                () -> new IntegerTypeImpl(this));
+        return theIntegerType.get();
     }
 
     LongType theLongType() {
-        return theLongType.supplyIfEmpty(
-                () -> new LongTypeImpl(this));
+        return theLongType.get();
     }
 
     FloatType theFloatType() {
-        return theFloatType.supplyIfEmpty(
-                () -> new FloatTypeImpl(this));
+        return theFloatType.get();
     }
 
     DoubleType theDoubleType() {
-        return theDoubleType.supplyIfEmpty(
-                () -> new DoubleTypeImpl(this));
+        return theDoubleType.get();
     }
 
     VoidType theVoidType() {
-        return theVoidType.supplyIfEmpty(
-                () -> new VoidTypeImpl(this));
+        return theVoidType.get();
     }
 
     PrimitiveType primitiveTypeMirror(byte tag) {

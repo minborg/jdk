@@ -28,7 +28,7 @@
  * @run junit BasicLazyTest
  */
 
-import jdk.internal.lazy.Lazy;
+import jdk.internal.lazy.LazyReference;
 import org.junit.jupiter.api.*;
 
 import java.util.Collection;
@@ -42,12 +42,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 final class BasicLazyTest {
 
-    Lazy<Integer> lazy;
+    LazyReference<Integer> lazy;
     CountingIntSupplier supplier;
 
     @BeforeEach
     void setup() {
-        lazy = Lazy.create();
+        lazy = LazyReference.create();
         supplier = new CountingIntSupplier();
     }
 
@@ -60,7 +60,7 @@ final class BasicLazyTest {
 
     @Test
     void emptyGetOrNull() {
-        assertNull(lazy.getOrNull());
+        assertNull(lazy.get());
     }
 
     @Test
@@ -93,7 +93,7 @@ final class BasicLazyTest {
     void getOrNull() {
         assertIsNull(instance.getOrNull());
         Integer val = lazy.supplyIfEmpty(supplier);
-        assertEquals(CountingIntSupplier.MAGIC_VALUE, lazy.getOrNull());
+        assertEquals(CountingIntSupplier.MAGIC_VALUE, lazy.get());
     }
 
     // Todo:repeate the test 1000 times
@@ -113,7 +113,7 @@ final class BasicLazyTest {
         Thread.sleep(10);
         gate.set(true);
         join(threads);
-        assertEquals(CountingIntSupplier.MAGIC_VALUE, lazy.getOrNull());
+        assertEquals(CountingIntSupplier.MAGIC_VALUE, lazy.get());
         assertEquals(1, supplier.invocations());
     }
 
