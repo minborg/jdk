@@ -50,7 +50,6 @@ public class DowncallLinker {
     private static final JavaLangInvokeAccess JLIA = SharedSecrets.getJavaLangInvokeAccess();
 
     private static final MethodHandle MH_INVOKE_INTERP_BINDINGS;
-    private static final MethodHandle MH_CHECK_SYMBOL;
     private static final MethodHandle EMPTY_OBJECT_ARRAY_HANDLE = MethodHandles.constant(Object[].class, new Object[0]);
 
     static {
@@ -58,8 +57,6 @@ public class DowncallLinker {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
             MH_INVOKE_INTERP_BINDINGS = lookup.findVirtual(DowncallLinker.class, "invokeInterpBindings",
                     methodType(Object.class, SegmentAllocator.class, Object[].class, InvocationData.class));
-            MH_CHECK_SYMBOL = lookup.findStatic(SharedUtils.class, "checkSymbol",
-                    methodType(void.class, MemorySegment.class));
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
@@ -86,12 +83,13 @@ public class DowncallLinker {
             toStorageArray(retMoves),
             leafType,
             callingSequence.needsReturnBuffer(),
-            callingSequence.capturedStateMask()
+            callingSequence.capturedStateMask(),
+            callingSequence.needsTransition()
         );
         MethodHandle handle = JLIA.nativeMethodHandle(nep);
 
         if (USE_SPEC) {
-            handle = BindingSpecializer.specialize(handle, callingSequence, abi);
+            handle = BindingSpecializer.specializeDowncall(handle, callingSequence, abi);
          } else {
             Map<VMStorage, Integer> argIndexMap = SharedUtils.indexMap(argMoves);
             Map<VMStorage, Integer> retIndexMap = SharedUtils.indexMap(retMoves);
@@ -111,7 +109,7 @@ public class DowncallLinker {
 
         assert handle.type().parameterType(0) == SegmentAllocator.class;
         assert handle.type().parameterType(1) == MemorySegment.class;
-        handle = foldArguments(handle, 1, MH_CHECK_SYMBOL);
+        handle = foldArguments(handle, 1, SharedUtils.MH_CHECK_SYMBOL);
 
         handle = SharedUtils.swapArguments(handle, 0, 1); // normalize parameter order
 
@@ -198,4 +196,3 @@ public class DowncallLinker {
         }
     }
 }
-

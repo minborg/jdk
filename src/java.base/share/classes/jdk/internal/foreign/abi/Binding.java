@@ -24,14 +24,11 @@
  */
 package jdk.internal.foreign.abi;
 
+import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.NativeMemorySegmentImpl;
 import jdk.internal.foreign.Utils;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
-import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -197,14 +194,14 @@ public interface Binding {
     /**
      * A binding context is used as an helper to carry out evaluation of certain bindings; for instance,
      * it helps {@link Allocate} bindings, by providing the {@link SegmentAllocator} that should be used for
-     * the allocation operation, or {@link BoxAddress} bindings, by providing the {@link SegmentScope} that
+     * the allocation operation, or {@link BoxAddress} bindings, by providing the {@link Arena} that
      * should be used to create an unsafe struct from a memory address.
      */
     class Context implements AutoCloseable {
         private final SegmentAllocator allocator;
-        private final SegmentScope scope;
+        private final MemorySessionImpl scope;
 
-        private Context(SegmentAllocator allocator, SegmentScope scope) {
+        private Context(SegmentAllocator allocator, MemorySessionImpl scope) {
             this.allocator = allocator;
             this.scope = scope;
         }
@@ -213,7 +210,7 @@ public interface Binding {
             return allocator;
         }
 
-        public SegmentScope scope() {
+        public MemorySessionImpl scope() {
             return scope;
         }
 
@@ -226,8 +223,9 @@ public interface Binding {
          * Create a binding context from given native scope.
          */
         public static Context ofBoundedAllocator(long size) {
-            Arena arena = Arena.openConfined();
-            return new Context(SegmentAllocator.slicingAllocator(MemorySegment.allocateNative(size, arena.scope())), arena.scope()) {
+            Arena arena = Arena.ofConfined();
+            return new Context(SegmentAllocator.slicingAllocator(arena.allocate(size, 1)),
+                    (MemorySessionImpl)arena.scope()) {
                 @Override
                 public void close() {
                     arena.close();
@@ -242,7 +240,7 @@ public interface Binding {
         public static Context ofAllocator(SegmentAllocator allocator) {
             return new Context(allocator, null) {
                 @Override
-                public SegmentScope scope() {
+                public MemorySessionImpl scope() {
                     throw new UnsupportedOperationException();
                 }
             };
@@ -253,8 +251,8 @@ public interface Binding {
          * the context's allocator is accessed.
          */
         public static Context ofScope() {
-            Arena arena = Arena.openConfined();
-            return new Context(null, arena.scope()) {
+            Arena arena = Arena.ofConfined();
+            return new Context(null, (MemorySessionImpl)arena.scope()) {
                 @Override
                 public SegmentAllocator allocator() { throw new UnsupportedOperationException(); }
 
@@ -276,7 +274,7 @@ public interface Binding {
             }
 
             @Override
-            public SegmentScope scope() {
+            public MemorySessionImpl scope() {
                 throw new UnsupportedOperationException();
             }
 
@@ -347,16 +345,16 @@ public interface Binding {
         return new Allocate(layout.byteSize(), layout.byteAlignment());
     }
 
-    static BoxAddress boxAddressRaw(long size) {
-        return new BoxAddress(size, false);
+    static BoxAddress boxAddressRaw(long size, long align) {
+        return new BoxAddress(size, align, false);
     }
 
     static BoxAddress boxAddress(MemoryLayout layout) {
-        return new BoxAddress(layout.byteSize(), true);
+        return new BoxAddress(layout.byteSize(), layout.byteAlignment(), true);
     }
 
     static BoxAddress boxAddress(long byteSize) {
-        return new BoxAddress(byteSize, true);
+        return new BoxAddress(byteSize, 1, true);
     }
 
     static UnboxAddress unboxAddress() {
@@ -448,8 +446,8 @@ public interface Binding {
             return this;
         }
 
-        public Binding.Builder boxAddressRaw(long size) {
-            bindings.add(Binding.boxAddressRaw(size));
+        public Binding.Builder boxAddressRaw(long size, long align) {
+            bindings.add(Binding.boxAddressRaw(size, align));
             return this;
         }
 
@@ -672,7 +670,7 @@ public interface Binding {
         @Override
         public void interpret(Deque<Object> stack, BindingInterpreter.StoreFunc storeFunc,
                               BindingInterpreter.LoadFunc loadFunc, Context context) {
-            stack.push(((MemorySegment)stack.pop()).address());
+            stack.push(SharedUtils.unboxSegment((MemorySegment)stack.pop()));
         }
     }
 
@@ -681,7 +679,7 @@ public interface Binding {
      * Pops a 'long' from the operand stack, converts it to a 'MemorySegment', with the given size and memory scope
      * (either the context scope, or the global scope), and pushes that onto the operand stack.
      */
-    record BoxAddress(long size, boolean needsScope) implements Binding {
+    record BoxAddress(long size, long align, boolean needsScope) implements Binding {
 
         @Override
         public Tag tag() {
@@ -698,9 +696,11 @@ public interface Binding {
         @Override
         public void interpret(Deque<Object> stack, BindingInterpreter.StoreFunc storeFunc,
                               BindingInterpreter.LoadFunc loadFunc, Context context) {
-            SegmentScope scope = needsScope ?
-                    context.scope() : SegmentScope.global();
-            stack.push(NativeMemorySegmentImpl.makeNativeSegmentUnchecked((long) stack.pop(), size, scope));
+            if (needsScope) {
+                stack.push(Utils.longToAddress((long) stack.pop(), size, align, context.scope()));
+            } else {
+                stack.push(Utils.longToAddress((long) stack.pop(), size, align));
+            }
         }
     }
 
