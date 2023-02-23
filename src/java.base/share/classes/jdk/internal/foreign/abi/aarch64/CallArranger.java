@@ -41,7 +41,6 @@ import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.VMStorage;
 import jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64CallArranger;
 import jdk.internal.foreign.abi.aarch64.macos.MacOsAArch64CallArranger;
-import jdk.internal.foreign.abi.aarch64.windows.WindowsAArch64CallArranger;
 import jdk.internal.foreign.Utils;
 
 import java.lang.foreign.ValueLayout;
@@ -59,9 +58,9 @@ import static jdk.internal.foreign.abi.aarch64.AArch64Architecture.Regs.*;
  *
  * This includes taking care of synthetic arguments like pointers to return buffers for 'in-memory' returns.
  *
- * There are minor differences between the ABIs implemented on Linux, macOS, and Windows
+ * There are minor differences between the ABIs implemented on Linux, and macOS
  * which are handled in sub-classes. Clients should access these through the provided
- * public constants CallArranger.LINUX, CallArranger.MACOS, and CallArranger.WINDOWS.
+ * public constants CallArranger.LINUX, CallArranger.MACOS.
  */
 public abstract class CallArranger {
     private static final int STACK_SLOT_SIZE = 8;
@@ -100,7 +99,6 @@ public abstract class CallArranger {
 
     public static final CallArranger LINUX = new LinuxAArch64CallArranger();
     public static final CallArranger MACOS = new MacOsAArch64CallArranger();
-    public static final CallArranger WINDOWS = new WindowsAArch64CallArranger();
 
     /**
      * Are variadic arguments assigned to registers as in the standard calling
@@ -247,8 +245,6 @@ public abstract class CallArranger {
         Linux           | FW in regs       | CW on the stack                 | CW on the stack
         MacOs, non-VA   | FW in regs       | FW on the stack                 | FW on the stack
         MacOs, VA       | FW in regs       | CW on the stack                 | CW on the stack
-        Windows, non-VF | FW in regs       | CW on the stack                 | CW on the stack
-        Windows, VF     | FW in regs       | CW split between regs and stack | CW on the stack
         (where FW = Field-wise copy, CW = Chunk-wise copy, VA is a variadic argument, and VF is a variadic function)
 
         For regular structs, the rules are as follows:
@@ -257,8 +253,6 @@ public abstract class CallArranger {
         ----------------+------------------+---------------------------------+-------------------------
         Linux           | CW in regs       | CW on the stack                 | CW on the stack
         MacOs           | CW in regs       | CW on the stack                 | CW on the stack
-        Windows, non-VF | CW in regs       | CW on the stack                 | CW on the stack
-        Windows, VF     | CW in regs       | CW split between regs and stack | CW on the stack
          */
         StructStorage[] structStorages(GroupLayout layout, boolean forHFA) {
             int numChunks = (int)Utils.alignUp(layout.byteSize(), MAX_COPY_SIZE) / MAX_COPY_SIZE;
