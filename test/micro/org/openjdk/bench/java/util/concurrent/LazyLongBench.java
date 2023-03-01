@@ -55,6 +55,7 @@ public class LazyLongBench {
     public LongSupplier lazy;
 
     public LongSupplier threadUnsafe;
+    public LongSupplier doubleChecked;
 
     /**
      * The test variables are allocated every iteration so you can assume
@@ -64,6 +65,7 @@ public class LazyLongBench {
     public void setupIteration() {
         lazy = LazyLong.of(SUPPLIER);
         threadUnsafe = new ThreadUnsafe(SUPPLIER);
+        doubleChecked = new VolatileDoubleChecked(SUPPLIER);
     }
 
     @Benchmark
@@ -74,6 +76,10 @@ public class LazyLongBench {
     @Benchmark
     public void threadUnsafe(Blackhole bh) {
         bh.consume(threadUnsafe.getAsLong());
+    }
+    @Benchmark
+    public void doubleChecked(Blackhole bh) {
+        bh.consume(doubleChecked.getAsLong());
     }
 
     private static final class ThreadUnsafe implements LongSupplier {
@@ -97,5 +103,32 @@ public class LazyLongBench {
             return value;
         }
     }
+
+    private static final class VolatileDoubleChecked implements LongSupplier {
+
+        private LongSupplier supplier;
+
+        private long value;
+        private boolean present;
+
+        public VolatileDoubleChecked(LongSupplier supplier) {
+            this.supplier = supplier;
+        }
+
+        @Override
+        public long getAsLong() {
+            if (!present) {
+                synchronized (this) {
+                    if (!present) {
+                        value = supplier.getAsLong();
+                        present = true;
+                        supplier = null;
+                    }
+                }
+            }
+            return value;
+        }
+    }
+
 
 }

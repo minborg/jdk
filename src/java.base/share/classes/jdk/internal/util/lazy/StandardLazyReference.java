@@ -43,13 +43,13 @@ public final class StandardLazyReference<T>
     @Stable
     private boolean present;
 
-    static final VarHandle VALUE_VH;
+    //static final VarHandle VALUE_VH;
     static final VarHandle PRESENT_VH;
 
     static {
         try {
-            VALUE_VH = MethodHandles.lookup()
-                    .findVarHandle(StandardLazyReference.class, "value", Object.class);
+      /*      VALUE_VH = MethodHandles.lookup()
+                    .findVarHandle(StandardLazyReference.class, "value", Object.class);*/
             PRESENT_VH = MethodHandles.lookup()
                     .findVarHandle(StandardLazyReference.class, "present", boolean.class);
         } catch (ReflectiveOperationException e) {
@@ -64,15 +64,17 @@ public final class StandardLazyReference<T>
     @SuppressWarnings("unchecked")
     @Override
     public T get() {
-        T value;
-        return (value = getAcquire()) == null
-                ? supplyIfEmpty0(presetSupplier)
-                : value;
+        if (present) {
+            return (T) value;
+        }
+        return isPresent()
+                ? (T) value
+                : supplyIfEmpty0(presetSupplier);
     }
 
     @Override
     public boolean isPresent() {
-        return getAcquire() != null;
+        return (boolean) PRESENT_VH.getAcquire(this);
     }
 
     @Override
@@ -81,32 +83,34 @@ public final class StandardLazyReference<T>
         return supplyIfEmpty0(supplier);
     }
 
+    @SuppressWarnings("unchecked")
     private T supplyIfEmpty0(Supplier<? extends T> supplier) {
-        T value = getAcquire();
-        if (value == null) {
+        //if (!isPresent()) { // aquire semantics, this will work!
+        if (!present) {       // normal semantics (will this work?)
             synchronized (this) {
-                value = getAcquire();
-                if (value == null) {
+                if (!present) {
                     if (supplier == null) {
                         throw new IllegalStateException("No pre-set supplier specified.");
                     }
                     value = supplier.get();
+                    // It is possible to accept null results now that there is
+                    // a separate "present" variable
                     if (value == null) {
                         throw new NullPointerException("The supplier returned null: " + supplier);
                     }
-                    setRelease(value);
                     forgetPresetSupplier();
+                    // Prevent reordering (for normal semantics also?)
+                    PRESENT_VH.setRelease(this, true);
                 }
             }
         }
-        return value;
+        return (T) value;
     }
 
     @Override
     public final String toString() {
-        var v = getAcquire();
-        return v != null
-                ? ("LazyReference[" + v + "]")
+        return isPresent()
+                ? ("LazyReference[" + value + "]")
                 : "LazyReference.empty";
     }
 
@@ -119,11 +123,12 @@ public final class StandardLazyReference<T>
     // Use acquire/release to ensure happens-before so that newly
     // constructed elements are always observed correctly in combination
     // with double-checked locking.
+    /*
     T getAcquire() {
         return (T) VALUE_VH.getAcquire(this);
     }
 
     void setRelease(Object value) {
         VALUE_VH.setRelease(this, value);
-    }
+    }*/
 }
