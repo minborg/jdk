@@ -80,16 +80,15 @@ final class BasicLazyReferenceArrayTest {
     }
 
     @Test
-    void getOrNull() {
-        assertNull(lazy.getOrNull(INDEX));
+    void isPresent() {
+        assertFalse(lazy.isPresent(INDEX));
         Integer val = lazy.computeIfEmpty(INDEX, mapper);
-        assertEquals(INDEX, lazy.getOrNull(INDEX));
+        assertTrue(lazy.isPresent(INDEX));
     }
 
     @Test
     void presetMapperBasic() {
         LazyReferenceArray<Integer> presetLazy = LazyReferenceArray.of(SIZE, mapper);
-        assertNull(presetLazy.getOrNull(INDEX));
         assertEquals(0, mapper.invocations(INDEX));
         for (int i = 0; i < 2; i++) {
             assertEquals(INDEX, presetLazy.apply(INDEX));

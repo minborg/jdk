@@ -76,17 +76,15 @@ final class BasicLazyReferenceTest {
     }
 
     @Test
-    void getOrNull() {
-        assertNull(lazy.getOrNull());
+    void isPresent() {
+        assertFalse(lazy.isPresent());
         Integer val = lazy.supplyIfEmpty(supplier);
-        assertEquals(CountingIntegerSupplier.MAGIC_VALUE, lazy.getOrNull());
+        assertTrue(lazy.isPresent());
     }
 
     @Test
     void presetSupplierBasic() {
         LazyReference<Integer> presetLazy = LazyReference.of(supplier);
-        assertNull(presetLazy.getOrNull());
-        assertEquals(0, supplier.invocations());
         for (int i = 0; i < 2; i++) {
             assertEquals(CountingIntegerSupplier.MAGIC_VALUE, presetLazy.get());
             assertEquals(1, supplier.invocations());

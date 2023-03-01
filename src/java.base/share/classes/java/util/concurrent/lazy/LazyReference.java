@@ -86,18 +86,19 @@ public sealed interface LazyReference<V> extends Supplier<V> permits StandardLaz
     V get();
 
     /**
-     * {@return a snapshot of the present value or {@code null} if no such value is present}.
+     * {@return if a value is present}.
      * <p>
      * No attempt is made to compute a value if it is not already present.
      * <p>
-     * This method can be wrapped into an {@link Optional} for functional composition and more:
+     * This method can be used to act on a value if it is present:
      * {@snippet lang = java:
-     *     Optional.ofNullable(lazy.getOrNull())
-     *         .map(Logic::computeResult)
-     *         .ifPresentOrElse(Presentation::renderResult, Presentation::showFailure);
-     * }
+     *     if (lazy.isPresent()) {
+     *         V value = lazy.get();
+     *         // perform action on the value
+     *     }
+     *}
      */
-    V getOrNull();
+    boolean isPresent();
 
     /**
      * Returns the present value or, if no present value exists, atomically attempts

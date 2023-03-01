@@ -93,21 +93,22 @@ sealed public interface LazyReferenceArray<V> extends IntFunction<V> permits Sta
     V apply(int index);
 
     /**
-     * {@return a snapshot of the present value at the provided {@code index} or {@code null} if no such value is present}.
+     * {@return if a value is present at the provided {@code index}}.
      * <p>
      * No attempt is made to compute a value if it is not already present.
      * <p>
-     * This method can be wrapped into an {@link Optional} for functional composition and more:
+     * This method can be used to act on a value if it is present:
      * {@snippet lang = java:
-     *     Optional.ofNullable(lazy.getOrNull(42))
-     *         .map(Logic::computeResult)
-     *         .ifPresentOrElse(Presentation::renderResult, Presentation::showFailure);
-     * }
+     *     if (lazy.isPresent(index)) {
+     *         V value = lazy.get(index);
+     *         // perform action on the value
+     *     }
+     *}
      * @param index to the slot to be used
      * @throws ArrayIndexOutOfBoundsException if the provided {@code index} is {@code < 0}
      *                                        or {@code index >= length()}
      */
-    V getOrNull(int index);
+    boolean isPresent(int index);
 
     /**
      * Returns the present value at the provided {@code index} or, if no present value exists,

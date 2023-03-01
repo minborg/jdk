@@ -40,13 +40,18 @@ public final class StandardLazyReference<T>
     private Supplier<? extends T> presetSupplier;
     @Stable
     private Object value;
+    @Stable
+    private boolean present;
 
     static final VarHandle VALUE_VH;
+    static final VarHandle PRESENT_VH;
 
     static {
         try {
             VALUE_VH = MethodHandles.lookup()
                     .findVarHandle(StandardLazyReference.class, "value", Object.class);
+            PRESENT_VH = MethodHandles.lookup()
+                    .findVarHandle(StandardLazyReference.class, "present", boolean.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -66,8 +71,8 @@ public final class StandardLazyReference<T>
     }
 
     @Override
-    public T getOrNull() {
-        return getAcquire();
+    public boolean isPresent() {
+        return getAcquire() != null;
     }
 
     @Override

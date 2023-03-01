@@ -68,8 +68,8 @@ public final class StandardLazyReferenceArray<T>
     }
 
     @Override
-    public T getOrNull(int index) {
-        return getAcquire(index);
+    public boolean isPresent(int index) {
+        return getAcquire(index) != null;
     }
 
     @Override
