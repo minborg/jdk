@@ -23,59 +23,39 @@
 
 /*
  * @test
- * @modules java.base/jdk.internal.lazy
- * @summary Verify basic Lazy operations
- * @run junit BasicLazyTest
+ * @summary Verify basic LazyReference operations
+ * @run junit BasicLazyReferenceTest
  */
 
-import jdk.internal.lazy.LazyReference;
 import org.junit.jupiter.api.*;
 
 import java.util.Collection;
-import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.lazy.LazyReference;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-final class BasicLazyTest {
+final class BasicLazyReferenceTest {
 
     LazyReference<Integer> lazy;
-    CountingIntSupplier supplier;
+    CountingIntegerSupplier supplier;
 
     @BeforeEach
     void setup() {
-        lazy = LazyReference.create();
-        supplier = new CountingIntSupplier();
-    }
-
-    @Test
-    void isPresent() {
-        assertFalse(lazy.isPresent());
-        instance.supplyIfEmpty(supplier);
-        assertTrue(lazy.isPresent());
-    }
-
-    @Test
-    void emptyGetOrNull() {
-        assertNull(lazy.get());
-    }
-
-    @Test
-    void emptyGetOrThrow() {
-        assertThrows(NoSuchElementException.class,
-                () -> lazy.getOrThrow());
+        lazy = LazyReference.ofEmpty();
+        supplier = new CountingIntegerSupplier();
     }
 
     @Test
     void supply() {
         Integer val = lazy.supplyIfEmpty(supplier);
-        assertEquals(CountingIntSupplier.MAGIC_VALUE, val);
+        assertEquals(CountingIntegerSupplier.MAGIC_VALUE, val);
         assertEquals(1, supplier.invocations());
         Integer val2 = lazy.supplyIfEmpty(supplier);
-        assertEquals(CountingIntSupplier.MAGIC_VALUE, val);
+        assertEquals(CountingIntegerSupplier.MAGIC_VALUE, val);
         assertEquals(1, supplier.invocations());
     }
 
@@ -90,10 +70,37 @@ final class BasicLazyTest {
     }
 
     @Test
+    void noPresetGet() {
+        assertThrows(IllegalStateException.class,
+                () -> lazy.get());
+    }
+
+    @Test
     void getOrNull() {
-        assertIsNull(instance.getOrNull());
+        assertNull(lazy.getOrNull());
         Integer val = lazy.supplyIfEmpty(supplier);
-        assertEquals(CountingIntSupplier.MAGIC_VALUE, lazy.get());
+        assertEquals(CountingIntegerSupplier.MAGIC_VALUE, lazy.getOrNull());
+    }
+
+    @Test
+    void presetSupplierBasic() {
+        LazyReference<Integer> presetLazy = LazyReference.of(supplier);
+        assertNull(presetLazy.getOrNull());
+        assertEquals(0, supplier.invocations());
+        for (int i = 0; i < 2; i++) {
+            assertEquals(CountingIntegerSupplier.MAGIC_VALUE, presetLazy.get());
+            assertEquals(1, supplier.invocations());
+        }
+    }
+
+    @Test
+    void presetSupplierNullSuppying() {
+        // Mapper is null
+        assertThrows(NullPointerException.class,
+                () -> LazyReference.of(null));
+        // Mapper returns null
+        assertThrows(NullPointerException.class,
+                () -> LazyReference.of(() -> null).get());
     }
 
     // Todo:repeate the test 1000 times
@@ -113,7 +120,7 @@ final class BasicLazyTest {
         Thread.sleep(10);
         gate.set(true);
         join(threads);
-        assertEquals(CountingIntSupplier.MAGIC_VALUE, lazy.get());
+        assertEquals(CountingIntegerSupplier.MAGIC_VALUE, lazy.get());
         assertEquals(1, supplier.invocations());
     }
 
@@ -127,13 +134,13 @@ final class BasicLazyTest {
         }
     }
 
-    static private final class CountingIntSupplier implements Supplier<Integer> {
+    static private final class CountingIntegerSupplier implements Supplier<Integer> {
         static final int MAGIC_VALUE = 42;
         private final AtomicInteger invocations = new AtomicInteger();
 
         @Override
         public Integer get() {
-            invocations.intValue();
+            invocations.incrementAndGet();
             return MAGIC_VALUE;
         }
 

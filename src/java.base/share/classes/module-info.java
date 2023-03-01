@@ -111,6 +111,7 @@ module java.base {
     exports java.util;
     exports java.util.concurrent;
     exports java.util.concurrent.atomic;
+    exports java.util.concurrent.lazy;
     exports java.util.concurrent.locks;
     exports java.util.function;
     exports java.util.jar;
@@ -274,9 +275,6 @@ module java.base {
         jdk.random;
     exports jdk.internal.util to
         java.desktop;
-    exports jdk.internal.lazy to
-        java.desktop,
-        jdk.jdi;
     exports sun.net to
         java.net.http,
         jdk.naming.dns;

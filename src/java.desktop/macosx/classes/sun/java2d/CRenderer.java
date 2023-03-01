@@ -29,9 +29,9 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.awt.image.*;
 import java.nio.*;
+import java.util.concurrent.lazy.LazyReference;
 import java.util.function.Supplier;
 
-import jdk.internal.lazy.LazyReference;
 import sun.awt.image.*;
 import sun.java2d.loops.*;
 import sun.java2d.pipe.*;
@@ -51,7 +51,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawLine(sg2d, (float) x1, (float) y1, (float) x2, (float) y2);
     }
 
-    final Supplier<Line2D> lineToShape = LazyReference.create(Line2D.Float::new);
+    final Supplier<Line2D> lineToShape = LazyReference.of(Line2D.Float::new);
 
     public void drawLine(SunGraphics2D sg2d, float x1, float y1, float x2, float y2) {
         OSXSurfaceData surfaceData = (OSXSurfaceData) sg2d.getSurfaceData();
@@ -72,7 +72,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawRect(sg2d, (float) x, (float) y, (float) width, (float) height);
     }
 
-    final Supplier<Rectangle2D> rectToShape = LazyReference.create(Rectangle2D.Float::new);
+    final Supplier<Rectangle2D> rectToShape = LazyReference.of(Rectangle2D.Float::new);
 
     public void drawRect(SunGraphics2D sg2d, float x, float y, float width, float height) {
         if ((width < 0) || (height < 0)) return;
@@ -106,7 +106,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawRoundRect(sg2d, (float) x, (float) y, (float) width, (float) height, (float) arcWidth, (float) arcHeight);
     }
 
-    final Supplier<RoundRectangle2D> roundrectToShape = LazyReference.create(RoundRectangle2D.Float::new);
+    final Supplier<RoundRectangle2D> roundrectToShape = LazyReference.of(RoundRectangle2D.Float::new);
 
     public void drawRoundRect(SunGraphics2D sg2d, float x, float y, float width, float height, float arcWidth, float arcHeight) {
         if ((width < 0) || (height < 0)) return;
@@ -139,7 +139,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawOval(sg2d, (float) x, (float) y, (float) width, (float) height);
     }
 
-    final Supplier<Ellipse2D> ovalToShape = LazyReference.create(Ellipse2D.Float::new);
+    final Supplier<Ellipse2D> ovalToShape = LazyReference.of(Ellipse2D.Float::new);
 
     public void drawOval(SunGraphics2D sg2d, float x, float y, float width, float height) {
         if ((width < 0) || (height < 0)) return;
@@ -172,7 +172,7 @@ public class CRenderer implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, D
         drawArc(sg2d, x, y, width, height, startAngle, arcAngle, Arc2D.OPEN);
     }
 
-    final Supplier<Arc2D> arcToShape = LazyReference.create(Arc2D.Float::new);
+    final Supplier<Arc2D> arcToShape = LazyReference.of(Arc2D.Float::new);
 
     public void drawArc(SunGraphics2D sg2d, float x, float y, float width, float height, float startAngle, float arcAngle, int type) {
         if ((width < 0) || (height < 0)) return;

@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.lazy.LazyReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -78,7 +79,6 @@ import com.sun.jdi.event.EventQueue;
 import com.sun.jdi.request.BreakpointRequest;
 import com.sun.jdi.request.EventRequest;
 import com.sun.jdi.request.EventRequestManager;
-import jdk.internal.lazy.LazyReference;
 
 class VirtualMachineImpl extends MirrorImpl
              implements PathSearchingVirtualMachine, ThreadListener {
@@ -139,23 +139,23 @@ class VirtualMachineImpl extends MirrorImpl
     // Per-vm singletons for primitive types and for void.
     // singleton-ness protected by "synchronized(this)".
     private Supplier<BooleanType> theBooleanType =
-            LazyReference.create(() -> new BooleanTypeImpl(this));
+            LazyReference.of(() -> new BooleanTypeImpl(this));
     private Supplier<ByteType> theByteType =
-            LazyReference.create(() -> new ByteTypeImpl(this));
+            LazyReference.of(() -> new ByteTypeImpl(this));
     private Supplier<CharType> theCharType =
-            LazyReference.create(() -> new CharTypeImpl(this));
+            LazyReference.of(() -> new CharTypeImpl(this));
     private Supplier<ShortType> theShortType =
-            LazyReference.create(() -> new ShortTypeImpl(this));
+            LazyReference.of(() -> new ShortTypeImpl(this));
     private Supplier<IntegerType> theIntegerType =
-            LazyReference.create(() -> new IntegerTypeImpl(this));
+            LazyReference.of(() -> new IntegerTypeImpl(this));
     private Supplier<LongType> theLongType =
-            LazyReference.create(() -> new LongTypeImpl(this));
+            LazyReference.of(() -> new LongTypeImpl(this));
     private Supplier<FloatType> theFloatType =
-            LazyReference.create(() -> new FloatTypeImpl(this));
+            LazyReference.of(() -> new FloatTypeImpl(this));
     private Supplier<DoubleType> theDoubleType =
-            LazyReference.create(() -> new DoubleTypeImpl(this));
+            LazyReference.of(() -> new DoubleTypeImpl(this));
     private Supplier<VoidType> theVoidType =
-            LazyReference.create(() -> new VoidTypeImpl(this));
+            LazyReference.of(() -> new VoidTypeImpl(this));
 
     private VoidValue voidVal;
 
