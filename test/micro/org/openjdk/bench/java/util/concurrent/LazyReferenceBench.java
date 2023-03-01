@@ -60,6 +60,7 @@ public class LazyReferenceBench {
     public Supplier<Integer> lazy3;
     public Supplier<Integer> threadUnsafe;
     public Supplier<Integer> volatileDoubleChecked;
+    public Supplier<Integer> volatileVhDoubleChecked;
 
     public Supplier<Integer> acquireReleaseDoubleChecked;
 
@@ -74,6 +75,7 @@ public class LazyReferenceBench {
         lazy3 = LazyReference3.of(SUPPLIER);
         threadUnsafe = new ThreadUnsafe<>(SUPPLIER);
         volatileDoubleChecked = new VolatileDoubleChecked<>(SUPPLIER);
+        volatileVhDoubleChecked = new VolatileVhDoubleChecked<>(SUPPLIER);
         acquireReleaseDoubleChecked = new AquireReleaseDoubleChecked<>(SUPPLIER);
     }
 
@@ -100,6 +102,10 @@ public class LazyReferenceBench {
     @Benchmark
     public void volatileDoubleChecked(Blackhole bh) {
         bh.consume(volatileDoubleChecked.get());
+    }
+    @Benchmark
+    public void volatileVhDoubleChecked(Blackhole bh) {
+        bh.consume(volatileVhDoubleChecked.get());
     }
 
     @Benchmark
@@ -155,6 +161,56 @@ public class LazyReferenceBench {
             }
             return v;
         }
+    }
+
+    private static final class VolatileVhDoubleChecked<T> implements Supplier<T> {
+
+        private Supplier<? extends T> supplier;
+
+        private T value;
+
+        static final VarHandle VALUE_VH;
+
+        static {
+            try {
+                VALUE_VH = MethodHandles.lookup()
+                        .findVarHandle(VolatileVhDoubleChecked.class, "value", Object.class);
+            } catch (ReflectiveOperationException e) {
+                throw new ExceptionInInitializerError(e);
+            }
+        }
+
+        public VolatileVhDoubleChecked(Supplier<? extends T> supplier) {
+            this.supplier = supplier;
+        }
+
+        @Override
+        public T get() {
+            T v = getVolatile();
+            if (v == null) {
+                synchronized (this) {
+                    v = getVolatile();
+                    if (v == null) {
+                        v = supplier.get();
+                        if (v == null) {
+                            throw new NullPointerException();
+                        }
+                        setVolatile(v);
+                        supplier = null;
+                    }
+                }
+            }
+            return v;
+        }
+
+        T getVolatile() {
+            return (T) VALUE_VH.getVolatile(this);
+        }
+
+        void setVolatile(Object value) {
+            VALUE_VH.setVolatile(this, value);
+        }
+
     }
 
     private static final class AquireReleaseDoubleChecked<T> implements Supplier<T> {
