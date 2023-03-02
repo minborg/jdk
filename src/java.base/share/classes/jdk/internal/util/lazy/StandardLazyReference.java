@@ -64,9 +64,9 @@ public final class StandardLazyReference<T>
     @SuppressWarnings("unchecked")
     @Override
     public T get() {
-        if (present) {
+/*        if (present) {
             return (T) value;
-        }
+        }*/
         return isPresent()
                 ? (T) value
                 : supplyIfEmpty0(presetSupplier);
@@ -85,8 +85,8 @@ public final class StandardLazyReference<T>
 
     @SuppressWarnings("unchecked")
     private T supplyIfEmpty0(Supplier<? extends T> supplier) {
-        //if (!isPresent()) { // aquire semantics, this will work!
-        if (!present) {       // normal semantics (will this work?)
+        if (!isPresent()) { // aquire semantics, this will work!
+        //if (!present) {       // normal semantics (will not work)
             synchronized (this) {
                 if (!present) {
                     if (supplier == null) {
