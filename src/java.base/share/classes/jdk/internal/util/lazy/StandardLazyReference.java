@@ -41,17 +41,15 @@ public final class StandardLazyReference<T>
     @Stable
     private Object value;
     @Stable
-    private boolean present;
+    private byte present;
 
-    //static final VarHandle VALUE_VH;
     static final VarHandle PRESENT_VH;
 
     static {
         try {
-      /*      VALUE_VH = MethodHandles.lookup()
-                    .findVarHandle(StandardLazyReference.class, "value", Object.class);*/
             PRESENT_VH = MethodHandles.lookup()
-                    .findVarHandle(StandardLazyReference.class, "present", boolean.class);
+                    .findVarHandle(StandardLazyReference.class, "present", byte.class)
+                    .withInvokeExactBehavior(); // Improve performance?
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -64,9 +62,6 @@ public final class StandardLazyReference<T>
     @SuppressWarnings("unchecked")
     @Override
     public T get() {
-/*        if (present) {
-            return (T) value;
-        }*/
         return isPresent()
                 ? (T) value
                 : supplyIfEmpty0(presetSupplier);
@@ -74,7 +69,11 @@ public final class StandardLazyReference<T>
 
     @Override
     public boolean isPresent() {
-        return (boolean) PRESENT_VH.getAcquire(this);
+        // Normal semantics
+        return ((byte) PRESENT_VH.get(this)) != 0;
+
+        // Acquire semantics
+        //return ((byte) PRESENT_VH.getAcquire(this)) != 0;
     }
 
     @Override
@@ -86,9 +85,8 @@ public final class StandardLazyReference<T>
     @SuppressWarnings("unchecked")
     private T supplyIfEmpty0(Supplier<? extends T> supplier) {
         if (!isPresent()) { // aquire semantics, this will work!
-        //if (!present) {       // normal semantics (will not work)
             synchronized (this) {
-                if (!present) {
+                if (!isPresent()) {
                     if (supplier == null) {
                         throw new IllegalStateException("No pre-set supplier specified.");
                     }
@@ -99,8 +97,9 @@ public final class StandardLazyReference<T>
                         throw new NullPointerException("The supplier returned null: " + supplier);
                     }
                     forgetPresetSupplier();
-                    // Prevent reordering (for normal semantics also?)
-                    PRESENT_VH.setRelease(this, true);
+                    // Prevent reordering (for normal semantics also?). Changes only go in one direction.
+                    // https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions
+                    PRESENT_VH.setRelease(this, (byte) 1);
                 }
             }
         }
@@ -119,16 +118,4 @@ public final class StandardLazyReference<T>
         // used (if initially set).
         this.presetSupplier = null;
     }
-
-    // Use acquire/release to ensure happens-before so that newly
-    // constructed elements are always observed correctly in combination
-    // with double-checked locking.
-    /*
-    T getAcquire() {
-        return (T) VALUE_VH.getAcquire(this);
-    }
-
-    void setRelease(Object value) {
-        VALUE_VH.setRelease(this, value);
-    }*/
 }
