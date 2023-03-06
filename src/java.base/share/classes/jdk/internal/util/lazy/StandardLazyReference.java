@@ -84,7 +84,7 @@ public final class StandardLazyReference<T>
 
     @SuppressWarnings("unchecked")
     private T supplyIfEmpty0(Supplier<? extends T> supplier) {
-        if (!isPresent()) { // aquire semantics, this will work!
+        if (!isPresent()) {
             synchronized (this) {
                 if (!isPresent()) {
                     if (supplier == null) {

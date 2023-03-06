@@ -24,18 +24,17 @@
  */
 package java.util.concurrent.lazy;
 
+import jdk.internal.util.lazy.StandardLazyReference;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
  * TO BE REMOVED. JUST USED FOR BENCHMARK COMPARISON.
- *
+ * <p>
  * An object reference in which the value is lazily and atomically computed.
  * <p>
  * It is guaranteed that just at most one supplier is invoked and that
@@ -59,119 +58,81 @@ import java.util.function.Supplier;
  */
 public final class LazyReference3<V> implements Supplier<V> {
 
-
     private Supplier<? extends V> presetSupplier;
     @Stable
-    private volatile V value;
+    private Object value;
+    @Stable
+    private byte present;
 
-    private LazyReference3(Supplier<? extends V> presetSupplier) {
+    static final VarHandle PRESENT_VH;
+
+    static {
+        try {
+            PRESENT_VH = MethodHandles.lookup()
+                    .findVarHandle(LazyReference3.class, "present", byte.class);
+                    //.withInvokeExactBehavior(); // Improve performance?
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    /**
+     * A
+     * @param presetSupplier b
+     */
+    public LazyReference3(Supplier<? extends V> presetSupplier) {
         this.presetSupplier = presetSupplier;
     }
 
-    /**
-     * Returns the present value or, if no present value exists, atomically attempts
-     * to compute the value using the <em>pre-set {@linkplain #of(Supplier)} supplier}</em>.
-     * If no pre-set {@linkplain #of(Supplier)} supplier} exists,
-     * throws an IllegalStateException exception.
-     * <p>
-     * If the pre-set supplier itself throws an (unchecked) exception, the
-     * exception is rethrown, and no value is recorded. The most
-     * common usage is to construct a new object serving as a memoized result, as in:
-     *
-     * {@snippet lang = java:
-     *    LazyReference3<V> lazy = LazyReference3.of(Value::new);
-     *    // ...
-     *    V value = lazy.get();
-     *    assertNotNull(value); // Value is non-null
-     *}
-     *<p>
-     * If another thread attempts to compute the value, the current thread will be suspended until
-     * the atempt completes (successfully or not).
-     *
-     * @return the value (pre-existing or newly computed)
-     * @throws NullPointerException   if the pre-set supplier returns {@code null}.
-     * @throws IllegalStateException  if a value was not already present and no
-     *                                pre-set supplier was specified.
-     */
+    @SuppressWarnings("unchecked")
+    @Override
     public V get() {
-        V v;
-        return (v = value) == null
+        return ((byte) PRESENT_VH.get(this)) == 0
                 ? supplyIfEmpty0(presetSupplier)
-                : v;
+                : (V) value;
     }
 
     /**
-     * {@return a snapshot of the present value or {@code null} if no such value is present}.
-     * <p>
-     * No attempt is made to compute a value if it is not already present.
-     * <p>
-     * This method can be wrapped into an {@link Optional} for functional composition and more:
-     * {@snippet lang = java:
-     *     Optional.ofNullable(lazy.getOrNull())
-     *         .map(Logic::computeResult)
-     *         .ifPresentOrElse(Presentation::renderResult, Presentation::showFailure);
-     * }
+     * P
+     * @return a
      */
-    public V getOrNull() {
-        return value;
+    public boolean isPresent() {
+        // Normal semantics
+        return ((byte) PRESENT_VH.get(this)) != 0;
+
+        // Acquire semantics
+        //return ((byte) PRESENT_VH.getAcquire(this)) != 0;
     }
 
-    /**
-     * Returns the present value or, if no present value exists, atomically attempts
-     * to compute the value using the <em>provided {@code supplier}</em>.
-     *
-     * <p>If the supplier returns {@code null}, an exception is thrown.
-     * If the provided {@code supplier} itself throws an (unchecked) exception, the
-     * exception is rethrown, and no value is recorded.  The most
-     * common usage is to construct a new object serving as a memoized result, as in:
-     *
-     * {@snippet lang = java:
-     *    LazyReference3<V> lazy = LazyReference3.ofEmpty();
-     *    // ...
-     *    V value = lazy.supplyIfAbsent(Value::new);
-     *    assertNotNull(value); // Value is non-null
-     *}
-     * <p>
-     * If another thread attempts to compute the value, the current thread will be suspended until
-     * the atempt completes (successfully or not).
-     *
-     * @param supplier to apply if no previous value exists
-     * @return the value (pre-existing or newly computed)
-     * @throws NullPointerException if the provided {@code supplier} is {@code null} or
-     *                              the provided {@code supplier} returns {@code null}.
-     */
-    public final V supplyIfEmpty(Supplier<? extends V> supplier) {
-        Objects.requireNonNull(supplier);
-        return supplyIfEmpty0(supplier);
-    }
 
-    private final V supplyIfEmpty0(Supplier<? extends V> supplier) {
-        V v = value;
-        if (v == null) {
+    @SuppressWarnings("unchecked")
+    private V supplyIfEmpty0(Supplier<? extends V> supplier) {
+        if (((byte) PRESENT_VH.get(this)) == 0) {
             synchronized (this) {
-                v = value;
-                if (v == null) {
+                if (!isPresent()) {
                     if (supplier == null) {
-                        throw new IllegalArgumentException("No pre-set supplier specified.");
+                        throw new IllegalStateException("No pre-set supplier specified.");
                     }
-                    v = supplier.get();
-                    if (v == null) {
+                    value = supplier.get();
+                    // It is possible to accept null results now that there is
+                    // a separate "present" variable
+                    if (value == null) {
                         throw new NullPointerException("The supplier returned null: " + supplier);
                     }
-                    value = v;
                     forgetPresetSupplier();
+                    // Prevent reordering (for normal semantics also?). Changes only go in one direction.
+                    // https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions
+                    PRESENT_VH.setRelease(this, (byte) 1);
                 }
             }
         }
-        return v;
+        return (V) value;
     }
-
 
     @Override
     public final String toString() {
-        var v = value;
-        return v != null
-                ? ("LazyReference[" + v + "]")
+        return isPresent()
+                ? ("LazyReference[" + value + "]")
                 : "LazyReference.empty";
     }
 
@@ -179,48 +140,6 @@ public final class LazyReference3<V> implements Supplier<V> {
         // Stops preventing the supplier from being collected once it has been
         // used (if initially set).
         this.presetSupplier = null;
-    }
-
-    /**
-     * {@return a new empty LazyReference with no pre-set supplier}.
-     * <p>
-     * If an attempt is made to invoke the {@link #get()} method when no element is present,
-     * an exception will be thrown.
-     * <p>
-     * {@snippet lang = java:
-     *    LazyReference3<V> lazy = LazyReference3.ofEmpty();
-     *    V value = lazy.getOrNull();
-     *    assertIsNull(value); // Value is initially null
-     *    // ...
-     *    V value = lazy.supplyIfEmpty(Value::new);
-     *    assertNotNull(value); // Value is non-null
-     *}
-     * @param <T> The type of the value
-     */
-    public static <T> LazyReference3<T> ofEmpty() {
-        return new LazyReference3<>(null);
-    }
-
-    /**
-     * {@return a new empty LazyReference with a pre-set supplier}.
-     * <p>
-     * If an attempt is made to invoke the {@link #get()} method when no element is present,
-     * the provided {@code presetSupplier} will automatically be invoked as specified by
-     * {@link #supplyIfEmpty(Supplier)}.
-     * <p>
-     * {@snippet lang = java:
-     *    LazyReference3<V> lazy = LazyReference3.of(Value::new);
-     *    // ...
-     *    V value = lazy.get();
-     *    assertNotNull(value); // Value is never null
-     *}
-     * @param <T> The type of the value
-     * @param presetSupplier to invoke when lazily constructing a value
-     * @throws NullPointerException if the provided {@code presetSupplier} is {@code null}
-     */
-    public static <T> LazyReference3<T> of(Supplier<? extends T> presetSupplier) {
-        Objects.requireNonNull(presetSupplier);
-        return new LazyReference3<>(presetSupplier);
     }
 
 }

@@ -44,6 +44,17 @@ import java.util.concurrent.lazy.LazyReference2;
 import java.util.concurrent.lazy.LazyReference3;
 import java.util.function.Supplier;
 
+/*
+[ns/op]                                                                            Linux aarch64	Linux x64	MacOSX aarch64	MacOSX 64	Windows x64
+openjdk.bench.java.util.concurrent.LazyReferenceBench.acquireReleaseDoubleChecked	1.36	        2.51	    1.24		                2.12
+openjdk.bench.java.util.concurrent.LazyReferenceBench.lazyRef	                    1.4	            1.54	    0.81		                1.3
+openjdk.bench.java.util.concurrent.LazyReferenceBench.lazyRef2	                    1.35	        1.34	    1.24		                1.14
+openjdk.bench.java.util.concurrent.LazyReferenceBench.lazyRef3	                    1.07	        1.54	    0.72		                1.29
+openjdk.bench.java.util.concurrent.LazyReferenceBench.threadUnsafe	                1.27	        1.17	    0.71		                1.00
+openjdk.bench.java.util.concurrent.LazyReferenceBench.volatileDoubleChecked	        1.35	        2.51	    1.24		                2.12
+openjdk.bench.java.util.concurrent.LazyReferenceBench.volatileVhDoubleChecked	    1.36	        2.51	    1.24		                2.12
+ */
+
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark)
@@ -57,7 +68,7 @@ public class LazyReferenceBench {
     public Supplier<Integer> lazy;
 
     public Supplier<Integer> lazy2;
-    public Supplier<Integer> lazy3;
+    public LazyReference3<Integer> lazy3;
     public Supplier<Integer> threadUnsafe;
     public Supplier<Integer> volatileDoubleChecked;
     public Supplier<Integer> volatileVhDoubleChecked;
@@ -72,7 +83,7 @@ public class LazyReferenceBench {
     public void setupIteration() {
         lazy = LazyReference.of(SUPPLIER);
         lazy2 = LazyReference2.of(SUPPLIER);
-        lazy3 = LazyReference3.of(SUPPLIER);
+        lazy3 = new LazyReference3<>(SUPPLIER);
         threadUnsafe = new ThreadUnsafe<>(SUPPLIER);
         volatileDoubleChecked = new VolatileDoubleChecked<>(SUPPLIER);
         volatileVhDoubleChecked = new VolatileVhDoubleChecked<>(SUPPLIER);
