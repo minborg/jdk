@@ -24,19 +24,15 @@
  */
 package java.util.concurrent.lazy;
 
-import jdk.internal.util.lazy.StandardLazyLong;
-import jdk.internal.util.lazy.StandardLazyReference;
 import jdk.internal.vm.annotation.Stable;
 
+import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
-import java.util.function.Supplier;
 
 /**
- * An long in which the value is lazily and atomically computed.
+ * An long in which the value can be lazily and atomically computed.
  * <p>
  * It is guaranteed that just at most one supplier is invoked and that
  * that supplier (if any) is invoked just once per LazyLong instance provided
@@ -54,9 +50,16 @@ import java.util.function.Supplier;
  * <p>
  * The JVM may apply certain optimizations as it knows the value is updated just once
  * at most as described by {@link Stable}.
- *
  */
-public sealed interface LazyLong extends LongSupplier permits StandardLazyLong {
+public final class LazyLong
+        extends AbstractLazy<LongSupplier>
+        implements Lazy, LongSupplier {
+    @Stable
+    private long value;
+
+    private LazyLong(LongSupplier presetSupplier) {
+        super(presetSupplier);
+    }
 
     /**
      * Returns the present value or, if no present value exists, atomically attempts
@@ -67,29 +70,27 @@ public sealed interface LazyLong extends LongSupplier permits StandardLazyLong {
      * If the pre-set supplier itself throws an (unchecked) exception, the
      * exception is rethrown, and no value is recorded. The most
      * common usage is to construct a new object serving as a memoized result, as in:
-     *
+     * <p>
      * {@snippet lang = java:
      *    LazyLong lazy = LazyLong.of(MyLogic::computeValue);
      *    // ...
      *    long value = lazy.get();
      *}
-     *<p>
+     * <p>
      * If another thread attempts to compute the value, the current thread will be suspended until
      * the atempt completes (successfully or not).
      *
      * @return the value (pre-existing or newly computed)
      * @throws IllegalStateException  if a value was not already present and no
      *                                pre-set supplier was specified.
+     * @throws NoSuchElementException if a supplier has previously thrown an exception.
      */
     @Override
-    long getAsLong();
-
-    /**
-     * {@return if a value is present}.
-     * <p>
-     * No attempt is made to compute a value if it is not already present.
-     */
-    boolean isPresent();
+    public long getAsLong() {
+        return isPresentPlain()
+                ? value
+                : supplyIfEmpty0(presetProvider());
+    }
 
     /**
      * Returns the present value or, if no present value exists, atomically attempts
@@ -99,7 +100,7 @@ public sealed interface LazyLong extends LongSupplier permits StandardLazyLong {
      * If the provided {@code supplier} itself throws an (unchecked) exception, the
      * exception is rethrown, and no value is recorded.  The most
      * common usage is to construct a new object serving as a memoized result, as in:
-     *
+     * <p>
      * {@snippet lang = java:
      *    LazyLong lazy = LazyLong.ofEmpty();
      *    // ...
@@ -111,9 +112,48 @@ public sealed interface LazyLong extends LongSupplier permits StandardLazyLong {
      *
      * @param supplier to apply if no previous value exists
      * @return the value (pre-existing or newly computed)
-     * @throws NullPointerException if the provided {@code supplier} is {@code null}.
+     * @throws NullPointerException   if the provided {@code supplier} is {@code null}.
+     * @throws NoSuchElementException if a supplier has previously thrown an exception.
      */
-    long supplyIfEmpty(LongSupplier supplier);
+    public long supplyIfEmpty(LongSupplier supplier) {
+        Objects.requireNonNull(supplier);
+        return supplyIfEmpty0(supplier);
+    }
+
+    private long supplyIfEmpty0(LongSupplier supplier) {
+        if (!isPresentPlain()) {
+            synchronized (this) {
+                if (isPlain(State.ERROR)) {
+                    throw new NoSuchElementException("A supplier has perviously thrown an exception.");
+                }
+                if (!isPresentPlain()) {
+                    if (supplier == null) {
+                        throw new IllegalStateException("No pre-set supplier specified.");
+                    }
+                    try {
+                        constructing(true);
+                        long v = supplier.getAsLong();
+                        if (v != 0) {
+                            value = v;
+                        }
+                        stateValueRelease(State.PRESENT);
+                    } catch (Throwable e) {
+                        stateValueRelease(State.ERROR);
+                        throw e;
+                    } finally {
+                        constructing(false);
+                        forgetPresetProvided();
+                    }
+                }
+            }
+        }
+        return value;
+    }
+
+    @Override
+    protected String renderValue() {
+        return Long.toString(value);
+    }
 
     /**
      * {@return a new empty LazyLong with no pre-set supplier}.
@@ -123,14 +163,14 @@ public sealed interface LazyLong extends LongSupplier permits StandardLazyLong {
      * <p>
      * {@snippet lang = java:
      *    LazyLong lazy = LazyLong.ofEmpty();
-     *    assertFalse(lazy.isPresent()); // Value is initially not present
+     *    assertFalse(lazy.isPresentPlain()); // Value is initially not present
      *    // ...
      *    long value = lazy.supplyIfEmpty(MyLogic::computeValue);
      *    assertNotNull(value); // Value is non-null
      *}
      */
     public static LazyLong ofEmpty() {
-        return new StandardLazyLong(null);
+        return new LazyLong(null);
     }
 
     /**
@@ -145,12 +185,13 @@ public sealed interface LazyLong extends LongSupplier permits StandardLazyLong {
      *    // ...
      *    long value = lazy.get();
      *}
+     *
      * @param presetSupplier to invoke when lazily constructing a value
      * @throws NullPointerException if the provided {@code presetSupplier} is {@code null}
      */
     public static LazyLong of(LongSupplier presetSupplier) {
         Objects.requireNonNull(presetSupplier);
-        return new StandardLazyLong(presetSupplier);
+        return new LazyLong(presetSupplier);
     }
 
 }

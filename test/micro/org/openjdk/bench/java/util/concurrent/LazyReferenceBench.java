@@ -40,8 +40,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.lazy.LazyReference;
-import java.util.concurrent.lazy.LazyReference2;
-import java.util.concurrent.lazy.LazyReference3;
 import java.util.function.Supplier;
 
 /*
@@ -65,10 +63,10 @@ public class LazyReferenceBench {
 
     private static final Supplier<Integer> SUPPLIER = () -> 2 << 16;
 
+    public static final Supplier<Integer> LAZY = LazyReference.of(SUPPLIER);
+
     public Supplier<Integer> lazy;
 
-    public Supplier<Integer> lazy2;
-    public LazyReference3<Integer> lazy3;
     public Supplier<Integer> threadUnsafe;
     public Supplier<Integer> volatileDoubleChecked;
     public Supplier<Integer> volatileVhDoubleChecked;
@@ -82,8 +80,6 @@ public class LazyReferenceBench {
     @Setup(Level.Iteration)
     public void setupIteration() {
         lazy = LazyReference.of(SUPPLIER);
-        lazy2 = LazyReference2.of(SUPPLIER);
-        lazy3 = new LazyReference3<>(SUPPLIER);
         threadUnsafe = new ThreadUnsafe<>(SUPPLIER);
         volatileDoubleChecked = new VolatileDoubleChecked<>(SUPPLIER);
         volatileVhDoubleChecked = new VolatileVhDoubleChecked<>(SUPPLIER);
@@ -91,18 +87,13 @@ public class LazyReferenceBench {
     }
 
     @Benchmark
+    public int lazyRefStaticFinal() {
+        return LAZY.get();
+    }
+
+    @Benchmark
     public void lazyRef(Blackhole bh) {
         bh.consume(lazy.get());
-    }
-
-    @Benchmark
-    public void lazyRef2(Blackhole bh) {
-        bh.consume(lazy2.get());
-    }
-
-    @Benchmark
-    public void lazyRef3(Blackhole bh) {
-        bh.consume(lazy3.get());
     }
 
     @Benchmark

@@ -24,23 +24,20 @@
  */
 package java.util.concurrent.lazy;
 
-import jdk.internal.util.lazy.StandardLazyReference;
 import jdk.internal.vm.annotation.Stable;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
- * An object reference in which the value is lazily and atomically computed.
+ * An object reference in which the value can be lazily and atomically computed.
  * <p>
  * It is guaranteed that just at most one supplier is invoked and that
- * that supplier (if any) is invoked just once per LazyReference instance provided
- * a value is sucessfully computed. More formally, at most one sucessfull invocation is
- * made of any provided set of suppliers.
+ * that supplier (if any) is invoked just once per LazyReference instance.
+ * More formally, at most one invocation is made of any provided set of suppliers.
  * <p>
  * This contrasts to {@link AtomicReference } where any number of updates can be done
  * and where there is no simple way to atomically compute
@@ -49,14 +46,33 @@ import java.util.function.Supplier;
  * The implementation is optimized for the case where there are N invocations
  * trying to obtain the value and where N >> 1, for example where N is > 2<sup>20</sup>.
  * <p>
+ * A supplier may return {@code null} which then will be perpetually recorded as the value.
+ * <p>
  * This class is thread-safe.
  * <p>
  * The JVM may apply certain optimizations as it knows the value is updated just once
- * at most as described by {@link Stable}.
+ * at most as described by {@link Stable} as exemplified here:
+ * {@snippet lang = java:
+ *     private static final LazyReference<Value> MY_LAZY_VALUE = LazyReference.of(Value::new);
+ *     // ...
+ *     public Value value() {
+ *         // This will likely be constant-folded by the JIT C2 compiler.
+ *         return MY_LAZY_VALUE.get();
+ *     }
+ *}
  *
  * @param <V> The type of the value to be recorded
  */
-public sealed interface LazyReference<V> extends Supplier<V> permits StandardLazyReference {
+public final class LazyReference<V>
+        extends AbstractLazy<Supplier<? extends V>>
+        implements Lazy, Supplier<V> {
+
+    @Stable
+    private Object value;
+
+    private LazyReference(Supplier<? extends V> presetSupplier) {
+        super(presetSupplier);
+    }
 
     /**
      * Returns the present value or, if no present value exists, atomically attempts
@@ -67,14 +83,14 @@ public sealed interface LazyReference<V> extends Supplier<V> permits StandardLaz
      * If the pre-set supplier itself throws an (unchecked) exception, the
      * exception is rethrown, and no value is recorded. The most
      * common usage is to construct a new object serving as a memoized result, as in:
-     *
+     * <p>
      * {@snippet lang = java:
      *    LazyReference<V> lazy = LazyReference.of(Value::new);
      *    // ...
      *    V value = lazy.get();
      *    assertNotNull(value); // Value is non-null
      *}
-     *<p>
+     * <p>
      * If another thread attempts to compute the value, the current thread will be suspended until
      * the atempt completes (successfully or not).
      *
@@ -82,49 +98,112 @@ public sealed interface LazyReference<V> extends Supplier<V> permits StandardLaz
      * @throws NullPointerException   if the pre-set supplier returns {@code null}.
      * @throws IllegalStateException  if a value was not already present and no
      *                                pre-set supplier was specified.
+     * @throws NoSuchElementException if a supplier has previously thrown an exception.
      */
-    V get();
-
-    /**
-     * {@return if a value is present}.
-     * <p>
-     * No attempt is made to compute a value if it is not already present.
-     * <p>
-     * This method can be used to act on a value if it is present:
-     * {@snippet lang = java:
-     *     if (lazy.isPresent()) {
-     *         V value = lazy.get();
-     *         // perform action on the value
-     *     }
-     *}
-     */
-    boolean isPresent();
+    @SuppressWarnings("unchecked")
+    public V get() {
+        return isPresentPlain()
+                ? (V) value
+                : supplyIfEmpty0(presetProvider());
+    }
 
     /**
      * Returns the present value or, if no present value exists, atomically attempts
      * to compute the value using the <em>provided {@code supplier}</em>.
-     *
-     * <p>If the supplier returns {@code null}, an exception is thrown.
+     * <p>
      * If the provided {@code supplier} itself throws an (unchecked) exception, the
      * exception is rethrown, and no value is recorded.  The most
      * common usage is to construct a new object serving as a memoized result, as in:
-     *
+     * <p>
      * {@snippet lang = java:
      *    LazyReference<V> lazy = LazyReference.ofEmpty();
      *    // ...
      *    V value = lazy.supplyIfAbsent(Value::new);
      *    assertNotNull(value); // Value is non-null
-     * }
+     *}
      * <p>
      * If another thread attempts to compute the value, the current thread will be suspended until
      * the atempt completes (successfully or not).
      *
      * @param supplier to apply if no previous value exists
      * @return the value (pre-existing or newly computed)
-     * @throws NullPointerException if the provided {@code supplier} is {@code null} or
-     *                              the provided {@code supplier} returns {@code null}.
+     * @throws NullPointerException   if the provided {@code supplier} is {@code null}.
+     * @throws NoSuchElementException if a supplier has previously thrown an exception.
      */
-    V supplyIfEmpty(Supplier<? extends V> supplier);
+    public V supplyIfEmpty(Supplier<? extends V> supplier) {
+        Objects.requireNonNull(supplier);
+        return supplyIfEmpty0(supplier);
+    }
+
+    /**
+     * {@return the excption thrown by the supplier invoked or
+     * {@link Optional#empty()} if no exception was thrown}.
+     */
+    public Optional<Throwable> exception() {
+        return is(State.ERROR)
+                ? Optional.of((Throwable) value)
+                : Optional.empty();
+    }
+
+    @SuppressWarnings("unchecked")
+    private V supplyIfEmpty0(Supplier<? extends V> supplier) {
+        if (!isPresentPlain()) {
+            // Synchronized implies acquire/release semantics when entering/leaving the monitor
+            synchronized (this) {
+                if (isPlain(State.ERROR)) {
+                    throw new NoSuchElementException(exception().get());
+                }
+                if (!isPresentPlain()) {
+                    if (supplier == null) {
+                        throw new IllegalStateException("No pre-set supplier specified.");
+                    }
+                    try {
+                        constructing(true);
+                        V v = supplier.get();
+                        if (v != null) {
+                            value = v;
+                        }
+                        // Prevents reordering. Changes only go in one direction.
+                        // https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions
+                        stateValueRelease(State.PRESENT);
+                    } catch (Throwable e) {
+                        // Record the throwable instead of the value.
+                        value = e;
+                        // Prevents reordering.
+                        stateValueRelease(State.ERROR);
+                        // Rethrow
+                        throw e;
+                    } finally {
+                        constructing(false);
+                        forgetPresetProvided();
+                    }
+                }
+            }
+        }
+        return (V) value;
+    }
+
+    @Override
+    protected String renderValue() {
+        return value.toString();
+    }
+
+    @Override
+    protected String renderError() {
+        return super.renderError()+"["+((Throwable) value).getMessage() + "]";
+    }
+
+    /*
+    private Object value() {
+        if (state().isFinal()) {
+            // If we can observe a final state we know
+            // it is safe to observe the value direcly
+            return value;
+        }
+        synchronized (this) {
+            return value;
+        }
+    }*/
 
     /**
      * {@return a new empty LazyReference with no pre-set supplier}.
@@ -133,17 +212,18 @@ public sealed interface LazyReference<V> extends Supplier<V> permits StandardLaz
      * an exception will be thrown.
      * <p>
      * {@snippet lang = java:
-     *    LazyReference<V> lazy = LazyReference.ofEmpty();
-     *    V value = lazy.getOrNull();
+     *    LazyReference<T> lazy = LazyReference.ofEmpty();
+     *    T value = lazy.getOrNull();
      *    assertIsNull(value); // Value is initially null
      *    // ...
-     *    V value = lazy.supplyIfEmpty(Value::new);
+     *    T value = lazy.supplyIfEmpty(Value::new);
      *    assertNotNull(value); // Value is non-null
      *}
+     *
      * @param <T> The type of the value
      */
     public static <T> LazyReference<T> ofEmpty() {
-        return new StandardLazyReference<>(null);
+        return new LazyReference<>(null);
     }
 
     /**
@@ -154,18 +234,19 @@ public sealed interface LazyReference<V> extends Supplier<V> permits StandardLaz
      * {@link #supplyIfEmpty(Supplier)}.
      * <p>
      * {@snippet lang = java:
-     *    LazyReference<V> lazy = LazyReference.of(Value::new);
+     *    LazyReference<T> lazy = LazyReference.of(Value::new);
      *    // ...
-     *    V value = lazy.get();
+     *    T value = lazy.get();
      *    assertNotNull(value); // Value is never null
      *}
-     * @param <T> The type of the value
+     *
+     * @param <T>            The type of the value
      * @param presetSupplier to invoke when lazily constructing a value
      * @throws NullPointerException if the provided {@code presetSupplier} is {@code null}
      */
     public static <T> LazyReference<T> of(Supplier<? extends T> presetSupplier) {
         Objects.requireNonNull(presetSupplier);
-        return new StandardLazyReference<>(presetSupplier);
+        return new LazyReference<>(presetSupplier);
     }
 
 }

@@ -30,8 +30,10 @@
 import org.junit.jupiter.api.*;
 
 import java.util.Collection;
+import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReference;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -65,8 +67,7 @@ final class BasicLazyReferenceTest {
         assertThrows(NullPointerException.class,
                 () -> lazy.supplyIfEmpty(null));
         // Mapper returns null
-        assertThrows(NullPointerException.class,
-                () -> lazy.supplyIfEmpty(() -> null));
+        assertEquals((Integer) null, lazy.supplyIfEmpty(() -> null));
     }
 
     @Test
@@ -76,10 +77,10 @@ final class BasicLazyReferenceTest {
     }
 
     @Test
-    void isPresent() {
-        assertFalse(lazy.isPresent());
+    void state() {
+        assertEquals(Lazy.State.EMPTY, lazy.state());
         Integer val = lazy.supplyIfEmpty(supplier);
-        assertTrue(lazy.isPresent());
+        assertEquals(Lazy.State.PRESENT, lazy.state());
     }
 
     @Test
@@ -97,8 +98,22 @@ final class BasicLazyReferenceTest {
         assertThrows(NullPointerException.class,
                 () -> LazyReference.of(null));
         // Mapper returns null
-        assertThrows(NullPointerException.class,
-                () -> LazyReference.of(() -> null).get());
+        assertEquals((Integer) null, LazyReference.of(() -> null).get());
+    }
+
+    @Test
+    void error() {
+        Supplier<Integer> throwSupplier = () -> {
+            throw new UnsupportedOperationException();
+        };
+        assertThrows(UnsupportedOperationException.class,
+                () -> lazy.supplyIfEmpty(throwSupplier));
+
+        assertEquals(Lazy.State.ERROR, lazy.state());
+        assertTrue(lazy.exception().isPresent());
+
+        // Should not invoke the supplier as we are already in ERROR state
+        assertThrows(NoSuchElementException.class, () -> lazy.supplyIfEmpty(throwSupplier));
     }
 
     // Todo:repeate the test 1000 times

@@ -30,8 +30,10 @@
 import org.junit.jupiter.api.*;
 
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReference;
 import java.util.concurrent.lazy.LazyReferenceArray;
 import java.util.function.IntFunction;
@@ -69,8 +71,7 @@ final class BasicLazyReferenceArrayTest {
         assertThrows(NullPointerException.class,
                 () -> lazy.computeIfEmpty(INDEX, null));
         // Mapper returns null
-        assertThrows(NullPointerException.class,
-                () -> lazy.computeIfEmpty(INDEX, i -> null));
+        assertEquals((Integer) null, lazy.computeIfEmpty(INDEX, i -> null));
     }
 
     @Test
@@ -80,10 +81,10 @@ final class BasicLazyReferenceArrayTest {
     }
 
     @Test
-    void isPresent() {
-        assertFalse(lazy.isPresent(INDEX));
+    void state() {
+        assertEquals(Lazy.State.EMPTY, lazy.state(INDEX));
         Integer val = lazy.computeIfEmpty(INDEX, mapper);
-        assertTrue(lazy.isPresent(INDEX));
+        assertEquals(Lazy.State.PRESENT, lazy.state(INDEX));
     }
 
     @Test
@@ -102,8 +103,29 @@ final class BasicLazyReferenceArrayTest {
         assertThrows(NullPointerException.class,
                 () -> LazyReferenceArray.of(SIZE, null));
         // Mapper returns null
-        assertThrows(NullPointerException.class,
-                () -> LazyReferenceArray.of(SIZE, i -> null).apply(INDEX));
+        assertEquals((Integer) null, LazyReferenceArray.of(SIZE, i -> null).apply(INDEX));
+    }
+
+
+    @Test
+    void testToString() throws InterruptedException {
+        var timeout = System.nanoTime()+ TimeUnit.SECONDS.toNanos(2);
+        AtomicBoolean lambdaInvoked = new AtomicBoolean();
+        lazy = LazyReferenceArray.of(3);
+
+        lazy.computeIfEmpty(1, i -> 1);
+        try {
+            System.out.println(2);
+            lazy.computeIfEmpty(2, i -> {
+                throw new UnsupportedOperationException("Test");
+            });
+        } catch (UnsupportedOperationException ignored) {
+            // Happy path
+        }
+
+        var toString = lazy.toString();
+
+        assertEquals("LazyReferenceArray[-, 1, !]", toString);
     }
 
     // Todo:repeate the test 1000 times
@@ -111,7 +133,7 @@ final class BasicLazyReferenceArrayTest {
     void threadTest() throws InterruptedException {
         var gate = new AtomicBoolean();
         var threads = IntStream.range(0, Runtime.getRuntime().availableProcessors() * 2)
-                .mapToObj(i -> new Thread(()->{
+                .mapToObj(i -> new Thread(() -> {
                     while (!gate.get()) {
                         Thread.onSpinWait();
                     }

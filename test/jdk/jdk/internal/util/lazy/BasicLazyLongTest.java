@@ -32,6 +32,7 @@ import org.junit.jupiter.api.*;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyLong;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -74,17 +75,17 @@ final class BasicLazyLongTest {
     }
 
     @Test
-    void isPresent() {
-        assertFalse(lazy.isPresent());
+    void state() {
+        assertEquals(Lazy.State.EMPTY, lazy.state());
         long val = lazy.supplyIfEmpty(supplier);
         assertEquals(CountingLongSupplier.MAGIC_VALUE, val);
-        assertTrue(lazy.isPresent());
+        assertEquals(Lazy.State.PRESENT, lazy.state());
     }
 
     @Test
     void presetSupplierBasic() {
         LazyLong presetLazy = LazyLong.of(supplier);
-        assertFalse(presetLazy.isPresent());
+        assertEquals(Lazy.State.EMPTY, presetLazy.state());
         assertEquals(0, supplier.invocations());
         for (int i = 0; i < 2; i++) {
             assertEquals(CountingLongSupplier.MAGIC_VALUE, presetLazy.getAsLong());
