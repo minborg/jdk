@@ -190,7 +190,7 @@ public final class LazyReference<V>
 
     @Override
     protected String renderError() {
-        return super.renderError()+"["+((Throwable) value).getMessage() + "]";
+        return super.renderError() + "[" + value + "]";
     }
 
     /*

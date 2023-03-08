@@ -234,16 +234,16 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * Upon encountering a state at position {@code index} in the array, the following actions
      * will be taken:
      * <ul>
-     *     <li><a id="empty"><b>EMPTY</b></a>
+     *     <li><b>EMPTY</b>
      *     <p>An Optional.empty() element is selected.</p></li>
-     *     <li><a id="constructing"><b>CONSTRUCTING</b></a>
+     *     <li><b>CONSTRUCTING</b>
      *     <p>An Optional.empty() element is selected.</p></li>
-     *     <li><a id="present"><b>PRESENT</b></a>
-     *     <p>an Optional.ofNullable(lazy.get(index)) element is selected.</p></li>
-     *     <li><a id="error"><b>ERROR</b></a>
-     *     <p>a NoSuchElementException is thrown.</p></li>
+     *     <li><b>PRESENT</b>
+     *     <p>An Optional.ofNullable(lazy.get(index)) element is selected.</p></li>
+     *     <li><b>ERROR</b>
+     *     <p>A NoSuchElementException is thrown.</p></li>
      * </ul>
-     *
+     * @throws NoSuchElementException if a slot is in state ERROR.
      */
     public Stream<Optional<V>> stream() {
         return IntStream.range(0, length())
@@ -256,6 +256,37 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
                     };
                 });
     }
+
+    /**
+     * {@return A Stream with the lazy elements in this LazyReferenceArray}.
+     * <p>
+     * Upon encountering a state at position {@code index} in the array, the following actions
+     * will be taken:
+     * <ul>
+     *     <li><b>EMPTY</b>
+     *     <p>The provided {@code defaultValue} is selected.</p></li>
+     *     <li><b>CONSTRUCTING</b>
+     *     <p>The provided {@code defaultValue} is selected.</p></li>
+     *     <li><b>PRESENT</b>
+     *     <p>lazy.get(index)) is selected.</p></li>
+     *     <li><b>ERROR</b>
+     *     <p>A NoSuchElementException is thrown.</p></li>
+     * </ul>
+     * @param defaultValue the default value to use for empty/contructing slots.
+     * @throws NoSuchElementException if a slot is in state ERROR.
+     */
+    public Stream<V> stream(V defaultValue) {
+        return IntStream.range(0, length())
+                .mapToObj(i -> {
+                    var lazy = lazyReferences[i];
+                    return switch (lazy.state()) {
+                        case EMPTY, CONSTRUCTING -> defaultValue;
+                        case PRESENT -> lazy.get();
+                        case ERROR -> throw new NoSuchElementException("At index: " + i);
+                    };
+                });
+    }
+
 
     @Override
     public String toString() {

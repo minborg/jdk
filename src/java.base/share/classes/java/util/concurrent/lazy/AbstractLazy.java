@@ -52,12 +52,12 @@ abstract class AbstractLazy<P> implements Lazy {
 
     @Override
     public final String toString() {
-        return getClass().getSimpleName()+"[" + switch (state()) {
+        return getClass().getSimpleName() + "[" + switch (state()) {
             case EMPTY -> State.EMPTY;
             case CONSTRUCTING -> State.CONSTRUCTING;
             case PRESENT -> renderValue();
             case ERROR -> renderError();
-        };
+        } + "]";
     }
 
     protected abstract String renderValue();

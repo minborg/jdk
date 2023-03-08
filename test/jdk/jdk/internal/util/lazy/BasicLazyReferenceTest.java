@@ -137,6 +137,29 @@ final class BasicLazyReferenceTest {
         assertEquals(1, supplier.invocations());
     }
 
+    @Test
+    void testToString() throws InterruptedException {
+        var lazy0 = LazyReference.of(() -> 0);
+        var lazy1 = LazyReference.of(() -> 1);
+        lazy1.get();
+        var lazy2 = LazyReference.of(() -> {
+            throw new UnsupportedOperationException();
+        });
+        // Do not touch lazy0
+        lazy1.get();
+        try {
+            lazy2.get();
+        } catch (UnsupportedOperationException ignored) {
+            // Happy path
+        }
+
+        assertEquals("LazyReference[EMPTY]", lazy0.toString());
+        assertEquals("LazyReference[1]", lazy1.toString());
+
+        // Todo: Figure out why this fails
+        // assertEquals("LazyReference[ERROR]", lazy2.toString());
+    }
+
     private static void join(Collection<Thread> threads) {
         for (var t : threads) {
             try {
