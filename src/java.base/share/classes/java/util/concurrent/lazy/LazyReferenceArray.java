@@ -201,7 +201,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * Creates a new unmodifiable view of the elements in this LazyReferenceArray
      * where the empty elements will be replaced with {@code null}.
      * <p>
-     * If a maper has previously thrown an exception for an
+     * If a mapper has previously thrown an exception for an
      * accessed element at a certain index, accessing that index will result in
      * a NoSuchElementException being thrown.
      *
@@ -215,14 +215,12 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * Creates a new unmodifiable view of the elements in this LazyReferenceArray
      * where the empty elements will be replaced with the provided {@code defaulValue}.
      * <p>
-     * If a maper has previously thrown an exception for an
+     * If a mapper has previously thrown an exception for an
      * accessed element at a certain index, accessing that index will result in
      * a NoSuchElementException being thrown.
      *
      * @param defaulValue to use for elements not yet created
      * @return a view of the elements
-     * @throws NoSuchElementException if a maper has previously thrown an exception for the
-     *                                accessed element at the specified index.
      */
     public List<V> asList(V defaulValue) {
         return new ListView(defaulValue);
@@ -243,7 +241,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      *     <li><b>ERROR</b>
      *     <p>A NoSuchElementException is thrown.</p></li>
      * </ul>
-     * @throws NoSuchElementException if a slot is in state ERROR.
+     * @throws NoSuchElementException if a slot is in state ERROR and is being accessed.
      */
     public Stream<Optional<V>> stream() {
         return IntStream.range(0, length())
@@ -273,7 +271,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      *     <p>A NoSuchElementException is thrown.</p></li>
      * </ul>
      * @param defaultValue the default value to use for empty/contructing slots.
-     * @throws NoSuchElementException if a slot is in state ERROR.
+     * @throws NoSuchElementException if a slot is in state ERROR and is being accessed.
      */
     public Stream<V> stream(V defaultValue) {
         return IntStream.range(0, length())
@@ -302,6 +300,8 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
     }
 
     // Todo: Add supplyIfEmpty()?
+
+    // Todo: Add force() that will eagerly evaluate all empty slots?
 
     Supplier<V> toSupplier(int index,
                            IntFunction<? extends V> mappper) {
