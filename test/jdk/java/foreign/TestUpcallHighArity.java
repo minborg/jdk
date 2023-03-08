@@ -26,6 +26,7 @@
  * @test
  * @enablePreview
  * @requires ((os.arch == "amd64" | os.arch == "x86_64") & sun.arch.data.model == "64") | os.arch == "aarch64" | os.arch == "riscv64"
+ * @modules java.base/jdk.internal.foreign
  * @build NativeTestHelper CallGeneratorHelper TestUpcallHighArity
  *
  * @run testng/othervm/native
@@ -41,10 +42,10 @@ import org.testng.annotations.Test;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.testng.Assert.assertEquals;
+import java.util.function.Consumer;
 
 public class TestUpcallHighArity extends CallGeneratorHelper {
     static final MethodHandle MH_do_upcall;
@@ -101,21 +102,20 @@ public class TestUpcallHighArity extends CallGeneratorHelper {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment upcallStub = LINKER.upcallStub(target, upcallDescriptor, arena);
             Object[] args = new Object[upcallType.parameterCount() + 1];
-            args[0] = upcallStub;
+            args[0] = makeArgSaverCB(upcallDescriptor, arena, capturedArgs, -1);
             List<MemoryLayout> argLayouts = upcallDescriptor.argumentLayouts();
+            List<Consumer<Object>> checks = new ArrayList<>();
             for (int i = 1; i < args.length; i++) {
-                args[i] = makeArg(argLayouts.get(i - 1), null, false);
+                TestValue testValue = genTestValue(argLayouts.get(i - 1), arena);
+                args[i] = testValue.value();
+                checks.add(testValue.check());
             }
 
             downcall.invokeWithArguments(args);
 
             Object[] capturedArgsArr = capturedArgs.get();
             for (int i = 0; i < capturedArgsArr.length; i++) {
-                if (upcallDescriptor.argumentLayouts().get(i) instanceof GroupLayout) {
-                    assertStructEquals((MemorySegment) capturedArgsArr[i], (MemorySegment) args[i + 1], argLayouts.get(i));
-                } else {
-                    assertEquals(capturedArgsArr[i], args[i + 1], "For index " + i);
-                }
+                checks.get(i).accept(capturedArgsArr[i]);
             }
         }
     }

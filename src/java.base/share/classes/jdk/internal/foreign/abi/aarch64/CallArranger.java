@@ -42,6 +42,7 @@ import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.VMStorage;
 import jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64CallArranger;
 import jdk.internal.foreign.abi.aarch64.macos.MacOsAArch64CallArranger;
+import jdk.internal.foreign.abi.aarch64.windows.WindowsAArch64CallArranger;
 import jdk.internal.foreign.Utils;
 
 import java.lang.foreign.ValueLayout;
@@ -61,7 +62,7 @@ import static jdk.internal.foreign.abi.aarch64.AArch64Architecture.Regs.*;
  *
  * There are minor differences between the ABIs implemented on Linux, and macOS
  * which are handled in sub-classes. Clients should access these through the provided
- * public constants CallArranger.LINUX, CallArranger.MACOS.
+ * public constants CallArranger.LINUX, CallArranger.MACOS, and CallArranger.WINDOWS.
  */
 public abstract class CallArranger {
     private static final int STACK_SLOT_SIZE = 8;
@@ -100,6 +101,7 @@ public abstract class CallArranger {
 
     public static final CallArranger LINUX = new LinuxAArch64CallArranger();
     public static final CallArranger MACOS = new MacOsAArch64CallArranger();
+    public static final CallArranger WINDOWS = new WindowsAArch64CallArranger();
 
     /**
      * Are variadic arguments assigned to registers as in the standard calling
@@ -232,7 +234,7 @@ public abstract class CallArranger {
             return carrier;
         }
 
-        record StructStorage(long offset, Class<?> carrier, VMStorage storage) {}
+        record StructStorage(long offset, Class<?> carrier, int byteWidth, VMStorage storage) {}
 
         /*
         In the simplest case structs are copied in chunks. i.e. the fields don't matter, just the size.
@@ -246,6 +248,8 @@ public abstract class CallArranger {
         Linux           | FW in regs       | CW on the stack                 | CW on the stack
         MacOs, non-VA   | FW in regs       | FW on the stack                 | FW on the stack
         MacOs, VA       | FW in regs       | CW on the stack                 | CW on the stack
+        Windows, non-VF | FW in regs       | CW on the stack                 | CW on the stack
+        Windows, VF     | FW in regs       | CW split between regs and stack | CW on the stack
         (where FW = Field-wise copy, CW = Chunk-wise copy, VA is a variadic argument, and VF is a variadic function)
 
         For regular structs, the rules are as follows:
@@ -254,6 +258,8 @@ public abstract class CallArranger {
         ----------------+------------------+---------------------------------+-------------------------
         Linux           | CW in regs       | CW on the stack                 | CW on the stack
         MacOs           | CW in regs       | CW on the stack                 | CW on the stack
+        Windows, non-VF | CW in regs       | CW on the stack                 | CW on the stack
+        Windows, VF     | CW in regs       | CW split between regs and stack | CW on the stack
          */
         StructStorage[] structStorages(GroupLayout layout, boolean forHFA) {
             int numChunks = (int)Utils.alignUp(layout.byteSize(), MAX_COPY_SIZE) / MAX_COPY_SIZE;
@@ -297,12 +303,14 @@ public abstract class CallArranger {
             long offset = 0;
             for (int i = 0; i < structStorages.length; i++) {
                 ValueLayout copyLayout;
+                long copySize;
                 if (isFieldWise) {
                     // We should only get here for HFAs, which can't have padding
                     copyLayout = (ValueLayout) scalarLayouts.get(i);
+                    copySize = Utils.byteWidthOfPrimitive(copyLayout.carrier());
                 } else {
                     // chunk-wise copy
-                    long copySize = Math.min(layout.byteSize() - offset, MAX_COPY_SIZE);
+                    copySize = Math.min(layout.byteSize() - offset, MAX_COPY_SIZE);
                     boolean useFloat = false; // never use float for chunk-wise copies
                     copyLayout = SharedUtils.primitiveLayoutForSize(copySize, useFloat);
                 }
@@ -314,7 +322,7 @@ public abstract class CallArranger {
                     // Don't use floats on the stack
                     carrier = adjustCarrierForStack(carrier);
                 }
-                structStorages[i] = new StructStorage(offset, carrier, storage);
+                structStorages[i] = new StructStorage(offset, carrier, (int)copySize, storage);
                 offset += copyLayout.byteSize();
             }
 
@@ -413,7 +421,7 @@ public abstract class CallArranger {
                         if (i < structStorages.length - 1) {
                             bindings.dup();
                         }
-                        bindings.bufferLoad(structStorage.offset(), structStorage.carrier())
+                        bindings.bufferLoad(structStorage.offset(), structStorage.carrier(), structStorage.byteWidth())
                                 .vmStore(structStorage.storage(), structStorage.carrier());
                     }
                 }
@@ -475,7 +483,7 @@ public abstract class CallArranger {
                     for (StorageCalculator.StructStorage structStorage : structStorages) {
                         bindings.dup();
                         bindings.vmLoad(structStorage.storage(), structStorage.carrier())
-                                .bufferStore(structStorage.offset(), structStorage.carrier());
+                                .bufferStore(structStorage.offset(), structStorage.carrier(), structStorage.byteWidth());
                     }
                 }
                 case STRUCT_REFERENCE -> {

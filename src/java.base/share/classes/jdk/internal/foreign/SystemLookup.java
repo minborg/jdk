@@ -58,11 +58,11 @@ public final class SystemLookup implements SymbolLookup {
 
     private static SymbolLookup makeSystemLookup() {
         try {
-            if (Utils.IS_WINDOWS) {
-                return makeWindowsLookup();
-            } else {
-                return libLookup(libs -> libs.load(jdkLibraryPath("syslookup")));
-            }
+            return switch (CABI.current()) {
+                case SYS_V, LINUX_AARCH_64, MAC_OS_AARCH_64, LINUX_RISCV_64, FALLBACK -> libLookup(libs -> libs.load(jdkLibraryPath("syslookup")));
+                case WIN_64, WIN_AARCH_64 -> makeWindowsLookup(); // out of line to workaround javac crash
+                case UNSUPPORTED -> FALLBACK_LOOKUP;
+            };
         } catch (Throwable ex) {
             // This can happen in the event of a library loading failure - e.g. if one of the libraries the
             // system lookup depends on cannot be loaded for some reason. In such extreme cases, rather than
@@ -122,7 +122,10 @@ public final class SystemLookup implements SymbolLookup {
      */
     private static Path jdkLibraryPath(String name) {
         Path javahome = Path.of(GetPropertyAction.privilegedGetProperty("java.home"));
-        String lib = Utils.IS_WINDOWS ? "bin" : "lib";
+        String lib = switch (CABI.current()) {
+            case SYS_V, LINUX_AARCH_64, MAC_OS_AARCH_64, LINUX_RISCV_64, FALLBACK, UNSUPPORTED -> "lib";
+            case WIN_64, WIN_AARCH_64 -> "bin";
+        };
         String libname = System.mapLibraryName(name);
         return javahome.resolve(lib).resolve(libname);
     }

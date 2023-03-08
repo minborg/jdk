@@ -30,12 +30,14 @@
 
 import java.lang.foreign.Linker;
 
+import jdk.internal.foreign.CABI;
 import org.testng.annotations.Test;
 
 public class TestUnsupportedLinker {
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testLinker() {
+        System.out.println("CABI.current() = " + CABI.current());
         Linker.nativeLinker();
     }
 }

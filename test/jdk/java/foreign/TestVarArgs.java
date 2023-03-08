@@ -26,6 +26,7 @@
  * @test
  * @enablePreview
  * @requires ((os.arch == "amd64" | os.arch == "x86_64") & sun.arch.data.model == "64") | os.arch == "aarch64" | os.arch == "riscv64"
+ * @modules java.base/jdk.internal.foreign
  * @run testng/othervm --enable-native-access=ALL-UNNAMED -Dgenerator.sample.factor=17 TestVarArgs
  */
 
@@ -41,6 +42,7 @@ import java.lang.foreign.ValueLayout;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -105,7 +107,7 @@ public class TestVarArgs extends CallGeneratorHelper {
             List<Object> argValues = new ArrayList<>();
             argValues.add(callInfoPtr); // call info
             argValues.add(args.size());  // size
-            args.forEach(a -> argValues.add(a.value));
+            args.forEach(a -> argValues.add(a.value()));
 
             downcallHandle.invokeWithArguments(argValues);
 
@@ -169,12 +171,11 @@ public class TestVarArgs extends CallGeneratorHelper {
         List<Arg> args = new ArrayList<>();
         for (ParamType pType : paramTypes) {
             MemoryLayout layout = pType.layout(fields);
-            List<Consumer<Object>> checks = new ArrayList<>();
-            Object arg = makeArg(layout, checks, true);
+            TestValue testValue = genTestValue(layout, Arena.ofAuto());
             Arg.NativeType type = Arg.NativeType.of(pType.type(fields));
             args.add(pType == ParamType.STRUCT
-                ? Arg.structArg(type, layout, arg, checks)
-                : Arg.primitiveArg(type, layout, arg, checks));
+                ? Arg.structArg(type, layout, testValue)
+                : Arg.primitiveArg(type, layout, testValue));
         }
         return args;
     }
@@ -183,12 +184,11 @@ public class TestVarArgs extends CallGeneratorHelper {
         Arg varArg = args.get(index);
         MemoryLayout layout = varArg.layout;
         MethodHandle getter = varArg.getter;
-        List<Consumer<Object>> checks = varArg.checks;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment seg = ptr.asSlice(0, layout)
                     .reinterpret(arena, null);
             Object obj = getter.invoke(seg);
-            checks.forEach(check -> check.accept(obj));
+            varArg.check(obj);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
@@ -211,26 +211,33 @@ public class TestVarArgs extends CallGeneratorHelper {
     }
 
     private static final class Arg {
+        private final TestValue value;
+
         final NativeType id;
         final MemoryLayout layout;
-        final Object value;
         final MethodHandle getter;
-        final List<Consumer<Object>> checks;
 
-        private Arg(NativeType id, MemoryLayout layout, Object value, MethodHandle getter, List<Consumer<Object>> checks) {
+        private Arg(NativeType id, MemoryLayout layout, TestValue value, MethodHandle getter) {
             this.id = id;
             this.layout = layout;
             this.value = value;
             this.getter = getter;
-            this.checks = checks;
         }
 
-        private static Arg primitiveArg(NativeType id, MemoryLayout layout, Object value, List<Consumer<Object>> checks) {
-            return new Arg(id, layout, value, layout.varHandle().toMethodHandle(VarHandle.AccessMode.GET), checks);
+        private static Arg primitiveArg(NativeType id, MemoryLayout layout, TestValue value) {
+            return new Arg(id, layout, value, layout.varHandle().toMethodHandle(VarHandle.AccessMode.GET));
         }
 
-        private static Arg structArg(NativeType id, MemoryLayout layout, Object value, List<Consumer<Object>> checks) {
-            return new Arg(id, layout, value, MethodHandles.identity(MemorySegment.class), checks);
+        private static Arg structArg(NativeType id, MemoryLayout layout, TestValue value) {
+            return new Arg(id, layout, value, MethodHandles.identity(MemorySegment.class));
+        }
+
+        public void check(Object actual) {
+            value.check().accept(actual);
+        }
+
+        public Object value() {
+            return value.value();
         }
 
         enum NativeType {

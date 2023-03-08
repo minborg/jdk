@@ -92,19 +92,8 @@ public class TestUpcallException extends UpcallTestHelper {
     @DataProvider
     public static Object[][] uncaughtHandlerCases() {
         return new Object[][]{
-            { UncaughtHandlerOptionRunner.class },
             { UncaughtHandlerThreadRunner.class }
         };
-    }
-
-    public static class UncaughtHandlerOptionRunner extends VoidUpcallRunner {
-        public static void main(String[] args) throws Throwable {
-            try (Arena arena = Arena.ofConfined()) {
-                MemorySegment stub = Linker.nativeLinker().upcallStub(VOID_TARGET, FunctionDescriptor.ofVoid(),
-                        arena, Linker.Option.uncaughtExceptionHandler(UNCAUGHT_EXCEPTION_HANDLER));
-                downcallVoid.invoke(stub);
-            }
-        }
     }
 
     public static class UncaughtHandlerThreadRunner extends VoidUpcallRunner {

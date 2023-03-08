@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,8 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -57,7 +59,14 @@ public class NativeTestHelper {
 
     private static final MethodHandle MH_SAVER;
 
+    private static final RandomGenerator DEFAULT_RANDOM;
+
     static {
+        int seed = Integer.getInteger("NativeTestHelper.DEFAULT_RANDOM.seed", ThreadLocalRandom.current().nextInt());
+        System.out.println("NativeTestHelper::DEFAULT_RANDOM.seed = " + seed);
+        System.out.println("Re-run with '-DNativeTestHelper.DEFAULT_RANDOM.seed=" + seed + "' to reproduce");
+        DEFAULT_RANDOM = new Random(seed);
+
         try {
             MH_SAVER = MethodHandles.lookup().findStatic(NativeTestHelper.class, "saver",
                     MethodType.methodType(Object.class, Object[].class, List.class, AtomicReference.class, SegmentAllocator.class, int.class));
@@ -116,7 +125,7 @@ public class NativeTestHelper {
     public static final AddressLayout C_POINTER = ValueLayout.ADDRESS.withBitAlignment(64)
             .withTargetLayout(MemoryLayout.sequenceLayout(C_CHAR));
 
-    private static final Linker LINKER = Linker.nativeLinker();
+    public static final Linker LINKER = Linker.nativeLinker();
 
     private static final MethodHandle FREE = LINKER.downcallHandle(
             LINKER.defaultLookup().find("free").get(), FunctionDescriptor.ofVoid(C_POINTER));
@@ -158,6 +167,22 @@ public class NativeTestHelper {
     }
 
     public record TestValue (Object value, Consumer<Object> check) {}
+
+    public static TestValue[] genTestArgs(FunctionDescriptor descriptor, SegmentAllocator allocator) {
+        return genTestArgs(DEFAULT_RANDOM, descriptor, allocator);
+    }
+
+    public static TestValue[] genTestArgs(RandomGenerator random, FunctionDescriptor descriptor, SegmentAllocator allocator) {
+        TestValue[] result = new TestValue[descriptor.argumentLayouts().size()];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = genTestValue(random, descriptor.argumentLayouts().get(i), allocator);
+        }
+        return result;
+    }
+
+    public static TestValue genTestValue(MemoryLayout layout, SegmentAllocator allocator) {
+        return genTestValue(DEFAULT_RANDOM, layout, allocator);
+    }
 
     public static TestValue genTestValue(RandomGenerator random, MemoryLayout layout, SegmentAllocator allocator) {
         if (layout instanceof StructLayout struct) {

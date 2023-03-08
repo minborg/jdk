@@ -35,8 +35,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import jdk.internal.foreign.Utils;
 import org.testng.annotations.*;
-
 import static org.testng.Assert.*;
 
 public class CallGeneratorHelper extends NativeTestHelper {
@@ -55,33 +55,6 @@ public class CallGeneratorHelper extends NativeTestHelper {
     static final int MAX_FIELDS = 3;
     static final int MAX_PARAMS = 3;
     static final int CHUNK_SIZE = 600;
-
-    public static void assertStructEquals(MemorySegment actual, MemorySegment expected, MemoryLayout layout) {
-        assertEquals(actual.byteSize(), expected.byteSize());
-        GroupLayout g = (GroupLayout) layout;
-        for (MemoryLayout field : g.memberLayouts()) {
-            if (field instanceof ValueLayout) {
-                VarHandle vh = g.varHandle(MemoryLayout.PathElement.groupElement(field.name().orElseThrow()));
-                assertEquals(vh.get(actual), vh.get(expected));
-            }
-        }
-    }
-
-    private static Class<?> vhCarrier(MemoryLayout layout) {
-        if (layout instanceof ValueLayout) {
-            if (isIntegral(layout)) {
-                if (layout.bitSize() == 64) {
-                    return long.class;
-                }
-                return int.class;
-            } else if (layout.bitSize() == 32) {
-                return float.class;
-            }
-            return double.class;
-        } else {
-            throw new IllegalStateException("Unexpected layout: " + layout);
-        }
-    }
 
     enum Ret {
         VOID,
@@ -140,25 +113,10 @@ public class CallGeneratorHelper extends NativeTestHelper {
 
         MemoryLayout layout(List<StructFieldType> fields) {
             if (this == STRUCT) {
-                long offset = 0L;
-                List<MemoryLayout> layouts = new ArrayList<>();
-                long align = 0;
-                for (StructFieldType field : fields) {
-                    MemoryLayout l = field.layout();
-                    long padding = offset % l.bitAlignment();
-                    if (padding != 0) {
-                        layouts.add(MemoryLayout.paddingLayout(padding));
-                        offset += padding;
-                    }
-                    layouts.add(l.withName("field" + offset));
-                    align = Math.max(align, l.bitAlignment());
-                    offset += l.bitSize();
-                }
-                long padding = offset % align;
-                if (padding != 0) {
-                    layouts.add(MemoryLayout.paddingLayout(padding));
-                }
-                return MemoryLayout.structLayout(layouts.toArray(new MemoryLayout[0]));
+                return Utils.computePaddedStructLayout(
+                        IntStream.range(0, fields.size())
+                            .mapToObj(i -> fields.get(i).layout().withName("f" + i))
+                            .toArray(MemoryLayout[]::new));
             } else {
                 return layout;
             }

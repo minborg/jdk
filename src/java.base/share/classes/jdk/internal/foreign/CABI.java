@@ -36,51 +36,54 @@ public enum CABI {
     WIN_64,
     LINUX_AARCH_64,
     MAC_OS_AARCH_64,
+    WIN_AARCH_64,
     LINUX_RISCV_64,
     FALLBACK,
     UNSUPPORTED;
 
-    private static final CABI CURRENT = computeCurrent();
+    private static final CABI ABI;
+    private static final String ARCH;
+    private static final String OS;
+    private static final long ADDRESS_SIZE;
 
-    private static CABI computeCurrent() {
-        String abi = privilegedGetProperty("jdk.internal.foreign.CABI");
-        if (abi != null) {
-            return CABI.valueOf(abi);
-        }
-
-        if (ForeignLinkerSupport.isSupported()) {
-            // figure out the ABI based on the platform
-            String arch = privilegedGetProperty("os.arch");
-            String os = privilegedGetProperty("os.name");
-            long addressSize = ADDRESS.bitSize();
-            // might be running in a 32-bit VM on a 64-bit platform.
-            // addressSize will be correctly 32
-            if ((arch.equals("amd64") || arch.equals("x86_64")) && addressSize == 64) {
-                if (os.startsWith("Windows")) {
-                    return WIN_64;
-                } else {
-                    return SYS_V;
-                }
-            } else if (arch.equals("aarch64")) {
-                if (os.startsWith("Mac")) {
-                    return MAC_OS_AARCH_64;
-                } else {
-                    // The Linux ABI follows the standard AAPCS ABI
-                    return LINUX_AARCH_64;
-                }
-            } else if (arch.equals("riscv64")) {
-                if (os.startsWith("Linux")) {
-                    return LINUX_RISCV_64;
-                }
+    static {
+        ARCH = privilegedGetProperty("os.arch");
+        OS = privilegedGetProperty("os.name");
+        ADDRESS_SIZE = ADDRESS.bitSize();
+        // might be running in a 32-bit VM on a 64-bit platform.
+        // addressSize will be correctly 32
+        if ((ARCH.equals("amd64") || ARCH.equals("x86_64")) && ADDRESS_SIZE == 64) {
+            if (OS.startsWith("Windows")) {
+                ABI = WIN_64;
+            } else {
+                ABI = SYS_V;
             }
-        } else if (FallbackLinker.isSupported()) {
-            return FALLBACK; // fallback linker
+        } else if (ARCH.equals("aarch64")) {
+            if (OS.startsWith("Mac")) {
+                ABI = MAC_OS_AARCH_64;
+            } else if (OS.startsWith("Windows")) {
+                ABI = WIN_AARCH_64;
+            } else {
+                // The Linux ABI follows the standard AAPCS ABI
+                ABI = LINUX_AARCH_64;
+            }
+        } else if (ARCH.equals("riscv64")) {
+            if (OS.startsWith("Linux")) {
+                ABI = LINUX_RISCV_64;
+            } else {
+                // unsupported
+                ABI = null;
+            }
+        } else {
+            if (FallbackLinker.isSupported()) {
+                ABI = FALLBACK;
+            } else {
+                ABI = UNSUPPORTED;
+            }
         }
-
-        return UNSUPPORTED;
     }
 
     public static CABI current() {
-        return CURRENT;
+        return ABI;
     }
 }
