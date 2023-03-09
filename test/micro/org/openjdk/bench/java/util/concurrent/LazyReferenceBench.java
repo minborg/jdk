@@ -92,6 +92,14 @@ public class LazyReferenceBench {
     }
 
     @Benchmark
+    public int lazyLocalClass() {
+        class Lazy {
+            private static final int INT = SUPPLIER.get();
+        }
+        return Lazy.INT;
+    }
+
+    @Benchmark
     public void lazyRef(Blackhole bh) {
         bh.consume(lazy.get());
     }
