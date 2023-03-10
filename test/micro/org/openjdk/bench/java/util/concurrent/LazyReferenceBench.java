@@ -66,6 +66,8 @@ public class LazyReferenceBench {
 
     public static final Supplier<Integer> LAZY = LazyReference.of(SUPPLIER);
 
+    // Add chain
+
     public Supplier<Integer> lazy;
 
     public Supplier<Integer> threadUnsafe;
