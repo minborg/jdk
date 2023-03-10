@@ -43,6 +43,7 @@ import java.util.concurrent.lazy.LazyReference;
 import java.util.function.Supplier;
 
 /*
+http://javaperf.us.oracle.com/performance/reporting/report/per-ake.minborg.lazy?mode=first&target=per-ake.minborg.lazy.pminborg-minborg-jdk-20230303-1150-42808567
 [ns/op]                                                                            Linux aarch64	Linux x64	MacOSX aarch64	MacOSX 64	Windows x64
 openjdk.bench.java.util.concurrent.LazyReferenceBench.acquireReleaseDoubleChecked	1.36	        2.51	    1.24		                2.12
 openjdk.bench.java.util.concurrent.LazyReferenceBench.lazyRef	                    1.4	            1.54	    0.81		                1.3
