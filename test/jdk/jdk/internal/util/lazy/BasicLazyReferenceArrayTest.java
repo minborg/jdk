@@ -30,12 +30,14 @@
 import org.junit.jupiter.api.*;
 
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.lazy.Lazy;
-import java.util.concurrent.lazy.LazyReference;
 import java.util.concurrent.lazy.LazyReferenceArray;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.stream.IntStream;
 
@@ -106,6 +108,40 @@ final class BasicLazyReferenceArrayTest {
         assertEquals((Integer) null, LazyReferenceArray.of(SIZE, i -> null).apply(INDEX));
     }
 
+    @Test
+    void toListSize() {
+        assertEquals(SIZE, halfComputedList().size());
+        assertEquals(SIZE - 2, halfComputedList().subList(1, SIZE - 1).size());
+    }
+
+    @Test
+    void toListUnmodifiable() {
+        toListUnmodifiable(halfComputedList());
+        toListUnmodifiable(halfComputedList().subList(1, SIZE - 1));
+    }
+
+    void toListUnmodifiable(List<Integer> list) {
+        List<Integer> otherList = List.of(1);
+        List<Named<Consumer<List<Integer>>>> operations = List.of(
+                Named.of("add(1)", l -> l.add(1)),
+                Named.of("add(1,1)", l -> l.add(1, 1)),
+                Named.of("addAll(L)", l -> l.addAll(otherList)),
+                Named.of("addAll(2,L)", l -> l.addAll(2, otherList)),
+                Named.of("clear()", l -> l.clear()),
+                Named.of("remove(int)", l -> l.remove(1)),
+                Named.of("remove(Object)", l -> l.remove((Integer) 1)),
+                Named.of("removeAll(L)", l -> l.removeAll(otherList)),
+                Named.of("retainAll(L)", l -> l.retainAll(otherList)),
+                Named.of("set(1,1)", l -> l.set(1, 1)),
+                Named.of("sort(C)", l -> l.sort(Comparator.naturalOrder())),
+                Named.of("removeIf(i -> i ==2)", l -> l.removeIf(i -> i == 2))
+        );
+        for (var operation : operations) {
+            assertThrows(UnsupportedOperationException.class, () ->
+                            operation.getPayload().accept(list)
+                    , operation.getName());
+        }
+    }
 
     @Test
     void testToString() throws InterruptedException {
@@ -147,6 +183,13 @@ final class BasicLazyReferenceArrayTest {
         join(threads);
         assertEquals(INDEX, lazy.apply(INDEX));
         assertEquals(1, mapper.invocations(INDEX));
+    }
+
+    private List<Integer> halfComputedList() {
+        for (int i = 0; i < SIZE / 2; i++) {
+            lazy.computeIfEmpty(i, mapper);
+        }
+        return lazy.asList();
     }
 
     private static void join(Collection<Thread> threads) {

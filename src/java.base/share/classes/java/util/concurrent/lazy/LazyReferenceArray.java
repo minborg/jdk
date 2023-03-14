@@ -28,6 +28,7 @@ import jdk.internal.vm.annotation.Stable;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -321,14 +322,30 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
     private final class ListView implements List<V> {
 
         private final V defaultValue;
+        private final int begin;
+        private final int end;
 
-        public ListView(V defaultValue) {
+        ListView(int begin,
+                 int end,
+                 V defaultValue) {
+            if (begin < 0) {
+                throw new IndexOutOfBoundsException("begin: " + begin);
+            }
+            if (end > LazyReferenceArray.this.length()) {
+                throw new IndexOutOfBoundsException("end: " + begin);
+            }
+            this.begin = begin;
+            this.end = end;
             this.defaultValue = defaultValue;
+        }
+
+        ListView(V defaultValue) {
+            this(0, LazyReferenceArray.this.length(), defaultValue);
         }
 
         @Override
         public int size() {
-            return LazyReferenceArray.this.length();
+            return end - begin;
         }
 
         @Override
@@ -338,7 +355,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
 
         @Override
         public boolean contains(Object o) {
-            for (int i = 0; i < size(); i++) {
+            for (int i = begin; i < end; i++) {
                 if (Objects.equals(0, getOr(i, defaultValue))) {
                     return true;
                 }
@@ -348,7 +365,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
 
         @Override
         public Iterator<V> iterator() {
-            return new ListIteratorView(0, null);
+            return new ListIteratorView(0, length(), null);
         }
 
         @Override
@@ -455,46 +472,68 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
 
         @Override
         public ListIterator<V> listIterator() {
-            return new ListIteratorView(0, defaultValue);
+            return new ListIteratorView(defaultValue);
         }
 
         @Override
         public ListIterator<V> listIterator(int index) {
-            return new ListIteratorView(index, defaultValue);
+            return new ListIteratorView(index, length(), defaultValue);
         }
 
         @Override
         public List<V> subList(int fromIndex, int toIndex) {
-            // Todo: implement this method
-            throw new UnsupportedOperationException("To be fixed");
+            if (fromIndex < 0) {
+                throw new IndexOutOfBoundsException("fromIndex: " + fromIndex);
+            }
+            if (toIndex > size()) {
+                throw new IndexOutOfBoundsException("toIndex: " + toIndex);
+            }
+            if (fromIndex > toIndex) {
+                throw new IndexOutOfBoundsException("fromIndex > toIndex: " + fromIndex + ", " + toIndex);
+            }
+            return new ListView(begin + fromIndex, begin + toIndex, defaultValue);
         }
 
+        @Override
+        public void sort(Comparator<? super V> c) {
+            throw newUnsupportedOperation();
+        }
     }
 
     final class ListIteratorView implements ListIterator<V> {
 
-        private V defaultValue;
-        private int cursor = 0;
+        private final V defaultValue;
+        private final int begin;
+        private final int end;
+        private int cursor;
 
-        public ListIteratorView(int index, V defaultValue) {
-            this.cursor = index;
+        private ListIteratorView(V defaultValue) {
+            this(0, LazyReferenceArray.this.length(), defaultValue);
+        }
+
+        private ListIteratorView(int begin,
+                                int end,
+                                V defaultValue) {
+            this.begin = begin;
+            this.end = end;
             this.defaultValue = defaultValue;
+            this.cursor = begin;
         }
 
         @Override
         public boolean hasNext() {
-            return cursor < LazyReferenceArray.this.length();
+            return cursor < end;
         }
 
         @Override
         public boolean hasPrevious() {
-            return cursor != 0;
+            return cursor != begin;
         }
 
         @Override
         public V previous() {
             int i = cursor - 1;
-            if (i < 0)
+            if (i < begin)
                 throw new NoSuchElementException();
             cursor = i;
             return getOr(i, defaultValue);
@@ -523,7 +562,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
         @Override
         public V next() {
             var i = cursor + 1;
-            if (i >= LazyReferenceArray.this.length()) {
+            if (i >= end) {
                 throw new NoSuchElementException();
             }
             cursor = i;
@@ -537,7 +576,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
 
         @Override
         public void forEachRemaining(Consumer<? super V> action) {
-            for (; cursor < LazyReferenceArray.this.length(); cursor++) {
+            for (; cursor < end; cursor++) {
                 action.accept(getOr(cursor, defaultValue));
             }
         }
