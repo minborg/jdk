@@ -28,15 +28,15 @@ import jdk.internal.vm.annotation.Stable;
 
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.LongSupplier;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntSupplier;
 
 /**
  * An int in which the value can be lazily and atomically computed.
  * <p>
  * At most one invocation is made of any provided set of suppliers.
  * <p>
- * This contrasts to {@link AtomicLong } where any number of updates can be done
+ * This contrasts to {@link AtomicInteger } where any number of updates can be done
  * and where there is no simple way to atomically compute
  * a value (guaranteed to only be computed once) if missing.
  * <p>
@@ -48,21 +48,21 @@ import java.util.function.LongSupplier;
  * The JVM may apply certain optimizations as it knows the value is updated just once
  * at most as described by {@link Stable}.
  */
-public final class LazyLong
-        extends AbstractLazy<LongSupplier>
-        implements Lazy, LongSupplier {
+public final class LazyInteger
+        extends AbstractLazy<IntSupplier>
+        implements Lazy, IntSupplier {
 
     @Stable
-    private long value;
+    private int value;
 
-    private LazyLong(LongSupplier presetSupplier) {
+    private LazyInteger(IntSupplier presetSupplier) {
         super(presetSupplier);
     }
 
     /**
      * Returns the present value or, if no present value exists, atomically attempts
-     * to compute the value using the <em>pre-set {@linkplain #of(LongSupplier)} supplier}</em>.
-     * If no pre-set {@linkplain #of(LongSupplier)} supplier} exists,
+     * to compute the value using the <em>pre-set {@linkplain #of(IntSupplier)} supplier}</em>.
+     * If no pre-set {@linkplain #of(IntSupplier)} supplier} exists,
      * throws an IllegalStateException exception.
      * <p>
      * If the pre-set supplier itself throws an (unchecked) exception, the
@@ -70,9 +70,9 @@ public final class LazyLong
      * common usage is to construct a new object serving as a memoized result, as in:
      * <p>
      * {@snippet lang = java:
-     *    LazyLong lazy = LazyLong.of(MyLogic::computeValue);
+     *    LazyInteger lazy = LazyInteger.of(MyLogic::computeValue);
      *    // ...
-     *    long value = lazy.get();
+     *    int value = lazy.get();
      *}
      * <p>
      * If another thread attempts to compute the value, the current thread will be suspended until
@@ -84,7 +84,7 @@ public final class LazyLong
      * @throws NoSuchElementException if a supplier has previously thrown an exception.
      */
     @Override
-    public long getAsLong() {
+    public int getAsInt() {
         return isPresentPlain()
                 ? value
                 : supplyIfEmpty0(presetProvider());
@@ -99,9 +99,9 @@ public final class LazyLong
      * common usage is to construct a new object serving as a memoized result, as in:
      * <p>
      * {@snippet lang = java:
-     *    LazyLong lazy = LazyLong.ofEmpty();
+     *    LazyInteger lazy = LazyInteger.ofEmpty();
      *    // ...
-     *    long value = lazy.supplyIfAbsent(MyLogic::computeValue);
+     *    int value = lazy.supplyIfAbsent(MyLogic::computeValue);
      *}
      * <p>
      * If another thread attempts to compute the value, the current thread will be suspended until
@@ -112,12 +112,12 @@ public final class LazyLong
      * @throws NullPointerException   if the provided {@code supplier} is {@code null}.
      * @throws NoSuchElementException if a supplier has previously thrown an exception.
      */
-    public long supplyIfEmpty(LongSupplier supplier) {
+    public int supplyIfEmpty(IntSupplier supplier) {
         Objects.requireNonNull(supplier);
         return supplyIfEmpty0(supplier);
     }
 
-    private long supplyIfEmpty0(LongSupplier supplier) {
+    private int supplyIfEmpty0(IntSupplier supplier) {
         if (!isPresentPlain()) {
             synchronized (this) {
                 if (isPlain(State.ERROR)) {
@@ -129,11 +129,10 @@ public final class LazyLong
                     }
                     try {
                         constructing(true);
-                        long v = supplier.getAsLong();
+                        int v = supplier.getAsInt();
                         if (v != 0) {
                             value = v;
                         }
-                        // Prevents tearing.
                         stateValueRelease(State.PRESENT);
                     } catch (Throwable e) {
                         stateValueRelease(State.ERROR);
@@ -150,46 +149,46 @@ public final class LazyLong
 
     @Override
     protected String renderValue() {
-        return Long.toString(value);
+        return Integer.toString(value);
     }
 
     /**
-     * {@return a new empty LazyLong with no pre-set supplier}.
+     * {@return a new empty LazyInt with no pre-set supplier}.
      * <p>
-     * If an attempt is made to invoke the {@link #getAsLong()} } method when no element is present,
+     * If an attempt is made to invoke the {@link #getAsInt()} } method when no element is present,
      * an exception will be thrown.
      * <p>
      * {@snippet lang = java:
-     *    LazyLong lazy = LazyLong.ofEmpty();
+     *    LazyInteger lazy = LazyInteger.ofEmpty();
      *    assertFalse(lazy.isPresentPlain()); // Value is initially not present
      *    // ...
-     *    long value = lazy.supplyIfEmpty(MyLogic::computeValue);
+     *    int value = lazy.supplyIfEmpty(MyLogic::computeValue);
      *    assertNotNull(value); // Value is non-null
      *}
      */
-    public static LazyLong ofEmpty() {
-        return new LazyLong(null);
+    public static LazyInteger ofEmpty() {
+        return new LazyInteger(null);
     }
 
     /**
-     * {@return a new empty LazyLong with a pre-set supplier}.
+     * {@return a new empty LazyInt with a pre-set supplier}.
      * <p>
-     * If an attempt is made to invoke the {@link #getAsLong()} method when no element is present,
+     * If an attempt is made to invoke the {@link #getAsInt()} method when no element is present,
      * the provided {@code presetSupplier} will automatically be invoked as specified by
-     * {@link #supplyIfEmpty(LongSupplier)} )}.
+     * {@link #supplyIfEmpty(IntSupplier)} )}.
      * <p>
      * {@snippet lang = java:
-     *    LazyLong lazy = LazyLong.of(MyLogic::computeValue);
+     *    LazyInteger lazy = LazyInteger.of(MyLogic::computeValue);
      *    // ...
-     *    long value = lazy.get();
+     *    int value = lazy.get();
      *}
      *
      * @param presetSupplier to invoke when lazily constructing a value
      * @throws NullPointerException if the provided {@code presetSupplier} is {@code null}
      */
-    public static LazyLong of(LongSupplier presetSupplier) {
+    public static LazyInteger of(IntSupplier presetSupplier) {
         Objects.requireNonNull(presetSupplier);
-        return new LazyLong(presetSupplier);
+        return new LazyInteger(presetSupplier);
     }
 
 }

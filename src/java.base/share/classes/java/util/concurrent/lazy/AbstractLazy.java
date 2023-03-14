@@ -36,9 +36,9 @@ abstract class AbstractLazy<P> implements Lazy {
     }
 
     @Override
-    public State state() {
+    public final State state() {
         State state = STATES[stateValuePlain()];
-        if (state.isFinal()) {
+        if (State.isFinal(state)) {
             return state;
         }
         synchronized (this) {
@@ -75,7 +75,7 @@ abstract class AbstractLazy<P> implements Lazy {
     }
 
     protected boolean is(State state) {
-        if (state.isFinal() && isPlain(state)) {
+        if (State.isFinal(state) && isPlain(state)) {
             return true;
         }
         synchronized (this) {

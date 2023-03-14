@@ -35,10 +35,9 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.lazy.LazyLong;
+import java.util.concurrent.lazy.LazyReference;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
@@ -52,7 +51,12 @@ public class LazyLongBench {
 
     private static final LongSupplier SUPPLIER = () -> 42;
 
+    public static final LongSupplier LAZY = LazyLong.of(SUPPLIER);
+    public static final Supplier<Long> LAZY_OBJECT = LazyReference.of(() -> SUPPLIER.getAsLong());
+    public static final LongSupplier LAZY_DC = new VolatileDoubleChecked(SUPPLIER);
+
     public LongSupplier lazy;
+    public Supplier<Long> lazyObject;
 
     public LongSupplier threadUnsafe;
     public LongSupplier doubleChecked;
@@ -66,20 +70,50 @@ public class LazyLongBench {
         lazy = LazyLong.of(SUPPLIER);
         threadUnsafe = new ThreadUnsafe(SUPPLIER);
         doubleChecked = new VolatileDoubleChecked(SUPPLIER);
+        lazyObject = LazyReference.of(() -> SUPPLIER.getAsLong());
     }
 
     @Benchmark
-    public void lazyLong(Blackhole bh) {
-        bh.consume(lazy.getAsLong());
+    public long staticLazyLong() {
+        return LAZY.getAsLong();
     }
 
     @Benchmark
-    public void threadUnsafe(Blackhole bh) {
-        bh.consume(threadUnsafe.getAsLong());
+    public long staticDoubleChecked() {
+        return LAZY_DC.getAsLong();
     }
+
     @Benchmark
-    public void doubleChecked(Blackhole bh) {
-        bh.consume(doubleChecked.getAsLong());
+    public long staticLazyLongObject() {
+        return LAZY_OBJECT.get();
+    }
+
+    @Benchmark
+    public long staticLocalClass() {
+        class Lazy {
+            private static final long LONG = SUPPLIER.getAsLong();
+        }
+        return Lazy.LONG;
+    }
+
+    @Benchmark
+    public long lazyLong() {
+        return lazy.getAsLong();
+    }
+
+    @Benchmark
+    public long lazyLongObject() {
+        return lazyObject.get();
+    }
+
+    @Benchmark
+    public long threadUnsafe() {
+        return threadUnsafe.getAsLong();
+    }
+
+    @Benchmark
+    public long doubleChecked() {
+        return doubleChecked.getAsLong();
     }
 
     private static final class ThreadUnsafe implements LongSupplier {

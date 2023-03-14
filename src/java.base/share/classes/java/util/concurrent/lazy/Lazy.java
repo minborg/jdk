@@ -47,31 +47,26 @@ public interface Lazy {
         /**
          * Indicates a value is not present and is not about to be constructed.
          */
-        EMPTY(false),
+        EMPTY,
         /**
          * Indicates a value is being constructed but is not yet available.
          */
-        CONSTRUCTING(false),
+        CONSTRUCTING,
         /**
          * Indicates a value is present. This is a <em>final state</em>.
          */
-        PRESENT(true),
+        PRESENT,
         /**
          * Indicates an error has occured during construction of the value. This is a <em>final state</em>.
          */
-        ERROR(true);
-
-        private final boolean isFinal;
-
-        State(boolean isFinal) {
-            this.isFinal = isFinal;
-        }
+        ERROR;
 
         /**
          * {@return if this state is final (e.g. can never change)}
          */
-        boolean isFinal() {
-            return isFinal;
+        static boolean isFinal(State state) {
+            return state == PRESENT ||
+                    state == ERROR;
         }
     }
 
