@@ -24,6 +24,7 @@
  */
 package java.util.concurrent.lazy;
 
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import java.util.NoSuchElementException;
@@ -35,9 +36,7 @@ import java.util.function.Supplier;
 /**
  * An object reference in which the value can be lazily and atomically computed.
  * <p>
- * It is guaranteed that just at most one supplier is invoked and that
- * that supplier (if any) is invoked just once per LazyReference instance.
- * More formally, at most one invocation is made of any provided set of suppliers.
+ * At most one invocation is made of any provided set of suppliers.
  * <p>
  * This contrasts to {@link AtomicReference } where any number of updates can be done
  * and where there is no simple way to atomically compute
@@ -101,6 +100,7 @@ public final class LazyReference<V>
      * @throws NoSuchElementException if a supplier has previously thrown an exception.
      */
     @SuppressWarnings("unchecked")
+    @ForceInline
     public V get() {
         return isPresentPlain()
                 ? (V) value

@@ -45,10 +45,7 @@ import java.util.stream.Stream;
 /**
  * An object reference array in which the values are lazily and atomically computed.
  * <p>
- * It is guaranteed that just at most one mapper is invoked and that
- * that mapper (if any) is invoked just once per slot LazyReferenceArray instance provided
- * a value is sucessfully computed. More formally, at most one sucessfull invocation per slot is
- * made of any provided set of mappers.
+ * At most one invocation is made of any provided set of mapper per slot.
  * <p>
  * This contrasts to {@link java.util.concurrent.atomic.AtomicReferenceArray } where any number of updates can be done
  * and where there is no simple way to atomically compute

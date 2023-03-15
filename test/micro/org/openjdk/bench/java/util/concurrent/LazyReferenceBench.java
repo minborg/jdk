@@ -91,26 +91,26 @@ public class LazyReferenceBench {
     }
 
     @Benchmark
-    public int staticLazyRef() {
-        return LAZY.get();
+    public void staticLazyRef(Blackhole bh) {
+        bh.consume(LAZY.get());
     }
 
     @Benchmark
-    public int staticLocalClass() {
+    public void staticLocalClass(Blackhole bh) {
         class Lazy {
             private static final int INT = SUPPLIER.get();
         }
-        return Lazy.INT;
+        bh.consume(Lazy.INT);
     }
 
     @Benchmark
-    public int staticVolatileDoubleChecked() {
-        return LAZY_DC.get();
+    public void staticVolatileDoubleChecked(Blackhole bh) {
+        bh.consume(LAZY_DC.get());
     }
 
     @Benchmark
-    public int lazyRef() {
-        return lazy.get();
+    public void lazyRef(Blackhole bh) {
+        bh.consume(lazy.get());
     }
 
     @Benchmark
@@ -119,22 +119,22 @@ public class LazyReferenceBench {
     }
 
     @Benchmark
-    public int threadUnsafe() {
-        return threadUnsafe.get();
+    public void threadUnsafe(Blackhole bh) {
+        bh.consume(threadUnsafe.get());
     }
 
     @Benchmark
-    public int volatileDoubleChecked() {
-        return volatileDoubleChecked.get();
+    public void volatileDoubleChecked(Blackhole bh) {
+        bh.consume(volatileDoubleChecked.get());
     }
     @Benchmark
-    public int volatileVhDoubleChecked() {
-        return volatileVhDoubleChecked.get();
+    public void volatileVhDoubleChecked(Blackhole bh) {
+        bh.consume(volatileVhDoubleChecked.get());
     }
 
     @Benchmark
-    public int acquireReleaseDoubleChecked() {
-        return acquireReleaseDoubleChecked.get();
+    public void acquireReleaseDoubleChecked(Blackhole bh) {
+        bh.consume(acquireReleaseDoubleChecked.get());
     }
 
     private static final class ThreadUnsafe<T> implements Supplier<T> {
