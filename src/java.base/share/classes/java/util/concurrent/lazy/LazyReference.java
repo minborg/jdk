@@ -100,7 +100,6 @@ public final class LazyReference<V>
      * @throws NoSuchElementException if a supplier has previously thrown an exception.
      */
     @SuppressWarnings("unchecked")
-    @ForceInline
     public V get() {
         return isPresentPlain()
                 ? (V) value
