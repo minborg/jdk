@@ -22,23 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package java.util.concurrent.lazy;
-
-import jdk.internal.vm.annotation.Stable;
+package java.util.concurrent.lazy.playground;
 
 import java.lang.constant.ClassDesc;
 import java.lang.constant.Constable;
-import java.lang.constant.ConstantDesc;
 import java.lang.constant.ConstantDescs;
 import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.constant.DynamicConstantDesc;
-import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
-import static java.lang.constant.ConstantDescs.CD_String;
 import static java.lang.constant.ConstantDescs.CD_long;
 import static java.util.Objects.requireNonNull;
 
@@ -71,7 +64,7 @@ public final class CondyLong
 
     @Override
     public Optional<DynamicConstantDesc<Long>> describeConstable() {
-        DirectMethodHandleDesc bsmDesc = ConstantDescs.ofConstantBootstrap(ClassDesc.of("java.util.concurrent.lazy.CondyLong"), "eval",
+        DirectMethodHandleDesc bsmDesc = ConstantDescs.ofConstantBootstrap(ClassDesc.of("java.util.concurrent.lazy.playground.CondyLong"), "eval",
                 CD_long);
         return Optional.of(
                 DynamicConstantDesc.of(bsmDesc)

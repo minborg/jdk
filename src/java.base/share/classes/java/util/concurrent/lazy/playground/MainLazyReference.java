@@ -1,4 +1,4 @@
-package java.util.concurrent.lazy;
+package java.util.concurrent.lazy.playground;
 
 import jdk.internal.foreign.abi.aarch64.CallArranger;
 
@@ -6,11 +6,16 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 import java.util.Objects;
+import java.util.concurrent.lazy.LazyReference;
 
 /**
  * Test
  */
 public final class MainLazyReference {
+
+    private static final Bar FOO = new Bar();
+
+    private static class Bar{};
 
     private static final LazyReference<Integer> LAZY = LazyReference.of(() -> 1);
     private final LazyReference<Integer> lazy = LazyReference.of(() -> 1);

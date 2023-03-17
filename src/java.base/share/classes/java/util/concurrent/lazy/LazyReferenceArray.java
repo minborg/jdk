@@ -66,6 +66,9 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
     @Stable
     private final LazyReference<V>[] lazyReferences;
 
+    // Todo: use an array of V and a bit-set (3 bits per element)
+    // Todo: Bit CAS granularity. Perhaps int[] or several arrays (@Stable and non-@Stable)
+
     @SuppressWarnings("unchecked")
     private LazyReferenceArray(int size,
                                IntFunction<? extends V> presetMapper) {

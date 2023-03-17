@@ -1,4 +1,4 @@
-package java.util.concurrent.lazy;
+package java.util.concurrent.lazy.playground;
 
 /**
  * Test

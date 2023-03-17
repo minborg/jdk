@@ -149,6 +149,7 @@ public final class LazyReference<V>
         if (!isPresentPlain()) {
             // Synchronized implies acquire/release semantics when entering/leaving the monitor
             synchronized (this) {
+                // Todo: Swich on state
                 if (isPlain(State.ERROR)) {
                     throw new NoSuchElementException(exception().get());
                 }
@@ -247,5 +248,7 @@ public final class LazyReference<V>
         Objects.requireNonNull(presetSupplier);
         return new LazyReference<>(presetSupplier);
     }
+
+    // Todo: Consider adding checked exception constructior. E.g. Cache value from an SQL query (Check with Ron)
 
 }

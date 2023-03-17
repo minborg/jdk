@@ -51,7 +51,7 @@ public interface Lazy {
         /**
          * Indicates a value is being constructed but is not yet available.
          */
-        CONSTRUCTING,
+        CONSTRUCTING, // Todo: Consider dropping this state
         /**
          * Indicates a value is present. This is a <em>final state</em>.
          */
@@ -62,7 +62,7 @@ public interface Lazy {
         ERROR;
 
         /**
-         * {@return if this state is final (e.g. can never change)}
+         * {@return if this state is final (e.g. can never change)}.
          */
         static boolean isFinal(State state) {
             return state == PRESENT ||
