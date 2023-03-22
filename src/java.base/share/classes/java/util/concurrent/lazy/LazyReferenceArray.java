@@ -63,10 +63,12 @@ import java.util.stream.Stream;
  */
 public final class LazyReferenceArray<V> implements IntFunction<V> {
 
+    private final IntFunction<? extends V> presetMapper;
+
     @Stable
     private final LazyReference<V>[] lazyReferences;
 
-    // Todo: use an array of V and a bit-set (3 bits per element)
+    // Todo: use an array of V and a bit-set (3 bits per element or perhaps an entire int)
     // Todo: Bit CAS granularity. Perhaps int[] or several arrays (@Stable and non-@Stable)
 
     @SuppressWarnings("unchecked")
@@ -75,6 +77,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
         lazyReferences = IntStream.range(0, size)
                 .mapToObj(i -> LazyReference.<V>of(toSupplier(i, presetMapper)))
                 .toArray(LazyReference[]::new);
+        this.presetMapper = presetMapper;
     }
 
     @SuppressWarnings("unchecked")
@@ -82,6 +85,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
         lazyReferences = IntStream.range(0, size)
                 .mapToObj(i -> LazyReference.ofEmpty())
                 .toArray(LazyReference[]::new);
+        this.presetMapper = null;
     }
 
     /**
@@ -115,7 +119,6 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * @return the value (pre-existing or newly computed)
      * @throws ArrayIndexOutOfBoundsException if the provided {@code index} is {@code < 0}
      *                                        or {@code index >= length()}
-     * @throws NullPointerException           if the pre-set mapper returns {@code null}.
      * @throws IllegalStateException          if a value was not already present and no
      *                                        pre-set mapper was specified.
      * @throws NoSuchElementException         if a maper has previously thrown an exception for the
@@ -286,6 +289,23 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
                 });
     }
 
+    /**
+     * Forces computation of all {@link java.util.concurrent.lazy.Lazy.State#EMPTY) slots.
+     * <p>
+     * If the pre-set mapper throws an (unchecked) exception, the
+     * exception is rethrown, and no value is recorded. This means, subsequent slots
+     * are not computed.
+     *
+     * @throws IllegalStateException  if no pre-set mapper was specified.
+     */
+    public void force() {
+        if (presetMapper == null) {
+            throw new IllegalStateException();
+        }
+        for (LazyReference<V> lazy : lazyReferences) {
+            lazy.get();
+        }
+    }
 
     @Override
     public String toString() {
@@ -301,8 +321,6 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
     }
 
     // Todo: Add supplyIfEmpty()?
-
-    // Todo: Add force() that will eagerly evaluate all empty slots?
 
     Supplier<V> toSupplier(int index,
                            IntFunction<? extends V> mappper) {
