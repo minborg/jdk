@@ -7,6 +7,8 @@ import java.util.concurrent.lazy.LazyReferenceArray;
  */
 public final class DemoFib {
 
+    // 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144 ...
+    // fib(11) = 89
     static int fibScoolBook(int n) {
         return (n <= 1)
                 ? n
@@ -16,7 +18,7 @@ public final class DemoFib {
     private static final int INTERVAL = 10;
 
     private static final LazyReferenceArray<Integer> FIB_10_CACHE =
-            LazyReferenceArray.of(20 / INTERVAL, slot -> fib(slotToN(slot), false));
+            LazyReferenceArray.of(30 / INTERVAL, slot -> fib(slotToN(slot), false));
 
     /**
      * Main method
@@ -34,13 +36,22 @@ public final class DemoFib {
         */
 
         System.out.println("fibScoolBook(11) = " + fibScoolBook(11));
+
         System.out.println(FIB_10_CACHE);
         System.out.println("fib(11) = " + fib(11)); // 288 invocations
+
         System.out.println(FIB_10_CACHE);
         System.out.println("fib(11) = " + fib(11)); // 111 invocations
+
+        /*
+        FIB_10_CACHE.force();
+        System.out.println(FIB_10_CACHE);
+        // LazyReferenceArray[0, 55, 6765]
+        */
+
         /*
         var t = new Thread(() -> {
-            System.out.println("fib(12) = " + fib(12));
+            System.out.println("fib(11) = " + fib(11));
         });
         t.start();
         t.join();
@@ -57,7 +68,7 @@ public final class DemoFib {
         return i / INTERVAL;
     }
 
-    // Only works for values up to 20
+    // Only works for values up to ~30
     static int fib(int n) {
         return fib(n, true);
     }
