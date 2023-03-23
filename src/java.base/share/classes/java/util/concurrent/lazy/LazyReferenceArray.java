@@ -290,7 +290,8 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
     }
 
     /**
-     * Forces computation of all {@link java.util.concurrent.lazy.Lazy.State#EMPTY) slots.
+     * Forces computation of all {@link java.util.concurrent.lazy.Lazy.State#EMPTY} slots in
+     * slot order.
      * <p>
      * If the pre-set mapper throws an (unchecked) exception, the
      * exception is rethrown, and no value is recorded. This means, subsequent slots
