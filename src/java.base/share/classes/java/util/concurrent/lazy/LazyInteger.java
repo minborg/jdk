@@ -48,6 +48,7 @@ import java.util.function.IntSupplier;
  * The JVM may apply certain optimizations as it knows the value is updated just once
  * at most as described by {@link Stable}.
  */
+@Deprecated(forRemoval = true)
 public final class LazyInteger
         extends AbstractLazy<IntSupplier>
         implements Lazy, IntSupplier {

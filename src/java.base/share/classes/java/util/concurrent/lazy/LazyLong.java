@@ -48,6 +48,7 @@ import java.util.function.LongSupplier;
  * The JVM may apply certain optimizations as it knows the value is updated just once
  * at most as described by {@link Stable}.
  */
+@Deprecated(forRemoval = true)
 public final class LazyLong
         extends AbstractLazy<LongSupplier>
         implements Lazy, LongSupplier {
