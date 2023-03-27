@@ -4,7 +4,6 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentScope;
 import java.lang.invoke.VarHandle;
-import java.util.concurrent.lazy.LazyLong;
 import java.util.function.LongSupplier;
 import java.util.stream.LongStream;
 
@@ -35,7 +34,7 @@ public final class DemoLazyLong {
         private static final VarHandle HANDLE = LAYOUT.varHandle(MemoryLayout.PathElement.sequenceElement());
 
         private final MemorySegment segment;
-        private final LongSupplier sum = LazyLong.of(this::sum0);
+        /*private final LongSupplier sum = LazyLong.of(this::sum0);*/
 
         public Measurement(MemorySegment segment) {
             // Defensive read-only copy
@@ -49,7 +48,8 @@ public final class DemoLazyLong {
         }
 
         long sum() {
-            return sum.getAsLong();
+            return 1;
+/*            return sum.getAsLong();*/
         }
 
         private long sum0() {

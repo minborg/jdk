@@ -248,6 +248,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      *     <li><b>ERROR</b>
      *     <p>A NoSuchElementException is thrown.</p></li>
      * </ul>
+     *
      * @throws NoSuchElementException if a slot is in state ERROR and is being accessed.
      */
     public Stream<Optional<V>> stream() {
@@ -277,6 +278,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      *     <li><b>ERROR</b>
      *     <p>A NoSuchElementException is thrown.</p></li>
      * </ul>
+     *
      * @param defaultValue the default value to use for empty/contructing slots.
      * @throws NoSuchElementException if a slot is in state ERROR and is being accessed.
      */
@@ -300,7 +302,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * exception is rethrown, and no value is recorded. This means, subsequent slots
      * are not computed.
      *
-     * @throws IllegalStateException  if no pre-set mapper was specified.
+     * @throws IllegalStateException if no pre-set mapper was specified.
      */
     public void force() {
         if (presetMapper == null) {
@@ -309,6 +311,51 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
         for (LazyReference<V> lazy : lazyReferences) {
             lazy.get();
         }
+    }
+
+    /**
+     * Returns the lazy value associated with the provided {@code key} via the provided
+     * {@code keyMapper}, or, if the key is not {@linkplain KeyMapper#isMappable(int) mappable}, applies
+     * the provided {@code unmappableHandler} using the provided {@code key}.
+     * <p>
+     * If the underlying lazy pre-set mapper throws an (unchecked) exception, the
+     * exception is rethrown, and no value is recorded. If the provided {@code unmappableHandler}
+     * throws an (unchecked) exception, the exeption is rethrown.
+     * The most common usage is to construct a new object serving as a cached result, as in:
+     * <p>
+     * {@snippet lang = java:
+     *    private static KeyMapper KEY_MAPPER = KeyMapper.ofConstant(8);
+     *    LazyReferenceArray<Long> cache = LazyReferenceArray.of(8);
+     *    // ...
+
+     *    Long value = cache.mapAndApply(KEY_MAPPER, 16, n -> (1L << n), n -> 0);
+     *    assertEquals(65536, value); // Value is mappable and entered into and taken from the cache
+
+     *    Long value = cache.mapAndApply(KEY_MAPPER, 15, n -> (1L << n), n -> 0);
+     *    assertEquals(0, value2); // Value is not mappable and will be obtained from the provided lambda
+     * }
+     * <p>
+     * If another thread attempts to compute a lazy value, the current thread will be suspended until
+     * the atempt completes (successfully or not).
+     *
+     * @param keyMapper         to use when mapping a key
+     * @param key               to map to an index
+     * @param mappableHandler   to apply if the key {@linkplain KeyMapper#isMappable(int) is mappable}
+     * @param unmappableHandler to apply if the key {@linkplain KeyMapper#isMappable(int) is NOT mappable}
+     * @return a lazy value (pre-existing or newly computed) or another value from the provided {@code unmappableHandler}.
+     * @throws IllegalStateException  if a value was not already present and no
+     *                                pre-set mapper was specified.
+     * @throws NoSuchElementException if a lazy maper has previously thrown an exception for the
+     *                                provided key mapping to an associated {@code index}.
+     */
+    public V mapAndApply(KeyMapper keyMapper,
+                         int key,
+                         IntFunction<? extends V> mappableHandler,
+                         IntFunction<? extends V> unmappableHandler) {
+        return keyMapper.isMappable(key)
+                ? lazyReferences[keyMapper.keyToIndex(key)]
+                    .supplyIfEmpty(() -> mappableHandler.apply(key))
+                : unmappableHandler.apply(key);
     }
 
     @Override
@@ -339,6 +386,125 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
             case PRESENT -> lazy.get();
             case ERROR -> throw new NoSuchElementException();
         };
+    }
+
+    /**
+     * A key mapper than can convert between external "keys" and internal indices. The mapper
+     * is said to perform <em>inversly replicable conversions</em> meaning for a KeyMapper
+     * {@code km} used by a LazyReferenceArray {@code lra}:
+     * <ul>
+     *     <li>
+     *     The following holds: {@code km.isApplicable(lra.length))}.
+     *     </li>
+     *     <li>
+     *      For any external value {@code key} for which the mapper {@linkplain KeyMapper#isMappable(int)} (int) is convertible},
+     *       the following holds: {@code
+     *           fromIndex(toIndex(key)) = key
+     *       }
+     *     </li>
+     *     <li>
+     *      For any external value {@code key} for which the mapper {@linkplain KeyMapper#isMappable(int) is NOT convertibla},
+     *      the following will throw an ArrayOutOfBounds: {@code
+     *           lra.get(toindex(e));
+     *       }
+     *     </li>
+     * </ul>
+     * <p>
+     * Hence, the mapper is not guaranteed to always produce valid mappings but is guaranteed to provide
+     * consistent results when applied to a LazyReferenceArray.
+     * <p>
+     * The mapper is useful when using a LazyReferenceArray as a cache in cases there is not
+     * a one-to-one mapping between the keys used for caching and the actual indices in the
+     * arrary.
+     * @see LazyReferenceArray#mapAndApply(KeyMapper, int, IntFunction, IntFunction)
+     */
+    public interface KeyMapper {
+        /**
+         * {@return an index of the LazyReferenceArray by converting the
+         * provided {@code key} or, an invalid index
+         * if no such conversion can be made}.
+         *
+         * @param key to convert to an index
+         */
+        int keyToIndex(int key);
+
+        /**
+         * {@return if the provided {@code key} can be
+         * mapped to an index}.
+         *
+         * @param key to test
+         */
+        boolean isMappable(int key);
+
+        /**
+         * {@return if this KeyMapper can be used on an array with the
+         * provided {@code arrayLength}}.
+         *
+         * @param arrayLength to test
+         */
+        boolean checkArrayLength(int arrayLength);
+
+        /**
+         * {@return an index mapper that will map external values to
+         * indices by dividing with the provided {@code constant}}.
+         *
+         * @param constant used as a divisor when converting external values to indices.
+         * @throws IllegalArgumentException if the provided {@code constant} is zero.
+         */
+        public static KeyMapper ofConstant(int constant) {
+            if (constant == 0) {
+                throw new IllegalArgumentException("The constant must be non-zero");
+            }
+            return new KeyMapper() {
+                @Override
+                public int keyToIndex(int key) {
+                    if (!isMappable(key)) {
+                        return -1;
+                    }
+                    return key / constant;
+                }
+
+                @Override
+                public boolean isMappable(int key) {
+                    return key % constant == 0;
+                }
+
+                @Override
+                public boolean checkArrayLength(int arrayLength) {
+                    // Todo: Use the maximum array size which is smaller than Integer.MAX_VALUE
+                    return (long) arrayLength * (long) constant < Integer.MAX_VALUE;
+                }
+
+                @Override
+                public String toString() {
+                    return "IndexMapper.ofConstant(" + constant + ")";
+                }
+            };
+        }
+
+        /**
+         * {@return a index mapper that is a one-to-one mapper where the
+         * external values will be the same as the internal indices}.
+         */
+        // Todo: remove this
+        public static KeyMapper ofIdentity() {
+            return new KeyMapper() {
+                @Override
+                public int keyToIndex(int key) {
+                    return key;
+                }
+
+                @Override
+                public boolean isMappable(int key) {
+                    return true;
+                }
+
+                @Override
+                public boolean checkArrayLength(int arrayLength) {
+                    return true;
+                }
+            };
+        }
     }
 
     private final class ListView implements List<V> {
@@ -534,8 +700,8 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
         }
 
         private ListIteratorView(int begin,
-                                int end,
-                                V defaultValue) {
+                                 int end,
+                                 V defaultValue) {
             this.begin = begin;
             this.end = end;
             this.defaultValue = defaultValue;
@@ -660,7 +826,4 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
         Objects.requireNonNull(presetMapper);
         return new LazyReferenceArray<>(size, presetMapper);
     }
-
-    // Todo: Consider slot/external mapping of indexes
-
 }
