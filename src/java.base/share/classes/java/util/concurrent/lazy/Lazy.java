@@ -47,7 +47,7 @@ public interface Lazy {
         /**
          * Indicates a value is not present and is not about to be constructed.
          */
-        EMPTY,
+        EMPTY,  // ABSENT?
         /**
          * Indicates a value is being constructed but is not yet available.
          */

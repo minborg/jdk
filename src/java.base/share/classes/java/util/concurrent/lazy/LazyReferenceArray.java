@@ -658,4 +658,6 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
         return new LazyReferenceArray<>(size, presetMapper);
     }
 
+    // Todo: Consider slot/external mapping of indexes
+
 }

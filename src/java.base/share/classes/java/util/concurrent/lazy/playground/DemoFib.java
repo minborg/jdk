@@ -9,16 +9,18 @@ public final class DemoFib {
 
     // 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144 ...
     // fib(11) = 89
-    static int fibScoolBook(int n) {
+    // n non-negative
+    static int fibSchoolBook(int n) {
         return (n <= 1)
                 ? n
-                : fibScoolBook(n - 1) + fibScoolBook(n - 2);
+                : fibSchoolBook(n - 1) + fibSchoolBook(n - 2);
     }
 
-    private static final int INTERVAL = 10;
+    private static final int INTERVAL = 10; // Must be > 2
 
     private static final LazyReferenceArray<Integer> FIB_10_CACHE =
-            LazyReferenceArray.of(30 / INTERVAL, slot -> fib(slotToN(slot), false));
+            LazyReferenceArray.of(30 / INTERVAL,
+                    slot -> fib(slotToN(slot), false));
 
     /**
      * Main method
@@ -35,7 +37,7 @@ public final class DemoFib {
         Thread.sleep(5000);
         */
 
-        System.out.println("fibScoolBook(11) = " + fibScoolBook(11));
+        System.out.println("fibScoolBook(11) = " + fibSchoolBook(11));
 
         System.out.println(FIB_10_CACHE);
         System.out.println("fib(11) = " + fib(11)); // 288 invocations

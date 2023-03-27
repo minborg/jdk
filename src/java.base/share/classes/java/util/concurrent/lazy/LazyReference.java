@@ -33,6 +33,10 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+// https://stackoverflow.com/a/35335467/1431016
+
+// Build time, background, etc. computation (time shifting) (referentially transparent)
+
 /**
  * An object reference in which the value can be lazily and atomically computed.
  * <p>
@@ -174,7 +178,7 @@ public final class LazyReference<V>
                         // Rethrow
                         throw e;
                     } finally {
-                        constructing(false);
+                        constructing(false);  // Redundant operation
                         forgetPresetProvided();
                     }
                 }
@@ -250,5 +254,6 @@ public final class LazyReference<V>
     }
 
     // Todo: Consider adding checked exception constructior. E.g. Cache value from an SQL query (Check with Ron)
+    // Todo: Consider adding a lazy that shields a POJO
 
 }

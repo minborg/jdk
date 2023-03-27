@@ -5,6 +5,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentScope;
 import java.lang.invoke.VarHandle;
 import java.util.concurrent.lazy.LazyLong;
+import java.util.function.LongSupplier;
 import java.util.stream.LongStream;
 
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
@@ -25,6 +26,7 @@ public final class DemoLazyLong {
 
         System.out.println("measurement.valueAt(1) = " + measurement.valueAt(1));
         System.out.println("measurement.sum() = " + measurement.sum());
+        System.out.println("measurement.sum() = " + measurement.sum());
     }
 
     static final class Measurement {
@@ -33,7 +35,7 @@ public final class DemoLazyLong {
         private static final VarHandle HANDLE = LAYOUT.varHandle(MemoryLayout.PathElement.sequenceElement());
 
         private final MemorySegment segment;
-        private final LazyLong sum = LazyLong.of(this::sum0);
+        private final LongSupplier sum = LazyLong.of(this::sum0);
 
         public Measurement(MemorySegment segment) {
             // Defensive read-only copy
@@ -51,7 +53,9 @@ public final class DemoLazyLong {
         }
 
         private long sum0() {
+            System.out.println("Computing sum");
             return LongStream.range(0, segment.byteSize() / Long.BYTES)
+                    // .parallel()
                     .map(this::valueAt)
                     .sum();
         }

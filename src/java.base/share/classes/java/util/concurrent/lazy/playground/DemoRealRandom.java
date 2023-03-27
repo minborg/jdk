@@ -23,7 +23,7 @@ public final class DemoRealRandom {
     }
 
     private static final MemorySegment makeRealRandomBytes() {
-        // Gather enthropy from lava lamp and atomic decay device
+        // Gather enthropy from lava lamps and atomic decay devices
         Entropy entropy = gatherEntropy();
         // Make random memory segment
         return entropy.toSegment(64);
