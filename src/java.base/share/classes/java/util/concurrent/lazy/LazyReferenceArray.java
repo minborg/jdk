@@ -68,6 +68,9 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
     @Stable
     private final LazyReference<V>[] lazyReferences;
 
+    private final LazyReference<List<V>> listView
+            = LazyReference.of(() -> new ListView(null));
+
     // Todo: use an array of V and a bit-set (3 bits per element or perhaps an entire int)
     // Todo: Bit CAS granularity. Perhaps int[] or several arrays (@Stable and non-@Stable)
 
@@ -202,7 +205,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
     }
 
     /**
-     * Creates a new unmodifiable view of the elements in this LazyReferenceArray
+     * Returns an unmodifiable view of the elements in this LazyReferenceArray
      * where the empty elements will be replaced with {@code null}.
      * <p>
      * If a mapper has previously thrown an exception for an
@@ -212,11 +215,11 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * @return a view of the elements
      */
     public List<V> asList() {
-        return new ListView(null);
+        return listView.get();
     }
 
     /**
-     * Creates a new unmodifiable view of the elements in this LazyReferenceArray
+     * Returns an unmodifiable view of the elements in this LazyReferenceArray
      * where the empty elements will be replaced with the provided {@code defaulValue}.
      * <p>
      * If a mapper has previously thrown an exception for an
