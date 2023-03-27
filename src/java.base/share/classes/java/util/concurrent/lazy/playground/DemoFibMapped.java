@@ -11,6 +11,7 @@ public final class DemoFibMapped {
     // fib(11) = 89
     // n non-negative
     static int fibSchoolBook(int n) {
+        System.out.format("fibs: %3d%n", n);
         return (n <= 1)
                 ? n
                 : fibSchoolBook(n - 1) + fibSchoolBook(n - 2);
@@ -19,7 +20,9 @@ public final class DemoFibMapped {
     private static final int INTERVAL = 10; // Must be > 2
 
     private static final LazyReferenceArray<Integer> FIB_10_CACHE =
-            LazyReferenceArray.of(3, slot -> fib(slotToN(slot), false));
+            LazyReferenceArray.of(3);
+
+    private static final LazyReferenceArray.KeyMapper KEY_MAPPER = LazyReferenceArray.KeyMapper.ofConstant(INTERVAL);
 
     /**
      * Main method
@@ -28,14 +31,6 @@ public final class DemoFibMapped {
      * @throws InterruptedException if a thred was interrupted
      */
     public static void main(String[] args) throws InterruptedException {
-
-        /*
-        Thread.ofVirtual()
-                .name("Fib Lazy Resolver")
-                .start(() -> FIB_10_CACHE.force());
-        Thread.sleep(5000);
-        */
-
         System.out.println("fibScoolBook(11) = " + fibSchoolBook(11));
 
         System.out.println(FIB_10_CACHE);
@@ -43,44 +38,17 @@ public final class DemoFibMapped {
 
         System.out.println(FIB_10_CACHE);
         System.out.println("fib(11) = " + fib(11)); // 111 invocations
-
-        /*
-        FIB_10_CACHE.force();
-        System.out.println(FIB_10_CACHE);
-        // LazyReferenceArray[0, 55, 6765]
-        */
-
-        /*
-        var t = new Thread(() -> {
-            System.out.println("fib(11) = " + fib(11));
-        });
-        t.start();
-        t.join();
-        */
-    }
-
-    // Caching mapper slot -> outside
-    static int slotToN(int slot) {
-        return slot * INTERVAL;
-    }
-
-    // Caching mapper outside -> slot
-    static int nToSlot(int i) {
-        return i / INTERVAL;
     }
 
     // Only works for values up to ~30
-    static int fib(int n) {
-        return fib(n, true);
-    }
 
-    static int fib(int n, boolean useCache) {
-        System.out.format("%3d (%5s) : %s%n", n, useCache, Thread.currentThread().getName());
+    static int fib(int n) {
+        System.out.format("fib : %3d%n", n);
         if (n <= 1)
             return n;
-        if (n % INTERVAL == 0 && useCache)
-            return FIB_10_CACHE.apply(nToSlot(n));
-        return fib(n - 1, true) + fib(n - 2, true);
+        return FIB_10_CACHE.mapAndApply(KEY_MAPPER, n,
+                    DemoFibMapped::fibSchoolBook,
+                    DemoFibMapped::fibSchoolBook);
     }
 
     private DemoFibMapped() {
