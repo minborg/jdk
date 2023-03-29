@@ -155,6 +155,8 @@ public final class EmptyArrays {
      *
      * @param array for which a defensive copy should be returned.
      * @throws NullPointerException if the provided {@code array} is {@code null}.
+     *
+     * @since 21
      */
     public static byte[] defensiveCopy(byte[] array) {
         return array.length == 0
