@@ -145,14 +145,13 @@ public final class EmptyArrays {
         return (T[]) EMPTY_OBJECT_ARRAY;
     }
 
-
     /**
      * {@return an array that cannot be modified and with the same content as the provided {@code array}}.
      * <p>
      * If the provided {@code array} cannot be modified to begin with, the method is free to return the
      * provided {@code array} directly, otherwise a copy of the provided {@code array} is returned.
      * <p>
-     * Arrays of zero length and frozen arrays cannot be modified.
+     * Arrays of length zero and frozen arrays cannot be modified.
      *
      * @param array for which a defensive copy should be returned.
      * @throws NullPointerException if the provided {@code array} is {@code null}.
@@ -161,12 +160,6 @@ public final class EmptyArrays {
         return array.length == 0
                 ? array
                 : array.clone();
-    }
-
-    public static <T> T[] defensiveCopy(T array) {
-        if (!array.getClass().isArray()) {
-            throw new IllegalArgumentException("Not an array type:"+array);
-        }
     }
 
 }
