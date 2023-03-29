@@ -43,6 +43,7 @@ import javax.crypto.spec.PBEKeySpec;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import jdk.internal.ref.CleanerFactory;
+import jdk.internal.util.EmptyArrays;
 
 /**
  * This class represents a PBE key derived using PBKDF2 defined
@@ -91,7 +92,7 @@ final class PBKDF2KeyImpl implements javax.crypto.interfaces.PBEKey {
         char[] passwd = keySpec.getPassword();
         if (passwd == null) {
             // Should allow an empty password.
-            this.passwd = new char[0];
+            this.passwd = EmptyArrays.ofChars();
         } else {
             this.passwd = passwd.clone();
         }

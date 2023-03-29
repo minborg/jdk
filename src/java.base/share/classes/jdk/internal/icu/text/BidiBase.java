@@ -3531,7 +3531,7 @@ public class BidiBase {
             verifyRange(paraLevel, 0, MAX_EXPLICIT_LEVEL + 1);
         }
         if (chars == null) {
-            chars = new char[0];
+            chars = EmptyArrays.ofChars();
         }
 
         /* special treatment for RUNS_ONLY mode */

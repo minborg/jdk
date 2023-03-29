@@ -145,4 +145,6 @@ public final class EmptyArrays {
         return (T[]) OF_OBJECTS;
     }
 
+    public static byte[] copy()
+
 }

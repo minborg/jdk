@@ -47,8 +47,6 @@ import java.util.Objects;
  */
 public class DataInputStream extends FilterInputStream implements DataInput {
 
-    private static final char[] EMPTY_CHAR_ARRAY = new char[0];
-
     /**
      * Creates a DataInputStream that uses the specified
      * underlying InputStream.
@@ -65,7 +63,7 @@ public class DataInputStream extends FilterInputStream implements DataInput {
      * working arrays initialized on demand by readUTF
      */
     private byte[] bytearr = EmptyArrays.ofBytes();
-    private char[] chararr = EMPTY_CHAR_ARRAY;
+    private char[] chararr = EmptyArrays.ofChars();
 
     /**
      * Reads some number of bytes from the contained input stream and
