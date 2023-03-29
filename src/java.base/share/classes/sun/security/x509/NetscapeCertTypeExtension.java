@@ -27,6 +27,7 @@ package sun.security.x509;
 
 import java.io.IOException;
 
+import jdk.internal.util.EmptyArrays;
 import sun.security.util.*;
 
 /**
@@ -174,7 +175,7 @@ public class NetscapeCertTypeExtension extends Extension {
     public NetscapeCertTypeExtension() {
         extensionId = NetscapeCertType_Id;
         critical = true;
-        bitString = new boolean[0];
+        bitString = EmptyArrays.ofBooleans();
     }
 
     /**
