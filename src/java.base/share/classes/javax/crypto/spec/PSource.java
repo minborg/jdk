@@ -89,7 +89,7 @@ public class PSource {
         /**
          * The encoding input P whose value equals byte[0].
          */
-        public static final PSpecified DEFAULT = new PSpecified(EmptyArrays.ofBytes());
+        public static final PSpecified DEFAULT = new PSpecified(EmptyArrays.emptyByteArray());
 
         /**
          * Constructs the source explicitly with the specified

@@ -108,8 +108,8 @@ abstract class GaloisCounterMode extends CipherSpi {
     int keySize;
     // Prevent reuse of iv or key
     boolean reInit = false;
-    byte[] lastKey = EmptyArrays.ofBytes();
-    byte[] lastIv = EmptyArrays.ofBytes();
+    byte[] lastKey = EmptyArrays.emptyByteArray();
+    byte[] lastIv = EmptyArrays.emptyByteArray();
     byte[] iv = null;
     SecureRandom random = null;
 

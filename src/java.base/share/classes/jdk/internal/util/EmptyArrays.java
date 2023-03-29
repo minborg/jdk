@@ -5,23 +5,23 @@ package jdk.internal.util;
  */
 public final class EmptyArrays {
 
-    private static final byte[] OF_BYTES = new byte[0];
+    private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
-    private static final short[] OF_SHORTS = new short[0];
+    private static final short[] EMPTY_SHORT_ARRAY = new short[0];
 
-    private static final char[] OF_CHARS = new char[0];
+    private static final char[] EMPTY_CHAR_ARRAY = new char[0];
 
-    private static final boolean[] OF_BOOLEANS = new boolean[0];
+    private static final boolean[] EMPTY_BOOLEAN_ARRAY = new boolean[0];
 
-    private static final int[] OF_INTS = new int[0];
+    private static final int[] EMPTY_INT_ARRAY = new int[0];
 
-    private static final long[] OF_LONGS = new long[0];
+    private static final long[] EMPTY_LONG_ARRAY = new long[0];
 
-    private static final float[] OF_FLOATS = new float[0];
+    private static final float[] EMPTY_FLOAT_ARRAY = new float[0];
 
-    private static final double[] OF_DOUBLES = new double[0];
+    private static final double[] EMPTY_DOUBLE_ARRAY = new double[0];
 
-    private static final Object[] OF_OBJECTS = new Object[0];
+    private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
     private EmptyArrays() {}
 
@@ -34,8 +34,8 @@ public final class EmptyArrays {
      *
      * @since 21
      */
-    public static byte[] ofBytes() {
-        return OF_BYTES;
+    public static byte[] emptyByteArray() {
+        return EMPTY_BYTE_ARRAY;
     }
 
     /**
@@ -47,8 +47,8 @@ public final class EmptyArrays {
      *
      * @since 21
      */
-    public static short[] ofShorts() {
-        return OF_SHORTS;
+    public static short[] emptyShortArray() {
+        return EMPTY_SHORT_ARRAY;
     }
 
     /**
@@ -60,8 +60,8 @@ public final class EmptyArrays {
      *
      * @since 21
      */
-    public static char[] ofChars() {
-        return OF_CHARS;
+    public static char[] emptyCharArray() {
+        return EMPTY_CHAR_ARRAY;
     }
 
     /**
@@ -73,8 +73,8 @@ public final class EmptyArrays {
      *
      * @since 21
      */
-    public static boolean[] ofBooleans() {
-        return OF_BOOLEANS;
+    public static boolean[] emptyBooleanArray() {
+        return EMPTY_BOOLEAN_ARRAY;
     }
 
     /**
@@ -86,8 +86,8 @@ public final class EmptyArrays {
      *
      * @since 21
      */
-    public static int[] ofInts() {
-        return OF_INTS;
+    public static int[] emptyIntArray() {
+        return EMPTY_INT_ARRAY;
     }
 
     /**
@@ -99,8 +99,8 @@ public final class EmptyArrays {
      *
      * @since 21
      */
-    public static long[] ofLongs() {
-        return OF_LONGS;
+    public static long[] emptyLongArray() {
+        return EMPTY_LONG_ARRAY;
     }
 
     /**
@@ -112,8 +112,8 @@ public final class EmptyArrays {
      *
      * @since 21
      */
-    public static float[] ofFloats() {
-        return OF_FLOATS;
+    public static float[] emptyFloatArray() {
+        return EMPTY_FLOAT_ARRAY;
     }
 
     /**
@@ -125,8 +125,8 @@ public final class EmptyArrays {
      *
      * @since 21
      */
-    public static double[] ofDouble() {
-        return OF_DOUBLES;
+    public static double[] emptyDoubleArray() {
+        return EMPTY_DOUBLE_ARRAY;
     }
 
     /**
@@ -141,10 +141,32 @@ public final class EmptyArrays {
      * @since 21
      */
     @SuppressWarnings("unchecked")
-    public static <T> T[] ofObjects() {
-        return (T[]) OF_OBJECTS;
+    public static <T> T[] emptyObjectArray() {
+        return (T[]) EMPTY_OBJECT_ARRAY;
     }
 
-    public static byte[] copy()
+
+    /**
+     * {@return an array that cannot be modified and with the same content as the provided {@code array}}.
+     * <p>
+     * If the provided {@code array} cannot be modified to begin with, the method is free to return the
+     * provided {@code array} directly, otherwise a copy of the provided {@code array} is returned.
+     * <p>
+     * Arrays of zero length and frozen arrays cannot be modified.
+     *
+     * @param array for which a defensive copy should be returned.
+     * @throws NullPointerException if the provided {@code array} is {@code null}.
+     */
+    public static byte[] defensiveCopy(byte[] array) {
+        return array.length == 0
+                ? array
+                : array.clone();
+    }
+
+    public static <T> T[] defensiveCopy(T array) {
+        if (!array.getClass().isArray()) {
+            throw new IllegalArgumentException("Not an array type:"+array);
+        }
+    }
 
 }

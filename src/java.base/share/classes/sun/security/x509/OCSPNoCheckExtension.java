@@ -58,7 +58,7 @@ public class OCSPNoCheckExtension extends Extension {
     public OCSPNoCheckExtension() throws IOException {
         this.extensionId = PKIXExtensions.OCSPNoCheck_Id;
         this.critical = false;
-        this.extensionValue = EmptyArrays.ofBytes();
+        this.extensionValue = EmptyArrays.emptyByteArray();
     }
 
     /**
@@ -75,7 +75,7 @@ public class OCSPNoCheckExtension extends Extension {
         this.critical = critical.booleanValue();
 
         // the value should be null, just ignore it here.
-        this.extensionValue = EmptyArrays.ofBytes();
+        this.extensionValue = EmptyArrays.emptyByteArray();
     }
 
     /**

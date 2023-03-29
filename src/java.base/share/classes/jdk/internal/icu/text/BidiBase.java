@@ -1123,7 +1123,7 @@ public class BidiBase {
 
     /* fields for line reordering */
     int                 runCount;     /* ==-1: runs not set up yet */
-    BidiRun[]           runsMemory = EmptyArrays.ofObjects();
+    BidiRun[]           runsMemory = EmptyArrays.emptyObjectArray();
     BidiRun[]           runs;
 
     /* for non-mixed text, we only need a tiny array of runs (no allocation) */
@@ -3531,7 +3531,7 @@ public class BidiBase {
             verifyRange(paraLevel, 0, MAX_EXPLICIT_LEVEL + 1);
         }
         if (chars == null) {
-            chars = EmptyArrays.ofChars();
+            chars = EmptyArrays.emptyCharArray();
         }
 
         /* special treatment for RUNS_ONLY mode */
@@ -3551,9 +3551,9 @@ public class BidiBase {
         /* Allocate zero-length arrays instead of setting to null here; then
          * checks for null in various places can be eliminated.
          */
-        dirProps = EmptyArrays.ofBytes();
-        levels = EmptyArrays.ofBytes();
-        runs = EmptyArrays.ofObjects();
+        dirProps = EmptyArrays.emptyByteArray();
+        levels = EmptyArrays.emptyByteArray();
+        runs = EmptyArrays.emptyObjectArray();
         isGoodLogicalToVisualRunsMap = false;
         insertPoints.size = 0;          /* clean up from last call */
         insertPoints.confirmed = 0;     /* clean up from last call */

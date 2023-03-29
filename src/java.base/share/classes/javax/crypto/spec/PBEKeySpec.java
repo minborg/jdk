@@ -81,7 +81,7 @@ public class PBEKeySpec implements KeySpec {
      */
     public PBEKeySpec(char[] password) {
         if ((password == null) || (password.length == 0)) {
-            this.password = EmptyArrays.ofChars();
+            this.password = EmptyArrays.emptyCharArray();
         } else {
             this.password = password.clone();
         }
@@ -110,7 +110,7 @@ public class PBEKeySpec implements KeySpec {
     public PBEKeySpec(char[] password, byte[] salt, int iterationCount,
         int keyLength) {
         if ((password == null) || (password.length == 0)) {
-            this.password = EmptyArrays.ofChars();
+            this.password = EmptyArrays.emptyCharArray();
         } else {
             this.password = password.clone();
         }
@@ -152,7 +152,7 @@ public class PBEKeySpec implements KeySpec {
      */
     public PBEKeySpec(char[] password, byte[] salt, int iterationCount) {
         if ((password == null) || (password.length == 0)) {
-            this.password = EmptyArrays.ofChars();
+            this.password = EmptyArrays.emptyCharArray();
         } else {
             this.password = password.clone();
         }

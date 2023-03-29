@@ -168,7 +168,7 @@ public class KeyUsageExtension extends Extension {
     public KeyUsageExtension() {
         extensionId = PKIXExtensions.KeyUsage_Id;
         critical = true;
-        bitString = EmptyArrays.ofBooleans();
+        bitString = EmptyArrays.emptyBooleanArray();
     }
 
     /**

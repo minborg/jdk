@@ -798,7 +798,7 @@ final class CertificateRequest {
                 HandshakeContext handshakeContext) {
             super(handshakeContext);
 
-            this.requestContext = EmptyArrays.ofBytes();
+            this.requestContext = EmptyArrays.emptyByteArray();
             this.extensions = new SSLExtensions(this);
         }
 

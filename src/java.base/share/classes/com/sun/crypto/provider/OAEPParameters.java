@@ -142,7 +142,7 @@ public final class OAEPParameters extends AlgorithmParametersSpi {
 
             p = DerValue.wrap(encodedParams).getOctetString();
         } else {
-            p = EmptyArrays.ofBytes();
+            p = EmptyArrays.emptyByteArray();
         }
         der.atEnd();
     }

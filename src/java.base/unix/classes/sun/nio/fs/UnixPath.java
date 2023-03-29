@@ -227,7 +227,7 @@ class UnixPath implements Path {
 
     // returns an empty path
     private UnixPath emptyPath() {
-        return new UnixPath(getFileSystem(), EmptyArrays.ofBytes());
+        return new UnixPath(getFileSystem(), EmptyArrays.emptyByteArray());
     }
 
 

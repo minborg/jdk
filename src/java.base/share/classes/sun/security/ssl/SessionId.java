@@ -47,7 +47,7 @@ final class SessionId {
         if (isRejoinable && (generator != null)) {
             sessionId = new RandomCookie(generator).randomBytes;
         } else {
-            sessionId = EmptyArrays.ofBytes();
+            sessionId = EmptyArrays.emptyByteArray();
         }
     }
 

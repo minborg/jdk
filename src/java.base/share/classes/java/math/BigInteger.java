@@ -45,6 +45,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import jdk.internal.math.DoubleConsts;
 import jdk.internal.math.FloatConsts;
+import jdk.internal.util.EmptyArrays;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.IntrinsicCandidate;
 import jdk.internal.vm.annotation.Stable;
@@ -1294,7 +1295,7 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
      *
      * @since   1.2
      */
-    public static final BigInteger ZERO = new BigInteger(new int[0], 0);
+    public static final BigInteger ZERO = new BigInteger(EmptyArrays.emptyIntArray(), 0);
 
     /**
      * The BigInteger constant one.

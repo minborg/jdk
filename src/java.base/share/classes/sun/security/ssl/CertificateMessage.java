@@ -988,7 +988,7 @@ final class CertificateMessage {
             shc.handshakeSession.setLocalCertificates(localCerts);
             T13CertificateMessage cm;
             try {
-                cm = new T13CertificateMessage(shc, EmptyArrays.ofBytes(), localCerts);
+                cm = new T13CertificateMessage(shc, EmptyArrays.emptyByteArray(), localCerts);
             } catch (SSLException | CertificateException ce) {
                 throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Failed to produce server Certificate message", ce);

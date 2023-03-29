@@ -62,7 +62,7 @@ final class NewSessionTicket {
      */
     abstract static class NewSessionTicketMessage extends HandshakeMessage {
         int ticketLifetime;
-        byte[] ticket = EmptyArrays.ofBytes();
+        byte[] ticket = EmptyArrays.emptyByteArray();
 
         NewSessionTicketMessage(HandshakeContext context) {
             super(context);

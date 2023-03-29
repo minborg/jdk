@@ -175,7 +175,7 @@ public class NetscapeCertTypeExtension extends Extension {
     public NetscapeCertTypeExtension() {
         extensionId = NetscapeCertType_Id;
         critical = true;
-        bitString = EmptyArrays.ofBooleans();
+        bitString = EmptyArrays.emptyBooleanArray();
     }
 
     /**

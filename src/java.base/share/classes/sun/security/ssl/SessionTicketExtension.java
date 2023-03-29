@@ -173,7 +173,7 @@ final class SessionTicketExtension {
     static final class SessionTicketSpec implements SSLExtensionSpec {
         private static final int GCM_TAG_LEN = 128;
         ByteBuffer data;
-        static final ByteBuffer zero = ByteBuffer.wrap(EmptyArrays.ofBytes());
+        static final ByteBuffer zero = ByteBuffer.wrap(EmptyArrays.emptyByteArray());
 
         SessionTicketSpec() {
             data = zero;

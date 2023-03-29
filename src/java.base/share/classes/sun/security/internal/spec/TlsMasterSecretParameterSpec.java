@@ -85,7 +85,7 @@ public class TlsMasterSecretParameterSpec implements AlgorithmParameterSpec {
             String prfHashAlg, int prfHashLength, int prfBlockSize) {
         this(premasterSecret, majorVersion, minorVersion,
                 clientRandom, serverRandom,
-                EmptyArrays.ofBytes(),
+                EmptyArrays.emptyByteArray(),
                 prfHashAlg, prfHashLength, prfBlockSize);
     }
 
@@ -117,7 +117,7 @@ public class TlsMasterSecretParameterSpec implements AlgorithmParameterSpec {
             byte[] extendedMasterSecretSessionHash,
             String prfHashAlg, int prfHashLength, int prfBlockSize) {
         this(premasterSecret, majorVersion, minorVersion,
-                EmptyArrays.ofBytes(), EmptyArrays.ofBytes(),
+                EmptyArrays.emptyByteArray(), EmptyArrays.emptyByteArray(),
                 extendedMasterSecretSessionHash,
                 prfHashAlg, prfHashLength, prfBlockSize);
     }
@@ -137,7 +137,7 @@ public class TlsMasterSecretParameterSpec implements AlgorithmParameterSpec {
         this.serverRandom = serverRandom.clone();
         this.extendedMasterSecretSessionHash =
                 (extendedMasterSecretSessionHash != null ?
-                        extendedMasterSecretSessionHash.clone() : EmptyArrays.ofBytes());
+                        extendedMasterSecretSessionHash.clone() : EmptyArrays.emptyByteArray());
         this.prfHashAlg = prfHashAlg;
         this.prfHashLength = prfHashLength;
         this.prfBlockSize = prfBlockSize;

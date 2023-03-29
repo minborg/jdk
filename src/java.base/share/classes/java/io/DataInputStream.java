@@ -62,8 +62,8 @@ public class DataInputStream extends FilterInputStream implements DataInput {
     /**
      * working arrays initialized on demand by readUTF
      */
-    private byte[] bytearr = EmptyArrays.ofBytes();
-    private char[] chararr = EmptyArrays.ofChars();
+    private byte[] bytearr = EmptyArrays.emptyByteArray();
+    private char[] chararr = EmptyArrays.emptyCharArray();
 
     /**
      * Reads some number of bytes from the contained input stream and

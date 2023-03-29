@@ -85,7 +85,7 @@ final class ECDHClientKeyExchange {
             if (m.remaining() != 0) {       // explicit PublicValueEncoding
                 this.encodedPoint = Record.getBytes8(m);
             } else {
-                this.encodedPoint = EmptyArrays.ofBytes();
+                this.encodedPoint = EmptyArrays.emptyByteArray();
             }
         }
 

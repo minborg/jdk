@@ -90,7 +90,7 @@ final class ClientHello {
             this.clientRandom = new RandomCookie(generator);
             this.sessionId = sessionId;
             if (isDTLS) {
-                this.cookie = EmptyArrays.ofBytes();
+                this.cookie = EmptyArrays.emptyByteArray();
             } else {
                 this.cookie = null;
             }
@@ -404,7 +404,7 @@ final class ClientHello {
             chc.handshakeProducers.remove(SSLHandshake.CLIENT_HELLO.id);
 
             // session ID of the ClientHello message
-            SessionId sessionId = new SessionId(EmptyArrays.ofBytes());
+            SessionId sessionId = new SessionId(EmptyArrays.emptyByteArray());
 
             // a list of cipher suites sent by the client
             List<CipherSuite> cipherSuites = chc.activeCipherSuites;

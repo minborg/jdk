@@ -88,7 +88,7 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
      * This no-arg constructor is necessary for serialization of subclasses.
      */
     AbstractStringBuilder() {
-        value = EmptyArrays.ofBytes();
+        value = EmptyArrays.emptyByteArray();
     }
 
     /**
