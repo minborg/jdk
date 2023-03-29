@@ -26,6 +26,7 @@
 package java.security;
 
 import jdk.internal.event.SecurityProviderServiceEvent;
+import jdk.internal.util.EmptyArrays;
 
 import java.io.*;
 import java.util.*;
@@ -1931,7 +1932,7 @@ public abstract class Provider extends Properties {
 
         private Object newInstanceOf() throws Exception {
             Constructor<?> con = getDefaultConstructor();
-            return con.newInstance(EMPTY);
+            return con.newInstance(EmptyArrays.emptyObjectArray());
         }
 
         private Object newInstanceUtil(Class<?> ctrParamClz, Object ctorParamObj)

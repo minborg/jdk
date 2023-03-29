@@ -53,6 +53,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.util.EmptyArrays;
 
 /**
  * A thread-safe variant of {@link java.util.ArrayList} in which all mutative
@@ -123,7 +124,7 @@ public class CopyOnWriteArrayList<E>
      * Creates an empty list.
      */
     public CopyOnWriteArrayList() {
-        setArray(new Object[0]);
+        setArray(EmptyArrays.emptyObjectArray());
     }
 
     /**
@@ -720,7 +721,7 @@ public class CopyOnWriteArrayList<E>
      */
     public void clear() {
         synchronized (lock) {
-            setArray(new Object[0]);
+            setArray(EmptyArrays.emptyObjectArray());
         }
     }
 

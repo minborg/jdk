@@ -26,6 +26,7 @@
 package java.lang.invoke;
 
 import jdk.internal.perf.PerfCounter;
+import jdk.internal.util.EmptyArrays;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.Hidden;
 import jdk.internal.vm.annotation.Stable;
@@ -1338,8 +1339,6 @@ class LambdaForm {
         final Object constraint;  // additional type information, if not null
         @Stable final Object[] arguments;
 
-        private static final Object[] EMPTY_ARGS = new Object[0];
-
         private Name(int index, BasicType type, NamedFunction function, Object[] arguments) {
             this.index = (short)index;
             this.type = type;
@@ -1368,7 +1367,7 @@ class LambdaForm {
             this(new NamedFunction(function), arguments);
         }
         Name(NamedFunction function) {
-            this(-1, function.returnType(), function, EMPTY_ARGS);
+            this(-1, function.returnType(), function, EmptyArrays.emptyObjectArray());
         }
         Name(NamedFunction function, Object arg) {
             this(-1, function.returnType(), function, new Object[] { arg });

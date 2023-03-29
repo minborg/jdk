@@ -26,6 +26,7 @@ package jdk.internal.foreign.abi;
 
 import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.util.EmptyArrays;
 import sun.security.action.GetPropertyAction;
 
 import java.lang.foreign.MemorySegment;
@@ -51,7 +52,7 @@ public class DowncallLinker {
 
     private static final MethodHandle MH_INVOKE_INTERP_BINDINGS;
     private static final MethodHandle MH_CHECK_SYMBOL;
-    private static final MethodHandle EMPTY_OBJECT_ARRAY_HANDLE = MethodHandles.constant(Object[].class, new Object[0]);
+    private static final MethodHandle EMPTY_OBJECT_ARRAY_HANDLE = MethodHandles.constant(Object[].class, EmptyArrays.emptyObjectArray());
 
     static {
         try {

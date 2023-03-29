@@ -39,6 +39,7 @@ import java.util.function.UnaryOperator;
 import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.CDS;
+import jdk.internal.util.EmptyArrays;
 import jdk.internal.vm.annotation.Stable;
 
 /**
@@ -102,8 +103,8 @@ class ImmutableCollections {
         CDS.initializeFromArchive(ImmutableCollections.class);
         if (archivedObjects == null) {
             EMPTY = new Object();
-            EMPTY_LIST = new ListN<>(new Object[0], false);
-            EMPTY_LIST_NULLS = new ListN<>(new Object[0], true);
+            EMPTY_LIST = new ListN<>(EmptyArrays.emptyObjectArray(), false);
+            EMPTY_LIST_NULLS = new ListN<>(EmptyArrays.emptyObjectArray(), true);
             EMPTY_SET = new SetN<>();
             EMPTY_MAP = new MapN<>();
             archivedObjects =

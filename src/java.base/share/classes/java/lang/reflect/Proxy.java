@@ -55,6 +55,7 @@ import jdk.internal.misc.VM;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.util.EmptyArrays;
 import jdk.internal.vm.annotation.Stable;
 import sun.reflect.misc.ReflectUtil;
 import sun.security.action.GetPropertyAction;
@@ -1166,8 +1167,6 @@ public class Proxy implements java.io.Serializable {
         return DEFAULT_METHODS_MAP.get(proxyClass);
     }
 
-    static final Object[] EMPTY_ARGS = new Object[0];
-
     static MethodHandle defaultMethodHandle(Class<? extends Proxy> proxyClass, Method method) {
         // lookup the cached method handle
         ConcurrentHashMap<Method, MethodHandle> methods = defaultMethodMap(proxyClass);
@@ -1341,7 +1340,7 @@ public class Proxy implements java.io.Serializable {
         try {
             // the args array can be null if the number of formal parameters required by
             // the method is zero (consistent with Method::invoke)
-            Object[] params = args != null ? args : Proxy.EMPTY_ARGS;
+            Object[] params = args != null ? args : EmptyArrays.emptyObjectArray();
             return mh.invokeExact(proxy, params);
         } catch (ClassCastException | NullPointerException e) {
             throw new IllegalArgumentException(e.getMessage(), e);

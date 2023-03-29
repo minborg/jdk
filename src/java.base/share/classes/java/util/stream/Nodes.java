@@ -634,7 +634,7 @@ final class Nodes {
 
             @Override
             public double[] asPrimitiveArray() {
-                return EMPTY_DOUBLE_ARRAY;
+                return EmptyArrays.emptyDoubleArray();
             }
         }
     }
@@ -1315,8 +1315,6 @@ final class Nodes {
     }
 
     //
-
-    private static final double[] EMPTY_DOUBLE_ARRAY = new double[0];
 
     private static class IntArrayNode implements Node.OfInt {
         final int[] array;
