@@ -40,6 +40,8 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.nio.channels.spi.AbstractInterruptibleChannel;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+
+import jdk.internal.util.EmptyArrays;
 import sun.nio.cs.StreamDecoder;
 import sun.nio.cs.StreamEncoder;
 
@@ -284,7 +286,7 @@ public final class Channels {
     {
         private final InputStream in;
         private static final int TRANSFER_SIZE = 8192;
-        private byte[] buf = new byte[0];
+        private byte[] buf = EmptyArrays.ofBytes();
         private final Object readLock = new Object();
 
         ReadableByteChannelImpl(InputStream in) {
@@ -365,7 +367,7 @@ public final class Channels {
     {
         private final OutputStream out;
         private static final int TRANSFER_SIZE = 8192;
-        private byte[] buf = new byte[0];
+        private byte[] buf = EmptyArrays.ofBytes();
         private final Object writeLock = new Object();
 
         WritableByteChannelImpl(OutputStream out) {

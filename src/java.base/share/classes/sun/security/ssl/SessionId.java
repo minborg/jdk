@@ -25,6 +25,8 @@
 
 package sun.security.ssl;
 
+import jdk.internal.util.EmptyArrays;
+
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -45,7 +47,7 @@ final class SessionId {
         if (isRejoinable && (generator != null)) {
             sessionId = new RandomCookie(generator).randomBytes;
         } else {
-            sessionId = new byte[0];
+            sessionId = EmptyArrays.ofBytes();
         }
     }
 

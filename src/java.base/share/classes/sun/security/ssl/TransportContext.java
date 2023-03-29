@@ -152,8 +152,8 @@ final class TransportContext implements ConnectionContext {
         // initial security parameters
         this.conSession = new SSLSessionImpl();
         this.protocolVersion = this.sslConfig.maximumProtocolVersion;
-        this.clientVerifyData = EmptyArrays.ofByte();
-        this.serverVerifyData = EmptyArrays.ofByte();
+        this.clientVerifyData = EmptyArrays.ofBytes();
+        this.serverVerifyData = EmptyArrays.ofBytes();
 
         this.acc = AccessController.getContext();
         this.consumers = new HashMap<>();

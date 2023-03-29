@@ -604,7 +604,7 @@ public abstract class UnixFileSystemProvider
     public byte[] getSunPathForSocketFile(Path obj) {
         UnixPath file = UnixPath.toUnixPath(obj);
         if (file.isEmpty()) {
-            return EmptyArrays.ofByte();
+            return new byte[0];
         }
         return file.getByteArrayForSysCalls();
     }

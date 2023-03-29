@@ -41,6 +41,7 @@ import java.util.Objects;
 
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.util.EmptyArrays;
 
 import static sun.nio.fs.UnixConstants.*;
 import static sun.nio.fs.UnixNativeDispatcher.*;
@@ -226,7 +227,7 @@ class UnixPath implements Path {
 
     // returns an empty path
     private UnixPath emptyPath() {
-        return new UnixPath(getFileSystem(), new byte[0]);
+        return new UnixPath(getFileSystem(), EmptyArrays.ofBytes());
     }
 
 

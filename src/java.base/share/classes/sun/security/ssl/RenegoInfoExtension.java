@@ -32,6 +32,8 @@ import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Locale;
 import javax.net.ssl.SSLProtocolException;
+
+import jdk.internal.util.EmptyArrays;
 import sun.security.ssl.ClientHello.ClientHelloMessage;
 import static sun.security.ssl.SSLExtension.CH_RENEGOTIATION_INFO;
 import sun.security.ssl.SSLExtension.ExtensionConsumer;
@@ -67,7 +69,7 @@ final class RenegoInfoExtension {
     static final class RenegotiationInfoSpec implements SSLExtensionSpec {
         // A nominal object that does not hold any real renegotiation info.
         static final RenegotiationInfoSpec NOMINAL =
-                new RenegotiationInfoSpec(new byte[0]);
+                new RenegotiationInfoSpec(EmptyArrays.ofBytes());
 
         private final byte[] renegotiatedConnection;
 

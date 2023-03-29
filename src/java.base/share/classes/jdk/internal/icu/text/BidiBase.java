@@ -56,6 +56,7 @@ import jdk.internal.access.JavaAWTFontAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.icu.lang.UCharacter;
 import jdk.internal.icu.impl.UBiDiProps;
+import jdk.internal.util.EmptyArrays;
 
 /**
  *
@@ -1122,7 +1123,7 @@ public class BidiBase {
 
     /* fields for line reordering */
     int                 runCount;     /* ==-1: runs not set up yet */
-    BidiRun[]           runsMemory = new BidiRun[0];
+    BidiRun[]           runsMemory = EmptyArrays.ofObjects();
     BidiRun[]           runs;
 
     /* for non-mixed text, we only need a tiny array of runs (no allocation) */
@@ -3550,9 +3551,9 @@ public class BidiBase {
         /* Allocate zero-length arrays instead of setting to null here; then
          * checks for null in various places can be eliminated.
          */
-        dirProps = new byte[0];
-        levels = new byte[0];
-        runs = new BidiRun[0];
+        dirProps = EmptyArrays.ofBytes();
+        levels = EmptyArrays.ofBytes();
+        runs = EmptyArrays.ofObjects();
         isGoodLogicalToVisualRunsMap = false;
         insertPoints.size = 0;          /* clean up from last call */
         insertPoints.confirmed = 0;     /* clean up from last call */

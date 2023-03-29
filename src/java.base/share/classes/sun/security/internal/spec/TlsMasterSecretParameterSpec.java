@@ -25,6 +25,8 @@
 
 package sun.security.internal.spec;
 
+import jdk.internal.util.EmptyArrays;
+
 import java.security.spec.AlgorithmParameterSpec;
 
 import javax.crypto.SecretKey;
@@ -83,7 +85,7 @@ public class TlsMasterSecretParameterSpec implements AlgorithmParameterSpec {
             String prfHashAlg, int prfHashLength, int prfBlockSize) {
         this(premasterSecret, majorVersion, minorVersion,
                 clientRandom, serverRandom,
-                new byte[0],
+                EmptyArrays.ofBytes(),
                 prfHashAlg, prfHashLength, prfBlockSize);
     }
 
@@ -115,7 +117,7 @@ public class TlsMasterSecretParameterSpec implements AlgorithmParameterSpec {
             byte[] extendedMasterSecretSessionHash,
             String prfHashAlg, int prfHashLength, int prfBlockSize) {
         this(premasterSecret, majorVersion, minorVersion,
-                new byte[0], new byte[0],
+                EmptyArrays.ofBytes(), EmptyArrays.ofBytes(),
                 extendedMasterSecretSessionHash,
                 prfHashAlg, prfHashLength, prfBlockSize);
     }
@@ -135,7 +137,7 @@ public class TlsMasterSecretParameterSpec implements AlgorithmParameterSpec {
         this.serverRandom = serverRandom.clone();
         this.extendedMasterSecretSessionHash =
                 (extendedMasterSecretSessionHash != null ?
-                        extendedMasterSecretSessionHash.clone() : new byte[0]);
+                        extendedMasterSecretSessionHash.clone() : EmptyArrays.ofBytes());
         this.prfHashAlg = prfHashAlg;
         this.prfHashLength = prfHashLength;
         this.prfBlockSize = prfBlockSize;

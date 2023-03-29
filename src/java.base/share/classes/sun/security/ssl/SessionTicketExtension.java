@@ -41,6 +41,7 @@ import javax.net.ssl.SSLSessionContext;
 import static sun.security.ssl.SSLExtension.CH_SESSION_TICKET;
 import static sun.security.ssl.SSLExtension.SH_SESSION_TICKET;
 
+import jdk.internal.util.EmptyArrays;
 import sun.security.action.GetPropertyAction;
 import sun.security.ssl.SSLExtension.ExtensionConsumer;
 import sun.security.ssl.SSLExtension.SSLExtensionSpec;
@@ -172,7 +173,7 @@ final class SessionTicketExtension {
     static final class SessionTicketSpec implements SSLExtensionSpec {
         private static final int GCM_TAG_LEN = 128;
         ByteBuffer data;
-        static final ByteBuffer zero = ByteBuffer.wrap(new byte[0]);
+        static final ByteBuffer zero = ByteBuffer.wrap(EmptyArrays.ofBytes());
 
         SessionTicketSpec() {
             data = zero;

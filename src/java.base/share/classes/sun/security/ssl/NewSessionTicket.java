@@ -33,6 +33,8 @@ import java.text.MessageFormat;
 import java.util.Locale;
 import javax.crypto.SecretKey;
 import javax.net.ssl.SSLHandshakeException;
+
+import jdk.internal.util.EmptyArrays;
 import sun.security.ssl.PskKeyExchangeModesExtension.PskKeyExchangeMode;
 import sun.security.ssl.PskKeyExchangeModesExtension.PskKeyExchangeModesSpec;
 import sun.security.ssl.SessionTicketExtension.SessionTicketSpec;
@@ -60,7 +62,7 @@ final class NewSessionTicket {
      */
     abstract static class NewSessionTicketMessage extends HandshakeMessage {
         int ticketLifetime;
-        byte[] ticket = new byte[0];
+        byte[] ticket = EmptyArrays.ofBytes();
 
         NewSessionTicketMessage(HandshakeContext context) {
             super(context);

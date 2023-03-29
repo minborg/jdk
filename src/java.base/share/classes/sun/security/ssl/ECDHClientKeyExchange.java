@@ -39,6 +39,8 @@ import java.text.MessageFormat;
 import java.util.EnumSet;
 import java.util.Locale;
 import javax.crypto.SecretKey;
+
+import jdk.internal.util.EmptyArrays;
 import sun.security.ssl.SSLHandshake.HandshakeMessage;
 import sun.security.ssl.X509Authentication.X509Credentials;
 import sun.security.ssl.X509Authentication.X509Possession;
@@ -83,7 +85,7 @@ final class ECDHClientKeyExchange {
             if (m.remaining() != 0) {       // explicit PublicValueEncoding
                 this.encodedPoint = Record.getBytes8(m);
             } else {
-                this.encodedPoint = new byte[0];
+                this.encodedPoint = EmptyArrays.ofBytes();
             }
         }
 

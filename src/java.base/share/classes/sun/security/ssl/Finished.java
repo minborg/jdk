@@ -339,7 +339,7 @@ final class Finished {
                     context.baseReadSecret : context.baseWriteSecret;
             SSLBasicKeyDerivation kdf = new SSLBasicKeyDerivation(
                     secret, hashAlg.name,
-                    hkdfLabel, EmptyArrays.ofByte(), hashAlg.hashLength);
+                    hkdfLabel, EmptyArrays.ofBytes(), hashAlg.hashLength);
             AlgorithmParameterSpec keySpec =
                     new SecretSizeSpec(hashAlg.hashLength);
             SecretKey finishedSecret =

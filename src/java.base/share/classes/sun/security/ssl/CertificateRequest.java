@@ -35,6 +35,8 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.X509ExtendedKeyManager;
 import javax.security.auth.x500.X500Principal;
+
+import jdk.internal.util.EmptyArrays;
 import sun.security.ssl.CipherSuite.KeyExchange;
 import sun.security.ssl.SSLHandshake.HandshakeMessage;
 import sun.security.ssl.X509Authentication.X509Possession;
@@ -796,7 +798,7 @@ final class CertificateRequest {
                 HandshakeContext handshakeContext) {
             super(handshakeContext);
 
-            this.requestContext = new byte[0];
+            this.requestContext = EmptyArrays.ofBytes();
             this.extensions = new SSLExtensions(this);
         }
 

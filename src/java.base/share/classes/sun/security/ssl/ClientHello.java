@@ -36,6 +36,8 @@ import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLProtocolException;
 import static sun.security.ssl.ClientAuthType.CLIENT_AUTH_REQUIRED;
+
+import jdk.internal.util.EmptyArrays;
 import sun.security.ssl.SSLHandshake.HandshakeMessage;
 import sun.security.ssl.SupportedVersionsExtension.CHSupportedVersionsSpec;
 
@@ -88,7 +90,7 @@ final class ClientHello {
             this.clientRandom = new RandomCookie(generator);
             this.sessionId = sessionId;
             if (isDTLS) {
-                this.cookie = new byte[0];
+                this.cookie = EmptyArrays.ofBytes();
             } else {
                 this.cookie = null;
             }
@@ -402,7 +404,7 @@ final class ClientHello {
             chc.handshakeProducers.remove(SSLHandshake.CLIENT_HELLO.id);
 
             // session ID of the ClientHello message
-            SessionId sessionId = new SessionId(new byte[0]);
+            SessionId sessionId = new SessionId(EmptyArrays.ofBytes());
 
             // a list of cipher suites sent by the client
             List<CipherSuite> cipherSuites = chc.activeCipherSuites;

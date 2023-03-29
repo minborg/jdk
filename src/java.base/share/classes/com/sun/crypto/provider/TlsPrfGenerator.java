@@ -35,7 +35,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 
-import jdk.internal.util.EmptyArrays;
 import sun.security.internal.spec.TlsPrfParameterSpec;
 
 /**
@@ -193,7 +192,7 @@ abstract class TlsPrfGenerator extends KeyGeneratorSpi {
             throws DigestException {
 
         if (secret == null) {
-            secret = EmptyArrays.ofByte();
+            secret = new byte[0];
         }
 
         // If we have a long secret, digest it first.
@@ -250,7 +249,7 @@ abstract class TlsPrfGenerator extends KeyGeneratorSpi {
          */
 
         if (secret == null) {
-            secret = EmptyArrays.ofByte();
+            secret = new byte[0];
         }
         int off = secret.length >> 1;
         int seclen = off + (secret.length & 1);

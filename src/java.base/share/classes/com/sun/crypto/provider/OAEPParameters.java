@@ -27,6 +27,8 @@ package com.sun.crypto.provider;
 
 import java.math.BigInteger;
 import java.io.*;
+
+import jdk.internal.util.EmptyArrays;
 import sun.security.util.*;
 import sun.security.x509.*;
 import java.security.AlgorithmParametersSpi;
@@ -140,7 +142,7 @@ public final class OAEPParameters extends AlgorithmParametersSpi {
 
             p = DerValue.wrap(encodedParams).getOctetString();
         } else {
-            p = new byte[0];
+            p = EmptyArrays.ofBytes();
         }
         der.atEnd();
     }

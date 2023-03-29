@@ -108,8 +108,8 @@ abstract class GaloisCounterMode extends CipherSpi {
     int keySize;
     // Prevent reuse of iv or key
     boolean reInit = false;
-    byte[] lastKey = EmptyArrays.ofByte();
-    byte[] lastIv = EmptyArrays.ofByte();
+    byte[] lastKey = EmptyArrays.ofBytes();
+    byte[] lastIv = EmptyArrays.ofBytes();
     byte[] iv = null;
     SecureRandom random = null;
 
@@ -401,7 +401,7 @@ abstract class GaloisCounterMode extends CipherSpi {
     protected byte[] engineDoFinal(byte[] input, int inputOffset,
         int inputLen) throws IllegalBlockSizeException, BadPaddingException {
         if (input == null) {
-            input = EmptyArrays.ofByte();
+            input = new byte[0];
         }
         try {
             ArrayUtil.nullAndBoundsCheck(input, inputOffset, inputLen);
@@ -429,7 +429,7 @@ abstract class GaloisCounterMode extends CipherSpi {
         IllegalBlockSizeException, BadPaddingException {
 
         if (input == null) {
-            input = EmptyArrays.ofByte();
+            input = new byte[0];
         }
         try {
             ArrayUtil.nullAndBoundsCheck(input, inputOffset, inputLen);
