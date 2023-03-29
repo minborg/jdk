@@ -34,6 +34,7 @@ import java.util.Spliterator;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 import jdk.internal.util.ArraysSupport;
+import jdk.internal.util.EmptyArrays;
 import jdk.internal.util.Preconditions;
 
 import static java.lang.String.COMPACT_STRINGS;
@@ -83,13 +84,11 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
      */
     int count;
 
-    private static final byte[] EMPTYVALUE = new byte[0];
-
     /**
      * This no-arg constructor is necessary for serialization of subclasses.
      */
     AbstractStringBuilder() {
-        value = EMPTYVALUE;
+        value = EmptyArrays.ofByte();
     }
 
     /**

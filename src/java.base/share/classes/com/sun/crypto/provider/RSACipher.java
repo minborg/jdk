@@ -38,6 +38,7 @@ import javax.crypto.*;
 import javax.crypto.spec.PSource;
 import javax.crypto.spec.OAEPParameterSpec;
 
+import jdk.internal.util.EmptyArrays;
 import sun.security.rsa.*;
 import sun.security.jca.Providers;
 import sun.security.internal.spec.TlsRsaPremasterSecretParameterSpec;
@@ -67,9 +68,6 @@ import sun.security.util.KeyUtil;
  * @author  Andreas Sterbenz
  */
 public final class RSACipher extends CipherSpi {
-
-    // constant for an empty byte array
-    private static final byte[] B0 = new byte[0];
 
     // mode constant for public key encryption
     private static final int MODE_ENCRYPT = 1;
@@ -383,7 +381,7 @@ public final class RSACipher extends CipherSpi {
     // see JCE spec
     protected byte[] engineUpdate(byte[] in, int inOfs, int inLen) {
         update(in, inOfs, inLen);
-        return B0;
+        return EmptyArrays.ofByte();
     }
 
     // see JCE spec

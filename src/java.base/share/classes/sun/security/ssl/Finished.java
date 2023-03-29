@@ -44,6 +44,7 @@ import javax.net.ssl.SSLPeerUnverifiedException;
 
 import jdk.internal.event.EventHelper;
 import jdk.internal.event.TLSHandshakeEvent;
+import jdk.internal.util.EmptyArrays;
 import sun.security.internal.spec.TlsPrfParameterSpec;
 import sun.security.ssl.CipherSuite.HashAlg;
 import static sun.security.ssl.CipherSuite.HashAlg.H_NONE;
@@ -327,7 +328,6 @@ final class Finished {
     private static final
             class T13VerifyDataGenerator implements VerifyDataGenerator {
         private static final byte[] hkdfLabel = "tls13 finished".getBytes();
-        private static final byte[] hkdfContext = new byte[0];
 
         @Override
         public byte[] createVerifyData(HandshakeContext context,
@@ -339,7 +339,7 @@ final class Finished {
                     context.baseReadSecret : context.baseWriteSecret;
             SSLBasicKeyDerivation kdf = new SSLBasicKeyDerivation(
                     secret, hashAlg.name,
-                    hkdfLabel, hkdfContext, hashAlg.hashLength);
+                    hkdfLabel, EmptyArrays.ofByte(), hashAlg.hashLength);
             AlgorithmParameterSpec keySpec =
                     new SecretSizeSpec(hashAlg.hashLength);
             SecretKey finishedSecret =

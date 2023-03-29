@@ -25,6 +25,8 @@
 
 package sun.security.ssl;
 
+import jdk.internal.util.EmptyArrays;
+
 import java.io.IOException;
 import java.net.SocketException;
 import java.security.AccessControlContext;
@@ -99,7 +101,6 @@ final class TransportContext implements ConnectionContext {
     List<NamedGroup>                serverRequestedNamedGroups;
 
     CipherSuite cipherSuite;
-    private static final byte[] emptyByteArray = new byte[0];
 
     // Please never use the transport parameter other than storing a
     // reference to this object.
@@ -151,8 +152,8 @@ final class TransportContext implements ConnectionContext {
         // initial security parameters
         this.conSession = new SSLSessionImpl();
         this.protocolVersion = this.sslConfig.maximumProtocolVersion;
-        this.clientVerifyData = emptyByteArray;
-        this.serverVerifyData = emptyByteArray;
+        this.clientVerifyData = EmptyArrays.ofByte();
+        this.serverVerifyData = EmptyArrays.ofByte();
 
         this.acc = AccessController.getContext();
         this.consumers = new HashMap<>();

@@ -33,6 +33,8 @@ import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.io.*;
 import java.util.*;
+
+import jdk.internal.util.EmptyArrays;
 import jdk.internal.util.StaticProperty;
 import sun.nio.ch.ThreadPool;
 import sun.security.util.SecurityConstants;
@@ -44,8 +46,6 @@ import static sun.nio.fs.WindowsConstants.*;
 class WindowsFileSystemProvider
     extends AbstractFileSystemProvider
 {
-    private static final byte[] EMPTY_PATH = new byte[0];
-
     private final WindowsFileSystem theFileSystem;
 
     public WindowsFileSystemProvider() {
@@ -651,7 +651,7 @@ class WindowsFileSystemProvider
     public byte[] getSunPathForSocketFile(Path obj) {
         WindowsPath file = WindowsPath.toWindowsPath(obj);
         String s = file.toString();
-        return s.isEmpty() ? EMPTY_PATH : s.getBytes(StandardCharsets.UTF_8);
+        return s.isEmpty() ? EmptyArrays.ofByte() : s.getBytes(StandardCharsets.UTF_8);
     }
 
 }

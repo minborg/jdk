@@ -28,6 +28,7 @@ package com.sun.crypto.provider;
 import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.util.EmptyArrays;
 import sun.nio.ch.DirectBuffer;
 import sun.security.jca.JCAUtil;
 import sun.security.util.ArrayUtil;
@@ -92,8 +93,6 @@ abstract class GaloisCounterMode extends CipherSpi {
     // max data size for x86-64 intrinsic
     private static final int SPLIT_LEN = 1048576;  // 1MB
 
-    static final byte[] EMPTY_BUF = new byte[0];
-
     private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
 
     private boolean initialized = false;
@@ -109,8 +108,8 @@ abstract class GaloisCounterMode extends CipherSpi {
     int keySize;
     // Prevent reuse of iv or key
     boolean reInit = false;
-    byte[] lastKey = EMPTY_BUF;
-    byte[] lastIv = EMPTY_BUF;
+    byte[] lastKey = EmptyArrays.ofByte();
+    byte[] lastIv = EmptyArrays.ofByte();
     byte[] iv = null;
     SecureRandom random = null;
 
@@ -402,7 +401,7 @@ abstract class GaloisCounterMode extends CipherSpi {
     protected byte[] engineDoFinal(byte[] input, int inputOffset,
         int inputLen) throws IllegalBlockSizeException, BadPaddingException {
         if (input == null) {
-            input = EMPTY_BUF;
+            input = EmptyArrays.ofByte();
         }
         try {
             ArrayUtil.nullAndBoundsCheck(input, inputOffset, inputLen);
@@ -430,7 +429,7 @@ abstract class GaloisCounterMode extends CipherSpi {
         IllegalBlockSizeException, BadPaddingException {
 
         if (input == null) {
-            input = EMPTY_BUF;
+            input = EmptyArrays.ofByte();
         }
         try {
             ArrayUtil.nullAndBoundsCheck(input, inputOffset, inputLen);

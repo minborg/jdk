@@ -58,6 +58,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
+import jdk.internal.util.EmptyArrays;
 import jdk.internal.util.StaticProperty;
 import sun.nio.ch.ThreadPool;
 import sun.security.util.SecurityConstants;
@@ -71,7 +72,6 @@ import static sun.nio.fs.UnixConstants.*;
 public abstract class UnixFileSystemProvider
     extends AbstractFileSystemProvider
 {
-    private static final byte[] EMPTY_PATH = new byte[0];
     private final UnixFileSystem theFileSystem;
 
     public UnixFileSystemProvider() {
@@ -604,7 +604,7 @@ public abstract class UnixFileSystemProvider
     public byte[] getSunPathForSocketFile(Path obj) {
         UnixPath file = UnixPath.toUnixPath(obj);
         if (file.isEmpty()) {
-            return EMPTY_PATH;
+            return EmptyArrays.ofByte();
         }
         return file.getByteArrayForSysCalls();
     }

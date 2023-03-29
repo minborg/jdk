@@ -26,6 +26,7 @@
 package java.io;
 
 import jdk.internal.util.ByteArray;
+import jdk.internal.util.EmptyArrays;
 
 import java.util.Objects;
 
@@ -46,7 +47,6 @@ import java.util.Objects;
  */
 public class DataInputStream extends FilterInputStream implements DataInput {
 
-    private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     private static final char[] EMPTY_CHAR_ARRAY = new char[0];
 
     /**
@@ -64,7 +64,7 @@ public class DataInputStream extends FilterInputStream implements DataInput {
     /**
      * working arrays initialized on demand by readUTF
      */
-    private byte[] bytearr = EMPTY_BYTE_ARRAY;
+    private byte[] bytearr = EmptyArrays.ofByte();
     private char[] chararr = EMPTY_CHAR_ARRAY;
 
     /**
