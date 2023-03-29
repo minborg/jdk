@@ -598,7 +598,7 @@ final class Nodes {
 
             @Override
             public int[] asPrimitiveArray() {
-                return EMPTY_INT_ARRAY;
+                return EmptyArrays.emptyIntArray();
             }
         }
 
@@ -616,7 +616,7 @@ final class Nodes {
 
             @Override
             public long[] asPrimitiveArray() {
-                return EMPTY_LONG_ARRAY;
+                return EmptyArrays.emptyLongArray();
             }
         }
 
@@ -1316,8 +1316,6 @@ final class Nodes {
 
     //
 
-    private static final int[] EMPTY_INT_ARRAY = EmptyArrays.emptyIntArray();
-    private static final long[] EMPTY_LONG_ARRAY = new long[0];
     private static final double[] EMPTY_DOUBLE_ARRAY = new double[0];
 
     private static class IntArrayNode implements Node.OfInt {

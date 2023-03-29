@@ -25,6 +25,7 @@
  */
 package jdk.internal.foreign;
 
+import jdk.internal.util.EmptyArrays;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.GroupLayout;
@@ -50,9 +51,6 @@ import java.util.function.UnaryOperator;
  * given an address pointing to a segment associated with the root layout (see {@link #dereferenceHandle()}).
  */
 public class LayoutPath {
-
-    private static final long[] EMPTY_STRIDES = new long[0];
-    private static final long[] EMPTY_BOUNDS = new long[0];
 
     private static final MethodHandle MH_ADD_SCALED_OFFSET;
     private static final MethodHandle MH_SLICE;
@@ -204,7 +202,7 @@ public class LayoutPath {
     // Layout path construction
 
     public static LayoutPath rootPath(MemoryLayout layout) {
-        return new LayoutPath(layout, 0L, EMPTY_STRIDES, EMPTY_BOUNDS, null);
+        return new LayoutPath(layout, 0L, EmptyArrays.emptyLongArray(), EmptyArrays.emptyLongArray(), null);
     }
 
     private static LayoutPath nestedPath(MemoryLayout layout, long offset, long[] strides, long[] bounds, LayoutPath encl) {

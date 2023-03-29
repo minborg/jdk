@@ -61,6 +61,8 @@
  */
 package java.time.zone;
 
+import jdk.internal.util.EmptyArrays;
+
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -147,10 +149,6 @@ public final class ZoneRules implements Serializable {
      * The map of recent transitions.
      */
     private final transient ConcurrentMap<Integer, ZoneOffsetTransition[]> lastRulesCache;
-    /**
-     * The zero-length long array.
-     */
-    private static final long[] EMPTY_LONG_ARRAY = new long[0];
     /**
      * The zero-length lastrules array.
      */
@@ -325,8 +323,8 @@ public final class ZoneRules implements Serializable {
     private ZoneRules(ZoneOffset offset) {
         this.standardOffsets = new ZoneOffset[1];
         this.standardOffsets[0] = offset;
-        this.standardTransitions = EMPTY_LONG_ARRAY;
-        this.savingsInstantTransitions = EMPTY_LONG_ARRAY;
+        this.standardTransitions = EmptyArrays.emptyLongArray();
+        this.savingsInstantTransitions = EmptyArrays.emptyLongArray();
         this.savingsLocalTransitions = EMPTY_LDT_ARRAY;
         this.wallOffsets = standardOffsets;
         this.lastRules = EMPTY_LASTRULES;
@@ -451,7 +449,7 @@ public final class ZoneRules implements Serializable {
         if (stdSize > 1024) {
             throw new InvalidObjectException("Too many transitions");
         }
-        long[] stdTrans = (stdSize == 0) ? EMPTY_LONG_ARRAY
+        long[] stdTrans = (stdSize == 0) ? EmptyArrays.emptyLongArray()
                                          : new long[stdSize];
         for (int i = 0; i < stdSize; i++) {
             stdTrans[i] = Ser.readEpochSec(in);
@@ -464,7 +462,7 @@ public final class ZoneRules implements Serializable {
         if (savSize > 1024) {
             throw new InvalidObjectException("Too many saving offsets");
         }
-        long[] savTrans = (savSize == 0) ? EMPTY_LONG_ARRAY
+        long[] savTrans = (savSize == 0) ? EmptyArrays.emptyLongArray()
                                          : new long[savSize];
         for (int i = 0; i < savSize; i++) {
             savTrans[i] = Ser.readEpochSec(in);
