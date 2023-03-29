@@ -24,6 +24,8 @@
  */
 package java.util.stream;
 
+import jdk.internal.util.EmptyArrays;
+
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1314,7 +1316,7 @@ final class Nodes {
 
     //
 
-    private static final int[] EMPTY_INT_ARRAY = new int[0];
+    private static final int[] EMPTY_INT_ARRAY = EmptyArrays.emptyIntArray();
     private static final long[] EMPTY_LONG_ARRAY = new long[0];
     private static final double[] EMPTY_DOUBLE_ARRAY = new double[0];
 

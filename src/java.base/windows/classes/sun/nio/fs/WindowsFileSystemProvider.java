@@ -651,7 +651,7 @@ class WindowsFileSystemProvider
     public byte[] getSunPathForSocketFile(Path obj) {
         WindowsPath file = WindowsPath.toWindowsPath(obj);
         String s = file.toString();
-        return s.isEmpty() ? EmptyArrays.ofByte() : s.getBytes(StandardCharsets.UTF_8);
+        return s.isEmpty() ? new byte[0] : s.getBytes(StandardCharsets.UTF_8);
     }
 
 }

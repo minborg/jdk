@@ -59,6 +59,8 @@
 
 package jdk.internal.org.objectweb.asm;
 
+import jdk.internal.util.EmptyArrays;
+
 /**
  * The input and output stack map frames of a basic block.
  *
@@ -427,7 +429,7 @@ class Frame {
             final String descriptor,
             final int maxLocals) {
         inputLocals = new int[maxLocals];
-        inputStack = new int[0];
+        inputStack = EmptyArrays.emptyIntArray();
         int inputLocalIndex = 0;
         if ((access & Opcodes.ACC_STATIC) == 0) {
             if ((access & Constants.ACC_CONSTRUCTOR) == 0) {

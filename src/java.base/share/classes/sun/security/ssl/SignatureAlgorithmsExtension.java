@@ -32,6 +32,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import javax.net.ssl.SSLProtocolException;
+
+import jdk.internal.util.EmptyArrays;
 import sun.security.ssl.SSLExtension.ExtensionConsumer;
 import sun.security.ssl.SSLExtension.SSLExtensionSpec;
 import sun.security.ssl.SSLHandshake.HandshakeMessage;
@@ -77,7 +79,7 @@ final class SignatureAlgorithmsExtension {
                     signatureSchemes[i++] = scheme.id;
                 }
             } else {
-                this.signatureSchemes = new int[0];
+                this.signatureSchemes = EmptyArrays.emptyIntArray();
             }
         }
 

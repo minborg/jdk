@@ -63,6 +63,7 @@ import java.util.stream.StreamSupport;
 import jdk.internal.access.JavaUtilZipFileAccess;
 import jdk.internal.access.JavaUtilJarAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.util.EmptyArrays;
 import jdk.internal.util.OperatingSystem;
 import jdk.internal.perf.PerfCounter;
 import jdk.internal.ref.CleanerFactory;
@@ -1139,7 +1140,6 @@ public class ZipFile implements ZipConstants, Closeable {
         private static final JavaUtilJarAccess JUJA = SharedSecrets.javaUtilJarAccess();
         // "META-INF/".length()
         private static final int META_INF_LEN = 9;
-        private static final int[] EMPTY_META_VERSIONS = new int[0];
 
         private final Key key;               // the key in files
         private final @Stable ZipCoder zc;   // zip coder used to decode/encode
@@ -1350,7 +1350,7 @@ public class ZipFile implements ZipConstants, Closeable {
             manifestPos = -1;
             manifestNum = 0;
             signatureMetaNames = null;
-            metaVersions = EMPTY_META_VERSIONS;
+            metaVersions = EmptyArrays.emptyIntArray();
         }
 
         private static final int BUF_SIZE = 8192;
@@ -1495,7 +1495,7 @@ public class ZipFile implements ZipConstants, Closeable {
                 if (end.endpos == 0) {
                     locpos = 0;
                     total = 0;
-                    entries = new int[0];
+                    entries = EmptyArrays.emptyIntArray();
                     this.cen = null;
                     return;         // only END header present
                 }
@@ -1603,7 +1603,7 @@ public class ZipFile implements ZipConstants, Closeable {
                     metaVersions[c++] = version;
                 }
             } else {
-                metaVersions = EMPTY_META_VERSIONS;
+                metaVersions = EmptyArrays.emptyIntArray();
             }
             if (pos + ENDHDR != cen.length) {
                 zerror("invalid CEN header (bad header size)");

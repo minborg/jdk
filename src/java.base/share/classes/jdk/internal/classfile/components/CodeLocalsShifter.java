@@ -38,6 +38,7 @@ import jdk.internal.classfile.instruction.LocalVariable;
 import jdk.internal.classfile.instruction.StoreInstruction;
 import jdk.internal.classfile.TypeKind;
 import jdk.internal.classfile.instruction.LocalVariableType;
+import jdk.internal.util.EmptyArrays;
 
 /**
  * {@link CodeLocalsShifter} is a {@link CodeTransform} shifting locals to
@@ -63,7 +64,7 @@ public sealed interface CodeLocalsShifter extends CodeTransform {
 
     final static class CodeLocalsShifterImpl implements CodeLocalsShifter {
 
-        private int[] locals = new int[0];
+        private int[] locals = EmptyArrays.emptyIntArray();
         private final int fixed;
 
         private CodeLocalsShifterImpl(int fixed) {
