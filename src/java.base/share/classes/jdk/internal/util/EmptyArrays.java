@@ -26,7 +26,7 @@ public final class EmptyArrays {
     private EmptyArrays() {}
 
     /**
-     * {@return an empty (immutable) array of bytes}.
+     * {@return an empty (immutable) {@code byte} array}.
      * <p>
      * @implNote
      * Implementations of this method need not create a separate array
@@ -39,7 +39,7 @@ public final class EmptyArrays {
     }
 
     /**
-     * {@return an empty (immutable) array of shorts}.
+     * {@return an empty (immutable) {@code short} array}.
      * <p>
      * @implNote
      * Implementations of this method need not create a separate array
@@ -65,7 +65,7 @@ public final class EmptyArrays {
     }
 
     /**
-     * {@return an empty (immutable) array of ints}.
+     * {@return an empty (immutable) {@code boolean} array}.
      * <p>
      * @implNote
      * Implementations of this method need not create a separate array
@@ -78,7 +78,7 @@ public final class EmptyArrays {
     }
 
     /**
-     * {@return an empty (immutable) array of ints}.
+     * {@return an empty (immutable) {@code int} array}.
      * <p>
      * @implNote
      * Implementations of this method need not create a separate array
@@ -91,7 +91,7 @@ public final class EmptyArrays {
     }
 
     /**
-     * {@return an empty (immutable) array of longs}.
+     * {@return an empty (immutable) {@code long} array}.
      * <p>
      * @implNote
      * Implementations of this method need not create a separate array
@@ -104,7 +104,7 @@ public final class EmptyArrays {
     }
 
     /**
-     * {@return an empty (immutable) array of longs}.
+     * {@return an empty (immutable) {@code float} array}.
      * <p>
      * @implNote
      * Implementations of this method need not create a separate array
@@ -117,7 +117,7 @@ public final class EmptyArrays {
     }
 
     /**
-     * {@return an empty (immutable) array of doubles}.
+     * {@return an empty (immutable) {@code double} array}.
      * <p>
      * @implNote
      * Implementations of this method need not create a separate array
@@ -130,19 +130,18 @@ public final class EmptyArrays {
     }
 
     /**
-     * {@return an empty (immutable) array of objects of type T}.
+     * {@return an empty (immutable) {@link Object} array}.
      * <p>
      * @implNote
      * Implementations of this method need not create a separate array
-     * for each call. The component type of the returned array is {@link Object}.
+     * for each call.
      *
-     * @param <T> Array type exposed via the type system.
      *
      * @since 21
      */
     @SuppressWarnings("unchecked")
-    public static <T> T[] emptyObjectArray() {
-        return (T[]) EMPTY_OBJECT_ARRAY;
+    public static Object[] emptyObjectArray() {
+        return EMPTY_OBJECT_ARRAY;
     }
 
     /**

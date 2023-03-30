@@ -1123,7 +1123,7 @@ public class BidiBase {
 
     /* fields for line reordering */
     int                 runCount;     /* ==-1: runs not set up yet */
-    BidiRun[]           runsMemory = EmptyArrays.emptyObjectArray();
+    BidiRun[]           runsMemory = new BidiRun[0];
     BidiRun[]           runs;
 
     /* for non-mixed text, we only need a tiny array of runs (no allocation) */
@@ -3553,7 +3553,7 @@ public class BidiBase {
          */
         dirProps = EmptyArrays.emptyByteArray();
         levels = EmptyArrays.emptyByteArray();
-        runs = EmptyArrays.emptyObjectArray();
+        runs = new BidiRun[0];
         isGoodLogicalToVisualRunsMap = false;
         insertPoints.size = 0;          /* clean up from last call */
         insertPoints.confirmed = 0;     /* clean up from last call */
