@@ -181,13 +181,14 @@ public final class LazyReference<V>
      */
     @SuppressWarnings("unchecked")
     public V get() {
-        Object o = value;
         try {
-            return o != null
-                    ? (V) o
-                    : supplyIfEmpty0(presetProvider);
+            V v = (V) value;
+            if (v != null) {
+                return v;
+            }
+            return supplyIfEmpty0(presetProvider);
         } catch (ClassCastException cce) {
-            throw new NoSuchElementException((Throwable) o);
+            throw new NoSuchElementException((Throwable) value);
         }
     }
 

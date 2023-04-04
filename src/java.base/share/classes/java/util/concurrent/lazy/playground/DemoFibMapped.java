@@ -23,7 +23,7 @@ public final class DemoFibMapped {
     private static final LazyReferenceArray<Integer> FIB_10_CACHE =
             Lazy.ofEmptyArray(3);
 
-    private static final LazyReferenceArray.KeyMapper KEY_MAPPER = LazyReferenceArray.KeyMapper.ofConstant(INTERVAL);
+    private static final LazyReferenceArray.IntKeyMapper KEY_MAPPER = LazyReferenceArray.IntKeyMapper.ofConstant(INTERVAL);
 
     /**
      * Main method
