@@ -31,6 +31,7 @@ import org.junit.jupiter.api.*;
 
 import java.util.Collection;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.lazy.Lazy;
@@ -67,7 +68,8 @@ final class BasicLazyReferenceTest {
         assertThrows(NullPointerException.class,
                 () -> lazy.supplyIfEmpty(null));
         // Mapper returns null
-        assertEquals((Integer) null, lazy.supplyIfEmpty(() -> null));
+        assertThrows(NullPointerException.class,
+                () -> lazy.supplyIfEmpty(() -> null));
     }
 
     @Test
@@ -98,7 +100,16 @@ final class BasicLazyReferenceTest {
         assertThrows(NullPointerException.class,
                 () -> Lazy.of(null));
         // Mapper returns null
-        assertEquals((Integer) null, Lazy.of(() -> null).get());
+        assertThrows(NullPointerException.class,
+                () -> Lazy.of(() -> null).get());
+    }
+
+    @Test
+    void optionalModelling() {
+        Supplier<Optional<String>> empty = Lazy.of(() -> Optional.empty());
+        assertTrue(empty.get().isEmpty());
+        Supplier<Optional<String>> present = Lazy.of(() -> Optional.of("A"));
+        assertEquals("A", present.get().orElseThrow());
     }
 
     @Test

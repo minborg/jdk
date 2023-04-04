@@ -73,7 +73,8 @@ final class BasicLazyReferenceArrayTest {
         assertThrows(NullPointerException.class,
                 () -> lazy.computeIfEmpty(INDEX, null));
         // Mapper returns null
-        assertEquals((Integer) null, lazy.computeIfEmpty(INDEX, i -> null));
+        assertThrows(NullPointerException.class,
+                () -> lazy.computeIfEmpty(INDEX, i -> null));
     }
 
     @Test
@@ -105,7 +106,8 @@ final class BasicLazyReferenceArrayTest {
         assertThrows(NullPointerException.class,
                 () -> Lazy.ofArray(SIZE, null));
         // Mapper returns null
-        assertEquals((Integer) null, Lazy.ofArray(SIZE, i -> null).apply(INDEX));
+        assertThrows(NullPointerException.class,
+                () -> Lazy.ofArray(SIZE, i -> null).apply(INDEX));
     }
 
     @Test

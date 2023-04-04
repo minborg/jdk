@@ -31,6 +31,7 @@ import java.lang.invoke.VarHandle;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -68,32 +69,22 @@ import java.util.function.Supplier;
 public final class LazyReference<V>
         implements Supplier<V> {
 
-    // Maintain a private copy.
-    private static final Lazy.State[] STATES = Lazy.State.values();
-    private static final Lazy.Evaluation[] EVALUATIONS = Lazy.Evaluation.values();
-
     // Allows access to the state variable with arbitary memory semantics
-    private static final VarHandle STATE_VH = stateVarHandle();
+    private static final VarHandle VALUE_HANDLE = valueHandle();
+
+    private final Lazy.Evaluation earliestEvaluation;
+    private final Semaphore semaphore;
 
     private Supplier<? extends V> presetProvider;
-
-    // General field to store sevaral states (saving space)
-    // Bit 0-2  Indicates earliestEvaluation
-    // Bit 3    Reserved
-    // Bit 4    Indicates if constructing (We are using a separate bit as we want "state" to be @Stable
-    // Bit 5-31 Reserved
-    private int misc;
-
-    @Stable
-    private int valueState;
 
     @Stable
     private Object value;
 
     LazyReference(Lazy.Evaluation earliestEvaluation,
                   Supplier<? extends V> presetSupplier) {
-        this.misc = earliestEvaluation.ordinal();
+        this.earliestEvaluation = earliestEvaluation;
         this.presetProvider = presetSupplier;
+        this.semaphore = new Semaphore(1);
         if (earliestEvaluation != Lazy.Evaluation.AT_USE && presetSupplier != null) {
             // Start computing the value via a background Thread.
             Thread.ofVirtual()
@@ -104,9 +95,10 @@ public final class LazyReference<V>
 
     // To be called by builders/compilers/destillers to eagerly pre-compute a value (e.g. Constable)
     LazyReference(V value) {
-        this(Lazy.Evaluation.CREATION, (Supplier<? extends V>) null);
-        this.value = value;
-        this.valueState = Lazy.PRESENT_ORDINAL;
+        this.earliestEvaluation = Lazy.Evaluation.CREATION;
+        this.presetProvider = null;
+        this.value = Objects.requireNonNull(value);
+        this.semaphore = null;
     }
 
     /**
@@ -128,16 +120,29 @@ public final class LazyReference<V>
      *}
      */
     public Lazy.State state() {
-        Lazy.State state = STATES[stateValuePlain()];
-        if (Lazy.State.isFinal(state)) {
-            return state;
+        Object o = value;
+        if (o != null) {
+            return o instanceof Exception
+                    ? Lazy.State.ERROR
+                    : Lazy.State.PRESENT;
         }
-        synchronized (this) {
-            int stateValuePlain = stateValuePlain();
-            if (isConstructing() && stateValuePlain == Lazy.State.EMPTY.ordinal()) {
-                return Lazy.State.CONSTRUCTING;
+
+        if (semaphore.availablePermits() == 0) {
+            return Lazy.State.CONSTRUCTING;
+        }
+
+        semaphore.acquireUninterruptibly();
+        try {
+            o = value;
+            if (o instanceof Exception) {
+                return Lazy.State.ERROR;
             }
-            return STATES[stateValuePlain];
+            if (o == null) {
+                return Lazy.State.EMPTY;
+            }
+            return Lazy.State.PRESENT;
+        } finally {
+            semaphore.release();
         }
     }
 
@@ -145,7 +150,7 @@ public final class LazyReference<V>
      * {@return The erliest point at which this Lazy can be evaluated}.
      */
     Lazy.Evaluation earliestEvaluation() {
-        return EVALUATIONS[misc & 0xF];
+        return earliestEvaluation;
     }
 
     /**
@@ -176,10 +181,14 @@ public final class LazyReference<V>
      */
     @SuppressWarnings("unchecked")
     public V get() {
-        return isPresentPlain()
-        //return valueState == Lazy.PRESENT_ORDINAL
-                ? (V) value
-                : supplyIfEmpty0(presetProvider);
+        Object o = value;
+        try {
+            return o != null
+                    ? (V) o
+                    : supplyIfEmpty0(presetProvider);
+        } catch (ClassCastException cce) {
+            throw new NoSuchElementException((Throwable) o);
+        }
     }
 
     /**
@@ -202,7 +211,8 @@ public final class LazyReference<V>
      *
      * @param supplier to apply if no previous value exists
      * @return the value (pre-existing or newly computed)
-     * @throws NullPointerException   if the provided {@code supplier} is {@code null}.
+     * @throws NullPointerException   if the provided {@code supplier} is {@code null} or if the provider
+     *                                {@code supplier} returns {@code null}.
      * @throws NoSuchElementException if a supplier has previously thrown an exception.
      */
     public V supplyIfEmpty(Supplier<? extends V> supplier) {
@@ -215,54 +225,56 @@ public final class LazyReference<V>
      * {@link Optional#empty()} if no exception was thrown}.
      */
     public Optional<Throwable> exception() {
-        return is(Lazy.State.ERROR)
+        return state() == Lazy.State.ERROR
                 ? Optional.of((Throwable) value)
                 : Optional.empty();
     }
 
-    @SuppressWarnings("unchecked")
     private V supplyIfEmpty0(Supplier<? extends V> supplier) {
-        if (!isPresentPlain()) {
-            // Synchronized implies acquire/release semantics when entering/leaving the monitor
-            synchronized (this) {
-                switch (stateValuePlain()) {
-                    case Lazy.PRESENT_ORDINAL -> {
-                        return (V) value;
-                    }
-                    case Lazy.ERROR_ORDINAL -> throw new NoSuchElementException(exception().get());
-                    default -> {
-                        try {
-                            if (supplier == null) {
-                                throw new IllegalStateException("No pre-set supplier given");
-                            }
-                            constructing(true);
-                            V v = supplier.get();
-                            if (v != null) {
-                                value = v;
-                            }
-                            // Alt 1
-                            // Prevents reordering. Changes only go in one direction.
-                            // https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions
-                            stateValueRelease(Lazy.State.PRESENT);
-
-                            // Alt 2
-                            // VarHandle.fullFence();
-                        } catch (Throwable e) {
-                            // Record the throwable instead of the value.
-                            value = e;
-                            // Prevents reordering.
-                            stateValueRelease(Lazy.State.ERROR);
-                            // Rethrow
-                            throw e;
-                        } finally {
-                            constructing(false);  // Redundant operation
-                            forgetPresetProvided();
-                        }
-                    }
-                }
-            }
+        Object o = value;
+        if (o != null) {
+            return castOrThrow(o);
         }
-        return (V) value;
+
+        // implies acquire/release semantics when entering/leaving the monitor
+        semaphore.acquireUninterruptibly();
+        try {
+            // Here, visibility is guaranteed
+            o = value;
+            if (o != null) {
+                return castOrThrow(o);
+            }
+            try {
+                if (supplier == null) {
+                    throw new IllegalStateException("No pre-set supplier given");
+                }
+
+                V v = supplier.get();
+                if (v == null) {
+                    throw new NullPointerException("Supplier returned null");
+                }
+
+                // Alt 1
+                // Prevents reordering. Changes only go in one direction.
+                // https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions
+                setValueRelease(v);
+
+                // Alt 2
+                // VarHandle.fullFence();
+                // VarHandle.fullFence();
+                return v;
+            } catch (Throwable e) {
+                // Record the throwable instead of the value.
+                // Prevents reordering.
+                setValueRelease(e);
+                // Rethrow
+                throw e;
+            } finally {
+                forgetPresetProvided();
+            }
+        } finally {
+            semaphore.release();
+        }
     }
 
     @Override
@@ -364,52 +376,16 @@ public final class LazyReference<V>
 
     // Private support methods
 
-    private boolean isConstructing() {
-        return (misc & 0x10) != 0;
-    }
-
-    private void constructing(boolean constructing) {
-        if (constructing) {
-            misc |= 0x10;
-        } else {
-            misc &= (~0x10);
+    @SuppressWarnings("unchecked")
+    private V castOrThrow(Object o) {
+        if (o instanceof Throwable throwable) {
+            throw new NoSuchElementException(throwable);
         }
+        return (V) o;
     }
 
-    private boolean isPlain(Lazy.State state) {
-        return stateValuePlain() == state.ordinal();
-    }
-
-    private boolean is(Lazy.State state) {
-        if (Lazy.State.isFinal(state) && isPlain(state)) {
-            return true;
-        }
-        synchronized (this) {
-            return isPlain(state);
-        }
-    }
-
-    // Faster than isPlain(State.Present)
-    private boolean isPresentPlain() {
-        return stateValuePlain() == Lazy.PRESENT_ORDINAL;
-    }
-
-    private boolean isPresent() {
-        if (isPresentPlain()) {
-            return true;
-        }
-        synchronized (this) {
-            return isPresentPlain();
-        }
-
-    }
-
-    private int stateValuePlain() {
-        return (int) STATE_VH.get(this);
-    }
-
-    private void stateValueRelease(Lazy.State newState) {
-        STATE_VH.setRelease(this, newState.ordinal());
+    private void setValueRelease(Object value) {
+        VALUE_HANDLE.setRelease(this, value);
     }
 
     private void forgetPresetProvided() {
@@ -418,10 +394,10 @@ public final class LazyReference<V>
         this.presetProvider = null;
     }
 
-    private static VarHandle stateVarHandle() {
+    private static VarHandle valueHandle() {
         try {
             return MethodHandles.lookup()
-                    .findVarHandle(LazyReference.class, "valueState", int.class);
+                    .findVarHandle(LazyReference.class, "value", Object.class);
             // .withInvokeExactBehavior(); // Make sure no boxing is made?
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
