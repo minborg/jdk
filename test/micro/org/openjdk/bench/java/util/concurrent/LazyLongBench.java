@@ -36,7 +36,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.lazy.LazyLong;
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReference;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -51,11 +51,11 @@ public class LazyLongBench {
 
     private static final LongSupplier SUPPLIER = () -> 42;
 
-    public static final LongSupplier LAZY = LazyLong.of(SUPPLIER);
+/*    public static final LongSupplier LAZY = LazyLong.of(SUPPLIER);
     public static final Supplier<Long> LAZY_OBJECT = LazyReference.of(() -> SUPPLIER.getAsLong());
     public static final LongSupplier LAZY_DC = new VolatileDoubleChecked(SUPPLIER);
 
-    public LongSupplier lazy;
+    public LongSupplier lazy;*/
     public Supplier<Long> lazyObject;
 
     public LongSupplier threadUnsafe;
@@ -67,12 +67,13 @@ public class LazyLongBench {
      */
     @Setup(Level.Iteration)
     public void setupIteration() {
-        lazy = LazyLong.of(SUPPLIER);
+        /*lazy = LazyLong.of(SUPPLIER);*/
         threadUnsafe = new ThreadUnsafe(SUPPLIER);
         doubleChecked = new VolatileDoubleChecked(SUPPLIER);
-        lazyObject = LazyReference.of(() -> SUPPLIER.getAsLong());
+        lazyObject = Lazy.of(() -> SUPPLIER.getAsLong());
     }
 
+/*
     @Benchmark
     public long staticLazyLong() {
         return LAZY.getAsLong();
@@ -87,6 +88,7 @@ public class LazyLongBench {
     public long staticLazyLongObject() {
         return LAZY_OBJECT.get();
     }
+*/
 
     @Benchmark
     public long staticLocalClass() {
@@ -95,11 +97,13 @@ public class LazyLongBench {
         }
         return Lazy.LONG;
     }
+/*
 
     @Benchmark
     public long lazyLong() {
         return lazy.getAsLong();
     }
+*/
 
     @Benchmark
     public long lazyLongObject() {

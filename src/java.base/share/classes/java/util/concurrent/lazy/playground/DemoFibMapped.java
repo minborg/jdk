@@ -1,5 +1,6 @@
 package java.util.concurrent.lazy.playground;
 
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReferenceArray;
 
 /**
@@ -20,7 +21,7 @@ public final class DemoFibMapped {
     private static final int INTERVAL = 10; // Must be > 2
 
     private static final LazyReferenceArray<Integer> FIB_10_CACHE =
-            LazyReferenceArray.of(3);
+            Lazy.ofEmptyArray(3);
 
     private static final LazyReferenceArray.KeyMapper KEY_MAPPER = LazyReferenceArray.KeyMapper.ofConstant(INTERVAL);
 

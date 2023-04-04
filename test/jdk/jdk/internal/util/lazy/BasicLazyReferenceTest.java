@@ -47,7 +47,7 @@ final class BasicLazyReferenceTest {
 
     @BeforeEach
     void setup() {
-        lazy = LazyReference.ofEmpty();
+        lazy = Lazy.ofEmpty();
         supplier = new CountingIntegerSupplier();
     }
 
@@ -85,7 +85,7 @@ final class BasicLazyReferenceTest {
 
     @Test
     void presetSupplierBasic() {
-        LazyReference<Integer> presetLazy = LazyReference.of(supplier);
+        LazyReference<Integer> presetLazy = Lazy.of(supplier);
         for (int i = 0; i < 2; i++) {
             assertEquals(CountingIntegerSupplier.MAGIC_VALUE, presetLazy.get());
             assertEquals(1, supplier.invocations());
@@ -96,9 +96,9 @@ final class BasicLazyReferenceTest {
     void presetSupplierNullSuppying() {
         // Mapper is null
         assertThrows(NullPointerException.class,
-                () -> LazyReference.of(null));
+                () -> Lazy.of(null));
         // Mapper returns null
-        assertEquals((Integer) null, LazyReference.of(() -> null).get());
+        assertEquals((Integer) null, Lazy.of(() -> null).get());
     }
 
     @Test
@@ -139,10 +139,10 @@ final class BasicLazyReferenceTest {
 
     @Test
     void testToString() throws InterruptedException {
-        var lazy0 = LazyReference.of(() -> 0);
-        var lazy1 = LazyReference.of(() -> 1);
+        var lazy0 = Lazy.of(() -> 0);
+        var lazy1 = Lazy.of(() -> 1);
         lazy1.get();
-        var lazy2 = LazyReference.of(() -> {
+        var lazy2 = Lazy.of(() -> {
             throw new UnsupportedOperationException();
         });
         // Do not touch lazy0

@@ -2,6 +2,7 @@ package java.util.concurrent.lazy.playground;
 
 import java.lang.foreign.MemorySegment;
 import java.util.HexFormat;
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReference;
 import java.util.random.RandomGenerator;
 
@@ -13,8 +14,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 public final class DemoRealRandom {
 
     private static final LazyReference<MemorySegment> PER_JVM_RANDOM_BYTES =
-            LazyReference.of(DemoRealRandom::makeRealRandomBytes);
-
+            Lazy.of(DemoRealRandom::makeRealRandomBytes);
     /**
      * {@return A memory segment with per-JVM random bytes}.
      */

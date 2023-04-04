@@ -53,7 +53,7 @@ final class BasicLazyReferenceArrayTest {
 
     @BeforeEach
     void setup() {
-        lazy = LazyReferenceArray.of(SIZE);
+        lazy = Lazy.ofEmptyArray(SIZE);
         mapper = new CountingIntegerMapper(SIZE);
     }
 
@@ -91,7 +91,7 @@ final class BasicLazyReferenceArrayTest {
 
     @Test
     void presetMapperBasic() {
-        LazyReferenceArray<Integer> presetLazy = LazyReferenceArray.of(SIZE, mapper);
+        LazyReferenceArray<Integer> presetLazy = Lazy.ofArray(SIZE, mapper);
         assertEquals(0, mapper.invocations(INDEX));
         for (int i = 0; i < 2; i++) {
             assertEquals(INDEX, presetLazy.apply(INDEX));
@@ -103,9 +103,9 @@ final class BasicLazyReferenceArrayTest {
     void presetMapperNullMapping() {
         // Mapper is null
         assertThrows(NullPointerException.class,
-                () -> LazyReferenceArray.of(SIZE, null));
+                () -> Lazy.ofArray(SIZE, null));
         // Mapper returns null
-        assertEquals((Integer) null, LazyReferenceArray.of(SIZE, i -> null).apply(INDEX));
+        assertEquals((Integer) null, Lazy.ofArray(SIZE, i -> null).apply(INDEX));
     }
 
     @Test
@@ -147,7 +147,7 @@ final class BasicLazyReferenceArrayTest {
     void testToString() throws InterruptedException {
         var timeout = System.nanoTime()+ TimeUnit.SECONDS.toNanos(2);
         AtomicBoolean lambdaInvoked = new AtomicBoolean();
-        lazy = LazyReferenceArray.of(3);
+        lazy = Lazy.ofEmptyArray(3);
 
         lazy.computeIfEmpty(1, i -> 1);
         try {

@@ -1,5 +1,6 @@
 package java.util.concurrent.lazy.playground;
 
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReferenceArray;
 
 /**
@@ -19,7 +20,7 @@ public final class DemoFib {
     private static final int INTERVAL = 10; // Must be > 2
 
     private static final LazyReferenceArray<Integer> FIB_10_CACHE =
-            LazyReferenceArray.of(30 / INTERVAL,
+            Lazy.ofArray(30 / INTERVAL,
                     slot -> fib(slotToN(slot), false));
 
     /**

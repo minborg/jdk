@@ -68,25 +68,24 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
     @Stable
     private final LazyReference<V>[] lazyReferences;
 
-    private final LazyReference<List<V>> listView
-            = LazyReference.of(() -> new ListView(null));
+    private final LazyReference<ListView> listView = Lazy.of(() -> new ListView(null));
 
     // Todo: use an array of V and a bit-set (3 bits per element or perhaps an entire int)
     // Todo: Bit CAS granularity. Perhaps int[] or several arrays (@Stable and non-@Stable)
 
     @SuppressWarnings("unchecked")
-    private LazyReferenceArray(int size,
-                               IntFunction<? extends V> presetMapper) {
+    LazyReferenceArray(int size,
+                       IntFunction<? extends V> presetMapper) {
         lazyReferences = IntStream.range(0, size)
-                .mapToObj(i -> LazyReference.<V>of(toSupplier(i, presetMapper)))
+                .mapToObj(i -> Lazy.<V>of(toSupplier(i, presetMapper)))
                 .toArray(LazyReference[]::new);
         this.presetMapper = presetMapper;
     }
 
     @SuppressWarnings("unchecked")
-    private LazyReferenceArray(int size) {
+    LazyReferenceArray(int size) {
         lazyReferences = IntStream.range(0, size)
-                .mapToObj(i -> LazyReference.ofEmpty())
+                .mapToObj(i -> Lazy.<V>ofEmpty())
                 .toArray(LazyReference[]::new);
         this.presetMapper = null;
     }
@@ -100,8 +99,8 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
 
     /**
      * Returns the present value at the provided {@code index} or, if no present value exists,
-     * atomically attempts to compute the value using the <em>pre-set {@linkplain #of(int, IntFunction)} mapper}</em>.
-     * If no pre-set {@linkplain #of(int, IntFunction)} mapper} exists,
+     * atomically attempts to compute the value using the <em>pre-set {@linkplain Lazy#ofArray(int, IntFunction) mapper}</em>.
+     * If no pre-set {@linkplain Lazy#ofArray(int, IntFunction) mapper} exists,
      * throws an IllegalStateException exception.
      * <p>
      * If the pre-set mapper itself throws an (unchecked) exception, the
@@ -109,7 +108,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * common usage is to construct a new object serving as a memoized result, as in:
      * <p>
      * {@snippet lang = java:
-     *    LazyReferenceArray<V> lazy = LazyReferenceArray.of(Value::new);
+     *    LazyReferenceArray<V> lazy = Lazy.ofArray(64, Value::new);
      *    // ...
      *    V value = lazy.apply(42);
      *    assertNotNull(value); // Value is non-null
@@ -774,56 +773,4 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
         return new UnsupportedOperationException("Not supported on an unmodifiable list.");
     }
 
-    /**
-     * {@return a new empty LazyReferenceArray with no pre-set mapper}.
-     * <p>
-     * If an attempt is made to invoke the {@link #apply(int)} ()} method when no element is present,
-     * an exception will be thrown.
-     * <p>
-     * {@snippet lang = java:
-     *    LazyReferenceArray<T> lazy = LazyReferenceArray.ofEmpty();
-     *    T value = lazy.getOrNull(42);
-     *    assertIsNull(value); // Value is initially null
-     *    // ...
-     *    T value = lazy.supplyIfEmpty(42, Value::new);
-     *    assertNotNull(value); // Value is non-null
-     *}
-     *
-     * @param <T>  The type of the values
-     * @param size the size of the array
-     */
-    public static <T> LazyReferenceArray<T> of(int size) {
-        if (size < 0) {
-            throw new IllegalArgumentException();
-        }
-        return new LazyReferenceArray<>(size);
-    }
-
-    /**
-     * {@return a new empty LazyReferenceArray with a pre-set mapper}.
-     * <p>
-     * If an attempt is made to invoke the {@link #apply(int)} ()} method when no element is present,
-     * the provided {@code presetMapper} will automatically be invoked as specified by
-     * {@link #computeIfEmpty(int, IntFunction)}.
-     * <p>
-     * {@snippet lang = java:
-     *    LazyReferenceArray<T> lazy = LazyReferenceArray.of(Value::new);
-     *    // ...
-     *    T value = lazy.get(42);
-     *    assertNotNull(value); // Value is never null
-     *}
-     *
-     * @param <T>          The type of the values
-     * @param size         the size of the array
-     * @param presetMapper to invoke when lazily constructing a value
-     * @throws NullPointerException if the provided {@code presetMapper} is {@code null}
-     */
-    public static <T> LazyReferenceArray<T> of(int size,
-                                               IntFunction<? extends T> presetMapper) {
-        if (size < 0) {
-            throw new IllegalArgumentException();
-        }
-        Objects.requireNonNull(presetMapper);
-        return new LazyReferenceArray<>(size, presetMapper);
-    }
 }

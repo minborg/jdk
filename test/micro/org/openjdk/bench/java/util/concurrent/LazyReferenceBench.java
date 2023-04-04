@@ -38,8 +38,11 @@ import org.openjdk.jmh.infra.Blackhole;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.lazy.LazyReference;
+import java.util.concurrent.lazy.Lazy;
+import java.util.concurrent.lazy.LazyRefNullofobic;
+import java.util.concurrent.lazy.LazyStableDelegator;
 import java.util.function.Supplier;
 
 /*
@@ -64,8 +67,9 @@ public class LazyReferenceBench {
 
     private static final Supplier<Integer> SUPPLIER = () -> 2 << 16;
 
-    public static final Supplier<Integer> LAZY = LazyReference.of(SUPPLIER);
+    public static final Supplier<Integer> LAZY = Lazy.of(SUPPLIER);
     public static final Supplier<Integer> LAZY_DC = new VolatileDoubleChecked<>(SUPPLIER);
+    public static final Supplier<Integer> LAZY_NULLOFOBIC = LazyRefNullofobic.of(SUPPLIER);
 
     // Add chain
 
@@ -76,6 +80,8 @@ public class LazyReferenceBench {
     public Supplier<Integer> volatileVhDoubleChecked;
 
     public Supplier<Integer> acquireReleaseDoubleChecked;
+    public Supplier<Integer> delegated;
+    public Supplier<Integer> lazyRefNullofobic;
 
     /**
      * The test variables are allocated every iteration so you can assume
@@ -83,11 +89,13 @@ public class LazyReferenceBench {
      */
     @Setup(Level.Iteration)
     public void setupIteration() {
-        lazy = LazyReference.of(SUPPLIER);
+        lazy = Lazy.of(SUPPLIER);
         threadUnsafe = new ThreadUnsafe<>(SUPPLIER);
         volatileDoubleChecked = new VolatileDoubleChecked<>(SUPPLIER);
         volatileVhDoubleChecked = new VolatileVhDoubleChecked<>(SUPPLIER);
         acquireReleaseDoubleChecked = new AquireReleaseDoubleChecked<>(SUPPLIER);
+        delegated = new DelegatorLazy<>(SUPPLIER);
+        lazyRefNullofobic = LazyRefNullofobic.of(SUPPLIER);
     }
 
     @Benchmark
@@ -106,6 +114,11 @@ public class LazyReferenceBench {
     @Benchmark
     public void staticVolatileDoubleChecked(Blackhole bh) {
         bh.consume(LAZY_DC.get());
+    }
+
+    @Benchmark
+    public void staticNullofobic(Blackhole bh) {
+        bh.consume(LAZY_NULLOFOBIC.get());
     }
 
     @Benchmark
@@ -137,6 +150,16 @@ public class LazyReferenceBench {
         bh.consume(acquireReleaseDoubleChecked.get());
     }
 
+    @Benchmark
+    public void delegated(Blackhole bh) {
+        bh.consume(delegated.get());
+    }
+
+    @Benchmark
+    public void lazyRefNullofobic(Blackhole bh) {
+        bh.consume(lazyRefNullofobic.get());
+    }
+
     private static final class ThreadUnsafe<T> implements Supplier<T> {
 
         private Supplier<? extends T> supplier;
@@ -154,6 +177,32 @@ public class LazyReferenceBench {
                 supplier = null;
             }
             return value;
+        }
+    }
+
+
+    private static final class DelegatorLazy<T> implements Supplier<T> {
+
+        private final Supplier<T> original;
+
+        public DelegatorLazy(Supplier<T> supplier) {
+            this.original = Objects.requireNonNull(supplier);
+        }
+
+        Supplier<T> delegate = this::firstTime;
+        boolean initialized;
+
+        public T get() {
+            return delegate.get();
+        }
+
+        private synchronized T firstTime() {
+            if (!initialized) {
+                T value = original.get();
+                delegate = () -> value;
+                initialized = true;
+            }
+            return delegate.get();
         }
     }
 

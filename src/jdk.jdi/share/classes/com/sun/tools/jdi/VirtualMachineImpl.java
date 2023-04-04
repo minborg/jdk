@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -139,23 +140,23 @@ class VirtualMachineImpl extends MirrorImpl
     // Per-vm singletons for primitive types and for void.
     // singleton-ness protected by "synchronized(this)".
     private Supplier<BooleanType> theBooleanType =
-            LazyReference.of(() -> new BooleanTypeImpl(this));
+            Lazy.of(() -> new BooleanTypeImpl(this));
     private Supplier<ByteType> theByteType =
-            LazyReference.of(() -> new ByteTypeImpl(this));
+            Lazy.of(() -> new ByteTypeImpl(this));
     private Supplier<CharType> theCharType =
-            LazyReference.of(() -> new CharTypeImpl(this));
+            Lazy.of(() -> new CharTypeImpl(this));
     private Supplier<ShortType> theShortType =
-            LazyReference.of(() -> new ShortTypeImpl(this));
+            Lazy.of(() -> new ShortTypeImpl(this));
     private Supplier<IntegerType> theIntegerType =
-            LazyReference.of(() -> new IntegerTypeImpl(this));
+            Lazy.of(() -> new IntegerTypeImpl(this));
     private Supplier<LongType> theLongType =
-            LazyReference.of(() -> new LongTypeImpl(this));
+            Lazy.of(() -> new LongTypeImpl(this));
     private Supplier<FloatType> theFloatType =
-            LazyReference.of(() -> new FloatTypeImpl(this));
+            Lazy.<FloatType>of(() -> new FloatTypeImpl(this));
     private Supplier<DoubleType> theDoubleType =
-            LazyReference.of(() -> new DoubleTypeImpl(this));
+            Lazy.of(() -> new DoubleTypeImpl(this));
     private Supplier<VoidType> theVoidType =
-            LazyReference.of(() -> new VoidTypeImpl(this));
+            Lazy.of(() -> new VoidTypeImpl(this));
 
     private VoidValue voidVal;
 

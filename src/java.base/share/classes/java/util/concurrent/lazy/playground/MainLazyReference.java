@@ -6,7 +6,9 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 import java.util.Objects;
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReference;
+import java.util.function.Supplier;
 
 /**
  * Test
@@ -17,8 +19,8 @@ public final class MainLazyReference {
 
     private static class Bar{};
 
-    private static final LazyReference<Integer> LAZY = LazyReference.of(() -> 1);
-    private final LazyReference<Integer> lazy = LazyReference.of(() -> 1);
+    private static final Supplier<Integer> LAZY = Lazy.of(() -> 1);
+    private final Supplier<Integer> lazy = Lazy.of(() -> 1);
 
     /**
      * A

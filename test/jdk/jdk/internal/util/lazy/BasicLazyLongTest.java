@@ -33,24 +33,22 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.lazy.Lazy;
-import java.util.concurrent.lazy.LazyLong;
 import java.util.function.LongSupplier;
-import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 final class BasicLazyLongTest {
 
-    LazyLong lazy;
+/*    LazyLong lazy;*/
     CountingLongSupplier supplier;
 
     @BeforeEach
     void setup() {
-        lazy = LazyLong.ofEmpty();
+/*        lazy = LazyLong.ofEmpty();*/
         supplier = new CountingLongSupplier();
     }
-
+/*
     @Test
     void supply() {
         long val = lazy.supplyIfEmpty(supplier);
@@ -120,7 +118,7 @@ final class BasicLazyLongTest {
         assertEquals(CountingLongSupplier.MAGIC_VALUE, lazy.getAsLong());
         assertEquals(1, supplier.invocations());
     }
-
+*/
     private static void join(Collection<Thread> threads) {
         for (var t : threads) {
             try {

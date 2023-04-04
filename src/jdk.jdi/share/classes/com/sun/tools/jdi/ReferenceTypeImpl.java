@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReference;
 
 import com.sun.jdi.AbsentInformationException;
@@ -68,7 +69,7 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
 
     private boolean isClassLoaderCached = false;
     private ClassLoaderReference classLoader = null;
-    private LazyReference<ClassObjectReference> classObject = LazyReference.ofEmpty();
+    private LazyReference<ClassObjectReference> classObject = Lazy.ofEmpty();
     private ModuleReference module = null;
 
     private int status = 0;
