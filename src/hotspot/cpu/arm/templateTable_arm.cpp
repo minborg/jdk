@@ -812,8 +812,6 @@ void TemplateTable::index_check(Register array, Register index) {
 
 void TemplateTable::index_check_without_pop(Register array, Register index) {
   assert_different_registers(array, index, Rtemp);
-  // check array
-  __ null_check(array, Rtemp, arrayOopDesc::length_offset_in_bytes());
   // check index
   __ ldr_s32(Rtemp, Address(array, arrayOopDesc::length_offset_in_bytes()));
   __ cmp_32(index, Rtemp);
@@ -3625,7 +3623,6 @@ void TemplateTable::invokevirtual_helper(Register index,
   __ bind(notFinal);
 
   // get receiver klass
-  __ null_check(recv, Rtemp, oopDesc::klass_offset_in_bytes());
   __ load_klass(recv_klass, recv);
 
   // profile this call
@@ -4005,7 +4002,6 @@ void TemplateTable::anewarray() {
 
 void TemplateTable::arraylength() {
   transition(atos, itos);
-  __ null_check(R0_tos, Rtemp, arrayOopDesc::length_offset_in_bytes());
   __ ldr_s32(R0_tos, Address(R0_tos, arrayOopDesc::length_offset_in_bytes()));
 }
 
