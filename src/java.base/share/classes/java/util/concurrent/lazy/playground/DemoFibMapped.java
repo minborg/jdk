@@ -23,7 +23,8 @@ public final class DemoFibMapped {
     private static final LazyReferenceArray<Integer> FIB_10_CACHE =
             Lazy.ofEmptyArray(3);
 
-    private static final LazyReferenceArray.IntKeyMapper KEY_MAPPER = LazyReferenceArray.IntKeyMapper.ofConstant(INTERVAL);
+    private static final LazyReferenceArray.IntKeyMapper KEY_MAPPER =
+            LazyReferenceArray.IntKeyMapper.ofConstant(INTERVAL);
 
     /**
      * Main method
@@ -47,7 +48,7 @@ public final class DemoFibMapped {
         System.out.format("fib : %3d%n", n);
         if (n <= 1)
             return n;
-        return FIB_10_CACHE.mapAndApply(KEY_MAPPER, n,
+        return FIB_10_CACHE.mapIntAndApply(KEY_MAPPER, n,
                     DemoFibMapped::fibSchoolBook,
                     DemoFibMapped::fibSchoolBook);
     }

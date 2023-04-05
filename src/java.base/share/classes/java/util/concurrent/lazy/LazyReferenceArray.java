@@ -26,12 +26,10 @@ package java.util.concurrent.lazy;
 
 import jdk.internal.vm.annotation.Stable;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -39,7 +37,6 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
-import java.util.Stack;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -353,10 +350,10 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * @throws NoSuchElementException if a lazy maper has previously thrown an exception for the
      *                                provided key mapping to an associated {@code index}.
      */
-    public V mapAndApply(IntKeyMapper intKeyMapper,
-                         int key,
-                         IntFunction<? extends V> mappableHandler,
-                         IntFunction<? extends V> unmappableHandler) {
+    public V mapIntAndApply(IntKeyMapper intKeyMapper,
+                            int key,
+                            IntFunction<? extends V> mappableHandler,
+                            IntFunction<? extends V> unmappableHandler) {
         int index = intKeyMapper.keyToIndex(key);
         return (index >= 0 && index < lazyReferences.length)
                 ? lazyReferences[index]
@@ -470,7 +467,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * a one-to-one mapping between the keys used for caching and the actual indices in the
      * arrary.
      *
-     * @see LazyReferenceArray#mapAndApply(IntKeyMapper, int, IntFunction, IntFunction)
+     * @see LazyReferenceArray#mapIntAndApply(IntKeyMapper, int, IntFunction, IntFunction)
      */
     public interface IntKeyMapper {
         /**
@@ -608,8 +605,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * arrary.
      *
      * @param <K> key type
-     *
-     * @see LazyReferenceArray#mapAndApply(IntKeyMapper, int, IntFunction, IntFunction)
+     * @see LazyReferenceArray#mapIntAndApply(IntKeyMapper, int, IntFunction, IntFunction)
      */
     public interface KeyMapper<K> {
 
@@ -648,8 +644,9 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
 
         /**
          * {@return a KeyMapper using a non-colliding hash algoritm}.
+         *
          * @param objects to use as keys
-         * @param <T> key types
+         * @param <T>     key types
          */
         @SafeVarargs
         @SuppressWarnings("varargs")
@@ -660,15 +657,16 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
 
         /**
          * {@return a KeyMapper that uses the provided {@code mapper}}.
+         *
          * @param mapper to use
-         * @param <T> type of key elements.
+         * @param <T>    type of key elements.
          */
-        public static <T> KeyMapper<T> of(PolynomialMapper<T> mapper) {
+        public static <T> KeyMapper<T> of(PolynomialMapperConfig<T> mapper) {
             return new KeyMapper<T>() {
                 @Override
                 public int keyToIndex(T key) {
                     T[] keys = mapper.keys();
-                    int index = polynomialHash(mapper.polynom(), key.hashCode()) % keys.length;
+                    int index = index(polynomialHash(mapper.polynom(), key.hashCode()), keys.length);
                     if (index <= 0 && index < keys.length) {
                         if (Objects.equals(key, keys[index])) {
                             return index;
@@ -698,30 +696,42 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
 
         /**
          * {@return a PolynomialMapper for the provided {@code keys}}.
+         *
          * @param keys to use later on
-         * @param <T> type of the keys
+         * @param <T>  type of the keys
          */
         @SafeVarargs
         @SuppressWarnings("varargs")
-        public static <T> PolynomialMapper<T> polynomialMapper(T... keys) {
+        public static <T> PolynomialMapperConfig<T> polynomialMapper(T... keys) {
             @SuppressWarnings("unchecked")
             T[] sortedKeys = (T[]) new Object[keys.length];
             BitSet bitSet = new BitSet(keys.length);
             int[] primes = new int[]{2, 3, 5, 7, 13, 17, 21, 23, 31};
             for (int l = 2; l < 5; l++) {
                 int[] polynom = new int[l];
-                int[] primeIndexes = new int[l];
-                for (int i = 0; i < l; i++) {
-                    primeIndexes[i] = primes.length - 1;
-                }
 
                 // Todo: Replace this with a stack or an array of iterators
                 switch (l) {
+                    // Case 1 does not provide any spreading
+                    case 1: {
+                        for (int i0 = 0; i0 < primes.length; i0++) {
+                            polynom[0] = primes[i0];
+                            PolynomialMapperConfig<T> m = tryPolynom(polynom, keys);
+                            if (m != null) {
+                                return m;
+                            }
+                        }
+                    }
+                    break;
                     case 2: {
                         for (int i0 = 0; i0 < primes.length; i0++) {
                             for (int i1 = 0; i1 < primes.length; i1++) {
                                 polynom[0] = primes[i0];
                                 polynom[1] = primes[i1];
+                                PolynomialMapperConfig<T> m = tryPolynom(polynom, keys);
+                                if (m != null) {
+                                    return m;
+                                }
                             }
                         }
                     }
@@ -733,6 +743,10 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
                                     polynom[0] = primes[i0];
                                     polynom[1] = primes[i1];
                                     polynom[2] = primes[i2];
+                                    PolynomialMapperConfig<T> m = tryPolynom(polynom, keys);
+                                    if (m != null) {
+                                        return m;
+                                    }
                                 }
                             }
                         }
@@ -747,47 +761,71 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
                                         polynom[1] = primes[i1];
                                         polynom[2] = primes[i2];
                                         polynom[3] = primes[i3];
+                                        PolynomialMapperConfig<T> m = tryPolynom(polynom, keys);
+                                        if (m != null) {
+                                            return m;
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-
-                    bitSet.clear();
-                    for (int i = 0; i < keys.length; i++) {
-                        T key = keys[i];
-                        int bucket = polynomialHash(polynom, Objects.hash(key)) % keys.length;
-                        bitSet.set(bucket);
-                        sortedKeys[i] = key;
-                    }
-                    if (bitSet.cardinality() == keys.length) {
-                        return new PolynomialMapper<>(polynom, keys);
-                    }
-
                 }
-
             }
             throw new NoSuchElementException("Unable: " + Arrays.toString(keys));
         }
 
+        private static <T> PolynomialMapperConfig<T> tryPolynom(int[] polynom, T[] keys) {
+            BitSet bitSet = new BitSet(keys.length);
+            @SuppressWarnings("unchecked")
+            T[] sortedKeys = (T[]) new Object[keys.length];
+            for (int i = 0; i < keys.length; i++) {
+                T key = keys[i];
+                int index = index(polynomialHash(polynom, Objects.hash(key)), keys.length);
+                if (index >= 0 && index < keys.length) {
+                    bitSet.set(index);
+                    sortedKeys[index] = key;
+                }
+            }
+            System.out.println("Trying " + Arrays.toString(polynom) + " -> " + Arrays.toString(sortedKeys));
+            if (bitSet.cardinality() == keys.length) {
+                System.out.println("Yehaa!");
+                return new PolynomialMapperConfig<>(polynom, keys);
+            }
+            return null;
+        }
+
         /**
          * A polynomial mapper with the provided {@code polynom} and {@code keys}}.
+         *
          * @param polynom to apply for keys
          * @param keys    that are a member of the mapping
          * @param <T>     type of the keys
          */
         @SuppressWarnings("unchecked")
-        public record PolynomialMapper<T>(int[] polynom, T... keys) {
+        public record PolynomialMapperConfig<T>(int[] polynom, T... keys) {
             /**
              * Constructor
+             *
              * @param polynom to apply for keys
-             * @param keys that are a member of the mapping
+             * @param keys    that are a member of the mapping
              */
-            public PolynomialMapper {
+            public PolynomialMapperConfig {
                 if (polynom.length <= 0) {
                     throw new IllegalArgumentException("polynom lenght must be positive: " + polynom.length);
                 }
             }
+
+            @Override
+            public String toString() {
+                return PolynomialMapperConfig.class.getSimpleName() + "={" +
+                        "polynom=" + Arrays.toString(polynom) + ", " +
+                        "keys=" + Arrays.toString(keys) + "}";
+            }
+        }
+
+        private static int index(int hash, int length) {
+            return (hash % length) & Integer.MAX_VALUE;
         }
 
         private static int polynomialHash(int[] polynom, int initialHash) {
@@ -796,12 +834,11 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
 
             // Todo: use the Vector API
             // 3X^2+X+3
-            int i;
-            for (i = 1; i < polynom.length; i++) {
+            for (int i = 1; i < polynom.length; i++) {
                 h += x * polynom[i];
                 x *= x;
             }
-            h += polynom[i];
+            h += polynom[0];
             return h;
         }
     }
