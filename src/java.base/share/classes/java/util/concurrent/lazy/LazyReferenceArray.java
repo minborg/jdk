@@ -710,7 +710,13 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
             @SuppressWarnings("unchecked")
             T[] sortedKeys = (T[]) new Object[keys.length];
             BitSet bitSet = new BitSet(keys.length);
-            int[] primes = new int[]{2, 3, 5, 7, 13, 17, 21, 23, 31};
+            int[] primes = IntStream.of(
+                    2, 3, 5, 7, 13, 17, 21, 23, 31,
+                            127, 257, 509, 1021, 2053, 4099)
+                    // No use of primes that are an even multiple of keys.length
+                    .filter(i -> i % keys.length != 0)
+                    .toArray();
+
             for (int l = 2; l < 5; l++) {
                 int[] polynom = new int[l];
 

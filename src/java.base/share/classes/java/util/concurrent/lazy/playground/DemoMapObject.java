@@ -1,5 +1,6 @@
 package java.util.concurrent.lazy.playground;
 
+import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyReferenceArray;
@@ -21,7 +22,12 @@ public final class DemoMapObject {
         System.out.println(pm);
 
         var rnd = new Random(42);
-        var pm2 = LazyReferenceArray.KeyMapper.polynomialMapper(IntStream.range(0, 10).mapToObj(i -> randomString(rnd)).toArray());
+        var strings = IntStream.range(0, 10)
+                .mapToObj(i -> randomString(rnd))
+                .toArray(String[]::new);
+        Arrays.stream(strings)
+                .forEach(System.out::println);
+        var pm2 = LazyReferenceArray.KeyMapper.polynomialMapper(strings);
         System.out.println(pm2);
     }
 
