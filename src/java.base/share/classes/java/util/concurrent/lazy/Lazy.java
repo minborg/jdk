@@ -1,5 +1,7 @@
 package java.util.concurrent.lazy;
 
+import jdk.internal.javac.PreviewFeature;
+
 import java.util.Objects;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -8,6 +10,7 @@ import java.util.function.Supplier;
  * This class provides common factories and configuration classes for all
  * Lazy class variants.
  */
+@PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public final class Lazy {
 
     // Suppresses default constructor, ensuring non-instantiability.

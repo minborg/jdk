@@ -149,6 +149,7 @@ module java.base {
     // module declaration be annotated with jdk.internal.javac.ParticipatesInPreview
     exports jdk.internal.javac to
         java.compiler,
+        java.desktop, // participates in preview features
         java.management, // participates in preview features
         jdk.compiler,
         jdk.incubator.concurrent, // participates in preview features

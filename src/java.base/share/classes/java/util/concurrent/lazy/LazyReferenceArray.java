@@ -24,6 +24,7 @@
  */
 package java.util.concurrent.lazy;
 
+import jdk.internal.javac.PreviewFeature;
 import jdk.internal.vm.annotation.Stable;
 
 import java.util.Arrays;
@@ -64,6 +65,7 @@ import java.util.stream.Stream;
  *
  * @param <V> The type of the values to be recorded
  */
+@PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public final class LazyReferenceArray<V> implements IntFunction<V> {
 
     private final IntFunction<? extends V> presetMapper;
@@ -469,6 +471,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      *
      * @see LazyReferenceArray#mapIntAndApply(IntKeyMapper, int, IntFunction, IntFunction)
      */
+    @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
     public interface IntKeyMapper {
         /**
          * {@return an index of the LazyReferenceArray by converting the
@@ -607,6 +610,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
      * @param <K> key type
      * @see LazyReferenceArray#mapIntAndApply(IntKeyMapper, int, IntFunction, IntFunction)
      */
+    @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
     public interface KeyMapper<K> {
 
         /**
@@ -803,6 +807,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
          * @param <T>     type of the keys
          */
         @SuppressWarnings("unchecked")
+        @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
         public record PolynomialMapperConfig<T>(int[] polynom, T... keys) {
             /**
              * Constructor

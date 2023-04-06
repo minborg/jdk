@@ -30,7 +30,6 @@ import java.awt.geom.*;
 import java.awt.image.*;
 import java.nio.*;
 import java.util.concurrent.lazy.Lazy;
-import java.util.concurrent.lazy.LazyReference;
 import java.util.function.Supplier;
 
 import sun.awt.image.*;

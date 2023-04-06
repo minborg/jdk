@@ -24,6 +24,7 @@
  */
 package java.util.concurrent.lazy;
 
+import jdk.internal.javac.PreviewFeature;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
@@ -65,7 +66,9 @@ import java.util.function.Supplier;
  *}
  *
  * @param <V> The type of the value to be recorded
+ * @since 22
  */
+@PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public final class LazyReference<V>
         implements Supplier<V> {
 
@@ -296,6 +299,7 @@ public final class LazyReference<V>
      *
      * @param <T> the type of the value.
      */
+    @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
     public interface Builder<T> {
 
         /**

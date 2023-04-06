@@ -10,10 +10,11 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 /**
- * A
+ * Just a reference implementation (to be removed).
  *
  * @param <V> Type
  */
+@Deprecated(forRemoval = true)
 public final class LazyRefNullofobic<V>
         implements Supplier<V> {
 
