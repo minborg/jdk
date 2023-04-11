@@ -1,8 +1,13 @@
 package java.util.concurrent.lazy;
 
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.util.concurrent.lazy.LazyMapper;
+import jdk.internal.util.concurrent.lazy.LazySingleMapper;
 
+import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -133,7 +138,6 @@ public final class Lazy {
      *
      * @param <T>            The type of the value
      * @param presetSupplier to invoke when lazily constructing a value
-     * @throws NullPointerException if the provided {@code presetSupplier} is {@code null}
      */
     public static <T> LazyReference<T> of(Supplier<? extends T> presetSupplier) {
         Objects.requireNonNull(presetSupplier);
@@ -156,8 +160,11 @@ public final class Lazy {
      * an exception will be thrown.
      * <p>
      * {@snippet lang = java:
-     *    LazyReferenceArray<T> lazy = Lazy.ofEmptyArray(64);
-     *    T value = lazy.computeIfEmpty(42, i -> findUserById(i));
+     *    // Cache the first 64 users
+     *    private static final LazyReferenceArray<User> lazy = Lazy.ofEmptyArray(64);
+     *    ...
+     *    Connection c = ...
+     *    User value = lazy.computeIfEmpty(42, i -> findUserById(c, i));
      *    assertNotNull(value); // Value is non-null
      *}
      *
@@ -179,15 +186,14 @@ public final class Lazy {
      * {@link LazyReferenceArray#computeIfEmpty(int, IntFunction)}.
      * <p>
      * {@snippet lang = java:
-     *    LazyReferenceArray<T> lazy = Lazy.ofArray(64, Value::new);
+     *    LazyReferenceArray<Value> lazy = Lazy.ofArray(32, index -> new Value(1L << index));
      *    // ...
-     *    T value = lazy.get(42);
+     *    Value value = lazy.get(16);
      *}
      *
      * @param <T>          The type of the values
      * @param size         the size of the array
      * @param presetMapper to invoke when lazily constructing a value
-     * @throws NullPointerException if the provided {@code presetMapper} is {@code null}
      */
     public static <T> LazyReferenceArray<T> ofArray(int size,
                                                     IntFunction<? extends T> presetMapper) {
@@ -196,6 +202,71 @@ public final class Lazy {
         }
         Objects.requireNonNull(presetMapper);
         return new LazyReferenceArray<>(size, presetMapper);
+    }
+
+    /**
+     * {@return a Function that can map any of the provided collection of {@code keys} to values (of type V)
+     * lazily computed and recorded by the provided {@code mapper} or {@linkplain Optional#empty() Optional.empty()}
+     * if a key that is not part of the provided collection of {@code keys} is provided to the returned Function}.
+     * <p>
+     * If an attempt is made to invoke the {@link LazyReferenceArray#apply(int)} ()} method when no element is present,
+     * the provided {@code presetMapper} will automatically be invoked as specified by
+     * {@link LazyReferenceArray#computeIfEmpty(int, IntFunction)}.
+     * <p>
+     * {@snippet lang = java:
+     *    Function<String, Optional<String>> pageCache = Lazy.ofMapper(
+     *                      List.of("home", "products", "contact"), DbTools::lookupPage);
+     *    // ...
+     *     String pageName = ...;
+     *
+     *    String text = pageCache.apply(pageName)
+     *                      .orElseGet(() -> lookupPage(pageName));
+     *    // ...
+     *    String lookupPage(String pageName) {
+     *      // Gets the HTML code for the named page from the content database
+     *    }
+     *}
+     *
+     * @param <K> the type of keys maintained by this mapper
+     * @param <V> the type of mapped values
+     * @param keys to be mapped
+     * @param mapper to apply when computing and recording values
+     */
+    public static <K, V> Function<K, Optional<V>> ofMapper(Collection<K> keys,
+                                                           Function<? super K, ? extends V> mapper) {
+        Objects.requireNonNull(keys);
+        Objects.requireNonNull(mapper);
+        return new LazySingleMapper<>(keys, mapper);
+    }
+
+    /**
+     * {@return a Function that will lazily evaluate and record the provided collection
+     * of {@code keyMappers} to values of type V or {@linkplain Optional#empty() Optional.empty()}
+     * if a key that is not a part of the provided collection of {@code keyMappers} is
+     * provided to the returned Function}.
+     * <p>
+     * {@snippet lang = java:
+     *    Function<Integer, Optional<String>> lazy = Lazy.ofMapper(List.of(
+     *            new KeyMapper(400, this::loadBadRequestFromDb),
+     *            new KeyMapper(401, this::loadUnaothorizedFromDb),
+     *            new KeyMapper(403, this::loadForbiddenFromDb),
+     *            new KeyMapper(404, this::loadNotFoundFromDb)
+     *         );
+     *    // ...
+     *    if (returnCode >= 400) {
+     *        response.println(lazy.apply(returnCode)
+     *                             .orElse("<!DOCTYPE html><title>Oops: "+returnCode+"</title>"));
+     *    }
+     *}
+     *
+     * @param <K> the type of keys maintained by this mapper
+     * @param <V> the type of mapped values
+     * @param keys to be mapped
+     * @param mapper to apply when computing and recording values
+     */
+    public static <K, V> Function<K, Optional<V>> ofMapper(Collection<KeyMapper<K, V>> keyMappers) {
+        Objects.requireNonNull(keyMappers);
+        return new LazyMapper<>(keyMappers);
     }
 
 }

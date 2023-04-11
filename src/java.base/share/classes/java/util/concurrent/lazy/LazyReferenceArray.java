@@ -68,6 +68,8 @@ import java.util.stream.Stream;
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public final class LazyReferenceArray<V> implements IntFunction<V> {
 
+    private static int hi = 0;
+
     private final IntFunction<? extends V> presetMapper;
 
     @Stable
@@ -670,11 +672,13 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
                 @Override
                 public int keyToIndex(T key) {
                     T[] keys = mapper.keys();
-                    int index = index(polynomialHash(mapper.polynom(), key.hashCode()), keys.length);
-                    if (index <= 0 && index < keys.length) {
-                        if (Objects.equals(key, keys[index])) {
-                            return index;
-                        }
+                    int index = bucket(polynomialHash(mapper.polynom(), key.hashCode()), keys.length);
+                    if (Objects.equals(key, keys[index])) {
+                        return index;
+                    }
+                    int nextIndex = KeyMapper.bucket(index, keys.length);
+                    if (Objects.equals(keys, keys[nextIndex])) {
+                        return nextIndex;
                     }
                     return -1;
                 }
@@ -711,7 +715,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
             T[] sortedKeys = (T[]) new Object[keys.length];
             BitSet bitSet = new BitSet(keys.length);
             int[] primes = IntStream.of(
-                    2, 3, 5, 7, 13, 17, 21, 23, 31,
+                            2, 3, 5, 7, 13, 17, 21, 23, 31,
                             127, 257, 509, 1021, 2053, 4099)
                     // No use of primes that are an even multiple of keys.length
                     .filter(i -> i % keys.length != 0)
@@ -791,13 +795,22 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
             T[] sortedKeys = (T[]) new Object[keys.length];
             for (int i = 0; i < keys.length; i++) {
                 T key = keys[i];
-                int index = index(polynomialHash(polynom, Objects.hash(key)), keys.length);
-                if (index >= 0 && index < keys.length) {
+                int index = bucket(polynomialHash(polynom, Objects.hash(key)), keys.length);
+                if (bitSet.get(index)) {
+                    // Try one position ahead
+                    int nextIndex = bucket(index, keys.length);
+                    bitSet.set(nextIndex);
+                    sortedKeys[nextIndex] = key;
+                } else {
                     bitSet.set(index);
                     sortedKeys[index] = key;
                 }
             }
-            System.out.println("Trying " + Arrays.toString(polynom) + " -> " + Arrays.toString(sortedKeys));
+            System.out.println("Tried (" + bitSet.cardinality() + ") " + Arrays.toString(polynom) + " -> " + Arrays.toString(sortedKeys));
+            if (bitSet.cardinality() > hi) {
+                hi = bitSet.cardinality();
+                System.out.println("hi=" + hi);
+            }
             if (bitSet.cardinality() == keys.length) {
                 System.out.println("Yehaa!");
                 return new PolynomialMapperConfig<>(polynom, keys);
@@ -835,7 +848,7 @@ public final class LazyReferenceArray<V> implements IntFunction<V> {
             }
         }
 
-        private static int index(int hash, int length) {
+        private static int bucket(int hash, int length) {
             return (hash % length) & Integer.MAX_VALUE;
         }
 
