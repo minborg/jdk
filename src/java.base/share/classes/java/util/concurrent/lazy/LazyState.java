@@ -34,7 +34,7 @@ public enum LazyState {
      */
     PRESENT,
     /**
-     * Indicates an error has occured during construction of the value.
+     * Indicates an error has occurred during the construction of the value.
      * This is a <em>final state</em>.
      */
     ERROR;

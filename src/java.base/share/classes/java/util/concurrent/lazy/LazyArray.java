@@ -70,7 +70,7 @@ public sealed interface LazyArray<V>
      *     }
      *}
      * @param index to retrieve the State from
-     * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
+     * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
      */
     public LazyState state(int index);
 
@@ -79,7 +79,7 @@ public sealed interface LazyArray<V>
      * {@link Optional#empty()} if no exception was thrown}.
      *
      * @param index to retrieve the exception from
-     * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
+     * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
      */
     public Optional<Throwable> exception(int index);
 
@@ -180,7 +180,7 @@ public sealed interface LazyArray<V>
      *
      * @param index to the slot to be used
      * @return the value (pre-existing or newly computed)
-     * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
+     * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
      * @throws IllegalStateException          if a value was not already present and no
      *                                        pre-set mapper was specified.
      * @throws NoSuchElementException         if a maper has previously thrown an exception for the

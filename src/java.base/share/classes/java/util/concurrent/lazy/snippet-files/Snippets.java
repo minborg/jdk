@@ -39,11 +39,24 @@ public class Snippets {
     }
 
     // @start region="DemoPreset"
+    class JepDemoPreset {
+
+        // 1. Declare a lazy field
+        private static final Lazy<Foo> FOO = Lazy.of(Foo::new);
+
+        public Foo theFoo() {
+            // 2. Foo is lazily constructed and recorded here upon first invocation
+            return FOO.get();
+        }
+    }
+    // @end
+
+    // @start region="DemoPreset"
     class DemoPreset {
 
         private static final Lazy<Foo> FOO = Lazy.of(Foo::new);
 
-        public Foo theBar() {
+        public Foo theFoo() {
             // Foo is lazily constructed and recorded here upon first invocation
             return FOO.get();
         }
@@ -94,6 +107,21 @@ public class Snippets {
         }
     }
     // @end
+
+    // @start region="JepDemoArray"
+    class JepDemoArray {
+
+        // 1. Declare a lazy array of length 32
+        private static final LazyArray<Long> VALUE_PO2_CACHE = LazyArray.ofArray(32, index -> 1L << index);
+
+        public long powerOfTwo(int n) {
+            // 2. The n-slot is lazily computed and recorded here upon first slot invocation
+            // 3. Using an n outside the array will throw an ArrayOutOfBoundsException
+            return VALUE_PO2_CACHE.apply(n);
+        }
+    }
+    // @end
+
 
     // @start region="DemoArray"
     class DemoArray {
@@ -148,6 +176,31 @@ public class Snippets {
         }
     }
     // @end
+
+
+    static class ExceptionDemo {
+
+        // 1. Create a lazy with a throwing supplier
+        private final Lazy<Foo> lazy = Lazy.of(() -> {
+            throw new UnsupportedOperationException();
+        });
+
+        public static void main(String[] args) {
+
+            var demo = new ExceptionDemo();
+
+            // 2. When get() is invoked, the supplier will fail to compute a value and
+            // lazy will re-throw the UnsupportedOperationException
+            demo.lazy.get();
+
+            // 3. This will print the exception (if any) on standard out
+            demo.lazy.exception()
+                    .ifPresent(System.out::println);
+
+
+        }
+
+    }
 
     private static final class Color{}
 

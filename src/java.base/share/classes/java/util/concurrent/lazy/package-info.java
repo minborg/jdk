@@ -57,7 +57,7 @@
  *
  *         private static final Lazy<Foo> FOO = Lazy.of(Foo::new);
  *
- *         public Foo theBar() {
+ *         public Foo theFoo() {
  *             // Foo is lazily constructed and recorded here upon first invocation
  *             return FOO.get();
  *         }
