@@ -37,57 +37,56 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyState;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 final class BasicLazyTest {
 
-    Lazy<Integer> lazy;
-    CountingIntegerSupplier supplier;
-
-    @BeforeEach
-    void setup() {
-        supplier = new CountingIntegerSupplier();
-        lazy = Lazy.of(supplier);
+    @TestFactory
+    Stream<DynamicTest> get() {
+        return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
+            Integer val = lv.lazy().get();
+            assertEquals(CountingIntegerSupplier.MAGIC_VALUE, val);
+            assertEquals(1, lv.supplier().invocations());
+            Integer val2 = lv.lazy().get();
+            assertEquals(CountingIntegerSupplier.MAGIC_VALUE, val);
+            assertEquals(1, lv.supplier().invocations());
+        });
     }
 
-    @Test
-    void get() {
-        Integer val = lazy.get();
-        assertEquals(CountingIntegerSupplier.MAGIC_VALUE, val);
-        assertEquals(1, supplier.invocations());
-        Integer val2 = lazy.get();
-        assertEquals(CountingIntegerSupplier.MAGIC_VALUE, val);
-        assertEquals(1, supplier.invocations());
+    @TestFactory
+    Stream<DynamicTest> nulls() {
+        return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
+            // Mapper is null
+            assertThrows(NullPointerException.class,
+                    () -> lv.constructor().apply(null));
+            // Mapper returns null
+            Lazy<Integer> l = lv.constructor().apply(() -> null);
+            assertThrows(NullPointerException.class, l::get);
+        });
     }
 
-    @Test
-    void nulls() {
-        // Mapper is null
-
-        assertThrows(NullPointerException.class,
-                () -> Lazy.of(null));
-        // Mapper returns null
-        Lazy<Integer> l = Lazy.of(() -> null);
-        assertThrows(NullPointerException.class, l::get);
+    @TestFactory
+    Stream<DynamicTest> state() {
+        return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
+            assertEquals(LazyState.EMPTY, lv.lazy().state());
+            Integer val = lv.lazy().get();
+            assertEquals(LazyState.PRESENT, lv.lazy().state());
+        });
     }
 
-    @Test
-    void state() {
-        assertEquals(LazyState.EMPTY, lazy.state());
-        Integer val = lazy.get();
-        assertEquals(LazyState.PRESENT, lazy.state());
-    }
-
-    @Test
-    void presetSupplierBasic() {
-        Lazy<Integer> presetLazy = Lazy.of(supplier);
-        for (int i = 0; i < 2; i++) {
-            assertEquals(CountingIntegerSupplier.MAGIC_VALUE, presetLazy.get());
-            assertEquals(1, supplier.invocations());
-        }
+    @TestFactory
+    Stream<DynamicTest> presetSupplierBasic() {
+        return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
+            for (int i = 0; i < 2; i++) {
+                assertEquals(CountingIntegerSupplier.MAGIC_VALUE, lv.lazy().get());
+                assertEquals(1, lv.supplier().invocations());
+            }
+        });
     }
 
     @Test
@@ -98,20 +97,22 @@ final class BasicLazyTest {
         assertEquals("A", present.get().orElseThrow());
     }
 
-    @Test
-    void error() {
-        Supplier<Integer> throwingSupplier = () -> {
-            throw new UnsupportedOperationException();
-        };
-        Lazy<Integer> l = Lazy.of(throwingSupplier);
-        assertThrows(UnsupportedOperationException.class,
-                () -> l.get());
+    @TestFactory
+    Stream<DynamicTest> error() {
+        return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
+            Supplier<Integer> throwingSupplier = () -> {
+                throw new UnsupportedOperationException();
+            };
+            Lazy<Integer> l = lv.constructor().apply(throwingSupplier);
+            assertThrows(UnsupportedOperationException.class,
+                    () -> l.get());
 
-        assertEquals(LazyState.ERROR, l.state());
-        assertTrue(l.exception().isPresent());
+            assertEquals(LazyState.ERROR, l.state());
+            assertTrue(l.exception().isPresent());
 
-        // Should not invoke the supplier as we are already in ERROR state
-        assertThrows(NoSuchElementException.class, () -> l.get());
+            // Should not invoke the supplier as we are already in ERROR state
+            assertThrows(NoSuchElementException.class, () -> l.get());
+        });
     }
 
     // Todo:repeate the test 1000 times
@@ -135,26 +136,63 @@ final class BasicLazyTest {
         assertEquals(1, supplier.invocations());
     }
 
-    @Test
-    void testToString() throws InterruptedException {
-        var lazy0 = Lazy.of(() -> 0);
-        var lazy1 = Lazy.of(() -> 1);
-        lazy1.get();
-        var lazy2 = Lazy.of(() -> {
-            throw new UnsupportedOperationException();
+    @TestFactory
+    Stream<DynamicTest> testToString() throws InterruptedException {
+        return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
+            var lazy0 = lv.constructor().apply(() -> 0);
+            var lazy1 = lv.constructor().apply(() -> 1);
+            lazy1.get();
+            var lazy2 = lv.constructor().apply(() -> {
+                throw new UnsupportedOperationException();
+            });
+            // Do not touch lazy0
+            lazy1.get();
+            try {
+                lazy2.get();
+            } catch (UnsupportedOperationException ignored) {
+                // Happy path
+            }
+            assertEquals(lazy0.getClass().getSimpleName()+"[EMPTY]", lazy0.toString());
+            assertEquals(lazy0.getClass().getSimpleName()+"[1]", lazy1.toString());
+            assertEquals(lazy0.getClass().getSimpleName()+"[ERROR [java.lang.UnsupportedOperationException]]", lazy2.toString());
         });
-        // Do not touch lazy0
-        lazy1.get();
-        try {
-            lazy2.get();
-        } catch (UnsupportedOperationException ignored) {
-            // Happy path
-        }
-
-        assertEquals("StandardLazy[EMPTY]", lazy0.toString());
-        assertEquals("StandardLazy[1]", lazy1.toString());
-        assertEquals("StandardLazy[ERROR [java.lang.UnsupportedOperationException]]", lazy2.toString());
     }
+
+    @TestFactory
+    Stream<DynamicTest> testCircular() {
+        return DynamicTest.stream(lazyVariants(), LazyVariant::name, lv -> {
+            STATIC_LAZY = Lazy.of(() -> STATIC_LAZY.get());
+            assertThrows(IllegalStateException.class, () -> {
+                STATIC_LAZY.get();
+            });
+        });
+    }
+
+    private static Lazy<Integer> STATIC_LAZY;
+
+
+    private static Stream<LazyVariant> lazyVariants() {
+        return Stream.of(
+                        new NamedConstructor("Lazy::of", Lazy::of),
+                        new NamedConstructor("Lazy::ofCompact", Lazy::ofCompact))
+                .map(nc -> {
+                    var supplier = new CountingIntegerSupplier();
+                    var lazy = nc.constructor().apply(supplier);
+                    return new LazyVariant(nc.name(), nc.constructor(), lazy, supplier);
+                });
+    }
+
+    private record NamedConstructor(String name,
+                                    Function<Supplier<Integer>, Lazy<Integer>> constructor){
+
+    }
+
+    private record LazyVariant(String name,
+                              Function<Supplier<Integer>, Lazy<Integer>> constructor,
+                              Lazy<Integer> lazy,
+                               CountingIntegerSupplier supplier) {
+    }
+
 
     private static void join(Collection<Thread> threads) {
         for (var t : threads) {

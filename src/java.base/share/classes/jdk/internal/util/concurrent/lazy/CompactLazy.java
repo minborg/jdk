@@ -25,7 +25,6 @@
 
 package jdk.internal.util.concurrent.lazy;
 
-import jdk.internal.util.concurrent.lazy.LazyUtil.ConstructingFlag;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
@@ -52,9 +51,18 @@ public final class CompactLazy<V> implements Lazy<V> {
         }
     }
 
-    private volatile Object value;
+    /**
+     * Value can assume the following meanings:
+     // 0) Holds the initial supplier
+     // 1) Flags if the Lazy is being constucted using the current thread as a maker Object
+     // 2) Holds a Throwable, if the computation of the value failed.
+     // 3) Holds the value, if the computation of the value succeeded.
+     */
+    private Object value;
 
     public CompactLazy(Supplier<? extends V> supplier) {
+        // Because supplier is set in the constructor, it can always be
+        // observed by any thread with normal memory semantics.
         this.value = supplier;
     }
 
@@ -62,59 +70,61 @@ public final class CompactLazy<V> implements Lazy<V> {
     @Override
     public V get() {
         Object v = value;
-        return switch (v) {
-            case Supplier<?> supplier -> {
-                synchronized (this) {
-                    v = value;
-                    yield switch (v) {
-                        case Supplier<?> supplier1 -> {
-                            value = LazyUtil.CONSTRUCTIING_FLAG;
-                            try {
-                                V newValue = (V) supplier1.get();
-                                // Enforce
-                                switch (newValue) {
-                                    case Supplier<?> s2 ->
-                                            throw new IllegalStateException("Supplier returned a Supplier: " + supplier1);
-                                    case Throwable t ->
-                                            throw new IllegalStateException("Supplier returned a Throwable", t);
-                                    default -> {
-                                        /* do nothing */
-                                    }
+        // Todo: replace with switch once "JEP 443: Unnamed Patterns and Variables" becomes available
+        if (v instanceof Supplier<?> || v instanceof Thread) {
+            synchronized (this) {
+                // "value" is only updated within this synchronization so normal
+                // semantics suffice here
+                v = value;
+                return switch (v) {
+                    case Supplier<?> supplier1 -> {
+                        VALUE_HANDLE.setVolatile(this, Thread.currentThread());
+                        try {
+                            V newValue = (V) supplier1.get();
+                            // Enforce supplier invariants
+                            // Todo: Use an object header bit to flag exceptional states and allow these types
+                            switch (newValue) {
+                                case Supplier<?> s2 -> throw new IllegalStateException("Supplier returned a Supplier: " + s2);
+                                case Throwable    t -> throw new IllegalStateException("Supplier returned a Throwable", t);
+                                case Thread       t -> throw new IllegalStateException("Supplier returned a Thread:" + t);
+                                case null           -> throw new NullPointerException("Suppler returned null");
+                                default             -> {
+                                    /* We have a valid value, do nothing */
                                 }
-                                value = newValue;
-                                yield newValue;
-                            } catch (Throwable t) {
-                                value = t;
-                                throw t;
                             }
+                            VALUE_HANDLE.setVolatile(this, newValue);
+                            yield newValue;
+                        } catch (Throwable t) {
+                            VALUE_HANDLE.setVolatile(this, t);
+                            throw t;
                         }
-                        case Throwable throwable -> {
-                            throw new NoSuchElementException((Throwable) v);
-                        }
-                        default -> (V) v;
-                    };
-                }
+                    }
+                    case Throwable throwable -> {
+                        throw new NoSuchElementException(throwable);
+                    }
+                    default -> (V) v;
+                };
             }
-            case Throwable throwable -> {
-                throw new NoSuchElementException((Throwable) value);
-            }
-            default -> (V) v;
-        };
+        }
+        if (v instanceof Throwable throwable) {
+            throw new NoSuchElementException(throwable);
+        }
+        return (V) v;
     }
 
     @Override
     public final LazyState state() {
-        return switch (value) {
-            case Supplier<?>      s -> LazyState.EMPTY;
-            case Throwable        t -> LazyState.ERROR;
-            case ConstructingFlag c -> LazyState.CONSTRUCTING;
-            default                 -> LazyState.PRESENT;
+         return switch (VALUE_HANDLE.getVolatile(this)) {
+            case Supplier<?> s -> LazyState.EMPTY;
+            case Throwable   t -> LazyState.ERROR;
+            case Thread      t -> LazyState.CONSTRUCTING;
+            default            -> LazyState.PRESENT;
         };
     }
 
     @Override
     public final Optional<Throwable> exception() {
-        return value instanceof Throwable throwable
+        return VALUE_HANDLE.getVolatile(this) instanceof Throwable throwable
                 ? Optional.of(throwable)
                 : Optional.empty();
     }
@@ -122,23 +132,24 @@ public final class CompactLazy<V> implements Lazy<V> {
     @SuppressWarnings("unchecked")
     @Override
     public V getOr(V defaultValue) {
-        Object v = value;
+        Object v = VALUE_HANDLE.getVolatile(this);
         return switch (v) {
-            case Supplier<?> s      -> defaultValue;
-            case Throwable t        -> throw new NoSuchElementException(t);
-            case ConstructingFlag s -> defaultValue;
-            default                 -> (V) v;
+            case Supplier<?> s -> defaultValue;
+            case Throwable t   -> throw new NoSuchElementException(t);
+            case Thread t      -> defaultValue;
+            default            -> (V) v;
         };
     }
 
     @Override
     public final String toString() {
+        Object v = VALUE_HANDLE.getVolatile(this);
         return "CompactLazy[" +
-                switch (state()) {
-                    case EMPTY        -> LazyState.EMPTY;
-                    case CONSTRUCTING -> LazyState.CONSTRUCTING;
-                    case PRESENT      -> value;
-                    case ERROR        -> LazyState.ERROR + " [" + value.getClass().getName() + "]";
+                switch (v) {
+                    case Supplier<?> s -> LazyState.EMPTY;
+                    case Thread t      -> LazyState.CONSTRUCTING+ " [" + t + "]";
+                    case Throwable t   -> LazyState.ERROR + " [" + t.getClass().getName() + "]";
+                    default            -> v.toString();
                 }
                 + "]";
     }

@@ -25,6 +25,7 @@
 
 package jdk.internal.util.concurrent.lazy;
 
+import jdk.internal.util.concurrent.lazy.LazyUtil.PresentFlag;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
@@ -35,7 +36,7 @@ import java.util.concurrent.lazy.Lazy;
 import java.util.concurrent.lazy.LazyState;
 import java.util.function.Supplier;
 
-import static java.util.concurrent.lazy.LazyState.CONSTRUCTING;
+import static jdk.internal.util.concurrent.lazy.LazyUtil.PRESENT_FLAG;
 
 public final class StandardLazy<V> implements Lazy<V> {
 
@@ -63,10 +64,11 @@ public final class StandardLazy<V> implements Lazy<V> {
     @Stable
     private V value;
 
-    // This auxillary field has three purposes:
+    // This auxillary field has four purposes:
     // 0) Holds the initial supplier
-    // 1) Flag if the Lazy is being constucted using the special CONSTRUCTING_FLAG Object
+    // 1) Flags if the Lazy is being constucted using the current thread as a maker Object
     // 2) Holds a Throwable, if the computation of the value failed.
+    // 3) Holds PRESENT_FLAG, if the computation of the value succeeded.
     private Object aux;
 
     public StandardLazy(Supplier<? extends V> supplier) {
@@ -83,32 +85,41 @@ public final class StandardLazy<V> implements Lazy<V> {
         }
 
         synchronized (this) {
-            // Here, visibility is guaranteed
+            // Here, visibility and atomicy is guaranteed
             v = value;
             if (v != null) {
                 return v;
             }
             var a = aux;
-            if (a instanceof Throwable throwable) {
-                throw new NoSuchElementException(throwable);
+            switch (a) {
+                case Throwable t -> throw new NoSuchElementException(t);
+                case Thread  t   -> throw new IllegalStateException("Circular supplier detected");
+                default          -> { /* do nothing */ }
             }
+
+            // Mark as CONSTRUCTING and make the pre-configured supplier eligeable for collection
+            AUX_HANDLE.setVolatile(this, Thread.currentThread());
             try {
-                // Mark as CONSTRUCTING and make the pre-configured supplier eligeable for collection
-                aux = LazyUtil.CONSTRUCTIING_FLAG;
                 v = ((Supplier<V>) a).get();
-                if (v == null) {
-                    throw new NullPointerException("Supplier returned null: " + a);
-                }
-                VALUE_HANDLE.setVolatile(this, v);
-                // Clear CONSTRUCTING mode
-                AUX_HANDLE.setVolatile(this, null);
-                return v;
             } catch (Throwable e) {
-                // Record the throwable instead of the value.
+                // Record the throwable
                 AUX_HANDLE.setVolatile(this, e);
                 // Rethrow
                 throw e;
             }
+
+            // The suppler must not return null
+            if (v == null) {
+                var npe = new NullPointerException("Supplier returned null: " + a);
+                AUX_HANDLE.setVolatile(this, npe);
+                throw npe;
+            }
+
+            // Record the value
+            VALUE_HANDLE.setVolatile(this, v);
+            // Clear CONSTRUCTING mode
+            AUX_HANDLE.setVolatile(this, PRESENT_FLAG);
+            return v;
         }
     }
 
@@ -121,10 +132,10 @@ public final class StandardLazy<V> implements Lazy<V> {
         }
 
         Object a = aux;
-        if (a == LazyUtil.CONSTRUCTIING_FLAG) {
-            return CONSTRUCTING;
+        if (a instanceof Thread) {
+            return LazyState.CONSTRUCTING;
         }
-        if (a instanceof Throwable throwable) {
+        if (a instanceof Throwable) {
             return LazyState.ERROR;
         }
 
@@ -135,8 +146,8 @@ public final class StandardLazy<V> implements Lazy<V> {
         }
 
         a = AUX_HANDLE.getVolatile(this);
-        if (a == LazyUtil.CONSTRUCTIING_FLAG) {
-            return CONSTRUCTING;
+        if (a instanceof Thread) {
+            return LazyState.CONSTRUCTING;
         }
         if (a instanceof Throwable throwable) {
             return LazyState.ERROR;
@@ -181,14 +192,17 @@ public final class StandardLazy<V> implements Lazy<V> {
 
     @Override
     public final String toString() {
-        return "StandardLazy[" +
-                switch (state()) {
-                    case EMPTY -> LazyState.EMPTY;
-                    case CONSTRUCTING -> CONSTRUCTING;
-                    case PRESENT -> value;
-                    case ERROR -> LazyState.ERROR + " [" + aux.getClass().getName() + "]";
-                }
-                + "]";
+        // Avoid race conditions by initially just observing aux
+        Object a = AUX_HANDLE.getVolatile(this);
+        return "StandardLazy[" + switch (a) {
+            case Supplier<?> s -> LazyState.EMPTY.toString();
+            case Thread      t -> LazyState.CONSTRUCTING + " [" + t + "]";
+            case Throwable   t -> LazyState.ERROR + " [" + t.getClass().getName() + "]";
+            // If a is PresentFlag, a valid value must exit
+            case PresentFlag p -> VALUE_HANDLE.getVolatile(this).toString();
+            default            -> throw new InternalError("should not reach here");
+        } + "]";
+
     }
 
 }

@@ -3861,6 +3861,72 @@ public final class Unsafe {
         }
     }
 
+
+    // The following mehods and fields relates to access to unused object header bits
+    // as per "markWord.cpp"
+
+    private static final int UNUSED_OBJECT_HEADER_BITS = ADDRESS_SIZE == 64 ? 24 : 1;
+    private static final int UNUSED_OBJECT_HEADER_BYTE_OFFSET = ADDRESS_SIZE == 64 ? 3 : 3;
+    private static final int UNUSED_OBJECT_HEADER_BIT_OFFSET = ADDRESS_SIZE == 64 ? 0 : 2;
+
+    // Todo: Handle displaced headers and Lilleput
+
+    /**
+     * {@return the number of unused bits in the object header for the current platform
+     * that can be utilized from code}.
+     * <p>
+     * The returned value is guaranteed to be in the range [0, 31].
+     */
+    public int unusedObjectHeaderBits() {
+        return UNUSED_OBJECT_HEADER_BITS;
+    }
+
+    /**
+     * {@return if the unused object header {@code bit} in the given
+     * object {@code o} is set using volatile memory semantics}.
+     *
+     * @param o   object/array to check.
+     * @param bit to check
+     * @throws IllegalArgumentException if {@code bit < 0 or bit >= unusedObjectHeaderBits() }
+     * @since 22
+     */
+    public boolean getUnusedObjectHeaderBit(Object o, int bit) {
+        int byteOffset = byteOffsetOrThrow(bit);
+        byte mask = mask(bit);
+        return (getByteVolatile(o, UNUSED_OBJECT_HEADER_BYTE_OFFSET + byteOffset) & mask) != 0;
+    }
+
+    /**
+     * Atomically sets the unused object header {@code bit} in the given object {@code o}
+     * is set to the provided {@code value} and returns the previous value of the bit.
+     *
+     * @param o   object/array to check.
+     * @param bit to set
+     * @return if the bit is set
+     * @throws IllegalArgumentException if the provided {@code bit} is outside the range
+     *                                  [ 0, unusedObjectHeaderBits() )
+     * @since 22
+     */
+    public boolean setObjectHeaderBit(Object o, int bit, boolean value) {
+        int byteOffset = byteOffsetOrThrow(bit);
+        byte mask = mask(bit);
+        return value
+                ? getAndBitwiseOrByte(0, UNUSED_OBJECT_HEADER_BYTE_OFFSET + byteOffset, mask) != 0
+                : getAndBitwiseAndByte(0, UNUSED_OBJECT_HEADER_BYTE_OFFSET + byteOffset, (byte) ~mask) != 0;
+    }
+
+    private static int byteOffsetOrThrow(int bit) {
+        if (bit >= UNUSED_OBJECT_HEADER_BITS || bit < 0) {
+            throw new IllegalArgumentException("Unused object header bit not supported: " + bit);
+        }
+        return bit % 8;
+    }
+
+    private static byte mask(int bit) {
+        int bitOffset = bit % 8;
+        return (byte) (~(1 << bitOffset));
+    }
+
     // The following deprecated methods are used by JSR 166.
 
     @Deprecated(since="12", forRemoval=true)

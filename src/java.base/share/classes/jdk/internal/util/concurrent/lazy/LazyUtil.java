@@ -25,15 +25,49 @@
 
 package jdk.internal.util.concurrent.lazy;
 
+import java.util.Objects;
+import java.util.concurrent.lazy.Lazy;
+import java.util.function.Supplier;
+
 public final class LazyUtil {
 
-    // Object that flags the Lazy is being constucted.
-    // Any object that is not a Throwable can be used.
-    static final Object CONSTRUCTIING_FLAG = new ConstructingFlag();
+    // Object that flags the Lazy has been successfully constucted.
+    static final PresentFlag PRESENT_FLAG = new PresentFlag();
 
     private LazyUtil() {
     }
+    static final class PresentFlag {
+        private PresentFlag() {}
+    }
 
-    static final class ConstructingFlag {}
+    public static <V> Lazy<V> ofEvaluated(Supplier<? extends V> supplier) {
+        Objects.requireNonNull(supplier);
+        return (supplier instanceof PreComputedLazy<? extends V> preComputedLazy)
+                // Already evaluated so just return it
+                ? asLazyV(preComputedLazy)
+                : new PreComputedLazy<>(supplier.get());
+    }
+
+    public static <V> Lazy<V> ofBackgroundEvaluated(Supplier<? extends V> supplier) {
+        Objects.requireNonNull(supplier);
+
+        return switch (supplier) {
+            case PreComputedLazy<? extends V> p -> asLazyV(p);
+            case Lazy<? extends V> l -> computeInBackground(l);
+            default -> computeInBackground(new StandardLazy<>(supplier));
+        };
+    }
+
+    private static <V> Lazy<V> computeInBackground(Lazy<? extends V> lazy) {
+        Thread.ofVirtual()
+                .name("Background eval " + lazy.toString())
+                .start(lazy::get);
+        return asLazyV(lazy);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <V> Lazy<V> asLazyV(Lazy<? extends V> lazy) {
+        return (Lazy<V>) lazy;
+    }
 
 }

@@ -6,9 +6,9 @@ package java.util.concurrent.lazy;
  * The following values are supported:
  * <ul>
  *     <li><a id="empty"><b>{@link LazyState#EMPTY}</b></a>
- *     <p> No value is present (initial non-final state).</p></li>
+ *     <p> No value is present and is not being constructed (initial non-final state).</p></li>
  *     <li><a id="constructing"><b>{@link LazyState#CONSTRUCTING}</b></a>
- *     <p> A value is being constructed but the value is not yet available (transient state).</p></li>
+ *     <p> A value is being constructed but the value is not yet preset (transient state).</p></li>
  *     <li><a id="present"><b>{@link LazyState#PRESENT}</b></a>
  *     <p> A value is present and is available via an accessor (final state).</p></li>
  *     <li><a id="error"><b>{@link LazyState#ERROR}</b></a>
@@ -19,19 +19,23 @@ package java.util.concurrent.lazy;
  */
 public enum LazyState {
     /**
-     * Indicates a value is not present and is not about to be constructed.
+     * Indicates no value is present and is not being constructed.
+     * This is the initial <em>transient state</em>.
      */
     EMPTY,  // ABSENT?
     /**
-     * Indicates a value is being constructed but is not yet available.
+     * Indicates a value is being constructed but is not yet present.
+     * This is a <em>transient state</em>.
      */
     CONSTRUCTING,
     /**
-     * Indicates a value is present. This is a <em>final state</em>.
+     * Indicates a value is present.
+     * This is a <em>final state</em>.
      */
     PRESENT,
     /**
-     * Indicates an error has occured during construction of the value. This is a <em>final state</em>.
+     * Indicates an error has occured during construction of the value.
+     * This is a <em>final state</em>.
      */
     ERROR;
 
