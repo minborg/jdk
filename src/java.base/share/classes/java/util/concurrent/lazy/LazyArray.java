@@ -121,13 +121,12 @@ public sealed interface LazyArray<V>
      * <p>
      * In other words, the returned stream is equivalent to the following code:
      * {@snippet lang = java:
-     *     Stream<V> stream(V other) {
+     *     Stream<V> stream() {
      *         return IntStream.range(0, length())
-     *                 .mapToObj(i -> get(i));
+     *                 .mapToObj(this::get);
      *     }
      * }
      *
-     * @param other the other value to use for values that cannot be bound
      * @throws NoSuchElementException if a value cannot be bound
      * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value calls it self).
      */
