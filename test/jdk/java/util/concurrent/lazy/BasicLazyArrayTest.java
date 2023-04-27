@@ -74,8 +74,7 @@ final class BasicLazyArrayTest {
                 () -> LazyArray.of(SIZE, null));
         // Mapper returns null
         LazyArray<Integer> l = LazyArray.of(SIZE, i -> null);
-        assertThrows(NullPointerException.class,
-                () -> l.get(INDEX));
+        assertNull(l.get(INDEX));
     }
 
     @Test
@@ -108,7 +107,7 @@ final class BasicLazyArrayTest {
 
         var toString = l.toString();
 
-        assertTrue(toString.endsWith("LazyArray[-, 1, !]"));
+        assertTrue(toString.endsWith("LazyArray[-, 1, -]"));
     }
 
     // Todo:repeate the test 1000 times

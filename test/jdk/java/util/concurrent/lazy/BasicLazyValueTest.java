@@ -65,7 +65,7 @@ final class BasicLazyValueTest {
                     () -> lv.constructor().apply(null));
             // Mapper returns null
             LazyValue<Integer> l = lv.constructor().apply(() -> null);
-            assertThrows(NullPointerException.class, l::get);
+            assertNull(l.get());
         });
     }
 
@@ -106,8 +106,10 @@ final class BasicLazyValueTest {
             assertThrows(UnsupportedOperationException.class,
                     () -> l.get());
 
-            // Should not invoke the supplier as we are already in ERROR state
-            assertThrows(NoSuchElementException.class, () -> l.get());
+            // Should invoke the supplier again
+            assertThrows(UnsupportedOperationException.class,
+                    () -> l.get());
+
         });
     }
 
@@ -150,9 +152,9 @@ final class BasicLazyValueTest {
             } catch (UnsupportedOperationException ignored) {
                 // Happy path
             }
-            assertEquals(lazy0.getClass().getSimpleName()+"[EMPTY]", lazy0.toString());
+            assertEquals(lazy0.getClass().getSimpleName()+"[UNBOUND]", lazy0.toString());
             assertEquals(lazy0.getClass().getSimpleName()+"[1]", lazy1.toString());
-            assertEquals(lazy0.getClass().getSimpleName()+"[ERROR [java.lang.UnsupportedOperationException]]", lazy2.toString());
+            assertEquals(lazy0.getClass().getSimpleName()+"[UNBOUND]", lazy2.toString());
         });
     }
 
