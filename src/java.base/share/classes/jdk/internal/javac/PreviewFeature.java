@@ -70,7 +70,7 @@ public @interface PreviewFeature {
         RECORD_PATTERNS,
         // not used
         VIRTUAL_THREADS,
-        @JEP(number=434, title="Foreign Function & Memory API", status="Second Preview")
+        @JEP(number=442, title="Foreign Function & Memory API", status="Third Preview")
         FOREIGN,
         // JEP number TBD
         @JEP(number=-1, title="Lazy Initialization", status="First Preview")
