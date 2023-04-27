@@ -25,17 +25,14 @@
 
 package jdk.internal.util.concurrent.lazy;
 
-import jdk.internal.vm.annotation.Stable;
-
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.concurrent.lazy.Lazy;
-import java.util.concurrent.lazy.LazyState;
+import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
 
-public final class CompactLazy<V> implements Lazy<V> {
+public final class CompactLazyValue<V> implements LazyValue<V> {
 
     // Allows access to the "value" field with arbitary memory semantics
     private static final VarHandle VALUE_HANDLE;
@@ -44,7 +41,7 @@ public final class CompactLazy<V> implements Lazy<V> {
         try {
             var lookup = MethodHandles.lookup();
             VALUE_HANDLE = lookup
-                    .findVarHandle(CompactLazy.class, "value", Object.class);
+                    .findVarHandle(CompactLazyValue.class, "value", Object.class);
             // .withInvokeExactBehavior(); // Make sure no boxing is made?
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
@@ -60,7 +57,7 @@ public final class CompactLazy<V> implements Lazy<V> {
      */
     private Object value;
 
-    public CompactLazy(Supplier<? extends V> supplier) {
+    public CompactLazyValue(Supplier<? extends V> supplier) {
         // Because supplier is set in the constructor, it can always be
         // observed by any thread with normal memory semantics.
         this.value = supplier;
@@ -112,7 +109,6 @@ public final class CompactLazy<V> implements Lazy<V> {
         return (V) v;
     }
 
-    @Override
     public final LazyState state() {
          return switch (VALUE_HANDLE.getVolatile(this)) {
             case Supplier<?> s -> LazyState.EMPTY;
@@ -144,7 +140,7 @@ public final class CompactLazy<V> implements Lazy<V> {
     @Override
     public final String toString() {
         Object v = VALUE_HANDLE.getVolatile(this);
-        return "CompactLazy[" +
+        return "CompactLazyValue[" +
                 switch (v) {
                     case Supplier<?> s -> LazyState.EMPTY;
                     case Thread t      -> LazyState.CONSTRUCTING+ " [" + t + "]";

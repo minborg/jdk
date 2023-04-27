@@ -26,7 +26,7 @@
 package jdk.internal.util.concurrent.lazy;
 
 import java.util.Objects;
-import java.util.concurrent.lazy.Lazy;
+import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
 
 public final class LazyUtil {
@@ -40,34 +40,34 @@ public final class LazyUtil {
         private PresentFlag() {}
     }
 
-    public static <V> Lazy<V> ofEvaluated(Supplier<? extends V> supplier) {
+    public static <V> LazyValue<V> ofEvaluated(Supplier<? extends V> supplier) {
         Objects.requireNonNull(supplier);
-        return (supplier instanceof PreComputedLazy<? extends V> preComputedLazy)
+        return (supplier instanceof PreComputedLazyValue<? extends V> preComputedLazy)
                 // Already evaluated so just return it
                 ? asLazyV(preComputedLazy)
-                : new PreComputedLazy<>(supplier.get());
+                : new PreComputedLazyValue<>(supplier.get());
     }
 
-    public static <V> Lazy<V> ofBackgroundEvaluated(Supplier<? extends V> supplier) {
+    public static <V> LazyValue<V> ofBackgroundEvaluated(Supplier<? extends V> supplier) {
         Objects.requireNonNull(supplier);
 
         return switch (supplier) {
-            case PreComputedLazy<? extends V> p -> asLazyV(p);
-            case Lazy<? extends V> l -> computeInBackground(l);
-            default -> computeInBackground(new StandardLazy<>(supplier));
+            case PreComputedLazyValue<? extends V> p -> asLazyV(p);
+            case LazyValue<? extends V> l -> computeInBackground(l);
+            default -> computeInBackground(new StandardLazyValue<>(supplier));
         };
     }
 
-    private static <V> Lazy<V> computeInBackground(Lazy<? extends V> lazy) {
+    private static <V> LazyValue<V> computeInBackground(LazyValue<? extends V> lazyValue) {
         Thread.ofVirtual()
-                .name("Background eval " + lazy.toString())
-                .start(lazy::get);
-        return asLazyV(lazy);
+                .name("Background eval " + lazyValue.toString())
+                .start(lazyValue::get);
+        return asLazyV(lazyValue);
     }
 
     @SuppressWarnings("unchecked")
-    private static <V> Lazy<V> asLazyV(Lazy<? extends V> lazy) {
-        return (Lazy<V>) lazy;
+    private static <V> LazyValue<V> asLazyV(LazyValue<? extends V> lazyValue) {
+        return (LazyValue<V>) lazyValue;
     }
 
 }

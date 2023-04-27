@@ -39,9 +39,12 @@ import org.openjdk.jmh.infra.Blackhole;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.lazy.Lazy;
+import java.util.concurrent.lazy.LazyArray;
+import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -54,7 +57,7 @@ public class LazyReferenceBench {
 
     private static final Supplier<Integer> SUPPLIER = () -> 2 << 16;
 
-    public static final Supplier<Integer> LAZY = Lazy.of(SUPPLIER);
+    public static final Supplier<Integer> LAZY = LazyValue.of(SUPPLIER);
     public static final Supplier<Integer> LAZY_DC = new VolatileDoubleChecked<>(SUPPLIER);
 
     // Add chain
@@ -68,13 +71,46 @@ public class LazyReferenceBench {
     public Supplier<Integer> acquireReleaseDoubleChecked;
     public Supplier<Integer> delegated;
 
+    private int value;
+
+    private static VarHandle valueHandle() {
+        try {
+            return MethodHandles.lookup()
+                    .findVarHandle(LazyReferenceBench.class, "value", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    private static final VarHandle VALUE_HANDLE = valueHandle();
+    private static final LazyValue<VarHandle> LAZY_VALUE_HANDLE = LazyValue.of(LazyReferenceBench::valueHandle);
+
+    private static final Map<Integer, Integer> FIB_MAP = new ConcurrentHashMap<>();
+    private static final LazyArray<Integer> FIB_LAZY_ARRAY = LazyArray.ofArray(20, LazyReferenceBench::fibArray);
+
+    private static int fibArray(int n) {
+        return (n < 2) ? n
+                : FIB_LAZY_ARRAY.apply(n - 1) +
+                FIB_LAZY_ARRAY.apply(n - 2);
+    }
+
+    private static int fibMap(int n) {
+        return (n < 2) ? n
+                : FIB_MAP.computeIfAbsent(n, nk -> fibMap(nk - 1) + fibMap(nk - 2) );
+    }
+
+    @State(Scope.Thread)
+    public static class MyState {
+        public int n = 10;
+    }
+
     /**
      * The test variables are allocated every iteration so you can assume
      * they are initialized to get similar behaviour across iterations
      */
     @Setup(Level.Iteration)
     public void setupIteration() {
-        lazy = Lazy.of(SUPPLIER);
+        lazy = LazyValue.of(SUPPLIER);
         threadUnsafe = new ThreadUnsafe<>(SUPPLIER);
         volatileDoubleChecked = new VolatileDoubleChecked<>(SUPPLIER);
         volatileVhDoubleChecked = new VolatileVhDoubleChecked<>(SUPPLIER);
@@ -132,6 +168,26 @@ public class LazyReferenceBench {
     @Benchmark
     public void delegated(Blackhole bh) {
         bh.consume(delegated.get());
+    }
+
+    @Benchmark
+    public void fibConcurrentMap(MyState state, Blackhole bh) {
+        bh.consume(fibMap(state.n));
+    }
+
+    @Benchmark
+    public void fibLazyArray(MyState state, Blackhole bh) {
+        bh.consume(fibArray(state.n));
+    }
+
+    @Benchmark
+    public void methodHandle(Blackhole bh) {
+        bh.consume((int) VALUE_HANDLE.get(this));
+    }
+
+    @Benchmark
+    public void methodHandleLazy(Blackhole bh) {
+        bh.consume((int) LAZY_VALUE_HANDLE.get().get(this));
     }
 
     private static final class ThreadUnsafe<T> implements Supplier<T> {

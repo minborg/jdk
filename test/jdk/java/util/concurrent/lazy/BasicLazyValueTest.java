@@ -23,9 +23,9 @@
 
 /*
  * @test
- * @summary Verify basic Lazy operations
+ * @summary Verify basic LazyValue operations
  * @enablePreview
- * @run junit BasicLazyTest
+ * @run junit BasicLazyValueTest
  */
 
 import org.junit.jupiter.api.*;
@@ -35,8 +35,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.lazy.Lazy;
-import java.util.concurrent.lazy.LazyState;
+import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -44,15 +43,15 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-final class BasicLazyTest {
+final class BasicLazyValueTest {
 
     @TestFactory
     Stream<DynamicTest> get() {
         return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
-            Integer val = lv.lazy().get();
+            Integer val = lv.lazyValue().get();
             assertEquals(CountingIntegerSupplier.MAGIC_VALUE, val);
             assertEquals(1, lv.supplier().invocations());
-            Integer val2 = lv.lazy().get();
+            Integer val2 = lv.lazyValue().get();
             assertEquals(CountingIntegerSupplier.MAGIC_VALUE, val);
             assertEquals(1, lv.supplier().invocations());
         });
@@ -65,25 +64,25 @@ final class BasicLazyTest {
             assertThrows(NullPointerException.class,
                     () -> lv.constructor().apply(null));
             // Mapper returns null
-            Lazy<Integer> l = lv.constructor().apply(() -> null);
+            LazyValue<Integer> l = lv.constructor().apply(() -> null);
             assertThrows(NullPointerException.class, l::get);
         });
     }
 
-    @TestFactory
+/*    @TestFactory
     Stream<DynamicTest> state() {
         return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
-            assertEquals(LazyState.EMPTY, lv.lazy().state());
-            Integer val = lv.lazy().get();
-            assertEquals(LazyState.PRESENT, lv.lazy().state());
+            assertEquals(LazyState.EMPTY, lv.lazyValue().state());
+            Integer val = lv.lazyValue().get();
+            assertEquals(LazyState.PRESENT, lv.lazyValue().state());
         });
-    }
+    }*/
 
     @TestFactory
     Stream<DynamicTest> presetSupplierBasic() {
         return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
             for (int i = 0; i < 2; i++) {
-                assertEquals(CountingIntegerSupplier.MAGIC_VALUE, lv.lazy().get());
+                assertEquals(CountingIntegerSupplier.MAGIC_VALUE, lv.lazyValue().get());
                 assertEquals(1, lv.supplier().invocations());
             }
         });
@@ -91,9 +90,9 @@ final class BasicLazyTest {
 
     @Test
     void optionalModelling() {
-        Supplier<Optional<String>> empty = Lazy.of(() -> Optional.empty());
+        Supplier<Optional<String>> empty = LazyValue.of(() -> Optional.empty());
         assertTrue(empty.get().isEmpty());
-        Supplier<Optional<String>> present = Lazy.of(() -> Optional.of("A"));
+        Supplier<Optional<String>> present = LazyValue.of(() -> Optional.of("A"));
         assertEquals("A", present.get().orElseThrow());
     }
 
@@ -103,11 +102,11 @@ final class BasicLazyTest {
             Supplier<Integer> throwingSupplier = () -> {
                 throw new UnsupportedOperationException();
             };
-            Lazy<Integer> l = lv.constructor().apply(throwingSupplier);
+            LazyValue<Integer> l = lv.constructor().apply(throwingSupplier);
             assertThrows(UnsupportedOperationException.class,
                     () -> l.get());
 
-            assertEquals(LazyState.ERROR, l.state());
+            // assertEquals(LazyState.ERROR, l.state());
             assertTrue(l.exception().isPresent());
 
             // Should not invoke the supplier as we are already in ERROR state
@@ -116,24 +115,26 @@ final class BasicLazyTest {
     }
 
     // Todo:repeate the test 1000 times
-    @Test
-    void threadTest() throws InterruptedException {
-        var gate = new AtomicBoolean();
-        var threads = IntStream.range(0, Runtime.getRuntime().availableProcessors() * 2)
-                .mapToObj(i -> new Thread(()->{
-                    while (!gate.get()) {
-                        Thread.onSpinWait();
-                    }
-                    // Try to access the instance "simultaneously"
-                    lazy.get();
-                }))
-                .toList();
-        threads.forEach(Thread::start);
-        Thread.sleep(10);
-        gate.set(true);
-        join(threads);
-        assertEquals(CountingIntegerSupplier.MAGIC_VALUE, lazy.get());
-        assertEquals(1, supplier.invocations());
+    @TestFactory
+    Stream<DynamicTest> threadTest() throws InterruptedException {
+        return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
+            var gate = new AtomicBoolean();
+            var threads = IntStream.range(0, Runtime.getRuntime().availableProcessors() * 2)
+                    .mapToObj(i -> new Thread(() -> {
+                        while (!gate.get()) {
+                            Thread.onSpinWait();
+                        }
+                        // Try to access the instance "simultaneously"
+                        lv.lazyValue().get();
+                    }))
+                    .toList();
+            threads.forEach(Thread::start);
+            Thread.sleep(10);
+            gate.set(true);
+            join(threads);
+            assertEquals(CountingIntegerSupplier.MAGIC_VALUE, lv.lazyValue().get());
+            assertEquals(1, lv.supplier().invocations());
+        });
     }
 
     @TestFactory
@@ -161,20 +162,20 @@ final class BasicLazyTest {
     @TestFactory
     Stream<DynamicTest> testCircular() {
         return DynamicTest.stream(lazyVariants(), LazyVariant::name, lv -> {
-            STATIC_LAZY = Lazy.of(() -> STATIC_LAZY.get());
+            staticLazyValue = LazyValue.of(() -> staticLazyValue.get());
             assertThrows(IllegalStateException.class, () -> {
-                STATIC_LAZY.get();
+                staticLazyValue.get();
             });
         });
     }
 
-    private static Lazy<Integer> STATIC_LAZY;
+    private static LazyValue<Integer> staticLazyValue;
 
 
     private static Stream<LazyVariant> lazyVariants() {
         return Stream.of(
-                        new NamedConstructor("Lazy::of", Lazy::of),
-                        new NamedConstructor("Lazy::ofCompact", Lazy::ofCompact))
+                        new NamedConstructor("Lazy::of", LazyValue::of),
+                        new NamedConstructor("Lazy::ofCompact", LazyValue::ofCompact))
                 .map(nc -> {
                     var supplier = new CountingIntegerSupplier();
                     var lazy = nc.constructor().apply(supplier);
@@ -183,13 +184,13 @@ final class BasicLazyTest {
     }
 
     private record NamedConstructor(String name,
-                                    Function<Supplier<Integer>, Lazy<Integer>> constructor){
+                                    Function<Supplier<Integer>, LazyValue<Integer>> constructor){
 
     }
 
     private record LazyVariant(String name,
-                              Function<Supplier<Integer>, Lazy<Integer>> constructor,
-                              Lazy<Integer> lazy,
+                              Function<Supplier<Integer>, LazyValue<Integer>> constructor,
+                              LazyValue<Integer> lazyValue,
                                CountingIntegerSupplier supplier) {
     }
 

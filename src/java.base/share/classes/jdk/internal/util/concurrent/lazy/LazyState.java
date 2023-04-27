@@ -1,4 +1,7 @@
-package java.util.concurrent.lazy;
+package jdk.internal.util.concurrent.lazy;
+
+import java.util.concurrent.lazy.LazyArray;
+import java.util.concurrent.lazy.LazyValue;
 
 /**
  * The State indicates the current state of a Lazy instance.
@@ -13,7 +16,7 @@ package java.util.concurrent.lazy;
  *     <p> A value is present and is available via an accessor (final state).</p></li>
  *     <li><a id="error"><b>{@link LazyState#ERROR}</b></a>
  *     <p> The construction of tha value failed and a value will never be present (final state).
- *     The error is available via either the {@link Lazy#exception()} or
+ *     The error is available via either the {@link LazyValue#exception()} or
  *     the {@link LazyArray#exception(int)} accessor.</p></li>
  * </ul>
  */

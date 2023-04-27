@@ -26,6 +26,7 @@
 package java.util.concurrent.lazy;
 
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.util.concurrent.lazy.LazyState;
 import jdk.internal.util.concurrent.lazy.StandardLazyArray;
 
 import java.util.List;
@@ -54,27 +55,6 @@ public sealed interface LazyArray<V>
     public int length();
 
     /**
-     * {@return the {@link LazyState State} of this Lazy}.
-     * <p>
-     * The value is a snapshot of the current State.
-     * No attempt is made to compute a value if it is not already present.
-     * <p>
-     * If the returned State is either {@link LazyState#PRESENT} or
-     * {@link LazyState#ERROR}, it is guaranteed the state will
-     * never change in the future.
-     * <p>
-     * This method can be used to act on a value if it is present:
-     * {@snippet lang = java:
-     *     if (lazy.state() == State.PRESENT) {
-     *         // perform action on the value
-     *     }
-     *}
-     * @param index to retrieve the State from
-     * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
-     */
-    public LazyState state(int index);
-
-    /**
      * {@return the excption thrown by the supplier invoked or
      * {@link Optional#empty()} if no exception was thrown}.
      *
@@ -84,9 +64,8 @@ public sealed interface LazyArray<V>
     public Optional<Throwable> exception(int index);
 
     /**
-     * {@return the value at the provided {@code index} if the state is {@link LazyState#PRESENT PRESENT}
-     * or {@code defaultValue} if the value is {@link LazyState#EMPTY EMPTY} or
-     * {@link LazyState#CONSTRUCTING CONSTRUCTING}}.
+     * {@return the value at the provided {@code index} if a value is present, otherwise
+     * {@code defaultValue}}.
      *
      * @param index        for which the value shall be obtained.
      * @param defaultValue to use if no value is present
@@ -169,7 +148,7 @@ public sealed interface LazyArray<V>
      * common usage is to construct a new object serving as a memoized result, as in:
      * <p>
      * {@snippet lang = java:
-     *    LazyArray<V> lazy = Lazy.ofArray(64, Value::new);
+     *    LazyArray<V> lazy = LazyValue.ofArray(64, Value::new);
      *    // ...
      *    V value = lazy.apply(42);
      *    assertNotNull(value); // Value is non-null
@@ -207,7 +186,7 @@ public sealed interface LazyArray<V>
      *     class DemoArray {
      *
      *         private static final LazyArray<Value> VALUE_PO2_CACHE =
-     *                 Lazy.ofArray(32, index -> new Value(1L << index));
+     *                 LazyValue.ofArray(32, index -> new Value(1L << index));
      *
      *         public Value powerOfTwoValue(int n) {
      *             if (n < 0 || n >= VALUE_PO2_CACHE.length()) {

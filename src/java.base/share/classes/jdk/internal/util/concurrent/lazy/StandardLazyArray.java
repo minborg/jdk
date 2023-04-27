@@ -35,8 +35,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.lazy.LazyArray;
-import java.util.concurrent.lazy.Lazy;
-import java.util.concurrent.lazy.LazyState;
+import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
@@ -45,51 +44,69 @@ import java.util.stream.Stream;
 
 public final class StandardLazyArray<V>  implements LazyArray<V> {
 
-    private final Lazy<ListView> listView = Lazy.of(ListView::new);
+    private final LazyValue<ListView> listView = LazyValue.of(ListView::new);
 
-    final Lazy<V>[] lazyObjects;
+    final StandardLazyValue<V>[] lazyValueObjects;
 
     @SuppressWarnings("unchecked")
     public StandardLazyArray(int length,
                              IntFunction<? extends V> presetMapper) {
 
-        lazyObjects = IntStream.range(0, length)
-                .mapToObj(i -> new StandardLazy<>(() -> presetMapper.apply(i)))
-                .toArray(StandardLazy[]::new);
+        lazyValueObjects = IntStream.range(0, length)
+                .mapToObj(i -> new StandardLazyValue<>(() -> presetMapper.apply(i)))
+                .toArray(StandardLazyValue[]::new);
     }
 
     @Override
     public V apply(int index) {
-        return lazyObjects[index].get();
+        return lazyValueObjects[index].get();
     }
 
     @Override
     public void force() {
         for (int i = 0; i < length(); i++) {
-            lazyObjects[i].get();
+            lazyValueObjects[i].get();
         }
     }
 
 
     @Override
     public final int length() {
-        return lazyObjects.length;
+        return lazyValueObjects.length;
     }
 
-    @Override
+    /**
+     * {@return the {@link LazyState State} of this Lazy}.
+     * <p>
+     * The value is a snapshot of the current State.
+     * No attempt is made to compute a value if it is not already present.
+     * <p>
+     * If the returned State is either {@link LazyState#PRESENT} or
+     * {@link LazyState#ERROR}, it is guaranteed the state will
+     * never change in the future.
+     * <p>
+     * This method can be used to act on a value if it is present:
+     * {@snippet lang = java:
+     *     if (lazy.state() == State.PRESENT) {
+     *         // perform action on the value
+     *     }
+     *}
+     * @param index to retrieve the State from
+     * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
+     */
     public final LazyState state(int index) {
-        return lazyObjects[index].state();
+        return lazyValueObjects[index].state();
     }
 
     @Override
     public final Optional<Throwable> exception(int index) {
-        return lazyObjects[index].exception();
+        return lazyValueObjects[index].exception();
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public V getOr(int index, V defaultValue) {
-        return lazyObjects[index].getOr(defaultValue);
+        return lazyValueObjects[index].getOr(defaultValue);
     }
 
     @Override

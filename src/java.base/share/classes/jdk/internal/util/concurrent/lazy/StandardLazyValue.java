@@ -32,13 +32,12 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.concurrent.lazy.Lazy;
-import java.util.concurrent.lazy.LazyState;
+import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
 
 import static jdk.internal.util.concurrent.lazy.LazyUtil.PRESENT_FLAG;
 
-public final class StandardLazy<V> implements Lazy<V> {
+public final class StandardLazyValue<V> implements LazyValue<V> {
 
     // Allows access to the "value" field with arbitary memory semantics
     private static final VarHandle VALUE_HANDLE;
@@ -50,10 +49,10 @@ public final class StandardLazy<V> implements Lazy<V> {
         try {
             var lookup = MethodHandles.lookup();
             VALUE_HANDLE = lookup
-                    .findVarHandle(StandardLazy.class, "value", Object.class);
+                    .findVarHandle(StandardLazyValue.class, "value", Object.class);
             // .withInvokeExactBehavior(); // Make sure no boxing is made?
             AUX_HANDLE = lookup
-                    .findVarHandle(StandardLazy.class, "aux", Object.class);
+                    .findVarHandle(StandardLazyValue.class, "aux", Object.class);
             // .withInvokeExactBehavior(); // Make sure no boxing is made?
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
@@ -71,7 +70,7 @@ public final class StandardLazy<V> implements Lazy<V> {
     // 3) Holds PRESENT_FLAG, if the computation of the value succeeded.
     private Object aux;
 
-    public StandardLazy(Supplier<? extends V> supplier) {
+    public StandardLazyValue(Supplier<? extends V> supplier) {
         this.aux = supplier;
     }
 
@@ -123,7 +122,23 @@ public final class StandardLazy<V> implements Lazy<V> {
         }
     }
 
-    @Override
+    /**
+     * {@return the {@link LazyState State} of this Lazy}.
+     * <p>
+     * The value is a snapshot of the current State.
+     * No attempt is made to compute a value if it is not already present.
+     * <p>
+     * If the returned State is either {@link LazyState#PRESENT} or
+     * {@link LazyState#ERROR}, it is guaranteed the state will
+     * never change in the future.
+     * <p>
+     * This method can be used to act on a value if it is present:
+     * {@snippet lang = java:
+     *     if (lazy.state() == State.PRESENT) {
+     *         // perform action on the value
+     *     }
+     *}
+     */
     public final LazyState state() {
         // Try normal memory semantics first
         Object o = value;
@@ -194,7 +209,7 @@ public final class StandardLazy<V> implements Lazy<V> {
     public final String toString() {
         // Avoid race conditions by initially just observing aux
         Object a = AUX_HANDLE.getVolatile(this);
-        return "StandardLazy[" + switch (a) {
+        return "StandardLazyValue[" + switch (a) {
             case Supplier<?> s -> LazyState.EMPTY.toString();
             case Thread      t -> LazyState.CONSTRUCTING + " [" + t + "]";
             case Throwable   t -> LazyState.ERROR + " [" + t.getClass().getName() + "]";

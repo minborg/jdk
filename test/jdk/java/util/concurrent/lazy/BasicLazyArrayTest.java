@@ -23,9 +23,9 @@
 
 /*
  * @test
- * @summary Verify basic BasicLazyReferenceArray operations
+ * @summary Verify basic BasicLazyArrayTest operations
  * @enablePreview
- * @run junit BasicLazyReferenceArrayTest
+ * @run junit BasicLazyArrayTest
  */
 
 import org.junit.jupiter.api.*;
@@ -37,14 +37,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.lazy.LazyArray;
-import java.util.concurrent.lazy.LazyState;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-final class BasicLazyReferenceArrayTest {
+final class BasicLazyArrayTest {
 
     private static final int SIZE = 63;
     private static final int INDEX = 13;
@@ -79,12 +78,12 @@ final class BasicLazyReferenceArrayTest {
                 () -> l.apply(INDEX));
     }
 
-    @Test
+/*    @Test
     void state() {
         assertEquals(LazyState.EMPTY, lazy.state(INDEX));
         Integer val = lazy.apply(INDEX);
         assertEquals(LazyState.PRESENT, lazy.state(INDEX));
-    }
+    }*/
 
     @Test
     void toListSize() {
@@ -173,6 +172,30 @@ final class BasicLazyReferenceArrayTest {
         join(threads);
         assertEquals(INDEX, lazy.getOr(INDEX, null));
         assertEquals(1, mapper.invocations(INDEX));
+    }
+
+    @Test
+    void fibTest() {
+        class A {
+            LazyArray<Integer> fibonacci = LazyArray.ofArray(20, this::fib);
+
+            int fib(int n) {
+                return (n < 2) ? n
+                        : fibonacci.apply(n - 1) +
+                          fibonacci.apply(n - 2);
+            }
+        }
+
+        var fib10 = new A().fib(10);
+        assertEquals(55, fib10);
+
+        A a = new A();
+        int[] array = IntStream.range(1, 10)
+                .map(n -> a.fib(n))
+                .toArray(); // { 1, 1, 2, 3, 5, 8, 13, 21, 34 }
+
+        assertArrayEquals(new int[]{1, 1, 2, 3, 5, 8, 13, 21, 34}, array);
+
     }
 
     private List<Integer> halfComputedList() {

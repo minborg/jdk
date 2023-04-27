@@ -31,9 +31,9 @@
  */
 
 import jdk.internal.misc.Unsafe;
-import jdk.internal.util.concurrent.lazy.CompactLazy;
-import jdk.internal.util.concurrent.lazy.PreComputedLazy;
-import jdk.internal.util.concurrent.lazy.StandardLazy;
+import jdk.internal.util.concurrent.lazy.CompactLazyValue;
+import jdk.internal.util.concurrent.lazy.PreComputedLazyValue;
+import jdk.internal.util.concurrent.lazy.StandardLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyArray;
 import org.junit.jupiter.api.*;
 
@@ -55,9 +55,9 @@ final class ObjectLayoutTest {
      * @param args unused
      */
     public static void main(String[] args) {
-        analyze(StandardLazy.class);
-        analyze(PreComputedLazy.class);
-        analyze(CompactLazy.class);
+        analyze(StandardLazyValue.class);
+        analyze(PreComputedLazyValue.class);
+        analyze(CompactLazyValue.class);
         analyze(StandardLazyArray.class);
     }
 

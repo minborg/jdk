@@ -28,26 +28,20 @@ package jdk.internal.util.concurrent.lazy;
 import jdk.internal.ValueBased;
 
 import java.util.Optional;
-import java.util.concurrent.lazy.Lazy;
-import java.util.concurrent.lazy.LazyState;
+import java.util.concurrent.lazy.LazyValue;
 
 @ValueBased
-public final class PreComputedLazy<V>  implements Lazy<V> {
+public final class PreComputedLazyValue<V>  implements LazyValue<V> {
 
     private final V value;
 
-    public PreComputedLazy(V value) {
+    public PreComputedLazyValue(V value) {
         this.value = value;
     }
 
     @Override
     public V get() {
         return value;
-    }
-
-    @Override
-    public LazyState state() {
-        return LazyState.PRESENT;
     }
 
     @Override
@@ -62,7 +56,7 @@ public final class PreComputedLazy<V>  implements Lazy<V> {
 
     @Override
     public String toString() {
-        return "PreComputedLazyReference[" + value + "]";
+        return "PreComputedLazyValue[" + value + "]";
     }
 
 }
