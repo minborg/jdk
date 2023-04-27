@@ -72,6 +72,9 @@ public @interface PreviewFeature {
         VIRTUAL_THREADS,
         @JEP(number=442, title="Foreign Function & Memory API", status="Third Preview")
         FOREIGN,
+        // Real JEP number TBD
+        @JEP(number=8306917, title="Lazy Field API", status="First Preview")
+        LAZY,
         /**
          * A key for testing.
          */
