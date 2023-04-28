@@ -24,12 +24,13 @@
  */
 
 /**
- * A small toolkit of classes supporting lock-free, thread-safe
- * use of lazily initialized values and arrays with superior performance.  Providers
- * of lazy values are guaranteed to be invoked at most one time.  This contrasts
- * to {@link java.util.concurrent.atomic.AtomicReferenceArray } where any number
+ * A small toolkit of classes supporting lock-free, thread-safe use of lazily initialized
+ * values and arrays with superior performance.  Providers of lazy values are guaranteed
+ * to be invoked at most one time, proivded the provider returned a valid value.  This contrasts
+ * with {@link java.util.concurrent.atomic.AtomicReferenceArray } where any number
  * of updates can be done and where there is no simple way to atomically compute
- * a value (guaranteed to only be computed once) if missing.
+ * a value (guaranteed to only be computed once) if missing. Lazy also contrasts to
+ * {@link java.util.concurrent.Future} where a value is computed in another thread.
  * <p>
  * The lazy implementations are optimized for the case where there are N invocations
  * trying to obtain a value and where N >> 1, for example where N is > 2<sup>20</sup>.
@@ -46,7 +47,7 @@
  *     available via {@link java.util.concurrent.lazy.LazyArray#of(int, java.util.function.IntFunction) LazyArray.of(int length, IntFunction&lt;V&gt; presetMapper)}</li>
  * </ul>
  *
- * Hence, the LazyArray type methods provide an extra arity where the index is specified compared to LazyValue.
+ * The LazyArray type methods provide an extra arity where the index is specified compared to LazyValue.
  *
  * <h3 id="lazyreference">LazyReference</h3>
  *
@@ -63,9 +64,9 @@
  *         }
  *     }
  *}
- * The {@code get()} performance of the example above is on pair with using an inner/private class
+ * The performance of the {@code get()} method in the example above is on pair with using an inner/private class
  * holding a lazily initialized variable but with no overhead imposed by the extra
- * class. A corresponding private class is illustraded hereunder:
+ * class. A corresponding private class is illustrated hereunder:
  *
  {@snippet lang = java :
  *     class DemoHolder {
@@ -179,7 +180,7 @@
  * the state will never change again.  The predicates {@code LazyValue::isBound} and {@code LazyArray::isBound}
  * can be used to determine if a value is bound or not.
  * <p>
- * The internal states and their transistions are depicted below:
+ * The internal states and their transitions are depicted below:
  * <p style="text-align:center">
  * <img src = "doc-files/lazy-states.png" alt="the internal states">
  *
@@ -188,8 +189,8 @@
  * All methods of the classes in this package will throw a {@link NullPointerException}
  * if a reference parameter is {@code null}.
  *
- * All lazy constructs are "nullofobic" meaning a value can never be bound to {@code null}.  If nullablilty
- * for values stored are desired, the values have to be modeled using a construct that can express
+ * All lazy constructs are "nullofobic" meaning a value can never be bound to {@code null}.  If nullability
+ * for values stored is desired, the values have to be modeled using a construct that can express
  * {@code null} values in an explicit way such as {@link java.util.Optional#empty()} as exemplified here:
  * {@snippet lang = java:
  *     class NullDemo {

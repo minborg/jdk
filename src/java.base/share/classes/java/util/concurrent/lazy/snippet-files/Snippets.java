@@ -79,21 +79,6 @@ public class Snippets {
     }
     // @end
 
-
-    // @start region="DemoPrecomputed"
-    class DemoPrecomputed {
-
-/*        private static final EmptyLazyReference<Foo> lazy = Lazy.<Foo>emptyBuilder()
-                .withValue(new Foo())
-                .build();
-
-        public static void main(String[] args) throws InterruptedException {
-            // lazy is already pre-computed here
-            System.out.println("lazy.apply(Foo::new) = " + lazy.apply(Foo::new));
-        }*/
-    }
-    // @end
-
     // @start region="SupplierDemo"
     class SupplierDemo {
 

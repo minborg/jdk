@@ -35,8 +35,8 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
- * A lazy array with a pre-set supplier which will be invoken at most once,
- * per slot, for example when {@link LazyArray#get(int) apply(index)} is invoked.
+ * A lazy array with a pre-set mapper which will be invoked at most once (if successful),
+ * per element, for example when {@link LazyArray#get(int) get(index)} is invoked.
  *
  * @param <V> The type of the values to be recorded
  *
@@ -47,21 +47,21 @@ public sealed interface LazyArray<V>
         permits StandardLazyArray {
 
     /**
-     * {@return the length of the array}.
+     * {@return the length of the array}
      */
     public int length();
 
     /**
-     * {@return {@code true} if a value is bound at the provided {@code index}}.
+     * {@return {@code true} if a value is bound at the provided {@code index}}
      *
-     * @param index to the slot to be used
+     * @param index of the element to be used
      * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
      */
     boolean isBound(int index);
 
     /**
      * {@return the bound value at the provided {@code index}. If no value is bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}}</em>}.
+     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>}
      * <p>
      * If the pre-set mapper returns {@code null}, no value is bound and {@code null} is returned.
      * If the mapper itself throws an (unchecked) exception, the
@@ -72,29 +72,32 @@ public sealed interface LazyArray<V>
      * {@snippet lang = java:
      *    LazyArray<V> lazy = LazyValue.ofArray(64, Value::new);
      *    // ...
-     *    V value = lazy.apply(42);
+     *    V value = lazy.get(42);
      *    assertNotNull(value); // Value is non-null
      *}
      * <p>
      * If another thread attempts to bind a value, the current thread will be suspended until
-     * the atempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+     * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
-     * @param index to the slot to be used
+     * @param index for which a bound value shall be obtained.
      * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
      * @throws NoSuchElementException         if a value cannot be bound
-     * @throws IllegalStateException          if a circular dependency is detected (I.e. a lazy value calls it self).
+     * @throws IllegalStateException          if a circular dependency is detected (I.e. a lazy value calls itself).
      */
     public V get(int index);
 
     /**
      * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}}</em>
-     * , or, if this fails, returns the provided {@code other} value}.
+     * , or, if this fails, returns the provided {@code other} value}
+     * <p>
+     * If another thread attempts to bind a value, the current thread will be suspended until
+     * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
-     * @param index for which the value shall be obtained.
+     * @param index for which a value shall be obtained.
      * @param other to use if no value neither is bound nor can be bound
      * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
-     * @throws IllegalStateException          if a circular dependency is detected (I.e. a lazy value calls it self).
+     * @throws IllegalStateException          if a circular dependency is detected (I.e. a lazy value calls itself).
      */
     V orElse(int index,
              V other);
@@ -102,7 +105,10 @@ public sealed interface LazyArray<V>
     /**
      * {@return the bound value at the provided {@code index}. If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}}</em>
-     * , or, if this fails, throws an exception produced by the provided {@code exceptionSupplier} function}.
+     * , or, if this fails, throws an exception produced by the provided {@code exceptionSupplier} function}
+     * <p>
+     * If another thread attempts to bind a value, the current thread will be suspended until
+     * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param <X>               the type of the exception that may be thrown
      * @param index             for which the value shall be obtained.
@@ -117,7 +123,7 @@ public sealed interface LazyArray<V>
     /**
      * {@return A Stream with the bound values in this lazy array. If a value is not bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}}</em>
-     * , or, if this fails, throws an Exception}.
+     * , or, if this fails, throws an Exception}
      * <p>
      * In other words, the returned stream is equivalent to the following code:
      * {@snippet lang = java:
@@ -128,14 +134,14 @@ public sealed interface LazyArray<V>
      * }
      *
      * @throws NoSuchElementException if a value cannot be bound
-     * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value calls it self).
+     * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value calls itself).
      */
     public Stream<V> stream();
 
     /**
      * {@return A Stream with the bound values in this lazy array. If a value is not bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}}</em>
-     * , or, if this fails, returns the provided {@code other} value}}.
+     * , or, if this fails, returns the provided {@code other} value}}
      * <p>
      * In other words, the returned stream is equivalent to the following code:
      * {@snippet lang = java:
@@ -146,12 +152,12 @@ public sealed interface LazyArray<V>
      * }
      *
      * @param other the other value to use for values that cannot be bound
-     * @throws IllegalStateException if a circular dependency is detected (I.e. a lazy value calls it self).
+     * @throws IllegalStateException if a circular dependency is detected (I.e. a lazy value calls itself).
      */
     public Stream<V> stream(V other);
 
     /**
-     * {@return a new LazyArray with a pre-set mapper}.
+     * {@return a new LazyArray with a pre-set mapper}
      * <p>
      * Below, an example of how to cache values in an array is shown:
      * {@snippet lang = java:
