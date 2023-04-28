@@ -27,8 +27,7 @@ package java.util.concurrent.lazy;
 
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.util.concurrent.lazy.CompactLazyValue;
-import jdk.internal.util.concurrent.lazy.LazyUtil;
-import jdk.internal.util.concurrent.lazy.PreComputedLazyValue;
+import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyValue;
 
 import java.util.NoSuchElementException;
@@ -45,7 +44,7 @@ import java.util.function.Supplier;
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public sealed interface LazyValue<V>
         extends Supplier<V>
-        permits StandardLazyValue, CompactLazyValue, PreComputedLazyValue {
+        permits StandardLazyValue, CompactLazyValue, PreEvaluatedLazyValue {
 
     /**
      * {@return {@code true} if a value is bound to this lazy value}.
@@ -128,7 +127,7 @@ public sealed interface LazyValue<V>
     /**
      * {@return a compact Lazy with the provided {@code presetSupplier}}.
      * <p>
-     * A compact Lazy has a smaller footprint but exhibits lower performance.
+     * A compact Lazy has a smaller footprint but may exhibit lower performance.
      * <p>
      * If a later attempt is made to invoke the {@link LazyValue#get()} method when no element is present,
      * the provided {@code presetSupplier} will automatically be invoked.
@@ -146,7 +145,7 @@ public sealed interface LazyValue<V>
      *}
      * <p>
      * The provided {@code presetSupplier} may not produce a value that implements
-     * {@link Throwable} or {@link Supplier }. If that is the case, the returned Lazy
+     * {@link Thread} or {@link Supplier }. If that is the case, the returned Lazy
      * will throw an IllegalStateException upon being evaluated. If the {@code presetSupplier}
      * can produce objects implementing any of these types, the factory method
      * {@link LazyValue#of(Supplier)}  of()} has to be used instead.
@@ -160,31 +159,15 @@ public sealed interface LazyValue<V>
     }
 
     /**
-     * {@return a pre-evaluated Lazy that is computed by invoking the provided
-     * {@code supplier}'s {@link Supplier#get() get()} method (if not already pre-evaluated) in the current thread}.
+     * {@return a pre-evaluated Lazy with a bound value}.
      * <p>
-     * An eagerly pre-evaluated Lazy may be provided seamlessly by some tools or
-     * can be eexplicitly provided by user code.
-     *
-     * @param supplier to invoke when eagerly constructing a value
      * @param <V>   The type of the value
+     * @param value to bound
      */
     @SuppressWarnings("unchecked")
-    public static <V> LazyValue<V> ofEvaluated(Supplier<? extends V> supplier) {
-        return LazyUtil.ofEvaluated(supplier);
-    }
-
-    /**
-     * {@return a pre-evaluated Lazy that is computed by invoking the provided
-     * {@code supplier}'s {@link Supplier#get() get()} method (if needed) in another background thread}.
-     * <p>
-     * The name of the background thread (if any) is unspecified.
-     *
-     * @param supplier supplier to invoke
-     * @param <V>   The type of the value
-     */
-    public static <V> LazyValue<V> ofBackgroundEvaluated(Supplier<? extends V> supplier) {
-        return LazyUtil.ofBackgroundEvaluated(supplier);
+    public static <V> LazyValue<V> of(V value) {
+        Objects.requireNonNull(value);
+        return new PreEvaluatedLazyValue<>(value);
     }
 
 }

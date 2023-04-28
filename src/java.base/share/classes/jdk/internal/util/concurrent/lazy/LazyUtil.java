@@ -36,38 +36,9 @@ public final class LazyUtil {
 
     private LazyUtil() {
     }
+
     static final class PresentFlag {
         private PresentFlag() {}
-    }
-
-    public static <V> LazyValue<V> ofEvaluated(Supplier<? extends V> supplier) {
-        Objects.requireNonNull(supplier);
-        return (supplier instanceof PreComputedLazyValue<? extends V> preComputedLazy)
-                // Already evaluated so just return it
-                ? asLazyV(preComputedLazy)
-                : new PreComputedLazyValue<>(supplier.get());
-    }
-
-    public static <V> LazyValue<V> ofBackgroundEvaluated(Supplier<? extends V> supplier) {
-        Objects.requireNonNull(supplier);
-
-        return switch (supplier) {
-            case PreComputedLazyValue<? extends V> p -> asLazyV(p);
-            case LazyValue<? extends V> l -> computeInBackground(l);
-            default -> computeInBackground(new StandardLazyValue<>(supplier));
-        };
-    }
-
-    private static <V> LazyValue<V> computeInBackground(LazyValue<? extends V> lazyValue) {
-        Thread.ofVirtual()
-                .name("Background eval " + lazyValue.toString())
-                .start(lazyValue::get);
-        return asLazyV(lazyValue);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <V> LazyValue<V> asLazyV(LazyValue<? extends V> lazyValue) {
-        return (LazyValue<V>) lazyValue;
     }
 
 }

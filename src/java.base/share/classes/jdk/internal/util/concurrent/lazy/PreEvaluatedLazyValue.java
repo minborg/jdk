@@ -28,16 +28,16 @@ package jdk.internal.util.concurrent.lazy;
 import jdk.internal.ValueBased;
 
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
 
+// Not sure we should annotate as value based as synchronization may fail for this particular type of LazyValue.
 @ValueBased
-public final class PreComputedLazyValue<V> implements LazyValue<V> {
+public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
 
     private final V value;
 
-    public PreComputedLazyValue(V value) {
+    public PreEvaluatedLazyValue(V value) {
         this.value = value;
     }
 
@@ -64,7 +64,18 @@ public final class PreComputedLazyValue<V> implements LazyValue<V> {
 
     @Override
     public String toString() {
-        return "PreComputedLazyValue[" + value + "]";
+        return "PreEvaluatedLazyValue[" + value + "]";
     }
 
+    @Override
+    public boolean equals(Object o) {
+        return (o instanceof PreEvaluatedLazyValue other)
+                ? value.equals(other.value)
+                : false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(value);
+    }
 }
