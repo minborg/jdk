@@ -25,44 +25,67 @@
 
 package jdk.internal.util.concurrent.lazy;
 
-import jdk.internal.ValueBased;
+import jdk.internal.vm.annotation.Stable;
 
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.lazy.LazyArray;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
+import static java.util.stream.Collectors.joining;
 
-    private final V value;
+public final class PreEvaluatedLazyArray<V> implements LazyArray<V> {
 
-    public PreEvaluatedLazyValue(V value) {
-        this.value = value;
+    @Stable
+    private final V[] values;
+
+    public PreEvaluatedLazyArray(V[] values) {
+        this.values = values.clone();
     }
 
     @Override
-    public boolean isBound() {
+    public int length() {
+        return values.length;
+    }
+
+    @Override
+    public boolean isBound(int index) {
+        Objects.checkIndex(index, length());
         return true;
     }
 
     @Override
-    public V get() {
-        return value;
+    public V get(int index) {
+        return values[index];
     }
 
     @Override
-    public V orElse(V other) {
-        return value;
+    public V orElse(int index, V other) {
+        return values[index];
     }
 
     @Override
-    public <X extends Throwable> V orElseThrow(Supplier<? extends X> exceptionSupplier) throws X {
-        Objects.requireNonNull(exceptionSupplier);
-        return value;
+    public <X extends Throwable> V orElseThrow(int index, Supplier<? extends X> exceptionSupplier) throws X {
+        return values[index];
+    }
+
+    @Override
+    public Stream<V> stream() {
+        return Arrays.stream(values);
+    }
+
+    @Override
+    public Stream<V> stream(V other) {
+        return stream();
     }
 
     @Override
     public String toString() {
-        return "PreEvaluatedLazyValue[" + value + "]";
+        return "PreEvaluatedLazyArray["
+                + stream().map(Objects::toString).collect(joining(", "))
+                + "]";
     }
 
 }

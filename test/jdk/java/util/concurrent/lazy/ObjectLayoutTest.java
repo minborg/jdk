@@ -31,7 +31,6 @@
  */
 
 import jdk.internal.misc.Unsafe;
-import jdk.internal.util.concurrent.lazy.CompactLazyValue;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyArray;
@@ -57,7 +56,6 @@ final class ObjectLayoutTest {
     public static void main(String[] args) {
         analyze(StandardLazyValue.class);
         analyze(PreEvaluatedLazyValue.class);
-        analyze(CompactLazyValue.class);
         analyze(StandardLazyArray.class);
     }
 

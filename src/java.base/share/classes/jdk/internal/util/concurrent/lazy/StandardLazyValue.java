@@ -25,59 +25,43 @@
 
 package jdk.internal.util.concurrent.lazy;
 
-import jdk.internal.util.concurrent.lazy.LazyUtil.PresentFlag;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
-
-import static jdk.internal.util.concurrent.lazy.LazyUtil.PRESENT_FLAG;
 
 public final class StandardLazyValue<V> implements LazyValue<V> {
 
     // Allows access to the "value" field with arbitary memory semantics
-    private static final VarHandle VALUE_HANDLE;
+    private static final VarHandle VALUE_HANDLE = valueHandle();
 
-    private static final VarHandle AUX_HANDLE;
-
-    static {
-        try {
-            var lookup = MethodHandles.lookup();
-            VALUE_HANDLE = lookup
-                    .findVarHandle(StandardLazyValue.class, "value", Object.class);
-            AUX_HANDLE = lookup
-                    .findVarHandle(StandardLazyValue.class, "aux", Object.class);
-            // .withInvokeExactBehavior(); // Make sure no boxing is made?
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-    }
-
-    // This field holds the bound lazy value. If != null, a valid value is bound
+    /**
+     * This field holds a bound lazy value.
+     * If != null, a value is bound
+     */
     @Stable
     private V value;
 
     /**
-     * aux can assume the following meanings:
-     // 0) Holds the initial supplier
-     // 1) Flags if the Lazy is being constucted using the current thread as a maker Object
-     // 2) Holds a special value, if a value is bound.
+     * This field is used for:
+     *   0) Holding the initial supplier
+     *   1) Flagging if the value is being constucted or bound using null
      */
-    private Object aux;
+    private Supplier<? extends V> supplier;
 
     public StandardLazyValue(Supplier<? extends V> supplier) {
-        this.aux = supplier;
+        this.supplier = supplier;
     }
 
     @ForceInline
     @Override
     public boolean isBound() {
         // Try normal memory semantics first
-        Object v = value;
+        V v = value;
         if (v != null) {
             return true;
         }
@@ -122,23 +106,23 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
     private synchronized V tryBind(V other,
                                    boolean rethrow) {
 
-        // Here, visibility and atomicy is guaranteed under synchronization
+        // Under synchronization, visibility and atomicy is guaranteed
         V v = value;
         if (v != null) {
             return v;
         }
-        var a = aux;
-        if (a instanceof Thread t) {
+        var a = supplier;
+        if (a == null) {
             throw new IllegalStateException("Circular supplier detected");
         }
 
-        // Mark as CONSTRUCTING using the current thread.
-        AUX_HANDLE.setVolatile(this, Thread.currentThread());
+        // Mark as constructing using null.
+        supplier = null;
         try {
             v = ((Supplier<V>) a).get();
         } catch (Throwable e) {
             // Restore the pre-set supplier as no value was bound
-            AUX_HANDLE.setVolatile(this, a);
+            supplier = a;
             if (rethrow) {
                 throw e;
             }
@@ -147,91 +131,42 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
 
         if (v == null) {
             // Restore the pre-set supplier as no value was bound
-            AUX_HANDLE.setVolatile(this, a);
+            supplier = a;
             return other;
         }
 
-        // Bind the value
-        VALUE_HANDLE.setVolatile(this, v);
-        // Clear CONSTRUCTING mode
-        AUX_HANDLE.setVolatile(this, PRESENT_FLAG);
+        // Bind the value and leave the pre-set supplier
+        // as null so it may be collected
+        valueVolatile(v);
         return v;
-
-    }
-
-    /**
-     * {@return the {@link LazyState State} of this Lazy}.
-     * <p>
-     * The value is a snapshot of the current State.
-     * No attempt is made to compute a value if it is not already present.
-     * <p>
-     * If the returned State is either {@link LazyState#BOUND} or
-     * {@link LazyState#ERROR}, it is guaranteed the state will
-     * never change in the future.
-     * <p>
-     * This method can be used to act on a value if it is present:
-     * {@snippet lang = java:
-     *     if (lazy.state() == State.PRESENT) {
-     *         // perform action on the value
-     *     }
-     *}
-     */
-    public final LazyState state() {
-        // Try normal memory semantics first
-        Object o = value;
-        if (o != null) {
-            return LazyState.BOUND;
-        }
-
-        Object a = aux;
-        if (a instanceof Thread) {
-            return LazyState.CONSTRUCTING;
-        }
-
-        // Retry with volatile memory semantics
-        o = valueVolatile();
-        if (o != null) {
-            return LazyState.BOUND;
-        }
-
-        a = AUX_HANDLE.getVolatile(this);
-        if (a instanceof Thread) {
-            return LazyState.CONSTRUCTING;
-        }
-
-        return LazyState.UNBOUND;
-    }
-
-    public final Optional<Throwable> exception() {
-
-        // Try normal memory semantics first
-        Object aux = this.aux;
-        if (this.aux instanceof Throwable throwable) {
-            return Optional.of(throwable);
-        }
-
-        // Retry with volatile memory semantics
-        aux = AUX_HANDLE.getVolatile(this);
-        return (this.aux instanceof Throwable throwable)
-                ? Optional.of(throwable)
-                : Optional.empty();
     }
 
     @Override
     public final String toString() {
-        // Avoid race conditions by initially just observing aux
-        Object a = AUX_HANDLE.getVolatile(this);
-        return "StandardLazyValue[" + switch (a) {
-            case Supplier<?> s -> LazyState.UNBOUND.toString();
-            case Thread      t -> LazyState.CONSTRUCTING + " [" + t + "]";
-            case PresentFlag p -> valueVolatile().toString();
-            default            -> throw new InternalError("should not reach here");
-        } + "]";
-
+        V v = valueVolatile();
+        return "StandardLazyValue" +
+                (v != null
+                        ? ("[" + value + "]")
+                        : ".unbound");
     }
 
     V valueVolatile() {
         return (V) VALUE_HANDLE.getVolatile(this);
+    }
+
+    void valueVolatile(Object o) {
+        VALUE_HANDLE.setVolatile(this, o);
+    }
+
+    static VarHandle valueHandle() {
+        try {
+            var lookup = MethodHandles.lookup();
+            return lookup
+                    .findVarHandle(StandardLazyValue.class, "value", Object.class);
+            // .withInvokeExactBehavior(); // Make sure no boxing is made?
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
     }
 
 }

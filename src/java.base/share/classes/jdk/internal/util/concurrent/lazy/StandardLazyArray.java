@@ -26,6 +26,7 @@
 package jdk.internal.util.concurrent.lazy;
 
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -34,6 +35,7 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.lazy.LazyArray;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Consumer;
@@ -95,36 +97,39 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "[" + IntStream.range(0, length())
-                .mapToObj(i -> switch (state(i)) {
-                    case UNBOUND -> "-";
-                    case CONSTRUCTING -> "+";
-                    case BOUND -> Objects.toString(lazyValueObjects[i].valueVolatile());
-                })
+        return "StandardLazyArray[" + IntStream.range(0, length())
+                .mapToObj(this::valueVolatile)
+                .map(v -> v == null ? "-" : v.toString())
                 .collect(Collectors.joining(", ")) + "]";
     }
 
-    /**
-     * {@return the {@link LazyState State} of this Lazy}.
-     * <p>
-     * The value is a snapshot of the current State.
-     * No attempt is made to compute a value if it is not already present.
-     * <p>
-     * If the returned State is either {@link LazyState#BOUND} or
-     * {@link LazyState#ERROR}, it is guaranteed the state will
-     * never change in the future.
-     * <p>
-     * This method can be used to act on a value if it is present:
-     * {@snippet lang = java:
-     *     if (lazy.state() == State.PRESENT) {
-     *         // perform action on the value
-     *     }
-     *}
-     * @param index to retrieve the State from
-     * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
-     */
-    private final LazyState state(int index) {
-        return lazyValueObjects[index].state();
+    V valueVolatile(int i) {
+        return lazyValueObjects[i].valueVolatile();
+    }
+
+    private static final class ConcurrentBitSet {
+
+        private final BitSet bitSet;
+        private AtomicInteger cardinality = new AtomicInteger();
+
+        ConcurrentBitSet(int size) {
+            this.bitSet = new BitSet(size);
+        }
+
+        // Todo: Make this lock free.
+        synchronized boolean trySet(int index) {
+            if (bitSet.get(index)) {
+                return false;
+            }
+            bitSet.set(index);
+            cardinality.getAndIncrement();
+            return true;
+        }
+
+        int cardinality() {
+            return cardinality.get();
+        }
+
     }
 
 }

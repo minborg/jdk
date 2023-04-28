@@ -26,7 +26,6 @@
 package java.util.concurrent.lazy;
 
 import jdk.internal.javac.PreviewFeature;
-import jdk.internal.util.concurrent.lazy.CompactLazyValue;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyValue;
 
@@ -44,7 +43,7 @@ import java.util.function.Supplier;
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public sealed interface LazyValue<V>
         extends Supplier<V>
-        permits StandardLazyValue, CompactLazyValue, PreEvaluatedLazyValue {
+        permits StandardLazyValue, PreEvaluatedLazyValue {
 
     /**
      * {@return {@code true} if a value is bound to this lazy value}
@@ -85,7 +84,7 @@ public sealed interface LazyValue<V>
      * If another thread attempts to bind a value, the current thread will be suspended until
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
-     * @param other to use if no value neither is bound nor can be bound
+     * @param other to use if no value neither is bound nor can be bound (may be null)
      * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value calls itself).
      */
     V orElse(V other);
@@ -128,40 +127,6 @@ public sealed interface LazyValue<V>
     public static <V> LazyValue<V> of(Supplier<? extends V> presetSupplier) {
         Objects.requireNonNull(presetSupplier);
         return new StandardLazyValue<>(presetSupplier);
-    }
-
-    /**
-     * {@return a compact LazyValue with the provided {@code presetSupplier}}
-     * <p>
-     * A compact LazyValue has a smaller footprint but may exhibit lower performance.
-     * <p>
-     * If a later attempt is made to invoke the {@link LazyValue#get()} method when no element is bound,
-     * the provided {@code presetSupplier} will automatically be invoked.
-     * <p>
-     * {@snippet lang = java:
-     *     class DemoPreset {
-     *
-     *         private static final LazyValue<Foo> FOO = LazyValue.ofCompact(Foo::new);
-     *
-     *         public Foo theBar() {
-     *             // Foo is lazily constructed and recorded here upon first invocation
-     *             return FOO.get();
-     *         }
-     *     }
-     *}
-     * <p>
-     * The provided {@code presetSupplier} may not produce a value that implements
-     * {@link Thread} or {@link Supplier }. If that is the case, the returned LazyValue
-     * will throw an IllegalStateException upon being evaluated. If the {@code presetSupplier}
-     * can produce objects implementing any of these types, the factory method
-     * {@link LazyValue#of(Supplier)}  of()} has to be used instead.
-     *
-     * @param <V>            The type of the value
-     * @param presetSupplier to invoke when lazily constructing a value
-     */
-    public static <V> LazyValue<V> ofCompact(Supplier<? extends V> presetSupplier) {
-        Objects.requireNonNull(presetSupplier);
-        return new CompactLazyValue<>(presetSupplier);
     }
 
     /**

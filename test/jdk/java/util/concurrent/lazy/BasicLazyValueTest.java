@@ -142,19 +142,15 @@ final class BasicLazyValueTest {
             var lazy0 = lv.constructor().apply(() -> 0);
             var lazy1 = lv.constructor().apply(() -> 1);
             lazy1.get();
-            var lazy2 = lv.constructor().apply(() -> {
-                throw new UnsupportedOperationException();
-            });
+
             // Do not touch lazy0
             lazy1.get();
-            try {
-                lazy2.get();
-            } catch (UnsupportedOperationException ignored) {
-                // Happy path
+            if (lv.name().contains("Value")) {
+                assertEquals(lazy0.getClass().getSimpleName() + "[0]", lazy0.toString());
+            } else {
+                assertEquals(lazy0.getClass().getSimpleName() + ".unbound", lazy0.toString());
             }
-            assertEquals(lazy0.getClass().getSimpleName()+"[UNBOUND]", lazy0.toString());
             assertEquals(lazy0.getClass().getSimpleName()+"[1]", lazy1.toString());
-            assertEquals(lazy0.getClass().getSimpleName()+"[UNBOUND]", lazy2.toString());
         });
     }
 
@@ -173,8 +169,8 @@ final class BasicLazyValueTest {
 
     private static Stream<LazyVariant> lazyVariants() {
         return Stream.of(
-                        new NamedConstructor("Lazy::of", LazyValue::of),
-                        new NamedConstructor("Lazy::ofCompact", LazyValue::ofCompact))
+                        new NamedConstructor("Lazy::of(Supplier)", LazyValue::of),
+                        new NamedConstructor("Lazy::of(Value)", s -> LazyValue.of(s.get())))
                 .map(nc -> {
                     var supplier = new CountingIntegerSupplier();
                     var lazy = nc.constructor().apply(supplier);
@@ -190,7 +186,7 @@ final class BasicLazyValueTest {
     private record LazyVariant(String name,
                               Function<Supplier<Integer>, LazyValue<Integer>> constructor,
                               LazyValue<Integer> lazyValue,
-                               CountingIntegerSupplier supplier) {
+                              CountingIntegerSupplier supplier) {
     }
 
 

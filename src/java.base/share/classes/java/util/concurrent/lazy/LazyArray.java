@@ -26,6 +26,8 @@
 package java.util.concurrent.lazy;
 
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyArray;
+import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyArray;
 
 import java.util.NoSuchElementException;
@@ -44,7 +46,7 @@ import java.util.stream.Stream;
  */
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public sealed interface LazyArray<V>
-        permits StandardLazyArray {
+        permits StandardLazyArray, PreEvaluatedLazyArray {
 
     /**
      * {@return the length of the array}
@@ -95,7 +97,7 @@ public sealed interface LazyArray<V>
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param index for which a value shall be obtained.
-     * @param other to use if no value neither is bound nor can be bound
+     * @param other to use if no value neither is bound nor can be bound (may be null)
      * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
      * @throws IllegalStateException          if a circular dependency is detected (I.e. a lazy value calls itself).
      */
@@ -150,7 +152,7 @@ public sealed interface LazyArray<V>
      *     }
      * }
      *
-     * @param other the other value to use for values that cannot be bound
+     * @param other the other value to use for values that cannot be bound (may be null)
      * @throws IllegalStateException if a circular dependency is detected (I.e. a lazy value calls itself).
      */
     public Stream<V> stream(V other);
@@ -186,6 +188,18 @@ public sealed interface LazyArray<V>
         }
         Objects.requireNonNull(presetMapper);
         return new StandardLazyArray<>(size, presetMapper);
+    }
+
+    /**
+     * {@return a pre-evaluated LazyArray with bound values}
+     *
+     * @param <V>    The type of the values
+     * @param values to bind
+     */
+    @SuppressWarnings("unchecked")
+    public static <V> LazyArray<V> of(V... values) {
+        Objects.requireNonNull(values);
+        return new PreEvaluatedLazyArray<>(values);
     }
 
 }
