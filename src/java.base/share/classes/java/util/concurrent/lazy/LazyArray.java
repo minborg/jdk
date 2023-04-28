@@ -104,7 +104,7 @@ public sealed interface LazyArray<V>
 
     /**
      * {@return the bound value at the provided {@code index}. If no value is bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}}</em>
+     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
      * , or, if this fails, throws an exception produced by the provided {@code exceptionSupplier} function}
      * <p>
      * If another thread attempts to bind a value, the current thread will be suspended until
@@ -119,10 +119,9 @@ public sealed interface LazyArray<V>
     public <X extends Throwable> V orElseThrow(int index,
                                                Supplier<? extends X> exceptionSupplier) throws X;
 
-
     /**
      * {@return A Stream with the bound values in this lazy array. If a value is not bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}}</em>
+     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
      * , or, if this fails, throws an Exception}
      * <p>
      * In other words, the returned stream is equivalent to the following code:
@@ -140,8 +139,8 @@ public sealed interface LazyArray<V>
 
     /**
      * {@return A Stream with the bound values in this lazy array. If a value is not bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}}</em>
-     * , or, if this fails, returns the provided {@code other} value}}
+     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
+     * , or, if this fails, returns the provided {@code other} value}
      * <p>
      * In other words, the returned stream is equivalent to the following code:
      * {@snippet lang = java:
