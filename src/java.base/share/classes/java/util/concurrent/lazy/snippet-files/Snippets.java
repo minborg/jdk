@@ -110,8 +110,8 @@ public class Snippets {
     }
     // @end
 
-    // @start region="JepDemoArray"
-    class JepDemoArray {
+    // @start region="DemoArray"
+    class DemoArray {
 
         // 1. Declare a lazy array of length 32
         private static final LazyArray<Long> VALUE_PO2_CACHE = LazyArray.of(32, index -> 1L << index);
@@ -119,23 +119,6 @@ public class Snippets {
         public long powerOfTwo(int n) {
             // 2. The n:th slot is lazily computed and recorded here upon first slot invocation
             // 3. Using an n outside the array will throw an ArrayOutOfBoundsException
-            return VALUE_PO2_CACHE.get(n);
-        }
-    }
-    // @end
-
-
-    // @start region="DemoArray"
-    class DemoArray {
-
-        private static final LazyArray<Value> VALUE_PO2_CACHE =
-                LazyArray.of(32, index -> new Value(1L << index));
-
-        public Value powerOfTwoValue(int n) {
-            if (n < 0 || n >= VALUE_PO2_CACHE.length()) {
-                throw new IllegalArgumentException(Integer.toString(n));
-            }
-
             return VALUE_PO2_CACHE.get(n);
         }
     }
@@ -178,6 +161,21 @@ public class Snippets {
         }
     }
     // @end
+
+    class DemoBackground {
+
+        private static final LazyValue<Foo> LAZY_VALUE = LazyValue.of(Foo::new);
+
+        static {
+            Thread.ofVirtual().start(LAZY_VALUE::get);
+        }
+
+        public static void main(String[] args) throws InterruptedException {
+            Thread.sleep(1000);
+            // lazy is likely already pre-computed here by a background thread
+            System.out.println("lazy.get() = " + LAZY_VALUE.get());
+        }
+      }
 
     static class MapFib {
         Map<Integer, Integer> fibonacci = new ConcurrentHashMap<>();

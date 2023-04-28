@@ -42,15 +42,15 @@
  *     <li>{@link LazyValue} with e.g. {@link LazyValue#get() get()}<p>
  *     available via {@link java.util.concurrent.lazy.LazyValue#of(java.util.function.Supplier) LazyValue.of(Supplier&lt;V&gt; presetSupplier)}</li>
  *
- *     <li>{@link LazyArray} with e.g. {@link java.util.concurrent.lazy.LazyArray#get(int) apply(int index)}<p>
- *     available via {@link java.util.concurrent.lazy.LazyArray#of(int, java.util.function.IntFunction) LazyArray.ofArray(int length, IntFunction&lt;V&gt; presetMapper)}</li>
+ *     <li>{@link LazyArray} with e.g. {@link java.util.concurrent.lazy.LazyArray#get(int) get(int index)}<p>
+ *     available via {@link java.util.concurrent.lazy.LazyArray#of(int, java.util.function.IntFunction) LazyArray.of(int length, IntFunction&lt;V&gt; presetMapper)}</li>
  * </ul>
  *
- * Hence, the Array type methods provide an extra arity where the index is specified compared to the Reference types.
+ * Hence, the LazyArray type methods provide an extra arity where the index is specified compared to LazyValue.
  *
  * <h3 id="lazyreference">LazyReference</h3>
  *
- * Lazy provides atomic lazy evaluation using a <em>preset-supplier</em>:
+ * LazyValue provides atomic lazy evaluation using a <em>preset-supplier</em>:
  *
  * {@snippet lang = java:
  *     class DemoPreset {
@@ -63,7 +63,7 @@
  *         }
  *     }
  *}
- * The performance of the example above is on pair with using an inner/private class
+ * The {@code get()} performance of the example above is on pair with using an inner/private class
  * holding a lazily initialized variable but with no overhead imposed by the extra
  * class. A corresponding private class is illustraded hereunder:
  *
@@ -81,17 +81,21 @@
  *     }
  *}
  *
- * Here is how a lazy value can be computed in the background and that may already be computed
+ * Here is how a lazy value can be computed in the background so that may already be computed
  * when first requested from user code:
  * {@snippet lang = java:
  *     class DemoBackground {
  *
- *         private static final LazyValue<Foo> LAZY_VALUE = ...
+ *         private static final LazyValue<Foo> LAZY_VALUE = LazyValue.of(Foo::new);
+ *
+ *         static {
+ *             Thread.ofVirtual().start(LAZY_VALUE::get);
+ *         }
  *
  *         public static void main(String[] args) throws InterruptedException {
  *             Thread.sleep(1000);
  *             // lazy is likely already pre-computed here by a background thread
- *             System.out.println("lazy.get() = " + lazy.get());
+ *             System.out.println("lazy.get() = " + LAZY_VALUE.get());
  *         }
  *     }
  *}
@@ -119,19 +123,17 @@
  *
  * Arrays of lazy values (i.e. {@link java.util.concurrent.lazy.LazyArray}) can also be
  * obtained via {@link java.util.concurrent.lazy.LazyValue} factory methods in the same way as
- * for LazyReference instance but with an extra initial arity, indicating the desired length/index
+ * for LazyValue instances but with an extra initial arity, indicating the desired length/index
  * of the array:
  * {@snippet lang = java:
  *     class DemoArray {
  *
- *         private static final LazyArray<Value> VALUE_PO2_CACHE =
- *                 LazyValue.ofArray(32, index -> new Value(1L << index));
+ *         // 1. Declare a lazy array of length 32
+ *         private static final LazyArray<Long> VALUE_PO2_CACHE = LazyArray.of(32, index -> 1L << index);
  *
- *         public Value powerOfTwoValue(int n) {
- *             if (n < 0 || n >= VALUE_PO2_CACHE.length()) {
- *                 throw new IllegalArgumentException(Integer.toString(n));
- *             }
- *
+ *         public long powerOfTwo(int n) {
+ *             // 2. The n:th slot is lazily computed and recorded here upon first slot invocation
+ *             // 3. Using an n outside the array will throw an ArrayOutOfBoundsException
  *             return VALUE_PO2_CACHE.get(n);
  *         }
  *     }
@@ -140,22 +142,7 @@
  * than a {@link java.util.function.Supplier }, allowing custom values to be
  * computed and entered into the array depending on the current index being used.
  *
- * As was the case for LazyReference, empty LazyReferenceArray instances can also be
- * constructed, allowing lazy mappers known at a later stage to be used:
- * {@snippet lang = java:
- *     class UserCache {
- *
- *         // Cache the first 64 users
- *         private static final EmptyLazyArray<User> USER_CACHE = LazyValue.ofEmptyArray(64);
- *
- *         public User user(int id) {
- *             Connection c = getDatabaseConnection();
- *             return USER_CACHE.computeIfEmpty(id, i -> findUserById(c, i));
- *         }
- *     }
- *}
- *
- * {@code LazyReferenceArray<T>} implements {@code IntFunction<T>} allowing simple interoperability
+ * {@code LazyArray<V>} can be converted to an {@code IntFunction<T>} allowing simple interoperability
  * with existing code and with less specific type declarations as shown hereunder:
  * {@snippet lang = java:
  *     class DemoIntFunction {
@@ -174,37 +161,12 @@
  *     }
  *}
  *
- * Sometimes, there is a mapping from an {@code int} key to an index, preventing
- * the key to be used directly. If there is a constant translation factor between index and
- * actual keys, the {@linkplain java.util.concurrent.lazy.LazyValue .ofEmptyTranslatedArray()} can be used.
- * <p>
- * For example, when caching every 10th Fibonacci value, the following snippet can be used:
- * {@snippet lang = java:
- *         // Un-cached fibonacci method
- *         static int fib(int n) {
- *             return (n <= 1)
- *                     ? n
- *                     : fib(n - 1) + fib(n - 2);
- *         }
- *
- *         private static final EmptyLazyArray<Integer> FIB_10_CACHE =
- *                 LazyValue.ofEmptyTranslatedArray(5, 10);
- *
- *
- *         // Only works for values up to ~50 as the backing array is of length 5.
- *         static int cachedFib(int n) {
- *             if (n <= 1)
- *                 return n;
- *             return FIB_10_CACHE.computeIfEmpty(n, DemoFibMapped::fib);
- *         }
- *}
- *
  * <h3 id="general">General Properties of the Lazy Constructs</h3>
  *
  * All methods of the classes in this package will throw a {@link NullPointerException}
  * if a reference parameter is {@code null}.
  *
- * All lazy constructs are "nullofobic" meaning a provider can never return {@code null}.  If nullablilty
+ * All lazy constructs are "nullofobic" meaning a value can never be boud to {@code null}.  If nullablilty
  * for values stored are desired, the values have to be modeled using a construct that can express
  * {@code null} values in an explicit way such as {@link java.util.Optional#empty()} as exemplified here:
  * {@snippet lang = java:
