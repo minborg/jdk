@@ -160,7 +160,7 @@ public sealed interface LazyValue<V>
 
     /**
      * {@return a pre-evaluated Lazy with a bound value}.
-     * <p>
+     *
      * @param <V>   The type of the value
      * @param value to bound
      */

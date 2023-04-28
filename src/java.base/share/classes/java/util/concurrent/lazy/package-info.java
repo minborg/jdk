@@ -161,12 +161,34 @@
  *     }
  *}
  *
+ * <h3 id="state">Internal States</h3>
+ * LazyValue and slots in a LazyArray maintain an internal state as described hereunder:
+ *
+ * <ul>
+ *     <li>Unbound;
+ *     <p>Indicates no value is bound and is not being constructed (transient state).
+ *     <p>Can move to "Constructing".</li>
+ *     <li>Constructing;
+ *     <p>Indicates a value is being constructed but is not yet present (transient state).
+ *     <p>Can move to "Unbound" or "Bound".</li>
+ *     <li>Bound;
+ *     <p>Indicates a value is bound (final state).
+ *     <p>Cannot move.</li>
+ * </ul>
+ * Transient states can change at any time, whereas if a final state is observed, it is guaranteed
+ * the state will never change again.  The predicates {@code LazyValue::isBound} and {@code LazyArray::isBound}
+ * can be used to determine if a value is bound or not.
+ * <p>
+ * The internal states and their transistions are depicted below:
+ * <p style="text-align:center">
+ * <img src = "doc-files/lazy-states.png" alt="the internal states">
+ *
  * <h3 id="general">General Properties of the Lazy Constructs</h3>
  *
  * All methods of the classes in this package will throw a {@link NullPointerException}
  * if a reference parameter is {@code null}.
  *
- * All lazy constructs are "nullofobic" meaning a value can never be boud to {@code null}.  If nullablilty
+ * All lazy constructs are "nullofobic" meaning a value can never be bound to {@code null}.  If nullablilty
  * for values stored are desired, the values have to be modeled using a construct that can express
  * {@code null} values in an explicit way such as {@link java.util.Optional#empty()} as exemplified here:
  * {@snippet lang = java:

@@ -32,7 +32,7 @@ import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
 
 // Not sure we should annotate as value based as synchronization may fail for this particular type of LazyValue.
-@ValueBased
+// @ValueBased
 public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
 
     private final V value;
@@ -67,9 +67,11 @@ public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
         return "PreEvaluatedLazyValue[" + value + "]";
     }
 
-    @Override
+/* Needed for @ValueBased
+
+  @Override
     public boolean equals(Object o) {
-        return (o instanceof PreEvaluatedLazyValue other)
+        return (o instanceof PreEvaluatedLazyValue<?> other)
                 ? value.equals(other.value)
                 : false;
     }
@@ -77,5 +79,5 @@ public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
     @Override
     public int hashCode() {
         return Objects.hash(value);
-    }
+    }*/
 }
