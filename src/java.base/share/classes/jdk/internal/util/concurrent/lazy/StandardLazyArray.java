@@ -46,21 +46,21 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
 
     private IntFunction<? extends V> presetMapper;
 
+    private AtomicInteger remainsToBind;
+    private volatile LockObject[] locks;
+
     @Stable
     private final V[] values;
-
-    private volatile LockObject[] locks;
-    private AtomicInteger remainsToBind;
 
     @SuppressWarnings("unchecked")
     public StandardLazyArray(int length,
                              IntFunction<? extends V> presetMapper) {
         this.presetMapper = presetMapper;
-        this.values = (V[]) new Object[length];
+        this.remainsToBind = new AtomicInteger(length);
         this.locks = IntStream.range(0, length)
                 .mapToObj(i -> new LockObject())
                 .toArray(LockObject[]::new);
-        this.remainsToBind = new AtomicInteger(length);
+        this.values = (V[]) new Object[length];
     }
 
     @Override
@@ -135,7 +135,7 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
             // All elements are bound so we know we can read any bound value
             return valueVolatile(index);
         }
-        LockObject lock = (LockObject) LOCKS_HANDLE.getVolatile(locks, index);
+        LockObject lock = lockVolatile(index);
         if (lock == null) {
             // There is no lock for this index so we know we can read the coresponding bound value
             return valueVolatile(index);
@@ -191,6 +191,11 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
         if (!VALUES_HANDLE.compareAndSet(values, i, null, o)) {
             throw new InternalError();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    LockObject lockVolatile(int i) {
+        return (LockObject) LOCKS_HANDLE.getVolatile(locks, i);
     }
 
     void clearLock(int i) {
