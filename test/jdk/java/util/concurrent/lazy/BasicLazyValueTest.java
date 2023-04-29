@@ -63,9 +63,11 @@ final class BasicLazyValueTest {
             // Mapper is null
             assertThrows(NullPointerException.class,
                     () -> lv.constructor().apply(null));
-            // Mapper returns null
-            LazyValue<Integer> l = lv.constructor().apply(() -> null);
-            assertNull(l.get());
+            if (!isOfValue(lv)) {
+                // Mapper returns null
+                LazyValue<Integer> l = lv.constructor().apply(() -> null);
+                assertNull(l.get());
+            }
         });
     }
 
@@ -98,7 +100,7 @@ final class BasicLazyValueTest {
 
     @TestFactory
     Stream<DynamicTest> error() {
-        return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
+        return DynamicTest.stream(lazyVariants().filter(lv -> !isOfValue(lv)), LazyVariant::name, (LazyVariant lv) -> {
             Supplier<Integer> throwingSupplier = () -> {
                 throw new UnsupportedOperationException();
             };
@@ -145,7 +147,7 @@ final class BasicLazyValueTest {
 
             // Do not touch lazy0
             lazy1.get();
-            if (lv.name().contains("Value")) {
+            if (isOfValue(lv)) {
                 assertEquals(lazy0.getClass().getSimpleName() + "[0]", lazy0.toString());
             } else {
                 assertEquals(lazy0.getClass().getSimpleName() + ".unbound", lazy0.toString());
@@ -213,6 +215,10 @@ final class BasicLazyValueTest {
         int invocations() {
             return invocations.get();
         }
+    }
+
+    private boolean isOfValue(LazyVariant lv) {
+        return lv.name().contains("Value");
     }
 
 }

@@ -30,7 +30,6 @@ import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.util.Objects;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
 
@@ -61,12 +60,7 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
     @Override
     public boolean isBound() {
         // Try normal memory semantics first
-        V v = value;
-        if (v != null) {
-            return true;
-        }
-        v = valueVolatile();
-        return v != null;
+        return value != null || valueVolatile() != null;
     }
 
 
@@ -137,7 +131,7 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
 
         // Bind the value and leave the pre-set supplier
         // as null so it may be collected
-        valueVolatile(v);
+        casVolatile(v);
         return v;
     }
 
@@ -154,8 +148,10 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
         return (V) VALUE_HANDLE.getVolatile(this);
     }
 
-    void valueVolatile(Object o) {
-        VALUE_HANDLE.setVolatile(this, o);
+    void casVolatile(Object o) {
+        if (!VALUE_HANDLE.compareAndSet(this, null, o)) {
+            throw new InternalError();
+        }
     }
 
     static VarHandle valueHandle() {

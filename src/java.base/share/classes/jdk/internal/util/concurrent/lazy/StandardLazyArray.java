@@ -25,20 +25,14 @@
 
 package jdk.internal.util.concurrent.lazy;
 
-import java.util.Arrays;
+import jdk.internal.vm.annotation.ForceInline;
+import jdk.internal.vm.annotation.Stable;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.BitSet;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.lazy.LazyArray;
-import java.util.concurrent.lazy.LazyValue;
-import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -47,40 +41,69 @@ import java.util.stream.Stream;
 
 public final class StandardLazyArray<V>  implements LazyArray<V> {
 
-    final StandardLazyValue<V>[] lazyValueObjects;
+    private static final VarHandle VALUES_HANDLE = MethodHandles.arrayElementVarHandle(Object[].class);
+    private static final VarHandle LOCKS_HANDLE = MethodHandles.arrayElementVarHandle(LockObject[].class);
+
+    private IntFunction<? extends V> presetMapper;
+
+    @Stable
+    private final V[] values;
+
+    private volatile LockObject[] locks;
+    private AtomicInteger remainsToBind;
 
     @SuppressWarnings("unchecked")
     public StandardLazyArray(int length,
                              IntFunction<? extends V> presetMapper) {
-
-        lazyValueObjects = IntStream.range(0, length)
-                .mapToObj(i -> new StandardLazyValue<>(() -> presetMapper.apply(i)))
-                .toArray(StandardLazyValue[]::new);
+        this.presetMapper = presetMapper;
+        this.values = (V[]) new Object[length];
+        this.locks = IntStream.range(0, length)
+                .mapToObj(i -> new LockObject())
+                .toArray(LockObject[]::new);
+        this.remainsToBind = new AtomicInteger(length);
     }
 
     @Override
     public final int length() {
-        return lazyValueObjects.length;
+        return values.length;
     }
 
     @Override
     public boolean isBound(int index) {
-        return lazyValueObjects[index].isBound();
+        // Try normal memory semantics first
+        return values[index] != null || valueVolatile(index) != null;
     }
 
+    @ForceInline
     @Override
     public V get(int index) {
-        return lazyValueObjects[index].get();
+        // Try normal memory semantics first
+        V v = values[index];
+        if (v != null) {
+            return v;
+        }
+        return tryBind(index, null, true);
     }
 
+    @ForceInline
     @Override
     public V orElse(int index, V other) {
-        return lazyValueObjects[index].orElse(other);
+        // Try normal memory semantics first
+        V v = values[index];
+        if (v != null) {
+            return v;
+        }
+        return tryBind(index, null, true);
     }
 
+    @ForceInline
     @Override
     public <X extends Throwable> V orElseThrow(int index, Supplier<? extends X> exceptionSupplier) throws X {
-        return lazyValueObjects[index].orElseThrow(exceptionSupplier);
+        V v = orElse(index, null);
+        if (v == null) {
+            throw exceptionSupplier.get();
+        }
+        return v;
     }
 
     @Override
@@ -103,33 +126,79 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
                 .collect(Collectors.joining(", ")) + "]";
     }
 
-    V valueVolatile(int i) {
-        return lazyValueObjects[i].valueVolatile();
+    @SuppressWarnings("unchecked")
+    private V tryBind(int index,
+                      V other,
+                      boolean rethrow) {
+
+        if (locks == null) {
+            // All elements are bound so we know we can read any bound value
+            return valueVolatile(index);
+        }
+        LockObject lock = (LockObject) LOCKS_HANDLE.getVolatile(locks, index);
+        if (lock == null) {
+            // There is no lock for this index so we know we can read the coresponding bound value
+            return valueVolatile(index);
+        }
+        synchronized (lock) {
+            // We are alone here for this index
+            V v = valueVolatile(index);
+            if (v != null) {
+                return v;
+            }
+
+            if (lock.isBinding) {
+                throw new IllegalStateException("Circular supplier detected");
+            }
+            try {
+                lock.isBinding = true;
+                v = presetMapper.apply(index);
+            } catch (Throwable e) {
+                if (rethrow) {
+                    throw e;
+                }
+                return other;
+            } finally {
+                lock.isBinding = false;
+            }
+
+            if (v == null) {
+                return other;
+            }
+
+            // Bind the value
+            casValue(index, v);
+            // Remove the now redundant lock
+            clearLock(index);
+            remainsToBind.getAndDecrement();
+            if (remainsToBind.get() == 0) {
+                // All elements are bound
+                // Make these objects elegable for collection
+                presetMapper = null;
+                locks = null;
+                remainsToBind = null;
+            }
+            return v;
+        }
     }
 
-    private static final class ConcurrentBitSet {
+    @SuppressWarnings("unchecked")
+    V valueVolatile(int i) {
+        return (V) VALUES_HANDLE.getVolatile(values, i);
+    }
 
-        private final BitSet bitSet;
-        private AtomicInteger cardinality = new AtomicInteger();
-
-        ConcurrentBitSet(int size) {
-            this.bitSet = new BitSet(size);
+    void casValue(int i, Object o) {
+        if (!VALUES_HANDLE.compareAndSet(values, i, null, o)) {
+            throw new InternalError();
         }
+    }
 
-        // Todo: Make this lock free.
-        synchronized boolean trySet(int index) {
-            if (bitSet.get(index)) {
-                return false;
-            }
-            bitSet.set(index);
-            cardinality.getAndIncrement();
-            return true;
-        }
+    void clearLock(int i) {
+        LOCKS_HANDLE.setVolatile(locks, i, null);
+    }
 
-        int cardinality() {
-            return cardinality.get();
-        }
-
+    private static final class LockObject {
+        boolean isBinding;
     }
 
 }
