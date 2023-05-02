@@ -62,7 +62,7 @@ public sealed interface LazyArray<V>
     boolean isBound(int index);
 
     /**
-     * {@return the bound value at the provided {@code index}. If no value is bound, atomically attempts
+     * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>}
      * <p>
      * If the pre-set mapper returns {@code null}, no value is bound and {@code null} is returned.
@@ -78,38 +78,40 @@ public sealed interface LazyArray<V>
      *    assertNotNull(value); // Value is non-null
      *}
      * <p>
-     * If another thread attempts to bind a value, the current thread will be suspended until
+     * If another thread attempts to bind a value at the provided index, the current thread will be suspended until
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param index for which a bound value shall be obtained.
      * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
      * @throws NoSuchElementException         if a value cannot be bound
-     * @throws IllegalStateException          if a circular dependency is detected (I.e. a lazy value calls itself).
+     * @throws IllegalStateException          if a circular dependency is detected (i.e. a lazy value calls itself
+     *                                        for the same index).
      */
     public V get(int index);
 
     /**
      * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}}</em>
+     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
      * , or, if this fails, returns the provided {@code other} value}
      * <p>
-     * If another thread attempts to bind a value, the current thread will be suspended until
+     * If another thread attempts to bind a value at the provided index, the current thread will be suspended until
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param index for which a value shall be obtained.
      * @param other to use if no value neither is bound nor can be bound (may be null)
      * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
-     * @throws IllegalStateException          if a circular dependency is detected (I.e. a lazy value calls itself).
+     * @throws IllegalStateException          if a circular dependency is detected (i.e. a lazy value calls itself
+     *                                        for the same index).
      */
     V orElse(int index,
              V other);
 
     /**
-     * {@return the bound value at the provided {@code index}. If no value is bound, atomically attempts
+     * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
      * , or, if this fails, throws an exception produced by the provided {@code exceptionSupplier} function}
      * <p>
-     * If another thread attempts to bind a value, the current thread will be suspended until
+     * If another thread attempts to bind a value at the provided index, the current thread will be suspended until
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param <X>               the type of the exception that may be thrown
@@ -122,7 +124,7 @@ public sealed interface LazyArray<V>
                                                Supplier<? extends X> exceptionSupplier) throws X;
 
     /**
-     * {@return A Stream with the bound values in this lazy array. If a value is not bound, atomically attempts
+     * {@return a Stream with the bound values in this lazy array.  If a value is not bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
      * , or, if this fails, throws an Exception}
      * <p>
@@ -135,12 +137,13 @@ public sealed interface LazyArray<V>
      * }
      *
      * @throws NoSuchElementException if a value cannot be bound
-     * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value calls itself).
+     * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value
+     *                                calls itself at a certain index).
      */
     public Stream<V> stream();
 
     /**
-     * {@return A Stream with the bound values in this lazy array. If a value is not bound, atomically attempts
+     * {@return a Stream with the bound values in this lazy array. If a value is not bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
      * , or, if this fails, returns the provided {@code other} value}
      * <p>
@@ -153,12 +156,13 @@ public sealed interface LazyArray<V>
      * }
      *
      * @param other the other value to use for values that cannot be bound (may be null)
-     * @throws IllegalStateException if a circular dependency is detected (I.e. a lazy value calls itself).
+     * @throws IllegalStateException if a circular dependency is detected (i.e. a lazy value
+     *                               calls itself at a certain index).
      */
     public Stream<V> stream(V other);
 
     /**
-     * {@return a new LazyArray with a pre-set mapper}
+     * {@return a new {@link LazyArray} with the provided {@code presetmapper}}
      * <p>
      * Below, an example of how to cache values in an array is shown:
      * {@snippet lang = java:
@@ -191,7 +195,7 @@ public sealed interface LazyArray<V>
     }
 
     /**
-     * {@return a pre-evaluated LazyArray with bound values}
+     * {@return a pre-evaluated {@code LazyArray} with the provided {@code values} bound}
      *
      * @param <V>    The type of the values
      * @param values to bind

@@ -24,9 +24,9 @@
  */
 
 /**
- * A small toolkit of classes supporting lock-free, thread-safe use of lazily initialized
- * values and arrays with superior performance.  Providers of lazy values are guaranteed
- * to be invoked at most one time, proivded the provider returned a valid value.  This contrasts
+ * A small toolkit of classes supporting high-performance, lock-free, thread-safe use
+ * of lazily initialized values and arrays.  Providers of lazy values are guaranteed
+ * to be invoked at most one time, proivded the they returned a valid value.  This contrasts
  * with {@link java.util.concurrent.atomic.AtomicReferenceArray } where any number
  * of updates can be done and where there is no simple way to atomically compute
  * a value (guaranteed to only be computed once) if missing. Lazy also contrasts to
@@ -37,21 +37,21 @@
  *
  *  <h2 id="lazy">Lazy</h2>
  *
- * Lazy types are all generic with respect to the reference value of type V they compute and
+ * Lazy types are all generic with respect to a reference value of type V they compute and
  * come in two fundamental flavors:
  * <ul>
  *     <li>{@link LazyValue} with e.g. {@link LazyValue#get() get()}<p>
- *     available via {@link java.util.concurrent.lazy.LazyValue#of(java.util.function.Supplier) LazyValue.of(Supplier&lt;V&gt; presetSupplier)}</li>
+ *     available via {@link java.util.concurrent.lazy.LazyValue#of(java.util.function.Supplier) LazyValue.of(Supplier&lt;? super V&gt; presetSupplier)}</li>
  *
  *     <li>{@link LazyArray} with e.g. {@link java.util.concurrent.lazy.LazyArray#get(int) get(int index)}<p>
- *     available via {@link java.util.concurrent.lazy.LazyArray#of(int, java.util.function.IntFunction) LazyArray.of(int length, IntFunction&lt;V&gt; presetMapper)}</li>
+ *     available via {@link java.util.concurrent.lazy.LazyArray#of(int, java.util.function.IntFunction) LazyArray.of(int length, IntFunction&lt;? super V&gt; presetMapper)}</li>
  * </ul>
  *
- * The LazyArray type methods provide an extra arity where the index is specified compared to LazyValue.
+ * The {@code LazyArray} type methods provide an extra arity where the index is specified compared to {@code LazyValue}.
  *
  * <h3 id="lazyreference">LazyReference</h3>
  *
- * LazyValue provides atomic lazy evaluation using a <em>preset-supplier</em>:
+ * {@code LazyValue} provides atomic lazy evaluation using a <em>preset-supplier</em>:
  *
  * {@snippet lang = java:
  *     class DemoPreset {
@@ -64,9 +64,9 @@
  *         }
  *     }
  *}
- * The performance of the {@code get()} method in the example above is on pair with using an inner/private class
- * holding a lazily initialized variable but with no overhead imposed by the extra
- * class. A corresponding private class is illustrated hereunder:
+ * The performance of the {@code get()} method in the example above is on pair with using an
+ * inner/private class holding a lazily initialized variable but with no overhead imposed by
+ * the extra holder class.  A corresponding private class is illustrated hereunder:
  *
  {@snippet lang = java :
  *     class DemoHolder {
@@ -124,7 +124,7 @@
  *
  * Arrays of lazy values (i.e. {@link java.util.concurrent.lazy.LazyArray}) can also be
  * obtained via {@link java.util.concurrent.lazy.LazyValue} factory methods in the same way as
- * for LazyValue instances but with an extra initial arity, indicating the desired length/index
+ * for {@code LazyValue} instances but with an extra initial arity, indicating the desired length/index
  * of the array:
  * {@snippet lang = java:
  *     class DemoArray {
@@ -163,7 +163,7 @@
  *}
  *
  * <h3 id="state">Internal States</h3>
- * LazyValue and slots in a LazyArray maintain an internal state as described hereunder:
+ * {@code LazyValue} and slots in a {@code LazyArray} maintain an internal state as described hereunder:
  *
  * <ul>
  *     <li>Unbound;
@@ -187,7 +187,7 @@
  * <h3 id="general">General Properties of the Lazy Constructs</h3>
  *
  * All methods of the classes in this package will throw a {@link NullPointerException}
- * if a reference parameter is {@code null}.
+ * if a reference parameter is {@code null} unless otherwise specified.
  *
  * All lazy constructs are "nullofobic" meaning a value can never be bound to {@code null}.  If nullability
  * for values stored is desired, the values have to be modeled using a construct that can express

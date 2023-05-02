@@ -52,7 +52,7 @@ public sealed interface LazyValue<V>
 
     /**
      * {@return the bound value of this lazy value. If no value is bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier)} supplier</em>}
+     * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier) supplier}</em>}
      * <p>
      * If the pre-set supplier returns {@code null}, no value is bound and {@code null} is returned.
      * If the mapping function itself throws an (unchecked) exception, the
@@ -71,28 +71,28 @@ public sealed interface LazyValue<V>
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @throws NoSuchElementException if a value cannot be bound
-     * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value calls itself).
+     * @throws IllegalStateException  if a circular dependency is detected (i.e. a lazy value calls itself).
      */
     @Override
     V get();
 
     /**
      * {@return the bound value of this lazy value.  If no value is bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier)} supplier</em>, or,
+     * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier) supplier}</em>, or,
      * if this fails, returns the provided {@code other} value}
      * <p>
      * If another thread attempts to bind a value, the current thread will be suspended until
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param other to use if no value neither is bound nor can be bound (may be null)
-     * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value calls itself).
+     * @throws IllegalStateException  if a circular dependency is detected (i.e. a lazy value calls itself).
      */
     V orElse(V other);
 
     /**
      * {@return the bound value of this lazy value. If no value is bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier)} supplier</em>, or,
-     * if this fails, throws an exception produced by the provided {@code exceptionSupplier} function}
+     * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier) supplier}</em>, or,
+     * if this fails, throws an exception produced by invoking the provided {@code exceptionSupplier} function}
      * <p>
      * If another thread attempts to bind a value, the current thread will be suspended until
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
@@ -104,7 +104,7 @@ public sealed interface LazyValue<V>
     public <X extends Throwable> V orElseThrow(Supplier<? extends X> exceptionSupplier) throws X;
 
     /**
-     * {@return a LazyValue with the provided {@code presetSupplier}}
+     * {@return a {@link LazyValue} with the provided {@code presetSupplier}}
      * <p>
      * If a later attempt is made to invoke the {@link LazyValue#get()} method when no element is bound,
      * the provided {@code presetSupplier} will automatically be invoked.
@@ -130,7 +130,7 @@ public sealed interface LazyValue<V>
     }
 
     /**
-     * {@return a pre-evaluated LazyValue with a bound value}
+     * {@return a pre-evaluated {@link LazyValue} with the provided {@code value} bound}
      *
      * @param <V>   The type of the value
      * @param value to bind

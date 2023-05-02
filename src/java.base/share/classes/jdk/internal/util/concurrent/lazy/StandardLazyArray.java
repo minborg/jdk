@@ -148,7 +148,7 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
             }
 
             if (lock.isBinding) {
-                throw new IllegalStateException("Circular supplier detected");
+                throw new IllegalStateException("Circular mapper detected for index:" + index);
             }
             try {
                 lock.isBinding = true;
