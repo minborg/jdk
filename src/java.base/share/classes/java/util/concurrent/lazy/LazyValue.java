@@ -31,6 +31,8 @@ import jdk.internal.util.concurrent.lazy.StandardLazyValue;
 
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -102,6 +104,36 @@ public sealed interface LazyValue<V>
      * @throws X if a value cannot be bound.
      */
     public <X extends Throwable> V orElseThrow(Supplier<? extends X> exceptionSupplier) throws X;
+
+
+    /**
+     * {@return a {@link LazyValue} that will use this lasy's eventually bound value
+     * and then apply the provided {@code mapper}}
+     *
+     * @param mapper to apply to this lazy value
+     * @param <R> the return type of the provided {@code mapper}
+     */
+    default <R> LazyValue<R> andThen(Function<? super V, ? extends R> mapper) {
+        Objects.requireNonNull(mapper);
+        return of(() -> mapper.apply(this.get()));
+    }
+
+    /**
+     * {@return a {@link LazyValue} that will use this lazy'e eventually bound value
+     * and combine it with the {@code other} lazy's eventually bound value using the
+     * provided {@code combiner}}
+     *
+     * @param other lazy value to combine
+     * @param combiner to apply when combining the two bound values
+     * @param <O> type of the {@code other} lazy value
+     * @param <R> return type of the combiner
+     */
+    default <O, R> LazyValue<R> combine(LazyValue<O> other,
+                                        BiFunction<V, O, R> combiner) {
+        Objects.requireNonNull(other);
+        Objects.requireNonNull(combiner);
+        return of(() -> combiner.apply(this.get(), other.get()));
+    }
 
     /**
      * {@return a {@link LazyValue} with the provided {@code presetSupplier}}
