@@ -25,53 +25,45 @@
 
 package jdk.internal.util.concurrent.lazy;
 
+import jdk.internal.vm.annotation.Stable;
+
 import java.util.Objects;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.lazy.LazyArray;
 import java.util.function.Supplier;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
-public final class LazyUtil {
+import static java.util.stream.Collectors.joining;
 
-    private LazyUtil() {
+public sealed abstract class AbstractPreEvaluatedArray<V> implements LazyArray<V> permits PreEvaluatedDoubleArray, PreEvaluatedIntArray, PreEvaluatedLongArray, PreEvaluatedReferenceLazyArray {
+
+    @Override
+    public final boolean isBound(int index) {
+        Objects.checkIndex(index, length());
+        return true;
     }
 
-    public static Byte[] toObjectArray(byte[] array) {
-        var result = new Byte[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
+    @Override
+    public final V orElse(int index, V other) {
+        return get(index);
     }
 
-    public static Boolean[] toObjectArray(boolean[] array) {
-        var result = new Boolean[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
+    @Override
+    public final <X extends Throwable> V orElseThrow(int index, Supplier<? extends X> exceptionSupplier) throws X {
+        Objects.requireNonNull(exceptionSupplier);
+        return get(index);
     }
 
-    public static Short[] toObjectArray(short[] array) {
-        var result = new Short[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
+    @Override
+    public final Stream<V> stream(V other) {
+        return stream();
     }
 
-    public static Character[] toObjectArray(char[] array) {
-        var result = new Character[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
-    }
-
-    public static Float[] toObjectArray(float[] array) {
-        var result = new Float[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
+    @Override
+    public final String toString() {
+        return getClass().getName() + "["
+                + stream().map(Objects::toString).collect(joining(", "))
+                + "]";
     }
 
 }

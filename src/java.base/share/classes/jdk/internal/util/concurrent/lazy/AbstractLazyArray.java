@@ -26,11 +26,9 @@
 package jdk.internal.util.concurrent.lazy;
 
 import jdk.internal.vm.annotation.ForceInline;
-import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.util.BitSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.lazy.LazyArray;
 import java.util.function.IntFunction;
@@ -39,9 +37,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-public final class StandardLazyArray<V>  implements LazyArray<V> {
+public abstract sealed class AbstractLazyArray<V>
+        implements LazyArray<V>
+        permits DoubleLazyArray, IntLazyArray, LongLazyArray, ReferenceLazyArray {
 
-    private static final VarHandle VALUES_HANDLE = MethodHandles.arrayElementVarHandle(Object[].class);
     private static final VarHandle LOCKS_HANDLE = MethodHandles.arrayElementVarHandle(LockObject[].class);
 
     private IntFunction<? extends V> presetMapper;
@@ -49,37 +48,31 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
     private AtomicInteger remainsToBind;
     private volatile LockObject[] locks;
 
-    @Stable
-    private final V[] values;
-
     @SuppressWarnings("unchecked")
-    public StandardLazyArray(int length,
+    public AbstractLazyArray(int length,
                              IntFunction<? extends V> presetMapper) {
         this.presetMapper = presetMapper;
         this.remainsToBind = new AtomicInteger(length);
         this.locks = IntStream.range(0, length)
                 .mapToObj(i -> new LockObject())
                 .toArray(LockObject[]::new);
-        this.values = (V[]) new Object[length];
     }
 
     @Override
-    public final int length() {
-        return values.length;
-    }
-
-    @Override
-    public boolean isBound(int index) {
+    public final boolean isBound(int index) {
         // Try normal memory semantics first
-        return values[index] != null || valueVolatile(index) != null;
+        return !isDefaultValueAtIndex(index) ||
+                !isDefaultValueVolatileAtIndex(index) ||
+                // Check if the value is bound to zero
+                lockVolatile(index) != null;
     }
 
     @ForceInline
     @Override
-    public V get(int index) {
+    public final V get(int index) {
         // Try normal memory semantics first
-        V v = values[index];
-        if (v != null) {
+        V v = value(index);
+        if (!isDefaultValue(v)) {
             return v;
         }
         return tryBind(index, null, true);
@@ -87,10 +80,10 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
 
     @ForceInline
     @Override
-    public V orElse(int index, V other) {
+    public final V orElse(int index, V other) {
         // Try normal memory semantics first
-        V v = values[index];
-        if (v != null) {
+        V v = value(index);
+        if (!isDefaultValue(v)) {
             return v;
         }
         return tryBind(index, null, true);
@@ -98,7 +91,7 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
 
     @ForceInline
     @Override
-    public <X extends Throwable> V orElseThrow(int index, Supplier<? extends X> exceptionSupplier) throws X {
+    public final <X extends Throwable> V orElseThrow(int index, Supplier<? extends X> exceptionSupplier) throws X {
         V v = orElse(index, null);
         if (v == null) {
             throw exceptionSupplier.get();
@@ -106,21 +99,22 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
         return v;
     }
 
+
     @Override
-    public Stream<V> stream() {
+    public final Stream<V> stream() {
         return IntStream.range(0, length())
                 .mapToObj(i -> get(i));
     }
 
     @Override
-    public Stream<V> stream(V other) {
+    public final Stream<V> stream(V other) {
         return IntStream.range(0, length())
                 .mapToObj(i -> orElse(i, other));
     }
 
     @Override
-    public String toString() {
-        return "StandardLazyArray[" + IntStream.range(0, length())
+    public final String toString() {
+        return getClass().getSimpleName()+"[" + IntStream.range(0, length())
                 .mapToObj(this::valueVolatile)
                 .map(v -> v == null ? "-" : v.toString())
                 .collect(Collectors.joining(", ")) + "]";
@@ -143,7 +137,7 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
         synchronized (lock) {
             // We are alone here for this index
             V v = valueVolatile(index);
-            if (v != null) {
+            if (!isDefaultValue(v) || lockVolatile(index) == null) {
                 return v;
             }
 
@@ -182,24 +176,26 @@ public final class StandardLazyArray<V>  implements LazyArray<V> {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    V valueVolatile(int i) {
-        return (V) VALUES_HANDLE.getVolatile(values, i);
-    }
+    abstract boolean isDefaultValue(V value);
 
-    void casValue(int i, Object o) {
-        if (!VALUES_HANDLE.compareAndSet(values, i, null, o)) {
-            throw new InternalError();
-        }
-    }
+    abstract boolean isDefaultValueAtIndex(int index);
+
+    abstract boolean isDefaultValueVolatileAtIndex(int index);
 
     @SuppressWarnings("unchecked")
-    LockObject lockVolatile(int i) {
-        return (LockObject) LOCKS_HANDLE.getVolatile(locks, i);
+    abstract V value(int index);
+
+    abstract V valueVolatile(int index);
+
+    abstract void casValue(int index, V value);
+
+    @SuppressWarnings("unchecked")
+    LockObject lockVolatile(int index) {
+        return (LockObject) LOCKS_HANDLE.getVolatile(locks, index);
     }
 
-    void clearLock(int i) {
-        LOCKS_HANDLE.setVolatile(locks, i, null);
+    void clearLock(int index) {
+        LOCKS_HANDLE.setVolatile(locks, index, null);
     }
 
     private static final class LockObject {

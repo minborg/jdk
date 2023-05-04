@@ -24,9 +24,11 @@
  */
 package java.util.concurrent.lazy.snippets;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Sippets for composition
@@ -42,9 +44,24 @@ public class Composition {
         // 1. A lazy field
         private static final LazyValue<Integer> LARGE_PRIME = LazyValue.of(Demo::largePrime);
         // 2. A lazy field that is the result of lazily applying a transformation of an existing lazy field
-        private static final LazyValue<Integer> EVEN_LARGER_PRIME = LARGE_PRIME.andThen(Demo::nextPrime);
+        private static final LazyValue<Integer> EVEN_LARGER_PRIME = LARGE_PRIME.map(Demo::nextPrime);
         // 3. A field that lazily combines two existing lazy fields by lazily applying a combinator of the existing fields
-        private static final LazyValue<Integer> LARGE_PRIMES_SUM = LARGE_PRIME.combine(EVEN_LARGER_PRIME, Integer::sum);
+        private static final LazyValue<Integer> LARGE_PRIMES_SUM = LazyValue.reduce(Integer::sum, LARGE_PRIME, EVEN_LARGER_PRIME);
+
+        private static final LazyValue<Integer> LARGE_PRIMES_SUM2 = LazyValue.reduce(
+                        Integer::sum, List.of(LARGE_PRIME, EVEN_LARGER_PRIME))
+                .orElseThrow();
+
+        private static final LazyValue<Integer> LARGE_PRIMES_SUM3 = LazyValue.of(() -> Stream.of(LARGE_PRIME, EVEN_LARGER_PRIME)
+                .map(LazyValue::get)
+                .reduce(Integer::sum)
+                .get());
+
+        private static final LazyValue<Integer> LARGE_PRIMES_SUM4 = LazyValue.of(() -> Stream.of(EVEN_LARGER_PRIME)
+                .map(LazyValue::get)
+                .reduce(LARGE_PRIME.get(), Integer::sum));
+
+        // Todo: Add reduce operation on several lazies.
 
         public int theLargePrime() {
             return LARGE_PRIME.get();
@@ -128,9 +145,9 @@ public class Composition {
 
         static LazyValue<Double> lazilyEval(Expr n) {
             return switch (n) {
-                case Add(var left, var right) -> lazilyEval(left).combine(lazilyEval(right), Double::sum);
-                case Mul(var left, var right) -> lazilyEval(left).combine(lazilyEval(right), (a, b) -> a * b);
-                case Neg(var exp) -> lazilyEval(exp).andThen(d -> -d);
+                case Add(var left, var right) -> LazyValue.reduce(Double::sum, lazilyEval(left), lazilyEval(right));
+                case Mul(var left, var right) -> LazyValue.reduce((a, b) -> a * b, lazilyEval(left), lazilyEval(right));
+                case Neg(var exp) -> lazilyEval(exp).map(d -> -d);
                 case Const(double val) -> LazyValue.of(val);
                 case Lazy(LazyValue<Double> lazy) -> lazy;
             };

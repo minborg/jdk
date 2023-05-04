@@ -28,21 +28,24 @@ package jdk.internal.util.concurrent.lazy;
 import jdk.internal.vm.annotation.Stable;
 
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.concurrent.lazy.LazyArray;
-import java.util.concurrent.lazy.LazyValue;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.joining;
-
-public final class PreEvaluatedLazyArray<V> implements LazyArray<V> {
+public final class PreEvaluatedIntArray
+        extends AbstractPreEvaluatedArray<Integer>
+        implements LazyArray<Integer> {
 
     @Stable
-    private final V[] values;
+    private final int[] values;
 
-    public PreEvaluatedLazyArray(V[] values) {
+    public PreEvaluatedIntArray(int[] values) {
         this.values = values.clone();
+    }
+
+    public PreEvaluatedIntArray(Integer[] values) {
+        this.values = Stream.of(values)
+                .mapToInt(l -> l)
+                .toArray();
     }
 
     @Override
@@ -51,41 +54,13 @@ public final class PreEvaluatedLazyArray<V> implements LazyArray<V> {
     }
 
     @Override
-    public boolean isBound(int index) {
-        Objects.checkIndex(index, length());
-        return true;
-    }
-
-    @Override
-    public V get(int index) {
+    public Integer get(int index) {
         return values[index];
     }
 
     @Override
-    public V orElse(int index, V other) {
-        return values[index];
+    public Stream<Integer> stream() {
+        return Arrays.stream(values)
+                .boxed();
     }
-
-    @Override
-    public <X extends Throwable> V orElseThrow(int index, Supplier<? extends X> exceptionSupplier) throws X {
-        return values[index];
-    }
-
-    @Override
-    public Stream<V> stream() {
-        return Arrays.stream(values);
-    }
-
-    @Override
-    public Stream<V> stream(V other) {
-        return stream();
-    }
-
-    @Override
-    public String toString() {
-        return "PreEvaluatedLazyArray["
-                + stream().map(Objects::toString).collect(joining(", "))
-                + "]";
-    }
-
 }

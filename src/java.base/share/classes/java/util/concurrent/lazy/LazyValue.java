@@ -29,11 +29,15 @@ import jdk.internal.javac.PreviewFeature;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyValue;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.function.BiFunction;
+import java.util.Optional;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /**
  * A lazy value with a pre-set supplier which can be invoked later to form a bound value,
@@ -87,7 +91,7 @@ public sealed interface LazyValue<V>
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param other to use if no value neither is bound nor can be bound (may be null)
-     * @throws IllegalStateException  if a circular dependency is detected (i.e. a lazy value calls itself).
+     * @throws IllegalStateException if a circular dependency is detected (i.e. a lazy value calls itself).
      */
     V orElse(V other);
 
@@ -99,7 +103,7 @@ public sealed interface LazyValue<V>
      * If another thread attempts to bind a value, the current thread will be suspended until
      * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
-     * @param <X> the type of the exception that may be thrown
+     * @param <X>               the type of the exception that may be thrown
      * @param exceptionSupplier the supplying function that produces the exception to throw
      * @throws X if a value cannot be bound.
      */
@@ -111,29 +115,29 @@ public sealed interface LazyValue<V>
      * and then apply the provided {@code mapper}}
      *
      * @param mapper to apply to this lazy value
-     * @param <R> the return type of the provided {@code mapper}
+     * @param <R>    the return type of the provided {@code mapper}
      */
-    default <R> LazyValue<R> andThen(Function<? super V, ? extends R> mapper) {
+    default <R> LazyValue<R> map(Function<? super V, ? extends R> mapper) {
         Objects.requireNonNull(mapper);
         return of(() -> mapper.apply(this.get()));
     }
 
-    /**
+/*    *//**
      * {@return a {@link LazyValue} that will use this lazy'e eventually bound value
      * and combine it with the {@code other} lazy's eventually bound value using the
      * provided {@code combiner}}
      *
-     * @param other lazy value to combine
+     * @param other    lazy value to combine
      * @param combiner to apply when combining the two bound values
-     * @param <O> type of the {@code other} lazy value
-     * @param <R> return type of the combiner
-     */
+     * @param <O>      type of the {@code other} lazy value
+     * @param <R>      return type of the combiner
+     *//*
     default <O, R> LazyValue<R> combine(LazyValue<O> other,
                                         BiFunction<V, O, R> combiner) {
         Objects.requireNonNull(other);
         Objects.requireNonNull(combiner);
         return of(() -> combiner.apply(this.get(), other.get()));
-    }
+    }*/
 
     /**
      * {@return a {@link LazyValue} with the provided {@code presetSupplier}}
@@ -171,6 +175,84 @@ public sealed interface LazyValue<V>
     public static <V> LazyValue<V> of(V value) {
         Objects.requireNonNull(value);
         return new PreEvaluatedLazyValue<>(value);
+    }
+
+    /**
+     * {@return a {@link LazyValue} that will lazily compute the reduction of the
+     * provided {@code first} and the provided {@code others} by successively and
+     * lazily applying the provided {@code accumulator} function}.
+     *
+     * @param <V>         the value type
+     * @param accumulator an associative stateless function for combining two inner lazy values
+     * @param first       the first lazy value for the accumulating function
+     * @param others      the other lazy values on which a reduction shall be performed
+     */
+    public static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
+                                          LazyValue<? extends V> first,
+                                          Collection<LazyValue<? extends V>> others) {
+        Objects.requireNonNull(accumulator);
+        LazyValue<V> identity = (LazyValue<V>) Objects.requireNonNull(first);
+        // This also checks for null
+        List<LazyValue<? extends V>> list = List.copyOf(others);
+        if (list.isEmpty()) {
+            return identity;
+        }
+        return LazyValue.of(() -> {
+                    return others.stream()
+                            .skip(1)
+                            .map(l -> (LazyValue<V>) l)
+                            .map(LazyValue::get)
+                            .reduce(identity.get(), accumulator);
+                }
+        );
+    }
+
+    /**
+     * {@return a {@link LazyValue} that will lazily compute the reduction of the
+     * provided {@code first} and the provided {@code others} by successively and
+     * lazily applying the provided {@code accumulator} function or
+     * {@linkplain Optional#empty()} Optiona.empty() if there are no elements in {@code lazies}}.
+     *
+     * @param <V>         the value type
+     * @param first       the first lazy value for the accumulating function
+     * @param others      the other lazy values on which a reduction shall be performed
+     * @param accumulator an associative stateless function for combining two inner lazy values
+     */
+    public static <V> Optional<LazyValue<V>> reduce(BinaryOperator<V> accumulator,
+                                                    Collection<LazyValue<? extends V>> lazies) {
+        Objects.requireNonNull(accumulator);
+        // This also checks for null
+        List<LazyValue<? extends V>> list = List.copyOf(lazies);
+        if (list.isEmpty()) {
+            return Optional.empty();
+        }
+        LazyValue<? extends V> identity = list.getFirst();
+        return Optional.of(reduce(accumulator, identity, list.subList(1, list.size())));
+    }
+
+    /**
+     * {@return a {@link LazyValue} that will lazily compute the reduction of the
+     * provided {@code first} and the provided {@code others} by successively and
+     * lazily applying the provided {@code accumulator} function}
+     *
+     * @param <V>         the value type
+     * @param first       the first lazy value for the accumulating function
+     * @param others      the other lazy values on which a reduction shall be performed
+     * @param accumulator an associative stateless function for combining two inner lazy values
+     */
+    public static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
+                                          LazyValue<? extends V> first,
+                                          LazyValue<? extends V>... others) {
+        Objects.requireNonNull(accumulator);
+        Objects.requireNonNull(first);
+        return LazyValue.of(() -> {
+                    // Make sure we bind the lazies in the right order
+                    V firstValue = first.get();
+                    return Stream.of((LazyValue<V>[]) others)
+                            .map(LazyValue::get)
+                            .reduce(firstValue, accumulator);
+                }
+        );
     }
 
 }

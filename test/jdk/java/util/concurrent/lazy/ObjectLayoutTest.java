@@ -33,7 +33,7 @@
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyValue;
-import jdk.internal.util.concurrent.lazy.StandardLazyArray;
+import jdk.internal.util.concurrent.lazy.OptimizedReferenceLazyArray;
 import org.junit.jupiter.api.*;
 
 import java.lang.reflect.Modifier;
@@ -56,7 +56,7 @@ final class ObjectLayoutTest {
     public static void main(String[] args) {
         analyze(StandardLazyValue.class);
         analyze(PreEvaluatedLazyValue.class);
-        analyze(StandardLazyArray.class);
+        analyze(OptimizedReferenceLazyArray.class);
     }
 
     static void analyze(Class<?> c) {

@@ -25,53 +25,47 @@
 
 package jdk.internal.util.concurrent.lazy;
 
+import jdk.internal.vm.annotation.Stable;
+
+import java.util.Arrays;
 import java.util.Objects;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.lazy.LazyArray;
 import java.util.function.Supplier;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
-public final class LazyUtil {
+import static java.util.stream.Collectors.joining;
 
-    private LazyUtil() {
+public final class PreEvaluatedLongArray
+        extends AbstractPreEvaluatedArray<Long>
+        implements LazyArray<Long> {
+
+    @Stable
+    private final long[] values;
+
+    public PreEvaluatedLongArray(long[] values) {
+        this.values = values.clone();
     }
 
-    public static Byte[] toObjectArray(byte[] array) {
-        var result = new Byte[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
+    public PreEvaluatedLongArray(Long[] values) {
+        this.values = Stream.of(values)
+                .mapToLong(l -> l)
+                .toArray();
     }
 
-    public static Boolean[] toObjectArray(boolean[] array) {
-        var result = new Boolean[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
+    @Override
+    public int length() {
+        return values.length;
     }
 
-    public static Short[] toObjectArray(short[] array) {
-        var result = new Short[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
+    @Override
+    public Long get(int index) {
+        return values[index];
     }
 
-    public static Character[] toObjectArray(char[] array) {
-        var result = new Character[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
+    @Override
+    public Stream<Long> stream() {
+        return Arrays.stream(values)
+                .boxed();
     }
-
-    public static Float[] toObjectArray(float[] array) {
-        var result = new Float[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
-    }
-
 }
