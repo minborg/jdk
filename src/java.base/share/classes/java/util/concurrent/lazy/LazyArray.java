@@ -245,6 +245,7 @@ public sealed interface LazyArray<V>
         }
         Objects.requireNonNull(presetMapper);
 
+
         return switch (elementType) {
             case Class<V> c when c == int.class || c == Integer.class ->
                     (LazyArray<V>) new IntLazyArray(length, (IntFunction<? extends Integer>) presetMapper);
@@ -255,11 +256,7 @@ public sealed interface LazyArray<V>
             default -> new ReferenceLazyArray<>(length, presetMapper);
         };
 
-/*        return switch (elementType.getName()) {
-            case "int", "java.lang.Integer" -> (LazyArray<V>) new IntLazyArray(length, (IntFunction<Integer>) presetMapper);
-            case "long", "java.lang.Long" -> (LazyArray<V>) new LongLazyArray(length, (IntFunction<Long>) presetMapper);
-            default -> new ReferenceLazyArray<>(length, presetMapper);
-        };*/
+
     }
 
     /**
