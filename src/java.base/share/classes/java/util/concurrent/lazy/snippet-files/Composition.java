@@ -43,9 +43,9 @@ public class Composition {
 
         // 1. A lazy field
         private static final LazyValue<Integer> LARGE_PRIME = LazyValue.of(Demo::largePrime);
-        // 2. A lazy field that is the result of lazily applying a transformation of an existing lazy field
+        // 2. A lazy field that is the result of lazily applying a mapping operation of an existing lazy field
         private static final LazyValue<Integer> EVEN_LARGER_PRIME = LARGE_PRIME.map(Demo::nextPrime);
-        // 3. A field that lazily combines two existing lazy fields by lazily applying a combinator of the existing fields
+        // 3. A field that lazily combines two existing lazy fields by lazily applying a reduction on the eventually bound values
         private static final LazyValue<Integer> LARGE_PRIMES_SUM = LazyValue.reduce(Integer::sum, LARGE_PRIME, EVEN_LARGER_PRIME);
 
         private static final LazyValue<Integer> LARGE_PRIMES_SUM2 = LazyValue.reduce(
@@ -105,13 +105,15 @@ public class Composition {
                     new Const(3),
                     new Const(4));
 
-            double threePlusFour = eval(threePlusFourExpr); // 12
+            double threePlusFour = eval(threePlusFourExpr); // 7
 
-            double threePlusFourSquared = eval(new Mul(new Const(threePlusFour), new Const(threePlusFour))); // 144
+            double threePlusFourSquared = eval(new Mul(
+                    new Const(threePlusFour),
+                    new Const(threePlusFour))); // 49
 
             LazyValue<Double> lazyThreeTimesFour = lazilyEval(threePlusFourExpr);
 
-            LazyValue<Double> mulSquared = lazilyEval(new Mul(
+            LazyValue<Double> lazyThreeTimesFourSquared = lazilyEval(new Mul(
                     new Lazy(lazyThreeTimesFour),
                     new Lazy(lazyThreeTimesFour)));
 
@@ -133,26 +135,27 @@ public class Composition {
         record Const(double val) implements Expr {}
         record Lazy(LazyValue<Double> lazy) implements Expr {};
 
+        // Eager Evaluator
         static double eval(Expr n) {
             return switch (n) {
-                case Add(var left, var right) -> Double.sum(eval(left), eval(right));
-                case Mul(var left, var right) -> eval(left) * eval(right);
-                case Neg(var exp) -> - eval(exp);
-                case Const(double val) -> val;
+                case Add(var left, var right)     -> Double.sum(eval(left), eval(right));
+                case Mul(var left, var right)     -> eval(left) * eval(right);
+                case Neg(var exp)                 -> -eval(exp);
+                case Const(double val)            -> val;
                 case Lazy(LazyValue<Double> lazy) -> lazy.get();
             };
         }
 
+        // Lazy Evaluator
         static LazyValue<Double> lazilyEval(Expr n) {
             return switch (n) {
-                case Add(var left, var right) -> LazyValue.reduce(Double::sum, lazilyEval(left), lazilyEval(right));
-                case Mul(var left, var right) -> LazyValue.reduce((a, b) -> a * b, lazilyEval(left), lazilyEval(right));
-                case Neg(var exp) -> lazilyEval(exp).map(d -> -d);
-                case Const(double val) -> LazyValue.of(val);
+                case Add(var left, var right)     -> LazyValue.reduce(Double::sum, lazilyEval(left), lazilyEval(right));
+                case Mul(var left, var right)     -> LazyValue.reduce((a, b) -> a * b, lazilyEval(left), lazilyEval(right));
+                case Neg(var exp)                 -> lazilyEval(exp).map(d -> -d);
+                case Const(double val)            -> LazyValue.of(val);
                 case Lazy(LazyValue<Double> lazy) -> lazy;
             };
         }
-
 
     }
 
