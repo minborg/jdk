@@ -187,6 +187,7 @@ public sealed interface LazyValue<V>
      * @param first       the first lazy value for the accumulating function
      * @param others      the other lazy values on which a reduction shall be performed
      */
+    @SuppressWarnings("unchecked")
     public static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
                                           LazyValue<? extends V> first,
                                           Collection<LazyValue<? extends V>> others) {
@@ -214,8 +215,7 @@ public sealed interface LazyValue<V>
      * {@linkplain Optional#empty()} Optiona.empty() if there are no elements in {@code lazies}}.
      *
      * @param <V>         the value type
-     * @param first       the first lazy value for the accumulating function
-     * @param others      the other lazy values on which a reduction shall be performed
+     * @param lazies      the lazy values on which a reduction shall be performed
      * @param accumulator an associative stateless function for combining two inner lazy values
      */
     public static <V> Optional<LazyValue<V>> reduce(BinaryOperator<V> accumulator,
@@ -240,6 +240,8 @@ public sealed interface LazyValue<V>
      * @param others      the other lazy values on which a reduction shall be performed
      * @param accumulator an associative stateless function for combining two inner lazy values
      */
+    @SuppressWarnings({"unchecked", "varargs"})
+    @SafeVarargs // Creating a stream from a vararg is safe
     public static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
                                           LazyValue<? extends V> first,
                                           LazyValue<? extends V>... others) {

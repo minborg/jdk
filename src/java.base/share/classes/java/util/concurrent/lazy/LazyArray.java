@@ -55,7 +55,17 @@ import java.util.stream.Stream;
  */
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public sealed interface LazyArray<V>
-        permits AbstractLazyArray, AbstractPreEvaluatedArray, DoubleLazyArray, IntLazyArray, LongLazyArray, OptimizedReferenceLazyArray, PreEvaluatedDoubleArray, PreEvaluatedIntArray, PreEvaluatedLongArray, PreEvaluatedReferenceLazyArray, ReferenceLazyArray {
+        permits AbstractLazyArray,
+        AbstractPreEvaluatedArray,
+        DoubleLazyArray,
+        IntLazyArray,
+        LongLazyArray,
+        OptimizedReferenceLazyArray,
+        PreEvaluatedDoubleArray,
+        PreEvaluatedIntArray,
+        PreEvaluatedLongArray,
+        PreEvaluatedReferenceLazyArray,
+        ReferenceLazyArray {
 
     /**
      * {@return the length of the array}
@@ -171,7 +181,7 @@ public sealed interface LazyArray<V>
     public Stream<V> stream(V other);
 
     /**
-     * {@return a new {@link LazyArray} with the provided {@code presetmapper}}
+     * {@return a new {@link LazyArray} with the provided {@code length} and provided {@code presetmapper}}
      * <p>
      * Below, an example of how to cache values in an array is shown:
      * {@snippet lang = java:
@@ -186,21 +196,22 @@ public sealed interface LazyArray<V>
      *     }
      *}
      *
-     * @param <V>          The type of the values
-     * @param size         the size of the array
+     * @param <V>          the type of the values
+     * @param length       the length of the array
      * @param presetMapper to invoke when lazily constructing and binding values
      */
-    public static <V> LazyArray<V> of(int size,
+    public static <V> LazyArray<V> of(int length,
                                       IntFunction<? extends V> presetMapper) {
-        if (size < 0) {
+        if (length < 0) {
             throw new IllegalArgumentException();
         }
         Objects.requireNonNull(presetMapper);
-        return new ReferenceLazyArray<>(size, presetMapper);
+        return new ReferenceLazyArray<>(length, presetMapper);
     }
 
     /**
-     * {@return a new {@link LazyArray} with the provided {@code presetmapper}}
+     * {@return a new {@link LazyArray} with the provided {@code length} and the provided {@code presetmapper}
+     * where the elements are of the provided {@code elementType}}
      * <p>
      * Providing an {@code elementType} of the elements allows the method to select the most
      * sutable implementation for that type. For example, providing {@code long.class} might return a
@@ -221,33 +232,33 @@ public sealed interface LazyArray<V>
      *
      * @param <V>          The type of the values
      * @param elementType  The element type (e.g. int.class)
-     * @param size         the size of the array
+     * @param length       The length of the array
      * @param presetMapper to invoke when lazily constructing and binding values
      */
     @SuppressWarnings("unchecked")
     public static <V> LazyArray<V> of(Class<V> elementType,
-                                      int size,
+                                      int length,
                                       IntFunction<? extends V> presetMapper) {
         Objects.requireNonNull(elementType);
-        if (size < 0) {
+        if (length < 0) {
             throw new IllegalArgumentException();
         }
         Objects.requireNonNull(presetMapper);
 
         return switch (elementType) {
             case Class<V> c when c == int.class || c == Integer.class ->
-                    (LazyArray<V>) new IntLazyArray(size, (IntFunction<? extends Integer>) presetMapper);
+                    (LazyArray<V>) new IntLazyArray(length, (IntFunction<? extends Integer>) presetMapper);
             case Class<V> c when c == long.class || c == Long.class ->
-                    (LazyArray<V>) new LongLazyArray(size, (IntFunction<? extends Long>) presetMapper);
+                    (LazyArray<V>) new LongLazyArray(length, (IntFunction<? extends Long>) presetMapper);
             case Class<V> c when c == double.class || c == Double.class ->
-                    (LazyArray<V>) new DoubleLazyArray(size, (IntFunction<? extends Double>) presetMapper);
-            default -> new ReferenceLazyArray<>(size, presetMapper);
+                    (LazyArray<V>) new DoubleLazyArray(length, (IntFunction<? extends Double>) presetMapper);
+            default -> new ReferenceLazyArray<>(length, presetMapper);
         };
 
 /*        return switch (elementType.getName()) {
-            case "int", "java.lang.Integer" -> (LazyArray<V>) new IntLazyArray(size, (IntFunction<Integer>) presetMapper);
-            case "long", "java.lang.Long" -> (LazyArray<V>) new LongLazyArray(size, (IntFunction<Long>) presetMapper);
-            default -> new ReferenceLazyArray<>(size, presetMapper);
+            case "int", "java.lang.Integer" -> (LazyArray<V>) new IntLazyArray(length, (IntFunction<Integer>) presetMapper);
+            case "long", "java.lang.Long" -> (LazyArray<V>) new LongLazyArray(length, (IntFunction<Long>) presetMapper);
+            default -> new ReferenceLazyArray<>(length, presetMapper);
         };*/
     }
 
