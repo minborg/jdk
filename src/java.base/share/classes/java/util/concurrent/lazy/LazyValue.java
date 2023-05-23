@@ -107,7 +107,7 @@ public sealed interface LazyValue<V>
      * @param exceptionSupplier the supplying function that produces the exception to throw
      * @throws X if a value cannot be bound.
      */
-    public <X extends Throwable> V orElseThrow(Supplier<? extends X> exceptionSupplier) throws X;
+    <X extends Throwable> V orElseThrow(Supplier<? extends X> exceptionSupplier) throws X;
 
 
     /**
@@ -121,23 +121,6 @@ public sealed interface LazyValue<V>
         Objects.requireNonNull(mapper);
         return of(() -> mapper.apply(this.get()));
     }
-
-/*    *//**
-     * {@return a {@link LazyValue} that will use this lazy'e eventually bound value
-     * and combine it with the {@code other} lazy's eventually bound value using the
-     * provided {@code combiner}}
-     *
-     * @param other    lazy value to combine
-     * @param combiner to apply when combining the two bound values
-     * @param <O>      type of the {@code other} lazy value
-     * @param <R>      return type of the combiner
-     *//*
-    default <O, R> LazyValue<R> combine(LazyValue<O> other,
-                                        BiFunction<V, O, R> combiner) {
-        Objects.requireNonNull(other);
-        Objects.requireNonNull(combiner);
-        return of(() -> combiner.apply(this.get(), other.get()));
-    }*/
 
     /**
      * {@return a {@link LazyValue} with the provided {@code presetSupplier}}
@@ -160,7 +143,7 @@ public sealed interface LazyValue<V>
      * @param <V>            The type of the value
      * @param presetSupplier to invoke when lazily constructing a value
      */
-    public static <V> LazyValue<V> of(Supplier<? extends V> presetSupplier) {
+    static <V> LazyValue<V> of(Supplier<? extends V> presetSupplier) {
         Objects.requireNonNull(presetSupplier);
         return new StandardLazyValue<>(presetSupplier);
     }
@@ -171,8 +154,7 @@ public sealed interface LazyValue<V>
      * @param <V>   The type of the value
      * @param value to bind
      */
-    @SuppressWarnings("unchecked")
-    public static <V> LazyValue<V> of(V value) {
+    static <V> LazyValue<V> of(V value) {
         Objects.requireNonNull(value);
         return new PreEvaluatedLazyValue<>(value);
     }
@@ -188,9 +170,9 @@ public sealed interface LazyValue<V>
      * @param others      the other lazy values on which a reduction shall be performed
      */
     @SuppressWarnings("unchecked")
-    public static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
-                                          LazyValue<? extends V> first,
-                                          Collection<LazyValue<? extends V>> others) {
+    static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
+                                   LazyValue<? extends V> first,
+                                   Collection<LazyValue<? extends V>> others) {
         Objects.requireNonNull(accumulator);
         LazyValue<V> identity = (LazyValue<V>) Objects.requireNonNull(first);
         // This also checks for null
@@ -198,13 +180,12 @@ public sealed interface LazyValue<V>
         if (list.isEmpty()) {
             return identity;
         }
-        return LazyValue.of(() -> {
-                    return others.stream()
-                            .skip(1)
-                            .map(l -> (LazyValue<V>) l)
-                            .map(LazyValue::get)
-                            .reduce(identity.get(), accumulator);
-                }
+        return LazyValue.of(() ->
+                others.stream()
+                        .skip(1)
+                        .map(l -> (LazyValue<V>) l)
+                        .map(LazyValue::get)
+                        .reduce(identity.get(), accumulator)
         );
     }
 
@@ -218,8 +199,8 @@ public sealed interface LazyValue<V>
      * @param lazies      the lazy values on which a reduction shall be performed
      * @param accumulator an associative stateless function for combining two inner lazy values
      */
-    public static <V> Optional<LazyValue<V>> reduce(BinaryOperator<V> accumulator,
-                                                    Collection<LazyValue<? extends V>> lazies) {
+    static <V> Optional<LazyValue<V>> reduce(BinaryOperator<V> accumulator,
+                                             Collection<LazyValue<? extends V>> lazies) {
         Objects.requireNonNull(accumulator);
         // This also checks for null
         List<LazyValue<? extends V>> list = List.copyOf(lazies);
@@ -242,9 +223,9 @@ public sealed interface LazyValue<V>
      */
     @SuppressWarnings({"unchecked", "varargs"})
     @SafeVarargs // Creating a stream from a vararg is safe
-    public static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
-                                          LazyValue<? extends V> first,
-                                          LazyValue<? extends V>... others) {
+    static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
+                                   LazyValue<? extends V> first,
+                                   LazyValue<? extends V>... others) {
         Objects.requireNonNull(accumulator);
         Objects.requireNonNull(first);
         return LazyValue.of(() -> {
