@@ -70,7 +70,7 @@ public sealed interface LazyArray<V>
     /**
      * {@return the length of the array}
      */
-    public int length();
+    int length();
 
     /**
      * {@return {@code true} if a value is bound at the provided {@code index}}
@@ -106,7 +106,7 @@ public sealed interface LazyArray<V>
      * @throws IllegalStateException          if a circular dependency is detected (i.e. a lazy value calls itself
      *                                        for the same index).
      */
-    public V get(int index);
+    V get(int index);
 
     /**
      * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts
@@ -139,7 +139,7 @@ public sealed interface LazyArray<V>
      * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
      * @throws X                              if a value cannot be bound.
      */
-    public <X extends Throwable> V orElseThrow(int index,
+    <X extends Throwable> V orElseThrow(int index,
                                                Supplier<? extends X> exceptionSupplier) throws X;
 
     /**
@@ -159,7 +159,7 @@ public sealed interface LazyArray<V>
      * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value
      *                                calls itself at a certain index).
      */
-    public Stream<V> stream();
+    Stream<V> stream();
 
     /**
      * {@return a Stream with the bound values in this lazy array. If a value is not bound, atomically attempts
@@ -178,7 +178,7 @@ public sealed interface LazyArray<V>
      * @throws IllegalStateException if a circular dependency is detected (i.e. a lazy value
      *                               calls itself at a certain index).
      */
-    public Stream<V> stream(V other);
+    Stream<V> stream(V other);
 
     /**
      * {@return a new {@link LazyArray} with the provided {@code length} and provided {@code presetmapper}}
@@ -200,8 +200,8 @@ public sealed interface LazyArray<V>
      * @param length       the length of the array
      * @param presetMapper to invoke when lazily constructing and binding values
      */
-    public static <V> LazyArray<V> of(int length,
-                                      IntFunction<? extends V> presetMapper) {
+    static <V> LazyArray<V> of(int length,
+                               IntFunction<? extends V> presetMapper) {
         if (length < 0) {
             throw new IllegalArgumentException();
         }
@@ -214,7 +214,7 @@ public sealed interface LazyArray<V>
      * where the elements are of the provided {@code elementType}}
      * <p>
      * Providing an {@code elementType} of the elements allows the method to select the most
-     * sutable implementation for that type. For example, providing {@code long.class} might return a
+     * suitable implementation for that type. For example, providing {@code long.class} might return a
      * LazyArray that is backed by an array of longs.
      * <p>
      * Below, an example of how to cache values in an array is shown:
@@ -236,9 +236,9 @@ public sealed interface LazyArray<V>
      * @param presetMapper to invoke when lazily constructing and binding values
      */
     @SuppressWarnings("unchecked")
-    public static <V> LazyArray<V> of(Class<V> elementType,
-                                      int length,
-                                      IntFunction<? extends V> presetMapper) {
+    static <V> LazyArray<V> of(Class<V> elementType,
+                               int length,
+                               IntFunction<? extends V> presetMapper) {
         Objects.requireNonNull(elementType);
         if (length < 0) {
             throw new IllegalArgumentException();
@@ -256,7 +256,6 @@ public sealed interface LazyArray<V>
             default -> new ReferenceLazyArray<>(length, presetMapper);
         };
 
-
     }
 
     /**
@@ -266,16 +265,17 @@ public sealed interface LazyArray<V>
      * @param values to bind
      */
     @SuppressWarnings("unchecked")
-    public static <V> LazyArray<V> of(V... values) {
+    static <V> LazyArray<V> of(V... values) {
         Objects.requireNonNull(values);
         return new PreEvaluatedReferenceLazyArray<>(values);
     }
 
     /**
-     * {@return a pre-evaluated {@code LazyArray} with the provided {@code values} bound}
+     * {@return a pre-evaluated {@code LazyArray} with the provided {@code values} bound
+     * where the elements are of the provided {@code elementType}}
      * <p>
      * Providing an {@code elementType} of the elements allows the method to select the most
-     * sutable implementation for that type. For example, providing {@code long.class} might return a
+     * suitable implementation for that type. For example, providing {@code long.class} might return a
      * LazyArray that is backed by an array of longs.
      *
      * @param <V>         The type of the values
@@ -285,8 +285,8 @@ public sealed interface LazyArray<V>
      *                                  elements are not identical to the {@code elementType}
      */
     @SuppressWarnings("unchecked")
-    public static <V> LazyArray<V> of(Class<V> elementType,
-                                      Object values) {
+    static <V> LazyArray<V> of(Class<V> elementType,
+                               Object values) {
         Objects.requireNonNull(elementType);
         Objects.requireNonNull(values);
         if (!values.getClass().isArray()) {
@@ -308,7 +308,7 @@ public sealed interface LazyArray<V>
                     (LazyArray<V>) new PreEvaluatedLongArray((Long[]) values);
             case Class<V> c when c == double.class ->
                     (LazyArray<V>) new PreEvaluatedDoubleArray((double[]) values);
-            case Class<V> c when c == Long.class ->
+            case Class<V> c when c == Double.class ->
                     (LazyArray<V>) new PreEvaluatedDoubleArray((Double[]) values);
             // Take care of the "unsupported" primitive types
             case Class<V> c when c == byte.class ->
