@@ -38,13 +38,14 @@ public class Composition {
     private Composition() {
     }
 
+    static
     // @start region="DemoPreset"
-    class Demo {
+    class Primes {
 
         // 1. A lazy field
-        private static final LazyValue<Integer> LARGE_PRIME = LazyValue.of(Demo::largePrime);
+        private static final LazyValue<Integer> LARGE_PRIME = LazyValue.of(Primes::largePrime);
         // 2. A lazy field that is the result of lazily applying a mapping operation of an existing lazy field
-        private static final LazyValue<Integer> EVEN_LARGER_PRIME = LARGE_PRIME.map(Demo::nextPrime);
+        private static final LazyValue<Integer> EVEN_LARGER_PRIME = LARGE_PRIME.map(Primes::nextPrime);
         // 3. A field that lazily combines two existing lazy fields by lazily applying a reduction on the eventually bound values
         private static final LazyValue<Integer> LARGE_PRIMES_SUM = LazyValue.reduce(Integer::sum, LARGE_PRIME, EVEN_LARGER_PRIME);
 
@@ -81,7 +82,7 @@ public class Composition {
         }
 
         static int nextPrime(int p) {
-            for (int i = p+1; i <= Integer.MAX_VALUE; i++) {
+            for (int i = p + 1; i != Integer.MAX_VALUE; i++) {
                 if (isPrime(i)) {
                     return i;
                 }
@@ -96,6 +97,8 @@ public class Composition {
 
     }
     // @end
+
+    static
 
     class Expressions {
 

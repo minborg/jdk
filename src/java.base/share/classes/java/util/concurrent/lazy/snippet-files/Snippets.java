@@ -31,6 +31,7 @@ import java.util.concurrent.lazy.LazyArray;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 
 /**
  * Sippets for the package-info file
@@ -165,25 +166,27 @@ public class Snippets {
     static class MapFib {
         Map<Integer, Integer> fibonacci = new ConcurrentHashMap<>();
 
-        int fib(int n) {
-            return (n < 2) ? n
-                    : fibonacci.computeIfAbsent(n, nk -> fib(nk - 1) + fib(nk - 2) );
+        public int number(int n) {
+            return (n < 2)
+                    ? n
+                    : fibonacci.computeIfAbsent(n, nk -> number(nk - 1) + number(nk - 2) );
         }
     }
 
-    static class LazyArrayFib {
-        LazyArray<Integer> fibonacci = LazyArray.of(20, this::fib);
+    static class Fibonacci {
+        LazyArray<Integer> fibonacci = LazyArray.of(1_000, this::number);
 
-        int fib(int n) {
-            return (n < 2) ? n
-                    : fibonacci.get(n - 1) +
-                      fibonacci.get(n - 2);
+        public int number(int n) {
+            return (n < 2)
+                    ? n
+                    : fibonacci.get(n - 1) + fibonacci.get(n - 2);
         }
 
         public void a() {
-            fibonacci.stream()
-                    .limit(10)
-                    .toArray();
+            var fibonacci = new Fibonacci();
+            int[] fibs = IntStream.range(0, 10)
+                    .map(fibonacci::number)
+                    .toArray(); // { 0, 1, 1, 2, 3, 5, 8, 13, 21, 34 }
         }
 
     }

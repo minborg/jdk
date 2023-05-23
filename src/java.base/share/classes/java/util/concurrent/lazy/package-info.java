@@ -41,10 +41,10 @@
  * come in two fundamental flavors:
  * <ul>
  *     <li>{@link LazyValue} with e.g. {@link LazyValue#get() get()}<p>
- *     available via {@link java.util.concurrent.lazy.LazyValue#of(java.util.function.Supplier) LazyValue.of(Supplier&lt;? super V&gt; presetSupplier)}</li>
+ *     for example available via {@link java.util.concurrent.lazy.LazyValue#of(java.util.function.Supplier) LazyValue.of(Supplier&lt;? super V&gt; presetSupplier)}</li>
  *
  *     <li>{@link LazyArray} with e.g. {@link java.util.concurrent.lazy.LazyArray#get(int) get(int index)}<p>
- *     available via {@link java.util.concurrent.lazy.LazyArray#of(int, java.util.function.IntFunction) LazyArray.of(int length, IntFunction&lt;? super V&gt; presetMapper)}</li>
+ *     for example available via {@link java.util.concurrent.lazy.LazyArray#of(int, java.util.function.IntFunction) LazyArray.of(int length, IntFunction&lt;? super V&gt; presetMapper)}</li>
  * </ul>
  *
  * The {@code LazyArray} type methods provide an extra arity where the index is specified compared to {@code LazyValue}.
