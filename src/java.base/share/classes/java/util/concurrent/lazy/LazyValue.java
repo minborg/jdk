@@ -111,7 +111,7 @@ public sealed interface LazyValue<V>
 
 
     /**
-     * {@return a {@link LazyValue} that will use this lasy's eventually bound value
+     * {@return a {@link LazyValue} that will use this lazy value's eventually bound value
      * and then apply the provided {@code mapper}}
      *
      * @param mapper to apply to this lazy value
