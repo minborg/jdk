@@ -26,10 +26,16 @@
 /**
  * A small toolkit of classes supporting high-performance, lock-free, thread-safe use
  * of lazily initialized values and arrays.  Providers of lazy values are guaranteed
- * to be invoked at most one time, proivded the they returned a valid value.  This contrasts
- * with {@link java.util.concurrent.atomic.AtomicReferenceArray } where any number
- * of updates can be done and where there is no simple way to atomically compute
- * a value (guaranteed to only be computed once) if missing. Lazy also contrasts to
+ * to be invoked at most one time, given a valid value is returned. In other words,
+ * the provider can only run in one thread at any given time and so, there is no race
+ * across threads which guarantees the at-most-once-successful evaluation. The
+ * life cycle of a lazy is said to be <em>monotonic</em> where it goes from the
+ * initial state of <em>unbound</em> (when it is not associated with any value) to the
+ * terminal state of <em>bound</em> when it is assossiate with a true non-null value.
+ * <p>
+ * This contrasts with {@link java.util.concurrent.atomic.AtomicReferenceArray } where any number of
+ * updates can be done and where there is no simple way to atomically compute a value
+ * (guaranteed to only be computed once) if missing. Lazy also contrasts to
  * {@link java.util.concurrent.Future} where a value is computed in another thread.
  * <p>
  * The lazy implementations are optimized for the case where there are N invocations
@@ -133,7 +139,8 @@
  *         private static final LazyArray<Long> VALUE_PO2_CACHE = LazyArray.of(32, index -> 1L << index);
  *
  *         public long powerOfTwo(int n) {
- *             // 2. The n:th slot is lazily computed and recorded here upon first slot invocation
+ *             // 2. The n:th slot is lazily computed and recorded here upon the
+ *             //    first call of get(n). The other slots are not affected.
  *             // 3. Using an n outside the array will throw an ArrayOutOfBoundsException
  *             return VALUE_PO2_CACHE.get(n);
  *         }
@@ -189,7 +196,7 @@
  * All methods of the classes in this package will throw a {@link NullPointerException}
  * if a reference parameter is {@code null} unless otherwise specified.
  *
- * All lazy constructs are "nullofobic" meaning a value can never be bound to {@code null}.  If nullability
+ * All lazy constructs are "null-hostile" meaning a value can never be bound to {@code null}.  If nullability
  * for values stored is desired, the values have to be modeled using a construct that can express
  * {@code null} values in an explicit way such as {@link java.util.Optional#empty()} as exemplified here:
  * {@snippet lang = java:

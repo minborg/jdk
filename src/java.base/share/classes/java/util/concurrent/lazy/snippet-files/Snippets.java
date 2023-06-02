@@ -103,7 +103,8 @@ public class Snippets {
         private static final LazyArray<Long> VALUE_PO2_CACHE = LazyArray.of(32, index -> 1L << index);
 
         public long powerOfTwo(int n) {
-            // 2. The n:th slot is lazily computed and recorded here upon first slot invocation
+            // 2. The n:th slot is lazily computed and recorded here upon the
+            //    first call of get(n). The other slots are not affected.
             // 3. Using an n outside the array will throw an ArrayOutOfBoundsException
             return VALUE_PO2_CACHE.get(n);
         }

@@ -24,6 +24,18 @@
  */
 package java.util.concurrent.lazy.snippets;
 
+import jdk.dynalink.linker.support.Lookup;
+import jdk.dynalink.support.AbstractRelinkableCallSite;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
+import java.net.Socket;
+import java.net.SocketException;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.lazy.LazyValue;
@@ -97,6 +109,91 @@ public class Composition {
 
     }
     // @end
+
+    static
+    class StringUtil {
+
+        static MethodHandle find(MethodHandles.Lookup lookup, String name, MethodType type) {
+            try {
+                return lookup.findVirtual(String.class, name, type);
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private static final LazyValue<MethodHandles.Lookup> LOOKUP = LazyValue.of(MethodHandles::lookup);
+
+        private static final LazyValue<MethodHandle> LENGTH = LOOKUP.map(
+                l -> find(l, "length", MethodType.methodType(int.class)));
+
+        private static final LazyValue<MethodHandle> EMPTY = LOOKUP.map(
+                l -> find(l, "isEmpty", MethodType.methodType(boolean.class)));
+
+
+    }
+
+    // Original
+    public abstract class Socket implements java.io.Closeable {
+        private static final VarHandle STATE, IN, OUT;
+
+        static {
+            try {
+                MethodHandles.Lookup l = MethodHandles.lookup();
+                STATE = l.findVarHandle(java.net.Socket.class, "state", int.class);
+                IN = l.findVarHandle(java.net.Socket.class, "in", InputStream.class);
+                OUT = l.findVarHandle(java.net.Socket.class, "out", OutputStream.class);
+            } catch (Exception e) {
+                throw new InternalError(e);
+            }
+        }
+
+        private int getAndBitwiseOrState(int mask) {
+            return (int) STATE.getAndBitwiseOr(this, mask);
+        }
+
+    }
+
+    public abstract class LazySocket implements java.io.Closeable {
+
+        private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+        private static final LazyValue<VarHandle>
+                STATE = LazyValue.of(() -> find(LOOKUP, "state", int.class)),
+                IN = LazyValue.of(() -> find(LOOKUP, "in", InputStream.class)),
+                OUT = LazyValue.of(() -> find(LOOKUP, "out", OutputStream.class));
+
+        static VarHandle find(MethodHandles.Lookup lookup, String name, Class<?> type) {
+            try {
+                return lookup.findVarHandle(java.net.Socket.class, name, type);
+            } catch (Exception e) {
+                throw new InternalError(e);
+            }
+        }
+
+        private int getAndBitwiseOrState(int mask) {
+            return (int) STATE.get().getAndBitwiseOr(this, mask);
+        }
+
+    }
+
+
+    public abstract class LazyComposeSocket implements java.io.Closeable {
+
+        private static final LazyValue<MethodHandles.Lookup> LOOKUP = LazyValue.of(MethodHandles::lookup);
+        private static final LazyValue<VarHandle>
+                STATE = LOOKUP.map(l -> find(l, "state", int.class)),
+                IN = LOOKUP.map(l -> find(l, "in", InputStream.class)),
+                OUT = LOOKUP.map(l -> find(l, "out", OutputStream.class));
+
+
+        static VarHandle find(MethodHandles.Lookup lookup, String name, Class<?> type) {
+            try {
+                return lookup.findVarHandle(java.net.Socket.class, name, type);
+            } catch (Exception e) {
+                throw new InternalError(e);
+            }
+        }
+    }
+
 
     static
 
