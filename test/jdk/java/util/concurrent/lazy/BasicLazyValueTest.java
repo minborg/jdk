@@ -168,6 +168,20 @@ final class BasicLazyValueTest {
 
     private static LazyValue<Integer> staticLazyValue;
 
+    private static LazyValue<Integer> a;
+    private static LazyValue<Integer> b;
+
+    @TestFactory
+    Stream<DynamicTest> testCircular2() {
+        return DynamicTest.stream(lazyVariants(), LazyVariant::name, lv -> {
+            a = LazyValue.of(b::get);
+            b = LazyValue.of(a::get);
+            assertThrows(IllegalStateException.class, () -> {
+                a.get();
+            });
+        });
+    }
+
 
     private static Stream<LazyVariant> lazyVariants() {
         return Stream.of(

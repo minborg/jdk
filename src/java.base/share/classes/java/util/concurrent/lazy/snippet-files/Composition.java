@@ -24,18 +24,12 @@
  */
 package java.util.concurrent.lazy.snippets;
 
-import jdk.dynalink.linker.support.Lookup;
-import jdk.dynalink.support.AbstractRelinkableCallSite;
-
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
-import java.net.Socket;
-import java.net.SocketException;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.lazy.LazyValue;
@@ -133,7 +127,7 @@ public class Composition {
     }
 
     // Original
-    public abstract class Socket implements java.io.Closeable {
+    abstract class Socket implements java.io.Closeable {
         private static final VarHandle STATE, IN, OUT;
 
         static {
@@ -153,7 +147,7 @@ public class Composition {
 
     }
 
-    public abstract class LazySocket implements java.io.Closeable {
+    abstract class LazySocket implements java.io.Closeable {
 
         private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
         private static final LazyValue<VarHandle>
@@ -176,7 +170,7 @@ public class Composition {
     }
 
 
-    public abstract class LazyComposeSocket implements java.io.Closeable {
+    abstract class LazyComposeSocket implements java.io.Closeable {
 
         private static final LazyValue<MethodHandles.Lookup> LOOKUP = LazyValue.of(MethodHandles::lookup);
         private static final LazyValue<VarHandle>
