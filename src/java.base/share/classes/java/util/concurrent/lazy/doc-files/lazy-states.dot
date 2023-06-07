@@ -1,5 +1,5 @@
 digraph G {
-    unbound -> constructing [ label="get()\norElse()\norElseThrow()\n  " ];
-    constructing -> unbound [ label="  provider -> null value or Exception" ];
-    constructing -> bound [ label="  provider -> non-null value" ];
+    unbound -> constructing [ label=" get()\n orElse()\n orElseThrow()\n" ];
+    constructing -> bound [ label=" provider -> value" ];
+    constructing -> error [ label=" provider -> Exception" ];
 }

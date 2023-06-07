@@ -46,7 +46,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
- * A lazy array with a pre-set mapper which will be invoked at most once (if successful),
+ * A lazy array with a pre-set mapper which will be invoked at most once,
  * per element, for example when {@link LazyArray#get(int) get(index)} is invoked.
  *
  * @param <V> The type of the values to be recorded
@@ -84,9 +84,11 @@ public sealed interface LazyArray<V>
      * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>}
      * <p>
-     * If the pre-set mapper returns {@code null}, no value is bound and {@code null} is returned.
+     * If the pre-set supplier returns {@code null}, {@code null} is bound and returned.
      * If the mapper itself throws an (unchecked) exception, the
-     * exception is wrapped into a NoSuchElementException which is thrown, and no value is bound.
+     * exception is wrapped into a {@link NoSuchElementException} which is thrown, and no value is bound.  If an
+     * Exception is thrown bu the pre-set supplier, no further attempt is made to bind the value and all subsequent invocations
+     * of this method will throw a new {@link NoSuchElementException}.
      * <p>
      * The most common usage is to construct a new object serving as a memoized result, as in:
      * <p>
@@ -97,13 +99,13 @@ public sealed interface LazyArray<V>
      *    assertNotNull(value); // Value is non-null
      *}
      * <p>
-     * If another thread attempts to bind a value at the provided index, the current thread will be suspended until
-     * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
+     * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param index for which a bound value shall be obtained.
      * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
      * @throws NoSuchElementException         if a value cannot be bound
-     * @throws IllegalStateException          if a circular dependency is detected (i.e. a lazy value calls itself
+     * @throws StackOverflowError             if a circular dependency is detected (i.e. a lazy value calls itself
      *                                        for the same index).
      */
     V get(int index);
@@ -113,13 +115,13 @@ public sealed interface LazyArray<V>
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
      * , or, if this fails, returns the provided {@code other} value}
      * <p>
-     * If another thread attempts to bind a value at the provided index, the current thread will be suspended until
-     * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
+     * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param index for which a value shall be obtained.
      * @param other to use if no value neither is bound nor can be bound (may be null)
      * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
-     * @throws IllegalStateException          if a circular dependency is detected (i.e. a lazy value calls itself
+     * @throws StackOverflowError             if a circular dependency is detected (i.e. a lazy value calls itself
      *                                        for the same index).
      */
     V orElse(int index,
@@ -130,8 +132,8 @@ public sealed interface LazyArray<V>
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
      * , or, if this fails, throws an exception produced by the provided {@code exceptionSupplier} function}
      * <p>
-     * If another thread attempts to bind a value at the provided index, the current thread will be suspended until
-     * the attempt completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
+     * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param <X>               the type of the exception that may be thrown
      * @param index             for which the value shall be obtained.
@@ -140,7 +142,7 @@ public sealed interface LazyArray<V>
      * @throws X                              if a value cannot be bound.
      */
     <X extends Throwable> V orElseThrow(int index,
-                                               Supplier<? extends X> exceptionSupplier) throws X;
+                                        Supplier<? extends X> exceptionSupplier) throws X;
 
     /**
      * {@return a Stream with the bound values in this lazy array.  If a value is not bound, atomically attempts
@@ -156,7 +158,7 @@ public sealed interface LazyArray<V>
      * }
      *
      * @throws NoSuchElementException if a value cannot be bound
-     * @throws IllegalStateException  if a circular dependency is detected (I.e. a lazy value
+     * @throws StackOverflowError     if a circular dependency is detected (I.e. a lazy value
      *                                calls itself at a certain index).
      */
     Stream<V> stream();
@@ -181,7 +183,7 @@ public sealed interface LazyArray<V>
     Stream<V> stream(V other);
 
     /**
-     * {@return a new {@link LazyArray} with the provided {@code length} and provided {@code presetmapper}}
+     * {@return a new {@link LazyArray} with the provided {@code length} and provided {@code presetMapper}}
      * <p>
      * Below, an example of how to cache values in an array is shown:
      * {@snippet lang = java:
@@ -312,15 +314,15 @@ public sealed interface LazyArray<V>
                     (LazyArray<V>) new PreEvaluatedDoubleArray((Double[]) values);
             // Take care of the "unsupported" primitive types
             case Class<V> c when c == byte.class ->
-                    (LazyArray<V>) new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((byte[]) values));
+                    new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((byte[]) values));
             case Class<V> c when c == boolean.class ->
-                    (LazyArray<V>) new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((boolean[]) values));
+                    new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((boolean[]) values));
             case Class<V> c when c == short.class ->
-                    (LazyArray<V>) new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((short[]) values));
+                    new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((short[]) values));
             case Class<V> c when c == char.class ->
-                    (LazyArray<V>) new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((char[]) values));
+                    new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((char[]) values));
             case Class<V> c when c == float.class ->
-                    (LazyArray<V>) new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((float[]) values));
+                    new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((float[]) values));
             // Here is the general case
             default -> new PreEvaluatedReferenceLazyArray<>((V[]) values);
         };

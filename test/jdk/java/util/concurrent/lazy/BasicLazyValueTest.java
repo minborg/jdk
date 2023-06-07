@@ -63,11 +63,9 @@ final class BasicLazyValueTest {
             // Mapper is null
             assertThrows(NullPointerException.class,
                     () -> lv.constructor().apply(null));
-            if (!isOfValue(lv)) {
-                // Mapper returns null
-                LazyValue<Integer> l = lv.constructor().apply(() -> null);
-                assertNull(l.get());
-            }
+            // Mapper returns null
+            LazyValue<Integer> l = lv.constructor().apply(() -> null);
+            assertNull(l.get());
         });
     }
 
@@ -92,7 +90,7 @@ final class BasicLazyValueTest {
 
     @Test
     void optionalModelling() {
-        Supplier<Optional<String>> empty = LazyValue.of(() -> Optional.empty());
+        Supplier<Optional<String>> empty = LazyValue.of(Optional::empty);
         assertTrue(empty.get().isEmpty());
         Supplier<Optional<String>> present = LazyValue.of(() -> Optional.of("A"));
         assertEquals("A", present.get().orElseThrow());
@@ -108,14 +106,14 @@ final class BasicLazyValueTest {
             assertThrows(UnsupportedOperationException.class,
                     () -> l.get());
 
-            // Should invoke the supplier again
-            assertThrows(UnsupportedOperationException.class,
+            // Should not invoke the supplier again
+            assertThrows(NoSuchElementException.class,
                     () -> l.get());
 
         });
     }
 
-    // Todo:repeate the test 1000 times
+    // Todo:repeat the test 1000 times
     @TestFactory
     Stream<DynamicTest> threadTest() throws InterruptedException {
         return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
@@ -143,7 +141,9 @@ final class BasicLazyValueTest {
         return DynamicTest.stream(lazyVariants(), LazyVariant::name, (LazyVariant lv) -> {
             var lazy0 = lv.constructor().apply(() -> 0);
             var lazy1 = lv.constructor().apply(() -> 1);
+
             lazy1.get();
+
 
             // Do not touch lazy0
             lazy1.get();
@@ -153,6 +153,18 @@ final class BasicLazyValueTest {
                 assertEquals(lazy0.getClass().getSimpleName() + ".unbound", lazy0.toString());
             }
             assertEquals(lazy0.getClass().getSimpleName()+"[1]", lazy1.toString());
+
+            if (!isOfValue(lv)) {
+                LazyValue<Integer> lazy2 = lv.constructor().apply(() -> {
+                    throw new UnsupportedOperationException();
+                });
+                try {
+                    lazy2.get();
+                } catch (UnsupportedOperationException ignore) {
+                }
+                assertEquals(lazy0.getClass().getSimpleName() + ".error", lazy2.toString());
+            }
+
         });
     }
 
@@ -160,7 +172,7 @@ final class BasicLazyValueTest {
     Stream<DynamicTest> testCircular() {
         return DynamicTest.stream(lazyVariants(), LazyVariant::name, lv -> {
             staticLazyValue = LazyValue.of(() -> staticLazyValue.get());
-            assertThrows(IllegalStateException.class, () -> {
+            assertThrows(StackOverflowError.class, () -> {
                 staticLazyValue.get();
             });
         });
@@ -174,14 +186,13 @@ final class BasicLazyValueTest {
     @TestFactory
     Stream<DynamicTest> testCircular2() {
         return DynamicTest.stream(lazyVariants(), LazyVariant::name, lv -> {
-            a = LazyValue.of(b::get);
-            b = LazyValue.of(a::get);
-            assertThrows(IllegalStateException.class, () -> {
+            a = LazyValue.of(() -> b.get());
+            b = LazyValue.of(() -> a.get());
+            assertThrows(StackOverflowError.class, () -> {
                 a.get();
             });
         });
     }
-
 
     private static Stream<LazyVariant> lazyVariants() {
         return Stream.of(

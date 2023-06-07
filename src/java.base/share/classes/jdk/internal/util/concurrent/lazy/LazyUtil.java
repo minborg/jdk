@@ -25,10 +25,6 @@
 
 package jdk.internal.util.concurrent.lazy;
 
-import java.util.Objects;
-import java.util.concurrent.lazy.LazyValue;
-import java.util.function.Supplier;
-
 public final class LazyUtil {
 
     private LazyUtil() {
@@ -73,5 +69,16 @@ public final class LazyUtil {
         }
         return result;
     }
+
+    public static ConstructingSentinel CONSTRUCTING_SENTINEL = new ConstructingSentinel();
+    public static NullSentinel NULL_SENTINEL = new NullSentinel();
+    public static ErrorSentinel ERROR_SENTINEL = new ErrorSentinel();
+    public static NonNullSentinel BOUND_SENTINEL = new NonNullSentinel();
+
+    interface Bound{}
+    static final class ConstructingSentinel { private ConstructingSentinel() {} }
+    static final class NullSentinel implements Bound { private NullSentinel() {} }
+    static final class NonNullSentinel implements Bound { private NonNullSentinel() {} }
+    static final class ErrorSentinel { private ErrorSentinel() {} }
 
 }

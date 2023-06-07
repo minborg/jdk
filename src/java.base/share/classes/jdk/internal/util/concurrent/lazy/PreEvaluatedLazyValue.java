@@ -25,8 +25,6 @@
 
 package jdk.internal.util.concurrent.lazy;
 
-import jdk.internal.ValueBased;
-
 import java.util.Objects;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;

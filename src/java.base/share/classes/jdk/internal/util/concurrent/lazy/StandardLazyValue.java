@@ -30,39 +30,48 @@ import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.NoSuchElementException;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
 
+import static jdk.internal.util.concurrent.lazy.LazyUtil.BOUND_SENTINEL;
+import static jdk.internal.util.concurrent.lazy.LazyUtil.NULL_SENTINEL;
+
 public final class StandardLazyValue<V> implements LazyValue<V> {
 
-    // Allows access to the "value" field with arbitary memory semantics
-    private static final VarHandle VALUE_HANDLE = valueHandle();
+    // Allows access to the "value" field with arbitrary memory semantics
+    private static final VarHandle VALUE_HANDLE;
+
+    // Allows access to the "auxiliary" field with arbitrary memory semantics
+    private static final VarHandle AUX_HANDLE;
 
     /**
      * This field holds a bound lazy value.
-     * If != null, a value is bound
+     * If != null, a value is bound, otherwise the auxiliary field needs to be consulted.
      */
     @Stable
     private V value;
 
     /**
-     * This field is used for:
+     * This non-final auxiliary field is used for:
      *   0) Holding the initial supplier
-     *   1) Flagging if the value is being constucted or bound using null
+     *   1) Flagging if the value is being constructed
+     *   2) Flagging if the value was actually evaluated to null
+     *   3) Flagging if the initial supplier threw an exception
+     *   4) Flagging if a value is bound
      */
-    private Supplier<? extends V> supplier;
+    private Object auxiliary;
 
     public StandardLazyValue(Supplier<? extends V> supplier) {
-        this.supplier = supplier;
+        this.auxiliary = supplier;
     }
 
     @ForceInline
     @Override
     public boolean isBound() {
         // Try normal memory semantics first
-        return value != null || valueVolatile() != null;
+        return value != null || auxiliaryVolatile() instanceof LazyUtil.Bound;
     }
-
 
     @ForceInline
     @Override
@@ -71,6 +80,9 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
         V v = value;
         if (v != null) {
             return v;
+        }
+        if (auxiliary == NULL_SENTINEL) {
+            return null;
         }
         return tryBind(null, true);
     }
@@ -82,6 +94,9 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
         V v = value;
         if (v != null) {
             return v;
+        }
+        if (auxiliary == NULL_SENTINEL) {
+            return null;
         }
         return tryBind(other, false);
     }
@@ -100,66 +115,81 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
     private synchronized V tryBind(V other,
                                    boolean rethrow) {
 
-        // Under synchronization, visibility and atomicy is guaranteed
+        // Under synchronization, visibility and atomicy is guaranteed for both
+        // the fields "value" and "auxiliary" as they are only changed within this block.
         V v = value;
         if (v != null) {
             return v;
         }
-        var a = supplier;
-        if (a == null) {
-            throw new IllegalStateException("Circular supplier detected");
-        }
-
-        // Mark as constructing using null.
-        supplier = null;
-        try {
-            v = ((Supplier<V>) a).get();
-        } catch (Throwable e) {
-            // Restore the pre-set supplier as no value was bound
-            supplier = a;
-            if (rethrow) {
-                throw e;
+        switch (auxiliary) {
+            case LazyUtil.NullSentinel __ -> {
+                return null;
             }
-            return other;
-        }
+            case LazyUtil.ConstructingSentinel __ -> throw new StackOverflowError("Circular supplier detected");
+            case LazyUtil.ErrorSentinel __ -> throw new NoSuchElementException("A previous supplier threw an exception");
+            case Supplier<?> supplier -> {
+                setAuxiliaryVolatile(LazyUtil.CONSTRUCTING_SENTINEL);
+                try {
+                    v = (V) supplier.get();
+                    if (v == null) {
+                        setAuxiliaryVolatile(NULL_SENTINEL);
+                    } else {
+                        casValue(v);
+                        setAuxiliaryVolatile(BOUND_SENTINEL);
+                    }
+                    return v;
+                } catch (Throwable e) {
+                    setAuxiliaryVolatile(LazyUtil.ERROR_SENTINEL);
+                    if (rethrow) {
+                        throw e;
+                    }
+                    return other;
+                }
 
-        if (v == null) {
-            // Restore the pre-set supplier as no value was bound
-            supplier = a;
-            return other;
+            }
+            default -> throw new InternalError("Should not reach here");
         }
-
-        // Bind the value and leave the pre-set supplier
-        // as null so it may be collected
-        casVolatile(v);
-        return v;
     }
 
     @Override
-    public final String toString() {
-        V v = valueVolatile();
-        return "StandardLazyValue" +
-                (v != null
-                        ? ("[" + value + "]")
-                        : ".unbound");
+    public String toString() {
+        String v = switch (auxiliaryVolatile()) {
+            case Supplier<?> __ -> ".unbound";
+            case LazyUtil.ConstructingSentinel __ -> ".unbound";
+            case LazyUtil.NullSentinel __ -> "null";
+            case LazyUtil.NonNullSentinel __ -> "[" + valueVolatile().toString() + "]";
+            case LazyUtil.ErrorSentinel __ -> ".error";
+            default -> ".INTERNAL_ERROR";
+        };
+        return "StandardLazyValue" + v;
     }
 
+    @SuppressWarnings("unchecked")
     V valueVolatile() {
         return (V) VALUE_HANDLE.getVolatile(this);
     }
 
-    void casVolatile(Object o) {
+    Object auxiliaryVolatile() {
+        return AUX_HANDLE.getVolatile(this);
+    }
+
+    void casValue(Object o) {
         if (!VALUE_HANDLE.compareAndSet(this, null, o)) {
             throw new InternalError();
         }
     }
 
-    static VarHandle valueHandle() {
+    void setAuxiliaryVolatile(Object o) {
+        AUX_HANDLE.setVolatile(this, o);
+    }
+
+    static  {
         try {
             var lookup = MethodHandles.lookup();
-            return lookup
+            VALUE_HANDLE = lookup
                     .findVarHandle(StandardLazyValue.class, "value", Object.class);
-            // .withInvokeExactBehavior(); // Make sure no boxing is made?
+            AUX_HANDLE = lookup
+                    .findVarHandle(StandardLazyValue.class, "auxiliary", Object.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }

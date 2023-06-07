@@ -26,12 +26,11 @@
 /**
  * A small toolkit of classes supporting high-performance, lock-free, thread-safe use
  * of lazily initialized values and arrays.  Providers of lazy values are guaranteed
- * to be invoked at most one time, given a valid value is returned. In other words,
- * the provider can only run in one thread at any given time and so, there is no race
- * across threads which guarantees the at-most-once-successful evaluation. The
- * life cycle of a lazy is said to be <em>monotonic</em> where it goes from the
- * initial state of <em>unbound</em> (when it is not associated with any value) to the
- * terminal state of <em>bound</em> when it is assossiate with a true non-null value.
+ * to be invoked at most one time. In other words, the provider can only run once and
+ * in the first-calling thread and so, there is no race across threads which guarantees
+ * the at-most-once evaluation. The life cycle of a lazy is said to be <em>monotonic</em>
+ * where it goes from the initial state of <em>unbound</em> (when it is not associated with any value) to the
+ * terminal state of <em>bound</em> when it is assossiate with a true null or non-null value.
  * <p>
  * This contrasts with {@link java.util.concurrent.atomic.AtomicReferenceArray } where any number of
  * updates can be done and where there is no simple way to atomically compute a value
@@ -196,8 +195,8 @@
  * All methods of the classes in this package will throw a {@link NullPointerException}
  * if a reference parameter is {@code null} unless otherwise specified.
  *
- * All lazy constructs are "null-hostile" meaning a value can never be bound to {@code null}.  If nullability
- * for values stored is desired, the values have to be modeled using a construct that can express
+ * All lazy constructs are "null-friendly" meaning a value can be bound to {@code null}.  If nullability
+ * for values stored is desired, the values can also be modeled using a construct that can express
  * {@code null} values in an explicit way such as {@link java.util.Optional#empty()} as exemplified here:
  * {@snippet lang = java:
  *     class NullDemo {
