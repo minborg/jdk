@@ -171,8 +171,8 @@ public abstract sealed class AbstractLazyArray<V>
                         if (remainsToBind.get() == 0) {
                             // All elements are bound
                             // Make these objects eligible for collection
-                            presetMapper = null;
                             locks = null;
+                            presetMapper = null;
                             remainsToBind = null;
                         }
                     }
