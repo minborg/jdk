@@ -38,8 +38,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-// Todo: Consider removing this class as it is superseeded by ReferenceLazyArray
-public final class OptimizedReferenceLazyArray<V>  implements LazyArray<V> {
+// Todo: Consider removing this class as it is superseded by ReferenceLazyArray
+public final class OptimizedReferenceLazyArray<V> implements LazyArray<V> {
 
     private static final VarHandle VALUES_HANDLE = MethodHandles.arrayElementVarHandle(Object[].class);
     private static final VarHandle LOCKS_HANDLE = MethodHandles.arrayElementVarHandle(LockObject[].class);
@@ -126,7 +126,6 @@ public final class OptimizedReferenceLazyArray<V>  implements LazyArray<V> {
                 .collect(Collectors.joining(", ")) + "]";
     }
 
-    @SuppressWarnings("unchecked")
     private V tryBind(int index,
                       V other,
                       boolean rethrow) {
@@ -193,7 +192,6 @@ public final class OptimizedReferenceLazyArray<V>  implements LazyArray<V> {
         }
     }
 
-    @SuppressWarnings("unchecked")
     LockObject lockVolatile(int i) {
         return (LockObject) LOCKS_HANDLE.getVolatile(locks, i);
     }

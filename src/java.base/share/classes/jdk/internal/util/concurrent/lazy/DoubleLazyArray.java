@@ -36,12 +36,11 @@ public final class DoubleLazyArray
         extends AbstractLazyArray<Double>
         implements LazyArray<Double> {
 
-    private static final VarHandle VALUES_HANDLE = MethodHandles.arrayElementVarHandle(long[].class);
+    private static final VarHandle VALUES_HANDLE = MethodHandles.arrayElementVarHandle(double[].class);
 
     @Stable
     private final double[] values;
 
-    @SuppressWarnings("unchecked")
     public DoubleLazyArray(int length,
                            IntFunction<? extends Double> presetMapper) {
         super(length, presetMapper);

@@ -29,6 +29,8 @@ import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.lazy.LazyArray;
 import java.util.function.IntFunction;
@@ -41,30 +43,26 @@ public abstract sealed class AbstractLazyArray<V>
         implements LazyArray<V>
         permits DoubleLazyArray, IntLazyArray, LongLazyArray, ReferenceLazyArray {
 
-    private static final VarHandle LOCKS_HANDLE = MethodHandles.arrayElementVarHandle(LockObject[].class);
-
+    private static final VarHandle LOCKS_HANDLE = MethodHandles.arrayElementVarHandle(Object[].class);
     private IntFunction<? extends V> presetMapper;
 
     private AtomicInteger remainsToBind;
-    private volatile LockObject[] locks;
+    private volatile Object[] locks;
 
-    @SuppressWarnings("unchecked")
     public AbstractLazyArray(int length,
                              IntFunction<? extends V> presetMapper) {
         this.presetMapper = presetMapper;
         this.remainsToBind = new AtomicInteger(length);
         this.locks = IntStream.range(0, length)
                 .mapToObj(i -> new LockObject())
-                .toArray(LockObject[]::new);
+                .toArray(Object[]::new);
     }
 
     @Override
     public final boolean isBound(int index) {
         // Try normal memory semantics first
         return !isDefaultValueAtIndex(index) ||
-                !isDefaultValueVolatileAtIndex(index) ||
-                // Check if the value is bound to zero
-                lockVolatile(index) != null;
+                isBoundVolatile(index);
     }
 
     @ForceInline
@@ -74,6 +72,9 @@ public abstract sealed class AbstractLazyArray<V>
         V v = value(index);
         if (!isDefaultValue(v)) {
             return v;
+        }
+        if (isBound(index)) {
+            return valueVolatile(index);
         }
         return tryBind(index, null, true);
     }
@@ -85,6 +86,9 @@ public abstract sealed class AbstractLazyArray<V>
         V v = value(index);
         if (!isDefaultValue(v)) {
             return v;
+        }
+        if (isBound(index)) {
+            return valueVolatile(index);
         }
         return tryBind(index, null, true);
     }
@@ -99,11 +103,10 @@ public abstract sealed class AbstractLazyArray<V>
         return v;
     }
 
-
     @Override
     public final Stream<V> stream() {
         return IntStream.range(0, length())
-                .mapToObj(i -> get(i));
+                .mapToObj(this::get);
     }
 
     @Override
@@ -115,65 +118,68 @@ public abstract sealed class AbstractLazyArray<V>
     @Override
     public final String toString() {
         return getClass().getSimpleName()+"[" + IntStream.range(0, length())
-                .mapToObj(this::valueVolatile)
-                .map(v -> v == null ? "-" : v.toString())
+                .mapToObj(i ->
+                        isBoundVolatile(i)
+                                ? Objects.toString(valueVolatile(i))
+                                : "-"
+                )
                 .collect(Collectors.joining(", ")) + "]";
     }
 
-    @SuppressWarnings("unchecked")
     private V tryBind(int index,
                       V other,
                       boolean rethrow) {
 
-        if (locks == null) {
-            // All elements are bound so we know we can read any bound value
+        Object[] l = locks;
+        // Try normal memory semantics
+        if (l == null || l[index] instanceof LazyUtil.Bound) {
             return valueVolatile(index);
         }
-        LockObject lock = lockVolatile(index);
-        if (lock == null) {
-            // There is no lock for this index so we know we can read the coresponding bound value
-            return valueVolatile(index);
-        }
-        synchronized (lock) {
-            // We are alone here for this index
-            V v = valueVolatile(index);
-            if (!isDefaultValue(v) || lockVolatile(index) == null) {
-                return v;
-            }
 
-            if (lock.isBinding) {
-                throw new IllegalStateException("Circular mapper detected for index:" + index);
-            }
-            try {
-                lock.isBinding = true;
-                v = presetMapper.apply(index);
-            } catch (Throwable e) {
-                if (rethrow) {
-                    throw e;
+        return switch (lockVolatile(l , index)) {
+            case LazyUtil.NonNullSentinel __ -> valueVolatile(index);
+            case LazyUtil.NullSentinel __ -> null;
+            case LazyUtil.ConstructingSentinel __ ->
+                    throw new StackOverflowError("Circular mapper detected for index: " + index);
+            case LazyUtil.ErrorSentinel __ ->
+                    throw new NoSuchElementException("A previous mapper threw an exception for index: " + index);
+            case LockObject lockObject -> {
+                synchronized (lockObject) {
+                    // We are alone here for this index
+                    V v = value(index);
+                    if (!isDefaultValue(v) || isBound(index)) {
+                        yield v;
+                    }
+                    setLockVolatile(l, index, LazyUtil.CONSTRUCTING_SENTINEL);
+                    try {
+                        v = presetMapper.apply(index);
+                        if (v == null) {
+                            setLockVolatile(l, index, LazyUtil.NULL_SENTINEL);
+                        } else {
+                            casValue(index, v);
+                            setLockVolatile(l, index, LazyUtil.NON_NULL_SENTINEL);
+                        }
+                        yield v;
+                    } catch (Throwable e) {
+                        setLockVolatile(l, index, LazyUtil.ERROR_SENTINEL);
+                        if (rethrow) {
+                            throw e;
+                        }
+                        yield other;
+                    } finally {
+                        remainsToBind.getAndDecrement();
+                        if (remainsToBind.get() == 0) {
+                            // All elements are bound
+                            // Make these objects eligible for collection
+                            presetMapper = null;
+                            locks = null;
+                            remainsToBind = null;
+                        }
+                    }
                 }
-                return other;
-            } finally {
-                lock.isBinding = false;
             }
-
-            if (v == null) {
-                return other;
-            }
-
-            // Bind the value
-            casValue(index, v);
-            // Remove the now redundant lock
-            clearLock(index);
-            remainsToBind.getAndDecrement();
-            if (remainsToBind.get() == 0) {
-                // All elements are bound
-                // Make these objects elegable for collection
-                presetMapper = null;
-                locks = null;
-                remainsToBind = null;
-            }
-            return v;
-        }
+            default -> throw new InternalError("Should not reach here");
+        };
     }
 
     abstract boolean isDefaultValue(V value);
@@ -182,24 +188,30 @@ public abstract sealed class AbstractLazyArray<V>
 
     abstract boolean isDefaultValueVolatileAtIndex(int index);
 
-    @SuppressWarnings("unchecked")
     abstract V value(int index);
 
     abstract V valueVolatile(int index);
 
     abstract void casValue(int index, V value);
 
-    @SuppressWarnings("unchecked")
-    LockObject lockVolatile(int index) {
-        return (LockObject) LOCKS_HANDLE.getVolatile(locks, index);
+    Object lockVolatile(Object[] locks, int index) {
+        return LOCKS_HANDLE.getVolatile(locks, index);
     }
 
-    void clearLock(int index) {
-        LOCKS_HANDLE.setVolatile(locks, index, null);
+    void setLockVolatile(Object[] locks, int index, Object value) {
+        LOCKS_HANDLE.setVolatile(locks, index, value);
+    }
+
+    boolean isBoundVolatile(int index) {
+        Object[] l = locks;
+        if (l == null) {
+            return true;
+        }
+        return lockVolatile(l, index) instanceof LazyUtil.Bound;
     }
 
     private static final class LockObject {
-        boolean isBinding;
+        //boolean isBinding;
     }
 
 }

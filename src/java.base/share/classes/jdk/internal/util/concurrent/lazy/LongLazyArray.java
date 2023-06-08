@@ -47,7 +47,6 @@ public final class LongLazyArray
     @Stable
     private final long[] values;
 
-    @SuppressWarnings("unchecked")
     public LongLazyArray(int length,
                          IntFunction<? extends Long> presetMapper) {
         super(length, presetMapper);

@@ -41,7 +41,6 @@ public final class IntLazyArray
     @Stable
     private final int[] values;
 
-    @SuppressWarnings("unchecked")
     public IntLazyArray(int length,
                         IntFunction<? extends Integer> presetMapper) {
         super(length, presetMapper);

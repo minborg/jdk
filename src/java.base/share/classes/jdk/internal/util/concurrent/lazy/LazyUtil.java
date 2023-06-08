@@ -70,10 +70,10 @@ public final class LazyUtil {
         return result;
     }
 
-    public static ConstructingSentinel CONSTRUCTING_SENTINEL = new ConstructingSentinel();
-    public static NullSentinel NULL_SENTINEL = new NullSentinel();
-    public static ErrorSentinel ERROR_SENTINEL = new ErrorSentinel();
-    public static NonNullSentinel BOUND_SENTINEL = new NonNullSentinel();
+    static final ConstructingSentinel CONSTRUCTING_SENTINEL = new ConstructingSentinel();
+    static final NonNullSentinel NON_NULL_SENTINEL = new NonNullSentinel();
+    static final NullSentinel NULL_SENTINEL = new NullSentinel();
+    static final ErrorSentinel ERROR_SENTINEL = new ErrorSentinel();
 
     interface Bound{}
     static final class ConstructingSentinel { private ConstructingSentinel() {} }

@@ -34,7 +34,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.Supplier;
 
-import static jdk.internal.util.concurrent.lazy.LazyUtil.BOUND_SENTINEL;
+import static jdk.internal.util.concurrent.lazy.LazyUtil.NON_NULL_SENTINEL;
 import static jdk.internal.util.concurrent.lazy.LazyUtil.NULL_SENTINEL;
 
 public final class StandardLazyValue<V> implements LazyValue<V> {
@@ -121,12 +121,12 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
         if (v != null) {
             return v;
         }
-        switch (auxiliary) {
-            case LazyUtil.NullSentinel __ -> {
-                return null;
-            }
-            case LazyUtil.ConstructingSentinel __ -> throw new StackOverflowError("Circular supplier detected");
-            case LazyUtil.ErrorSentinel __ -> throw new NoSuchElementException("A previous supplier threw an exception");
+        return switch (auxiliary) {
+            case LazyUtil.NullSentinel __ -> null;
+            case LazyUtil.ConstructingSentinel __ ->
+                    throw new StackOverflowError("Circular supplier detected");
+            case LazyUtil.ErrorSentinel __ ->
+                    throw new NoSuchElementException("A previous supplier threw an exception");
             case Supplier<?> supplier -> {
                 setAuxiliaryVolatile(LazyUtil.CONSTRUCTING_SENTINEL);
                 try {
@@ -135,20 +135,19 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
                         setAuxiliaryVolatile(NULL_SENTINEL);
                     } else {
                         casValue(v);
-                        setAuxiliaryVolatile(BOUND_SENTINEL);
+                        setAuxiliaryVolatile(NON_NULL_SENTINEL);
                     }
-                    return v;
+                    yield v;
                 } catch (Throwable e) {
                     setAuxiliaryVolatile(LazyUtil.ERROR_SENTINEL);
                     if (rethrow) {
                         throw e;
                     }
-                    return other;
+                    yield other;
                 }
-
             }
             default -> throw new InternalError("Should not reach here");
-        }
+        };
     }
 
     @Override
