@@ -42,12 +42,6 @@ public final class PreEvaluatedIntArray
         this.values = values.clone();
     }
 
-    public PreEvaluatedIntArray(Integer[] values) {
-        this.values = Stream.of(values)
-                .mapToInt(l -> l)
-                .toArray();
-    }
-
     @Override
     public int length() {
         return values.length;

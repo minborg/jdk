@@ -27,11 +27,15 @@ package java.util.concurrent.lazy;
 
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.util.concurrent.lazy.AbstractLazyArray;
+import jdk.internal.util.concurrent.lazy.AbstractNullablePreEvaluatedArray;
 import jdk.internal.util.concurrent.lazy.AbstractPreEvaluatedArray;
 import jdk.internal.util.concurrent.lazy.DoubleLazyArray;
 import jdk.internal.util.concurrent.lazy.IntLazyArray;
 import jdk.internal.util.concurrent.lazy.LazyUtil;
 import jdk.internal.util.concurrent.lazy.LongLazyArray;
+import jdk.internal.util.concurrent.lazy.NullablePreEvaluatedDoubleArray;
+import jdk.internal.util.concurrent.lazy.NullablePreEvaluatedIntArray;
+import jdk.internal.util.concurrent.lazy.NullablePreEvaluatedLongArray;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedDoubleArray;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedIntArray;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedReferenceLazyArray;
@@ -56,10 +60,14 @@ import java.util.stream.Stream;
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public sealed interface LazyArray<V>
         permits AbstractLazyArray,
+        AbstractNullablePreEvaluatedArray,
         AbstractPreEvaluatedArray,
         DoubleLazyArray,
         IntLazyArray,
         LongLazyArray,
+        NullablePreEvaluatedDoubleArray,
+        NullablePreEvaluatedIntArray,
+        NullablePreEvaluatedLongArray,
         OptimizedReferenceLazyArray,
         PreEvaluatedDoubleArray,
         PreEvaluatedIntArray,
@@ -249,11 +257,11 @@ public sealed interface LazyArray<V>
 
 
         return switch (elementType) {
-            case Class<V> c when c == int.class || c == Integer.class ->
+            case Class<V> c when c == int.class ->
                     (LazyArray<V>) new IntLazyArray(length, (IntFunction<? extends Integer>) presetMapper);
-            case Class<V> c when c == long.class || c == Long.class ->
+            case Class<V> c when c == long.class ->
                     (LazyArray<V>) new LongLazyArray(length, (IntFunction<? extends Long>) presetMapper);
-            case Class<V> c when c == double.class || c == Double.class ->
+            case Class<V> c when c == double.class ->
                     (LazyArray<V>) new DoubleLazyArray(length, (IntFunction<? extends Double>) presetMapper);
             default -> new ReferenceLazyArray<>(length, presetMapper);
         };
@@ -303,15 +311,15 @@ public sealed interface LazyArray<V>
             case Class<V> c when c == int.class ->
                     (LazyArray<V>) new PreEvaluatedIntArray((int[]) values);
             case Class<V> c when c == Integer.class ->
-                    (LazyArray<V>) new PreEvaluatedIntArray((Integer[]) values);
+                    (LazyArray<V>) new NullablePreEvaluatedIntArray((Integer[]) values);
             case Class<V> c when c == long.class ->
                     (LazyArray<V>) new PreEvaluatedLongArray((long[]) values);
             case Class<V> c when c == Long.class ->
-                    (LazyArray<V>) new PreEvaluatedLongArray((Long[]) values);
+                    (LazyArray<V>) new NullablePreEvaluatedLongArray((Long[]) values);
             case Class<V> c when c == double.class ->
                     (LazyArray<V>) new PreEvaluatedDoubleArray((double[]) values);
             case Class<V> c when c == Double.class ->
-                    (LazyArray<V>) new PreEvaluatedDoubleArray((Double[]) values);
+                    (LazyArray<V>) new NullablePreEvaluatedDoubleArray((Double[]) values);
             // Take care of the "unsupported" primitive types
             case Class<V> c when c == byte.class ->
                     new PreEvaluatedReferenceLazyArray<>((V[]) LazyUtil.toObjectArray((byte[]) values));

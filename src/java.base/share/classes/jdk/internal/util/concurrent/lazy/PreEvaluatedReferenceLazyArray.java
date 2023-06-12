@@ -34,6 +34,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
+import static jdk.internal.util.concurrent.lazy.LazyUtil.nulls;
 
 public final class PreEvaluatedReferenceLazyArray<V>
         extends AbstractPreEvaluatedArray<V>

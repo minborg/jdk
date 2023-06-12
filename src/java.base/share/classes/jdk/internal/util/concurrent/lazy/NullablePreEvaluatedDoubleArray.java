@@ -27,24 +27,24 @@ package jdk.internal.util.concurrent.lazy;
 
 import jdk.internal.vm.annotation.Stable;
 
-import java.util.Arrays;
-import java.util.Objects;
 import java.util.concurrent.lazy.LazyArray;
-import java.util.function.Supplier;
-import java.util.stream.LongStream;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.joining;
+import static jdk.internal.util.concurrent.lazy.LazyUtil.nulls;
 
-public final class PreEvaluatedLongArray
-        extends AbstractPreEvaluatedArray<Long>
-        implements LazyArray<Long> {
+public final class NullablePreEvaluatedDoubleArray
+        extends AbstractNullablePreEvaluatedArray<Double>
+        implements LazyArray<Double> {
 
     @Stable
-    private final long[] values;
+    private final double[] values;
 
-    public PreEvaluatedLongArray(long[] values) {
-        this.values = values.clone();
+    public NullablePreEvaluatedDoubleArray(Double[] values) {
+        super(nulls(values));
+        this.values = Stream.of(values)
+                .mapToDouble(l -> l)
+                .toArray();
     }
 
     @Override
@@ -53,13 +53,15 @@ public final class PreEvaluatedLongArray
     }
 
     @Override
-    public Long get(int index) {
-        return values[index];
+    public Double get(int index) {
+        return isNull(index)
+                ? null
+                : values[index];
     }
 
     @Override
-    public Stream<Long> stream() {
-        return Arrays.stream(values)
-                .boxed();
+    public Stream<Double> stream() {
+        return IntStream.range(0, values.length)
+                .mapToObj(this::get);
     }
 }

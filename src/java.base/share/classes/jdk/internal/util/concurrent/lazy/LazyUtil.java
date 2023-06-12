@@ -81,4 +81,14 @@ public final class LazyUtil {
     static final class NonNullSentinel implements Bound { private NonNullSentinel() {} }
     static final class ErrorSentinel { private ErrorSentinel() {} }
 
+    static byte[] nulls(Object[] array) {
+        byte[] nulls = new byte[array.length];
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] == null) {
+                nulls[i] = (byte) 1;
+            }
+        }
+        return nulls;
+    }
+
 }

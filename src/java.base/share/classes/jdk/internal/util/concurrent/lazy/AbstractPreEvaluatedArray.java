@@ -25,17 +25,20 @@
 
 package jdk.internal.util.concurrent.lazy;
 
-import jdk.internal.vm.annotation.Stable;
-
 import java.util.Objects;
 import java.util.concurrent.lazy.LazyArray;
 import java.util.function.Supplier;
-import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
 
-public sealed abstract class AbstractPreEvaluatedArray<V> implements LazyArray<V> permits PreEvaluatedDoubleArray, PreEvaluatedIntArray, PreEvaluatedLongArray, PreEvaluatedReferenceLazyArray {
+public sealed abstract class AbstractPreEvaluatedArray<V>
+        implements LazyArray<V>
+        permits AbstractNullablePreEvaluatedArray,
+        PreEvaluatedDoubleArray,
+        PreEvaluatedIntArray,
+        PreEvaluatedLongArray,
+        PreEvaluatedReferenceLazyArray {
 
     @Override
     public final boolean isBound(int index) {

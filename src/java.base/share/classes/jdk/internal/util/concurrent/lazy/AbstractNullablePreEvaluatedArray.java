@@ -27,39 +27,29 @@ package jdk.internal.util.concurrent.lazy;
 
 import jdk.internal.vm.annotation.Stable;
 
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.lazy.LazyArray;
 import java.util.function.Supplier;
-import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
 
-public final class PreEvaluatedLongArray
-        extends AbstractPreEvaluatedArray<Long>
-        implements LazyArray<Long> {
+public sealed abstract class AbstractNullablePreEvaluatedArray<V>
+    extends AbstractPreEvaluatedArray<V>
+        implements LazyArray<V>
+        permits NullablePreEvaluatedDoubleArray,
+        NullablePreEvaluatedIntArray,
+        NullablePreEvaluatedLongArray {
 
     @Stable
-    private final long[] values;
+    private final byte[] nulls;
 
-    public PreEvaluatedLongArray(long[] values) {
-        this.values = values.clone();
+    public AbstractNullablePreEvaluatedArray(byte[] nulls) {
+        this.nulls = nulls;
     }
 
-    @Override
-    public int length() {
-        return values.length;
+    final boolean isNull(int index) {
+        return nulls[index] != 0;
     }
 
-    @Override
-    public Long get(int index) {
-        return values[index];
-    }
-
-    @Override
-    public Stream<Long> stream() {
-        return Arrays.stream(values)
-                .boxed();
-    }
 }

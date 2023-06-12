@@ -41,7 +41,10 @@ import java.util.stream.Stream;
 
 public abstract sealed class AbstractLazyArray<V>
         implements LazyArray<V>
-        permits DoubleLazyArray, IntLazyArray, LongLazyArray, ReferenceLazyArray {
+        permits DoubleLazyArray,
+        IntLazyArray,
+        LongLazyArray,
+        ReferenceLazyArray {
 
     private static final VarHandle LOCKS_HANDLE = MethodHandles.arrayElementVarHandle(Object[].class);
     private IntFunction<? extends V> presetMapper;
