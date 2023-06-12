@@ -69,7 +69,7 @@ public @interface PreviewFeature {
         @JEP(number=442, title="Foreign Function & Memory API", status="Third Preview")
         FOREIGN,
         // Real JEP number TBD
-        @JEP(number=8306917, title="Lazy Field API", status="First Preview")
+        @JEP(number=8306917, title="Lazy Value & Array API", status="First Preview")
         LAZY,
         @JEP(number=430, title="String Templates", status="First Preview")
         STRING_TEMPLATES,
