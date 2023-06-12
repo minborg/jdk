@@ -54,7 +54,7 @@
  *
  * The {@code LazyArray} type methods provide an extra arity where the index is specified compared to {@code LazyValue}.
  *
- * <h3 id="lazyreference">LazyReference</h3>
+ * <h3 id="lazyvalue">LazyValue</h3>
  *
  * {@code LazyValue} provides atomic lazy evaluation using a <em>preset-supplier</em>:
  *
