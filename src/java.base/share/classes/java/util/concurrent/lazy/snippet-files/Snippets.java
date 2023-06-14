@@ -24,6 +24,8 @@
  */
 package java.util.concurrent.lazy.snippets;
 
+import java.util.Arrays;
+import java.util.IntSummaryStatistics;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -175,18 +177,17 @@ public class Snippets {
     }
 
     static class Fibonacci {
-        LazyArray<Integer> fibonacci = LazyArray.of(1_000, this::number);
+        private static final LazyArray<Integer> FIBONACCI = LazyArray.of(1_000, Fibonacci::number);
 
-        public int number(int n) {
+        public static int number(int n) {
             return (n < 2)
                     ? n
-                    : fibonacci.get(n - 1) + fibonacci.get(n - 2);
+                    : FIBONACCI.get(n - 1) + FIBONACCI.get(n - 2);
         }
 
         public void a() {
-            var fibonacci = new Fibonacci();
             int[] fibs = IntStream.range(0, 10)
-                    .map(fibonacci::number)
+                    .map(Fibonacci::number)
                     .toArray(); // { 0, 1, 1, 2, 3, 5, 8, 13, 21, 34 }
         }
 
@@ -221,6 +222,30 @@ public class Snippets {
             this.id = id;
         }
 
+    }
+
+    static final
+    public class Ints {
+
+        private final int[] values;
+        private final LazyValue<IntSummaryStatistics> stat;
+
+        public Ints(int[] values) {
+            this.values = values.clone();
+            this.stat = LazyValue.of(() -> IntStream.of(this.values).summaryStatistics());
+        }
+
+        public long sum() {
+            return stat.get().getSum();
+        }
+
+        public int min() {
+            return stat.get().getMin();
+        }
+
+        public int[] values() {
+            return values.clone();
+        }
     }
 
     static class Connection {
