@@ -79,6 +79,15 @@ public sealed interface LazyArray<V>
     int length();
 
     /**
+     * {@return {@code true} if a thread is in the process of binding a value but
+     * the outcome of the evaluation is not yet known for the provided {@code index}}
+     *
+     * @param index of the element to be checked
+     * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
+     */
+    boolean isBinding(int index);
+
+    /**
      * {@return {@code true} if a value is bound at the provided {@code index}}
      *
      * @param index of the element to be checked
@@ -130,7 +139,7 @@ public sealed interface LazyArray<V>
     /**
      * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
-     * , or, if this fails, returns the provided {@code other} value}
+     * , or, if the mapper throws an unchecked exception, returns the provided {@code other} value}
      * <p>
      * If a thread calls this method while being bound by another thread, the current thread will be suspended until
      * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
@@ -140,6 +149,7 @@ public sealed interface LazyArray<V>
      * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
      * @throws StackOverflowError             if a circular dependency is detected (i.e. calls itself directly or
      *                                        indirectly in the same thread).
+     * @throws Error                          if the pre-set mapper throws an Error
      */
     V orElse(int index,
              V other);
@@ -147,7 +157,8 @@ public sealed interface LazyArray<V>
     /**
      * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
-     * , or, if this fails, throws an exception produced by the provided {@code exceptionSupplier} function}
+     * , or, if the mapper throws an unchecked exception, throws an exception produced by the
+     * provided {@code exceptionSupplier} function}
      * <p>
      * If a thread calls this method while being bound by another thread, the current thread will be suspended until
      * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
@@ -157,6 +168,7 @@ public sealed interface LazyArray<V>
      * @param exceptionSupplier the supplying function that produces the exception to throw
      * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
      * @throws X                              if a value cannot be bound.
+     * @throws Error                          if the pre-set mapper throws an Error
      */
     <X extends Throwable> V orElseThrow(int index,
                                         Supplier<? extends X> exceptionSupplier) throws X;
@@ -176,6 +188,7 @@ public sealed interface LazyArray<V>
      * @throws NoSuchElementException if a value cannot be bound
      * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
      *                                indirectly in the same thread).
+     * @throws Error                  if the pre-set mapper throws an Error
      */
     Stream<V> stream();
 
@@ -195,6 +208,7 @@ public sealed interface LazyArray<V>
      * @param other the other value to use for values that cannot be bound (can be null)
      * @throws StackOverflowError if a circular dependency is detected (i.e. calls itself directly or
      *                            indirectly in the same thread).
+     * @throws Error              if the pre-set mapper throws an Error
      */
     Stream<V> stream(V other);
 

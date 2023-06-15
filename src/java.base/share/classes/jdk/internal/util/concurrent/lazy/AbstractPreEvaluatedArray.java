@@ -41,6 +41,12 @@ public sealed abstract class AbstractPreEvaluatedArray<V>
         PreEvaluatedReferenceLazyArray {
 
     @Override
+    public boolean isBinding(int index) {
+        Objects.checkIndex(index, length());
+        return false;
+    }
+
+    @Override
     public final boolean isBound(int index) {
         Objects.checkIndex(index, length());
         return true;

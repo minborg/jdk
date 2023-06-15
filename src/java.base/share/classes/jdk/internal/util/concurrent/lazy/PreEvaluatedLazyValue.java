@@ -38,6 +38,11 @@ public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
     }
 
     @Override
+    public boolean isBinding() {
+        return false;
+    }
+
+    @Override
     public boolean isBound() {
         return true;
     }

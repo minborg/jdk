@@ -62,6 +62,11 @@ public abstract sealed class AbstractLazyArray<V>
     }
 
     @Override
+    public boolean isBinding(int index) {
+        return lockVolatile(locks, index) instanceof LazyUtil.Binding;
+    }
+
+    @Override
     public final boolean isBound(int index) {
         // Try normal memory semantics first
         return !isDefaultValueAtIndex(index) ||
@@ -70,7 +75,7 @@ public abstract sealed class AbstractLazyArray<V>
 
     @Override
     public boolean isError(int index) {
-        return lockVolatile(locks, index) instanceof LazyUtil.ErrorSentinel;
+        return lockVolatile(locks, index) instanceof LazyUtil.Error;
     }
 
     @ForceInline
@@ -145,11 +150,11 @@ public abstract sealed class AbstractLazyArray<V>
         }
 
         return switch (lockVolatile(l , index)) {
-            case LazyUtil.NonNullSentinel __ -> valueVolatile(index);
-            case LazyUtil.NullSentinel __ -> null;
-            case LazyUtil.ConstructingSentinel __ ->
+            case LazyUtil.NonNull __ -> valueVolatile(index);
+            case LazyUtil.Null __ -> null;
+            case LazyUtil.Binding __ ->
                     throw new StackOverflowError("Circular mapper detected for index: " + index);
-            case LazyUtil.ErrorSentinel __ ->
+            case LazyUtil.Error __ ->
                     throw new NoSuchElementException("A previous mapper threw an exception for index: " + index);
             case LockObject lockObject -> {
                 synchronized (lockObject) {
@@ -158,7 +163,7 @@ public abstract sealed class AbstractLazyArray<V>
                     if (!isDefaultValue(v) || isBound(index)) {
                         yield v;
                     }
-                    setLockVolatile(l, index, LazyUtil.CONSTRUCTING_SENTINEL);
+                    setLockVolatile(l, index, LazyUtil.BINDING_SENTINEL);
                     try {
                         v = presetMapper.apply(index);
                         if (v == null) {
@@ -170,6 +175,10 @@ public abstract sealed class AbstractLazyArray<V>
                         yield v;
                     } catch (Throwable e) {
                         setLockVolatile(l, index, LazyUtil.ERROR_SENTINEL);
+                        if (e instanceof Error err) {
+                            // Always rethrow errors
+                            throw err;
+                        }
                         if (rethrow) {
                             throw e;
                         }

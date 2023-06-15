@@ -52,6 +52,12 @@ public sealed interface LazyValue<V>
         permits StandardLazyValue, PreEvaluatedLazyValue {
 
     /**
+     * {@return {@code true} if a thread is in the process of binding a value but
+     * the outcome of the evaluation is not yet known}
+     */
+    boolean isBinding();
+
+    /**
      * {@return {@code true} if a value is bound to this lazy value}
      */
     boolean isBound();
@@ -96,7 +102,7 @@ public sealed interface LazyValue<V>
     /**
      * {@return the bound value of this lazy value.  If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier) supplier}</em>, or,
-     * if this fails, returns the provided {@code other} value}
+     * if the supplier throws an unchecked exception, returns the provided {@code other} value}
      * <p>
      * If a thread calls this method while being bound by another thread, the current thread will be suspended until
      * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
@@ -105,20 +111,23 @@ public sealed interface LazyValue<V>
      * @throws NoSuchElementException if a value cannot be bound
      * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
      *                                indirectly in the same thread).
+     * @throws Error                  if the pre-set supplier throws an Error
      */
     V orElse(V other);
 
     /**
      * {@return the bound value of this lazy value. If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier) supplier}</em>, or,
-     * if this fails, throws an exception produced by invoking the provided {@code exceptionSupplier} function}
+     * if the supplier throws an unchecked exception, throws an exception produced by invoking the
+     * provided {@code exceptionSupplier} function}
      * <p>
      * If a thread calls this method while being bound by another thread, the current thread will be suspended until
      * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param <X>               the type of the exception that may be thrown
      * @param exceptionSupplier the supplying function that produces the exception to throw
-     * @throws X if a value cannot be bound.
+     * @throws X                if a value cannot be bound.
+     * @throws Error            if the pre-set supplier throws an Error
      */
     <X extends Throwable> V orElseThrow(Supplier<? extends X> exceptionSupplier) throws X;
 

@@ -66,6 +66,11 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
         this.auxiliary = supplier;
     }
 
+    @Override
+    public boolean isBinding() {
+        return auxiliaryVolatile() instanceof LazyUtil.Binding;
+    }
+
     @ForceInline
     @Override
     public boolean isBound() {
@@ -73,9 +78,10 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
         return value != null || auxiliaryVolatile() instanceof LazyUtil.Bound;
     }
 
+    @ForceInline
     @Override
     public boolean isError() {
-        return auxiliaryVolatile() instanceof LazyUtil.ErrorSentinel;
+        return auxiliaryVolatile() instanceof LazyUtil.Error;
     }
 
     @ForceInline
@@ -86,7 +92,7 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
         if (v != null) {
             return v;
         }
-        if (auxiliary == NULL_SENTINEL) {
+        if (auxiliary instanceof LazyUtil.Null) {
             return null;
         }
         return tryBind(null, true);
@@ -100,7 +106,7 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
         if (v != null) {
             return v;
         }
-        if (auxiliary == NULL_SENTINEL) {
+        if (auxiliary instanceof LazyUtil.Null) {
             return null;
         }
         return tryBind(other, false);
@@ -127,13 +133,13 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
             return v;
         }
         return switch (auxiliary) {
-            case LazyUtil.NullSentinel __ -> null;
-            case LazyUtil.ConstructingSentinel __ ->
+            case LazyUtil.Null __ -> null;
+            case LazyUtil.Binding __ ->
                     throw new StackOverflowError("Circular supplier detected");
-            case LazyUtil.ErrorSentinel __ ->
+            case LazyUtil.Error __ ->
                     throw new NoSuchElementException("A previous supplier threw an exception");
             case Supplier<?> supplier -> {
-                setAuxiliaryVolatile(LazyUtil.CONSTRUCTING_SENTINEL);
+                setAuxiliaryVolatile(LazyUtil.BINDING_SENTINEL);
                 try {
                     v = (V) supplier.get();
                     if (v == null) {
@@ -145,8 +151,12 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
                     yield v;
                 } catch (Throwable e) {
                     setAuxiliaryVolatile(LazyUtil.ERROR_SENTINEL);
+                    if (e instanceof Error err) {
+                        // Always rethrow errors
+                        throw err;
+                    }
                     if (rethrow) {
-                        throw e;
+                        throw new NoSuchElementException(e);
                     }
                     yield other;
                 }
@@ -159,10 +169,10 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
     public String toString() {
         String v = switch (auxiliaryVolatile()) {
             case Supplier<?> __ -> ".unbound";
-            case LazyUtil.ConstructingSentinel __ -> ".unbound";
-            case LazyUtil.NullSentinel __ -> "null";
-            case LazyUtil.NonNullSentinel __ -> "[" + valueVolatile().toString() + "]";
-            case LazyUtil.ErrorSentinel __ -> ".error";
+            case LazyUtil.Binding __ -> ".unbound";
+            case LazyUtil.Null __ -> "null";
+            case LazyUtil.NonNull __ -> "[" + valueVolatile().toString() + "]";
+            case LazyUtil.Error __ -> ".error";
             default -> ".INTERNAL_ERROR";
         };
         return "StandardLazyValue" + v;

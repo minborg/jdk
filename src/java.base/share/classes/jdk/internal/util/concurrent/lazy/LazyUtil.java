@@ -70,16 +70,16 @@ public final class LazyUtil {
         return result;
     }
 
-    static final ConstructingSentinel CONSTRUCTING_SENTINEL = new ConstructingSentinel();
-    static final NonNullSentinel NON_NULL_SENTINEL = new NonNullSentinel();
-    static final NullSentinel NULL_SENTINEL = new NullSentinel();
-    static final ErrorSentinel ERROR_SENTINEL = new ErrorSentinel();
+    static final Binding BINDING_SENTINEL = new Binding();
+    static final NonNull NON_NULL_SENTINEL = new NonNull();
+    static final Null NULL_SENTINEL = new Null();
+    static final Error ERROR_SENTINEL = new Error();
 
     interface Bound{}
-    static final class ConstructingSentinel { private ConstructingSentinel() {} }
-    static final class NullSentinel implements Bound { private NullSentinel() {} }
-    static final class NonNullSentinel implements Bound { private NonNullSentinel() {} }
-    static final class ErrorSentinel { private ErrorSentinel() {} }
+    static final class Binding { private Binding() {} }
+    static final class Null implements Bound { private Null() {} }
+    static final class NonNull implements Bound { private NonNull() {} }
+    static final class Error { private Error() {} }
 
     static byte[] nulls(Object[] array) {
         byte[] nulls = new byte[array.length];
