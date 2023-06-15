@@ -184,9 +184,11 @@
  *     <p>Indicates an error when trying to bind a value(final state).
  *     <p>Cannot move.</li>
  * </ul>
- * Transient states can change at any time, whereas if a final state is observed, it is guaranteed
- * the state will never change again.  The predicates {@code LazyValue::isBound} and {@code LazyArray::isBound}
- * can be used to determine if a value is bound or not.
+ * Transient states can change at any time, whereas if a final state is observed, it is
+ * guaranteed the state will never change again.  The predicates {@code LazyValue::isBound} and
+ * {@code LazyArray::isBound} can be used to determine if a value is bound or not.  In the same
+ * way, the predicates {@code LazyValue::isError} and {@code LazyArray::isError} can be used to
+ * determine if the evaluation of a bound value failed.
  * <p>
  * The internal states and their transitions are depicted below:
  * <p style="text-align:center">

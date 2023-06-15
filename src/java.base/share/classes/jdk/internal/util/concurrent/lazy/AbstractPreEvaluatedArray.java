@@ -47,6 +47,12 @@ public sealed abstract class AbstractPreEvaluatedArray<V>
     }
 
     @Override
+    public boolean isError(int index) {
+        Objects.checkIndex(index, length());
+        return false;
+    }
+
+    @Override
     public final V orElse(int index, V other) {
         return get(index);
     }

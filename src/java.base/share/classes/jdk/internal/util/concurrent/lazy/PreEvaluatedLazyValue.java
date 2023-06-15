@@ -43,6 +43,11 @@ public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
     }
 
     @Override
+    public boolean isError() {
+        return false;
+    }
+
+    @Override
     public V get() {
         return value;
     }

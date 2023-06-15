@@ -73,6 +73,11 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
         return value != null || auxiliaryVolatile() instanceof LazyUtil.Bound;
     }
 
+    @Override
+    public boolean isError() {
+        return auxiliaryVolatile() instanceof LazyUtil.ErrorSentinel;
+    }
+
     @ForceInline
     @Override
     public V get() {

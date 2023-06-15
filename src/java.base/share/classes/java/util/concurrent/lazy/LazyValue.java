@@ -57,6 +57,12 @@ public sealed interface LazyValue<V>
     boolean isBound();
 
     /**
+     * {@return {@code true} if an attempt was made to bind a value but
+     * a value could not be bound to this lazy value}
+     */
+    boolean isError();
+
+    /**
      * {@return the bound value of this lazy value. If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier) supplier}</em>}
      * <p>

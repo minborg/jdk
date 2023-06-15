@@ -39,7 +39,6 @@ import jdk.internal.util.concurrent.lazy.NullablePreEvaluatedLongArray;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedDoubleArray;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedIntArray;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedReferenceLazyArray;
-import jdk.internal.util.concurrent.lazy.OptimizedReferenceLazyArray;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedLongArray;
 import jdk.internal.util.concurrent.lazy.ReferenceLazyArray;
 
@@ -68,7 +67,6 @@ public sealed interface LazyArray<V>
         NullablePreEvaluatedDoubleArray,
         NullablePreEvaluatedIntArray,
         NullablePreEvaluatedLongArray,
-        OptimizedReferenceLazyArray,
         PreEvaluatedDoubleArray,
         PreEvaluatedIntArray,
         PreEvaluatedLongArray,
@@ -83,10 +81,19 @@ public sealed interface LazyArray<V>
     /**
      * {@return {@code true} if a value is bound at the provided {@code index}}
      *
-     * @param index of the element to be used
+     * @param index of the element to be checked
      * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
      */
     boolean isBound(int index);
+
+    /**
+     * {@return {@code true} if an attempt was made to bind a value but
+     * a value could not be bound at the provided {@code index}}
+     *
+     * @param index of the element to be checked
+     * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
+     */
+    boolean isError(int index);
 
     /**
      * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts

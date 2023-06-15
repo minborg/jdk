@@ -68,6 +68,11 @@ public abstract sealed class AbstractLazyArray<V>
                 isBoundVolatile(index);
     }
 
+    @Override
+    public boolean isError(int index) {
+        return lockVolatile(locks, index) instanceof LazyUtil.ErrorSentinel;
+    }
+
     @ForceInline
     @Override
     public final V get(int index) {
