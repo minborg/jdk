@@ -61,10 +61,11 @@ public sealed interface LazyValue<V>
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyValue#of(Supplier) supplier}</em>}
      * <p>
      * If the pre-set supplier returns {@code null}, {@code null} is bound and returned.
-     * If the mapping function itself throws an (unchecked) exception, the
-     * exception is wrapped into a {@link NoSuchElementException} which is thrown, and no value is bound.  If an
-     * Exception is thrown bu the pre-set supplier, no further attempt is made to bind the value and all subsequent invocations
-     * of this method will throw a new {@link NoSuchElementException}.
+     * If the pre-set supplier throws an (unchecked) exception, the exception is wrapped into
+     * a {@link NoSuchElementException} which is thrown, and no value is bound.  If an Error
+     * is thrown by the per-set supplier, the Error is relayed to the caller.  If an Exception
+     * or an Error is thrown by the pre-set supplier, no further attempt is made to bind the value and all
+     * subsequent invocations of this method will throw a new {@link NoSuchElementException}.
      * <p>
      * The most common usage is to construct a new object serving as a memoized result, as in:
      * <p>
@@ -79,7 +80,9 @@ public sealed interface LazyValue<V>
      * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @throws NoSuchElementException if a value cannot be bound
-     * @throws StackOverflowError  if a circular dependency is detected (i.e. a lazy value calls itself).
+     * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
+     *                                indirectly in the same thread).
+     * @throws Error                  if the pre-set supplier throws an Error
      */
     @Override
     V get();
@@ -92,9 +95,10 @@ public sealed interface LazyValue<V>
      * If a thread calls this method while being bound by another thread, the current thread will be suspended until
      * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
-     * @param other to use if no value neither is bound nor can be bound (may be null)
+     * @param other to use if no value neither is bound nor can be bound (can be null)
      * @throws NoSuchElementException if a value cannot be bound
-     * @throws StackOverflowError  if a circular dependency is detected (i.e. a lazy value calls itself).
+     * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
+     *                                indirectly in the same thread).
      */
     V orElse(V other);
 
@@ -192,9 +196,9 @@ public sealed interface LazyValue<V>
 
     /**
      * {@return a {@link LazyValue} that will lazily compute the reduction of the
-     * provided {@code first} and the provided {@code others} by successively and
-     * lazily applying the provided {@code accumulator} function or
-     * {@linkplain Optional#empty()} Optiona.empty() if there are no elements in {@code lazies}}.
+     * provided {@code lazies} by successively and lazily applying the provided
+     * {@code accumulator} function or {@linkplain Optional#empty()} if there are no
+     * elements in {@code lazies}}.
      *
      * @param <V>         the value type
      * @param lazies      the lazy values on which a reduction shall be performed

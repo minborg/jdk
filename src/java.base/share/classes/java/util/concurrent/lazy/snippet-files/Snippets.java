@@ -225,7 +225,7 @@ public class Snippets {
     }
 
     static final
-    public class Ints {
+    /* public */ class Ints {
 
         private final int[] values;
         private final LazyValue<IntSummaryStatistics> stat;

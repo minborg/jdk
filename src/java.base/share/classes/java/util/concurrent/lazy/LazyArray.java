@@ -92,10 +92,11 @@ public sealed interface LazyArray<V>
      * {@return the bound value at the provided {@code index}.  If no value is bound, atomically attempts
      * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>}
      * <p>
-     * If the pre-set supplier returns {@code null}, {@code null} is bound and returned.
-     * If the mapper itself throws an (unchecked) exception, the
-     * exception is wrapped into a {@link NoSuchElementException} which is thrown, and no value is bound.  If an
-     * Exception is thrown bu the pre-set supplier, no further attempt is made to bind the value and all subsequent invocations
+     * If the pre-set mapper returns {@code null}, {@code null} is bound and returned.
+     * If the pre-set mapper throws an (unchecked) exception, the
+     * exception is wrapped into a {@link NoSuchElementException} which is thrown, and no value is bound.  If
+     * the pre-set mapper throws an Error, the Error is relayed to the caller.  If an Exception or Error is
+     * thrown by the pre-set mapper, no further attempt is made to bind the value and all subsequent invocations
      * of this method will throw a new {@link NoSuchElementException}.
      * <p>
      * The most common usage is to construct a new object serving as a memoized result, as in:
@@ -113,8 +114,9 @@ public sealed interface LazyArray<V>
      * @param index for which a bound value shall be obtained.
      * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
      * @throws NoSuchElementException         if a value cannot be bound
-     * @throws StackOverflowError             if a circular dependency is detected (i.e. a lazy value calls itself
-     *                                        for the same index).
+     * @throws StackOverflowError             if a circular dependency is detected (i.e. calls itself directly or
+     *                                        indirectly in the same thread).
+     * @throws Error                          if the pre-set mapper throws an Error
      */
     V get(int index);
 
@@ -127,10 +129,10 @@ public sealed interface LazyArray<V>
      * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
      *
      * @param index for which a value shall be obtained.
-     * @param other to use if no value neither is bound nor can be bound (may be null)
+     * @param other to use if no value neither is bound nor can be bound (can be null)
      * @throws ArrayIndexOutOfBoundsException if {@code index< 0} or {@code index >= length()}
-     * @throws StackOverflowError             if a circular dependency is detected (i.e. a lazy value calls itself
-     *                                        for the same index).
+     * @throws StackOverflowError             if a circular dependency is detected (i.e. calls itself directly or
+     *                                        indirectly in the same thread).
      */
     V orElse(int index,
              V other);
@@ -153,9 +155,8 @@ public sealed interface LazyArray<V>
                                         Supplier<? extends X> exceptionSupplier) throws X;
 
     /**
-     * {@return a Stream with the bound values in this lazy array.  If a value is not bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
-     * , or, if this fails, throws an Exception}
+     * {@return a Stream with the bound values in this lazy array.  If a value is not already bound,
+     * obtain it as if by a call to {@link LazyArray#get(int) get()}}
      * <p>
      * In other words, the returned stream is equivalent to the following code:
      * {@snippet lang = java:
@@ -166,15 +167,15 @@ public sealed interface LazyArray<V>
      * }
      *
      * @throws NoSuchElementException if a value cannot be bound
-     * @throws StackOverflowError     if a circular dependency is detected (I.e. a lazy value
-     *                                calls itself at a certain index).
+     * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
+     *                                indirectly in the same thread).
      */
     Stream<V> stream();
 
     /**
-     * {@return a Stream with the bound values in this lazy array. If a value is not bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain LazyArray#of(int, IntFunction) mapper}</em>
-     * , or, if this fails, returns the provided {@code other} value}
+     * {@return a Stream with the bound values in this lazy array. If a value is not already bound,
+     * obtain it as if by a call to {@link LazyArray#get(int) get()} , or, if this fails, returns
+     * the provided {@code other} value}
      * <p>
      * In other words, the returned stream is equivalent to the following code:
      * {@snippet lang = java:
@@ -184,9 +185,9 @@ public sealed interface LazyArray<V>
      *     }
      * }
      *
-     * @param other the other value to use for values that cannot be bound (may be null)
-     * @throws IllegalStateException if a circular dependency is detected (i.e. a lazy value
-     *                               calls itself at a certain index).
+     * @param other the other value to use for values that cannot be bound (can be null)
+     * @throws StackOverflowError if a circular dependency is detected (i.e. calls itself directly or
+     *                            indirectly in the same thread).
      */
     Stream<V> stream(V other);
 

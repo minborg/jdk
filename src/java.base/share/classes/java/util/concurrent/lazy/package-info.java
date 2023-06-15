@@ -29,16 +29,17 @@
  * to be invoked at most one time. In other words, the provider can only run once and
  * in the first-calling thread and so, there is no race across threads which guarantees
  * the at-most-once evaluation. The life cycle of a lazy is said to be <em>monotonic</em>
- * where it goes from the initial state of <em>unbound</em> (when it is not associated with any value) to the
- * terminal state of <em>bound</em> when it is assossiate with a true null or non-null value.
+ * where it goes from the initial state of <em>unbound</em> (when it is not associated with any value)
+ * to the terminal state of <em>bound</em> when it is permanently associated with a fixed
+ * value (the value can be {@code null}).
  * <p>
  * This contrasts with {@link java.util.concurrent.atomic.AtomicReferenceArray } where any number of
  * updates can be done and where there is no simple way to atomically compute a value
  * (guaranteed to only be computed once) if missing. Lazy also contrasts to
  * {@link java.util.concurrent.Future} where a value is computed in another thread.
  * <p>
- * The lazy implementations are optimized for the case where there are N invocations
- * trying to obtain a value and where N >> 1, for example where N is > 2<sup>20</sup>.
+ * The lazy implementations are optimized for providing high average performance
+ * for get operations over many invocations.
  *
  *  <h2 id="lazy">Lazy</h2>
  *
@@ -52,7 +53,8 @@
  *     for example available via {@link java.util.concurrent.lazy.LazyArray#of(int, java.util.function.IntFunction) LazyArray.of(int length, IntFunction&lt;? super V&gt; presetMapper)}</li>
  * </ul>
  *
- * The {@code LazyArray} type methods provide an extra arity where the index is specified compared to {@code LazyValue}.
+ * In contrast to {@code LazyValue}, which records a single bound value, {@code LazyArray} access methods provide
+ * an extra index argument that selects one of many bound values
  *
  * <h3 id="lazyvalue">LazyValue</h3>
  *
@@ -69,9 +71,9 @@
  *         }
  *     }
  *}
- * The performance of the {@code get()} method in the example above is on pair with using an
+ * The performance of the {@code get()} method in the example above is on par with using an
  * inner/private class holding a lazily initialized variable but with no overhead imposed by
- * the extra holder class.  A corresponding private class is illustrated hereunder:
+ * the extra holder class.  Such a holder class might implement a lazy value as follows:
  *
  {@snippet lang = java :
  *     class DemoHolder {
@@ -87,7 +89,7 @@
  *     }
  *}
  *
- * Here is how a lazy value can be computed in the background so that may already be computed
+ * Here is how a lazy value can be computed in the background so that it may already be computed
  * when first requested from user code:
  * {@snippet lang = java:
  *     class DemoBackground {
@@ -108,7 +110,7 @@
  *
  * {@code LazyValue<T>} implements {@code Supplier<T>} allowing simple
  * interoperability with legacy code and less specific type declaration
- * as shown in the example hereunder:
+ * as shown in the following example:
  * {@snippet lang = java:
  *     class SupplierDemo {
  *
@@ -128,7 +130,7 @@
  * <h3 id="lazyarray">LazyArray</h3>
  *
  * Arrays of lazy values (i.e. {@link java.util.concurrent.lazy.LazyArray}) can also be
- * obtained via {@link java.util.concurrent.lazy.LazyValue} factory methods in the same way as
+ * obtained via {@link java.util.concurrent.lazy.LazyArray} factory methods in the same way as
  * for {@code LazyValue} instances but with an extra initial arity, indicating the desired length/index
  * of the array:
  * {@snippet lang = java:
@@ -150,7 +152,7 @@
  * computed and entered into the array depending on the current index being used.
  *
  * {@code LazyArray<V>} can be converted to an {@code IntFunction<T>} allowing simple interoperability
- * with existing code and with less specific type declarations as shown hereunder:
+ * with existing code and with less specific type declarations as follows:
  * {@snippet lang = java:
  *     class DemoIntFunction {
  *
@@ -169,17 +171,17 @@
  *}
  *
  * <h3 id="state">Internal States</h3>
- * {@code LazyValue} and slots in a {@code LazyArray} maintain an internal state as described hereunder:
+ * {@code LazyValue} and slots in a {@code LazyArray} maintain an internal state described as follows:
  *
  * <ul>
  *     <li>Unbound;
- *     <p>Indicates no value is bound and is not being constructed (transient state).
- *     <p>Can move to "Constructing".</li>
- *     <li>Constructing;
- *     <p>Indicates a value is being constructed but is not yet present (transient state).
- *     <p>Can move to "Unbound" or "Bound".</li>
+ *     <p>Indicates no value is bound (transient state).
+ *     <p>Can move to "Bound" or "Error".</li>
  *     <li>Bound;
  *     <p>Indicates a value is bound (final state).
+ *     <p>Cannot move.</li>
+ *     <li>Error;
+ *     <p>Indicates an error when trying to bind a value(final state).
  *     <p>Cannot move.</li>
  * </ul>
  * Transient states can change at any time, whereas if a final state is observed, it is guaranteed
@@ -195,9 +197,8 @@
  * All methods of the classes in this package will throw a {@link NullPointerException}
  * if a reference parameter is {@code null} unless otherwise specified.
  *
- * All lazy constructs are "null-friendly" meaning a value can be bound to {@code null}.  If nullability
- * for values stored is desired, the values can also be modeled using a construct that can express
- * {@code null} values in an explicit way such as {@link java.util.Optional#empty()} as exemplified here:
+ * All lazy constructs are "null-friendly" meaning a value can be bound to {@code null}.  As usual, values of type
+ * Optional may also express optionality, without using {@code null}, as exemplified here:
  * {@snippet lang = java:
  *     class NullDemo {
  *
