@@ -52,6 +52,11 @@ public sealed interface LazyValue<V>
         permits StandardLazyValue, PreEvaluatedLazyValue {
 
     /**
+     * {@return {@code true} if no attempt has been made to bind a value}
+     */
+    boolean isUnbound();
+
+    /**
      * {@return {@code true} if a thread is in the process of binding a value but
      * the outcome of the evaluation is not yet known}
      */

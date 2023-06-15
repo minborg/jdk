@@ -62,6 +62,11 @@ public abstract sealed class AbstractLazyArray<V>
     }
 
     @Override
+    public boolean isUnbound(int index) {
+        return lockVolatile(locks, index) instanceof LockObject;
+    }
+
+    @Override
     public boolean isBinding(int index) {
         return lockVolatile(locks, index) instanceof LazyUtil.Binding;
     }

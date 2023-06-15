@@ -79,6 +79,15 @@ public sealed interface LazyArray<V>
     int length();
 
     /**
+     * {@return {@code true} if no attempt has been made to bind a value
+     * at the provided {@code index}}
+     *
+     * @param index of the element to be checked
+     * @throws ArrayIndexOutOfBoundsException if {@code index < 0} or {@code index >= length()}
+     */
+    boolean isUnbound(int index);
+
+    /**
      * {@return {@code true} if a thread is in the process of binding a value but
      * the outcome of the evaluation is not yet known for the provided {@code index}}
      *

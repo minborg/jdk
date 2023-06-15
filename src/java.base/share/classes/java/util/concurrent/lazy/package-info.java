@@ -176,19 +176,27 @@
  * <ul>
  *     <li>Unbound;
  *     <p>Indicates no value is bound (transient state).
- *     <p>Can move to "Bound" or "Error".</li>
+ *     <p>Can move to "Binding".
+ *     <p>This state can be detected using {@link java.util.concurrent.lazy.LazyValue#isUnbound()}
+ *        or {@link java.util.concurrent.lazy.LazyArray#isUnbound(int)}</li>
+ *     <li>Binding;
+ *     <p>Indicates an attempt to bind a value is in progress (transient state).
+ *     <p>Can move to "Bound" or "Error".
+ *     <p>This state can be detected using {@link java.util.concurrent.lazy.LazyValue#isBinding()}
+ *        or {@link java.util.concurrent.lazy.LazyArray#isBinding(int)}</li>
  *     <li>Bound;
  *     <p>Indicates a value is bound (final state).
- *     <p>Cannot move.</li>
+ *     <p>Cannot move.
+ *     <p>This state can be detected using {@link java.util.concurrent.lazy.LazyValue#isBound()}
+ *        or {@link java.util.concurrent.lazy.LazyArray#isBound(int)}</li>
  *     <li>Error;
  *     <p>Indicates an error when trying to bind a value(final state).
- *     <p>Cannot move.</li>
+ *     <p>Cannot move.
+ *     <p>This state can be detected using {@link java.util.concurrent.lazy.LazyValue#isError()}
+ *        or {@link java.util.concurrent.lazy.LazyArray#isError(int)}</li>
  * </ul>
  * Transient states can change at any time, whereas if a final state is observed, it is
- * guaranteed the state will never change again.  The predicates {@code LazyValue::isBound} and
- * {@code LazyArray::isBound} can be used to determine if a value is bound or not.  In the same
- * way, the predicates {@code LazyValue::isError} and {@code LazyArray::isError} can be used to
- * determine if the evaluation of a bound value failed.
+ * guaranteed the state will never change again.
  * <p>
  * The internal states and their transitions are depicted below:
  * <p style="text-align:center">

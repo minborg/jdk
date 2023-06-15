@@ -67,6 +67,11 @@ public final class StandardLazyValue<V> implements LazyValue<V> {
     }
 
     @Override
+    public boolean isUnbound() {
+        return auxiliaryVolatile() instanceof Supplier<?>;
+    }
+
+    @Override
     public boolean isBinding() {
         return auxiliaryVolatile() instanceof LazyUtil.Binding;
     }
