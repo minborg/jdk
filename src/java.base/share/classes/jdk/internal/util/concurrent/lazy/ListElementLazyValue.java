@@ -25,44 +25,37 @@
 
 package jdk.internal.util.concurrent.lazy;
 
-import jdk.internal.vm.annotation.Stable;
+import java.util.concurrent.lazy.LazyValue;
+import java.util.function.IntFunction;
 
-import java.util.Arrays;
-import java.util.concurrent.lazy.LazyArray;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
+public final class ListElementLazyValue<V>
+        extends AbstractLazyValue<V, IntFunction<? extends V>>
+        implements LazyValue<V> {
 
-import static jdk.internal.util.concurrent.lazy.LazyUtil.nulls;
+    private final int index;
 
-public final class NullablePreEvaluatedIntArray
-        extends AbstractNullablePreEvaluatedArray<Integer>
-        implements LazyArray<Integer> {
-
-    @Stable
-    private final int[] values;
-
-    public NullablePreEvaluatedIntArray(Integer[] values) {
-        super(nulls(values));
-        this.values = Stream.of(values)
-                .mapToInt(l -> l)
-                .toArray();
+    private ListElementLazyValue(int index, IntFunction<? extends V> provider) {
+        super(provider);
+        this.index = index;
     }
 
     @Override
-    public int length() {
-        return values.length;
+    V evaluate(IntFunction<? extends V> provider) {
+        return provider.apply(index);
     }
 
     @Override
-    public Integer get(int index) {
-        return isNull(index)
-                ? null
-                : values[index];
+    Class<?> providerType() {
+        return IntFunction.class;
     }
 
     @Override
-    public Stream<Integer> stream() {
-        return IntStream.range(0, values.length)
-                .mapToObj(this::get);
+    String toStringDescription() {
+        return "ListElementLazyValue[" + index + "]";
     }
+
+    public static <V> LazyValue<V> create(int index, IntFunction<? extends V> provider) {
+        return new ListElementLazyValue<>(index, provider);
+    }
+
 }

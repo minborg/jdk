@@ -53,11 +53,12 @@ public class Composition {
         // 2. A lazy field that is the result of lazily applying a mapping operation of an existing lazy field
         private static final LazyValue<Integer> EVEN_LARGER_PRIME = LARGE_PRIME.map(Primes::nextPrime);
         // 3. A field that lazily combines two existing lazy fields by lazily applying a reduction on the eventually bound values
-        private static final LazyValue<Integer> LARGE_PRIMES_SUM = LazyValue.reduce(Integer::sum, LARGE_PRIME, EVEN_LARGER_PRIME);
+        private static final LazyValue<Integer> LARGE_PRIMES_SUM = LazyValue.of(() -> LARGE_PRIME.get() + EVEN_LARGER_PRIME.get());
 
-        private static final LazyValue<Integer> LARGE_PRIMES_SUM2 = LazyValue.reduce(
-                        Integer::sum, List.of(LARGE_PRIME, EVEN_LARGER_PRIME))
-                .orElseThrow();
+        private static final LazyValue<Integer> LARGE_PRIMES_SUM2 = LazyValue.of(() ->
+                Stream.of(LARGE_PRIME, EVEN_LARGER_PRIME)
+                        .map(LazyValue::get)
+                        .reduce(0, Integer::sum));
 
         private static final LazyValue<Integer> LARGE_PRIMES_SUM3 = LazyValue.of(() -> Stream.of(LARGE_PRIME, EVEN_LARGER_PRIME)
                 .map(LazyValue::get)
@@ -243,8 +244,8 @@ public class Composition {
         // Lazy Evaluator
         static LazyValue<Double> lazilyEval(Expr n) {
             return switch (n) {
-                case Add(var left, var right)     -> LazyValue.reduce(Double::sum, lazilyEval(left), lazilyEval(right));
-                case Mul(var left, var right)     -> LazyValue.reduce((a, b) -> a * b, lazilyEval(left), lazilyEval(right));
+                case Add(var left, var right) -> LazyValue.of(() -> lazilyEval(left).get() + lazilyEval(right).get());
+                case Mul(var left, var right) -> LazyValue.of(() -> lazilyEval(left).get() * lazilyEval(right).get());
                 case Neg(var exp)                 -> lazilyEval(exp).map(d -> -d);
                 case Const(double val)            -> LazyValue.of(val);
                 case Lazy(LazyValue<Double> lazy) -> lazy;

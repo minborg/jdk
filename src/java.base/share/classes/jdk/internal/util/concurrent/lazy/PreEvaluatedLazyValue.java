@@ -33,7 +33,7 @@ public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
 
     private final V value;
 
-    public PreEvaluatedLazyValue(V value) {
+    private PreEvaluatedLazyValue(V value) {
         this.value = value;
     }
 
@@ -76,6 +76,10 @@ public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
     @Override
     public String toString() {
         return "PreEvaluatedLazyValue[" + value + "]";
+    }
+
+    public static <V> LazyValue<V> create(V v) {
+        return new PreEvaluatedLazyValue<>(v);
     }
 
 }

@@ -24,19 +24,18 @@
  */
 package java.util.concurrent.lazy.snippets;
 
-import java.util.Arrays;
 import java.util.IntSummaryStatistics;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.lazy.LazyArray;
 import java.util.concurrent.lazy.LazyValue;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 /**
- * Sippets for the package-info file
+ * Snippets for the package-info file
  */
 public class Snippets {
 
@@ -102,13 +101,13 @@ public class Snippets {
     class DemoArray {
 
         // 1. Declare a lazy array of length 32
-        private static final LazyArray<Long> VALUE_PO2_CACHE = LazyArray.of(32, index -> 1L << index);
+        private static final List<LazyValue<Long>> VALUE_PO2_CACHE = LazyValue.ofList(32, index -> 1L << index);
 
         public long powerOfTwo(int n) {
             // 2. The n:th slot is lazily computed and recorded here upon the
             //    first call of get(n). The other slots are not affected.
             // 3. Using an n outside the array will throw an ArrayOutOfBoundsException
-            return VALUE_PO2_CACHE.get(n);
+            return VALUE_PO2_CACHE.get(n).get();
         }
     }
     // @end
@@ -123,7 +122,7 @@ public class Snippets {
 
         // Turns an eager IntFunction into a caching lazy IntFunction
         private static final IntFunction<Value> LAZILY_CACHED_VALUES =
-                LazyArray.of(64, EAGER_VALUE)::get;
+                i -> LazyValue.ofList(64, EAGER_VALUE).get(i).get();
 
         public static void main(String[] args) {
             Value value42 = LAZILY_CACHED_VALUES.apply(42);
@@ -177,12 +176,12 @@ public class Snippets {
     }
 
     static class Fibonacci {
-        private static final LazyArray<Integer> FIBONACCI = LazyArray.of(1_000, Fibonacci::number);
+        private static final List<LazyValue<Integer>> FIBONACCI = LazyValue.ofList(1_000, Fibonacci::number);
 
         public static int number(int n) {
             return (n < 2)
                     ? n
-                    : FIBONACCI.get(n - 1) + FIBONACCI.get(n - 2);
+                    : FIBONACCI.get(n - 1).get() + FIBONACCI.get(n - 2).get();
         }
 
         public void a() {

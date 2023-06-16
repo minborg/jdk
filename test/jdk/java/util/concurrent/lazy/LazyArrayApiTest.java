@@ -21,7 +21,8 @@
  * questions.
  */
 
-import java.util.concurrent.lazy.LazyArray;
+import java.util.List;
+import java.util.concurrent.lazy.LazyValue;
 
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,28 +35,10 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class LazyArrayApiTest {
 
-    private static final int[] PRIMITIVE_INT_ARRAY = new int[]{1,2};
-    private static final Integer[] INTEGER_ARRAY = new Integer[]{1,2};
-
     @Test
     void testArrayFactories() {
-        LazyArray<Integer> a = LazyArray.of(10, i -> i);
-
-        LazyArray<Integer> b = LazyArray.of(int.class, 10, i -> i);
-        assertTrue("IntLazyArray".equals(b.getClass().getSimpleName()));
-        assertEquals(5, b.get(5));
-
-        LazyArray<Integer> pa = LazyArray.of(INTEGER_ARRAY);
-        LazyArray<Integer> pb = LazyArray.of(1, 2);
-        assertThrows(IllegalArgumentException.class, () -> {
-            // Fails because teh component type is not correct (Integer.class != int.class)
-            LazyArray<Integer> pc = LazyArray.of(Integer.class, PRIMITIVE_INT_ARRAY);
-        });
-        LazyArray<Integer> pd = LazyArray.of(int.class, PRIMITIVE_INT_ARRAY);
-
-        record Point(int x, int y){}
-
-        LazyArray<Point> pe = LazyArray.of(Point.class, new Point[0]);
+        List<LazyValue<Integer>> a = LazyValue.ofList(10, i -> i);
+        assertEquals(5, a.get(5).get());
     }
 
 }

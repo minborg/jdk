@@ -26,18 +26,18 @@
 package java.util.concurrent.lazy;
 
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.util.concurrent.lazy.ListElementLazyValue;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
+import jdk.internal.util.concurrent.lazy.AbstractLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyValue;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
+import java.util.stream.IntStream;
 
 /**
  * A lazy value with a pre-set supplier which can be invoked later to form a bound value,
@@ -49,7 +49,7 @@ import java.util.stream.Stream;
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public sealed interface LazyValue<V>
         extends Supplier<V>
-        permits StandardLazyValue, PreEvaluatedLazyValue {
+        permits AbstractLazyValue, ListElementLazyValue, PreEvaluatedLazyValue, StandardLazyValue {
 
     /**
      * {@return {@code true} if no attempt has been made to bind a value}
@@ -171,7 +171,7 @@ public sealed interface LazyValue<V>
      */
     static <V> LazyValue<V> of(Supplier<? extends V> presetSupplier) {
         Objects.requireNonNull(presetSupplier);
-        return new StandardLazyValue<>(presetSupplier);
+        return StandardLazyValue.create(presetSupplier);
     }
 
     /**
@@ -181,86 +181,41 @@ public sealed interface LazyValue<V>
      * @param value to bind
      */
     static <V> LazyValue<V> of(V value) {
-        return new PreEvaluatedLazyValue<>(value);
+        return PreEvaluatedLazyValue.create(value);
     }
 
     /**
-     * {@return a {@link LazyValue} that will lazily compute the reduction of the
-     * provided {@code first} and the provided {@code others} by successively and
-     * lazily applying the provided {@code accumulator} function}.
+     * {@return a new unmodifiable List of {@link LazyValue} elements with the provided
+     * {@code size} and provided {@code presetMapper}}
+     * <p>
+     * Below, an example of how to cache values in an array is shown:
+     * {@snippet lang = java:
+     *     class DemoArray {
      *
-     * @param <V>         the value type
-     * @param accumulator an associative stateless function for combining two inner lazy values
-     * @param first       the first lazy value for the accumulating function
-     * @param others      the other lazy values on which a reduction shall be performed
+     *         private static final List<LazyValue<Long>> PO2_CACHE =
+     *                 LazyValue.ofList(32, index -> 1L << index);
+     *
+     *         public long powerOfTwoValue(int n) {
+     *             return PO2_CACHE.get(n);
+     *         }
+     *     }
+     *}
+     *
+     * @param <V>          the type of the values
+     * @param size         the size of the List
+     * @param presetMapper to invoke when lazily constructing and binding element values
      */
     @SuppressWarnings("unchecked")
-    static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
-                                   LazyValue<? extends V> first,
-                                   Collection<LazyValue<? extends V>> others) {
-        Objects.requireNonNull(accumulator);
-        LazyValue<V> identity = (LazyValue<V>) Objects.requireNonNull(first);
-        // This also checks for null
-        List<LazyValue<? extends V>> list = List.copyOf(others);
-        if (list.isEmpty()) {
-            return identity;
+    static <V> List<LazyValue<V>> ofList(int size,
+                                         IntFunction<? extends V> presetMapper) {
+        if (size < 0) {
+            throw new IllegalArgumentException();
         }
-        return LazyValue.of(() ->
-                others.stream()
-                        .skip(1)
-                        .map(l -> (LazyValue<V>) l)
-                        .map(LazyValue::get)
-                        .reduce(identity.get(), accumulator)
-        );
-    }
-
-    /**
-     * {@return a {@link LazyValue} that will lazily compute the reduction of the
-     * provided {@code lazies} by successively and lazily applying the provided
-     * {@code accumulator} function or {@linkplain Optional#empty()} if there are no
-     * elements in {@code lazies}}.
-     *
-     * @param <V>         the value type
-     * @param lazies      the lazy values on which a reduction shall be performed
-     * @param accumulator an associative stateless function for combining two inner lazy values
-     */
-    static <V> Optional<LazyValue<V>> reduce(BinaryOperator<V> accumulator,
-                                             Collection<LazyValue<? extends V>> lazies) {
-        Objects.requireNonNull(accumulator);
-        // This also checks for null
-        List<LazyValue<? extends V>> list = List.copyOf(lazies);
-        if (list.isEmpty()) {
-            return Optional.empty();
-        }
-        LazyValue<? extends V> identity = list.getFirst();
-        return Optional.of(reduce(accumulator, identity, list.subList(1, list.size())));
-    }
-
-    /**
-     * {@return a {@link LazyValue} that will lazily compute the reduction of the
-     * provided {@code first} and the provided {@code others} by successively and
-     * lazily applying the provided {@code accumulator} function}
-     *
-     * @param <V>         the value type
-     * @param first       the first lazy value for the accumulating function
-     * @param others      the other lazy values on which a reduction shall be performed
-     * @param accumulator an associative stateless function for combining two inner lazy values
-     */
-    @SuppressWarnings({"unchecked", "varargs"})
-    @SafeVarargs // Creating a stream from a vararg is safe
-    static <V> LazyValue<V> reduce(BinaryOperator<V> accumulator,
-                                   LazyValue<? extends V> first,
-                                   LazyValue<? extends V>... others) {
-        Objects.requireNonNull(accumulator);
-        Objects.requireNonNull(first);
-        return LazyValue.of(() -> {
-                    // Make sure we bind the lazies in the right order
-                    V firstValue = first.get();
-                    return Stream.of((LazyValue<V>[]) others)
-                            .map(LazyValue::get)
-                            .reduce(firstValue, accumulator);
-                }
-        );
+        Objects.requireNonNull(presetMapper);
+        return IntStream.range(0, size)
+                .mapToObj(i -> ListElementLazyValue.create(i, presetMapper))
+                .map(l -> (LazyValue<V>) l)
+                .toList();
     }
 
 }

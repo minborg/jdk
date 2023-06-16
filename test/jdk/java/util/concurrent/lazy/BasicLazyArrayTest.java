@@ -31,13 +31,12 @@
 import org.junit.jupiter.api.*;
 
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.lazy.LazyArray;
-import java.util.function.Consumer;
+import java.util.concurrent.lazy.LazyValue;
 import java.util.function.IntFunction;
 import java.util.stream.IntStream;
 
@@ -48,21 +47,21 @@ final class BasicLazyArrayTest {
     private static final int SIZE = 63;
     private static final int INDEX = 13;
 
-    LazyArray<Integer> lazy;
+    List<LazyValue<Integer>> lazy;
     CountingIntegerMapper mapper;
 
     @BeforeEach
     void setup() {
         mapper = new CountingIntegerMapper(SIZE);
-        lazy = LazyArray.of(SIZE, mapper);
+        lazy = LazyValue.ofList(SIZE, mapper);
     }
 
     @Test
     void compute() {
-        Integer val = lazy.get(INDEX);
+        Integer val = lazy.get(INDEX).get();
         assertEquals(INDEX, val);
         assertEquals(1, mapper.invocations(INDEX));
-        Integer val2 = lazy.get(INDEX);
+        Integer val2 = lazy.get(INDEX).get();
         assertEquals(INDEX, val);
         assertEquals(1, mapper.invocations(INDEX));
     }
@@ -71,10 +70,10 @@ final class BasicLazyArrayTest {
     void nulls() {
         // Mapper is null
         assertThrows(NullPointerException.class,
-                () -> LazyArray.of(SIZE, null));
+                () -> LazyValue.ofList(SIZE, null));
         // Mapper returns null
-        LazyArray<Integer> l = LazyArray.of(SIZE, i -> null);
-        assertNull(l.get(INDEX));
+        List<LazyValue<Integer>> l = LazyValue.ofList(SIZE, i -> null);
+        assertNull(l.get(INDEX).get());
     }
 
     @Test
@@ -87,30 +86,29 @@ final class BasicLazyArrayTest {
             public Integer apply(int value) {
                 return switch (value) {
                     case 1 -> 1;
-                    case 2 -> {
-                        throw new UnsupportedOperationException("Case 2");
-                    }
+                    case 2 -> throw new UnsupportedOperationException("Case 2");
                     default -> 13;
                 };
             }
         };
 
-        LazyArray<Integer> l = LazyArray.of(3, special);
+        List<LazyValue<Integer>> l = LazyValue.ofList(3, special);
 
-        l.get(1);
+        System.out.println("l.getClass() = " + l.getClass());
+
+        l.get(1).get();
         try {
             System.out.println(2);
-            l.get(2);
-        } catch (UnsupportedOperationException ignored) {
+            l.get(2).get();
+        } catch (NoSuchElementException ignored) {
             // Happy path
         }
 
         var toString = l.toString();
-
-        assertTrue(toString.endsWith("LazyArray[-, 1, -]"));
+        assertEquals("[ListElementLazyValue[0].unbound, ListElementLazyValue[1][1], ListElementLazyValue[2].error]", toString);
     }
 
-    // Todo:repeate the test 1000 times
+    // Todo:repeat the test 1000 times
     @Test
     void threadTest() throws InterruptedException {
         var gate = new AtomicBoolean();
@@ -120,26 +118,26 @@ final class BasicLazyArrayTest {
                         Thread.onSpinWait();
                     }
                     // Try to access the instance "simultaneously"
-                    lazy.get(INDEX);
+                    lazy.get(INDEX).get();
                 }))
                 .toList();
         threads.forEach(Thread::start);
         Thread.sleep(10);
         gate.set(true);
         join(threads);
-        assertEquals(INDEX, lazy.orElse(INDEX, null));
+        assertEquals(INDEX, lazy.get(INDEX).orElse(null));
         assertEquals(1, mapper.invocations(INDEX));
     }
 
     @Test
     void fibTest() {
         class A {
-            LazyArray<Integer> fibonacci = LazyArray.of(20, this::fib);
+            List<LazyValue<Integer>> fibonacci = LazyValue.ofList(20, this::fib);
 
             int fib(int n) {
                 return (n < 2) ? n
-                        : fibonacci.get(n - 1) +
-                          fibonacci.get(n - 2);
+                        : fibonacci.get(n - 1).get() +
+                          fibonacci.get(n - 2).get();
             }
         }
 

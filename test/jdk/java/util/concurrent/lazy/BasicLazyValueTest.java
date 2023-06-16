@@ -103,7 +103,7 @@ final class BasicLazyValueTest {
                 throw new UnsupportedOperationException();
             };
             LazyValue<Integer> l = lv.constructor().apply(throwingSupplier);
-            assertThrows(UnsupportedOperationException.class,
+            assertThrows(NoSuchElementException.class,
                     () -> l.get());
 
             // Should not invoke the supplier again
@@ -160,7 +160,7 @@ final class BasicLazyValueTest {
                 });
                 try {
                     lazy2.get();
-                } catch (UnsupportedOperationException ignore) {
+                } catch (NoSuchElementException ignore) {
                 }
                 assertEquals(lazy0.getClass().getSimpleName() + ".error", lazy2.toString());
             }
