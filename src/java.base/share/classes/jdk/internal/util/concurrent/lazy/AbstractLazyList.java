@@ -48,9 +48,7 @@ sealed abstract class AbstractLazyList<E>
 
     protected AbstractLazyList(int size, IntFunction<? extends E> presetMapper) {
         this.presetMapper = presetMapper;
-        this.locks = IntStream.range(0, size)
-                .mapToObj(i -> new Object())
-                .toArray();
+        this.locks = new Object[size];
         this.states = new byte[size];
     }
 
@@ -73,9 +71,15 @@ sealed abstract class AbstractLazyList<E>
 
     private E slowPath(int index) {
         Object lock = lockVolatile(index);
-        if (lock == null) {
-            // There is no lock so, we know there is a bound value
+        if (lock instanceof LazyUtil.Bound) {
             return elementVolatile(index);
+        }
+        if (lock == null) {
+            lock = new Object();
+            if (!casLock(index, lock)) {
+                // Another thread won
+                lock = lockVolatile(index);
+            }
         }
         synchronized (lock) {
             return switch (states[index]) {
@@ -89,12 +93,13 @@ sealed abstract class AbstractLazyList<E>
                         E v = presetMapper.apply(index);
                         if (v == null) {
                             setStateVolatile(index, LazyUtil.NULL);
+                            setLockVolatile(index, LazyUtil.NULL);
                         } else {
                             casElement(index, v);
                             setStateVolatile(index, LazyUtil.NON_NULL);
+                            setLockVolatile(index, LazyUtil.NON_NULL);
                         }
                         // We do not need the lock object anymore
-                        clearLockVolatile(index);
                         yield v;
                     } catch (Throwable e) {
                         setStateVolatile(index, LazyUtil.ERROR);
@@ -151,9 +156,12 @@ sealed abstract class AbstractLazyList<E>
         return OBJECT_ARRAY_HANDLE.getVolatile(locks, index);
     }
 
-    private void clearLockVolatile(int index) {
-        OBJECT_ARRAY_HANDLE.setVolatile(locks, index, 0);
+    private void setLockVolatile(int index, Object lock) {
+        OBJECT_ARRAY_HANDLE.setVolatile(locks, index, lock);
     }
 
+    private boolean casLock(int index, Object lock) {
+        return OBJECT_ARRAY_HANDLE.compareAndSet(locks, index, null, lock);
+    }
 
 }
