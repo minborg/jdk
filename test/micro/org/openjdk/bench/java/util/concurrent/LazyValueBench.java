@@ -83,7 +83,7 @@ public class LazyValueBench {
     private static final LazyValue<VarHandle> LAZY_VALUE_HANDLE = LazyValue.of(LazyValueBench::valueHandle);
 
     private static final Map<Integer, Integer> FIB_MAP = new ConcurrentHashMap<>();
-    private static final List<LazyValue<Integer>> FIB_LAZY_ARRAY = LazyValue.ofList(20, LazyValueBench::fibArrayFunction);
+    private static final List<LazyValue<Integer>> FIB_LAZY_ARRAY = LazyValue.ofListOfLazyValues(20, LazyValueBench::fibArrayFunction);
 
     private static int fibArrayFunction(int n) {
         return (n < 2)

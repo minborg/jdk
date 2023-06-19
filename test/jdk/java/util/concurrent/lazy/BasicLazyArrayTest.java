@@ -32,7 +32,9 @@ import org.junit.jupiter.api.*;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,7 +55,7 @@ final class BasicLazyArrayTest {
     @BeforeEach
     void setup() {
         mapper = new CountingIntegerMapper(SIZE);
-        lazy = LazyValue.ofList(SIZE, mapper);
+        lazy = LazyValue.ofListOfLazyValues(SIZE, mapper);
     }
 
     @Test
@@ -70,9 +72,9 @@ final class BasicLazyArrayTest {
     void nulls() {
         // Mapper is null
         assertThrows(NullPointerException.class,
-                () -> LazyValue.ofList(SIZE, null));
+                () -> LazyValue.ofListOfLazyValues(SIZE, null));
         // Mapper returns null
-        List<LazyValue<Integer>> l = LazyValue.ofList(SIZE, i -> null);
+        List<LazyValue<Integer>> l = LazyValue.ofListOfLazyValues(SIZE, i -> null);
         assertNull(l.get(INDEX).get());
     }
 
@@ -92,7 +94,7 @@ final class BasicLazyArrayTest {
             }
         };
 
-        List<LazyValue<Integer>> l = LazyValue.ofList(3, special);
+        List<LazyValue<Integer>> l = LazyValue.ofListOfLazyValues(3, special);
 
         System.out.println("l.getClass() = " + l.getClass());
 
@@ -132,7 +134,7 @@ final class BasicLazyArrayTest {
     @Test
     void fibTest() {
         class A {
-            List<LazyValue<Integer>> fibonacci = LazyValue.ofList(20, this::fib);
+            List<LazyValue<Integer>> fibonacci = LazyValue.ofListOfLazyValues(20, this::fib);
 
             int fib(int n) {
                 return (n < 2) ? n
@@ -151,6 +153,23 @@ final class BasicLazyArrayTest {
 
         assertArrayEquals(new int[]{1, 1, 2, 3, 5, 8, 13, 21, 34}, array);
 
+    }
+
+    @Test
+    void mapTest() {
+
+        Map<String, LazyValue<Integer>> lenMap = LazyValue.ofMapOfLazyValues(List.of("A", "Ab", "Abc"), String::length);
+
+        assertEquals(1, lenMap.get("A").get());
+        assertEquals(2, lenMap.get("Ab").get());
+        assertEquals(3, lenMap.get("Abc").get());
+        assertNull(lenMap.get("Abcd"));
+
+        String key = "Abc123";
+        int len = Optional.ofNullable(lenMap.get(key))
+                .map(LazyValue::get)
+                .orElseGet(key::length);
+        assertEquals(6, len);
     }
 
     private static void join(Collection<Thread> threads) {

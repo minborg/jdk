@@ -39,7 +39,7 @@ import static jdk.internal.util.concurrent.lazy.LazyUtil.NULL_SENTINEL;
 
 public abstract sealed class AbstractLazyValue<V, P>
         implements LazyValue<V>
-        permits ListElementLazyValue, StandardLazyValue {
+        permits ListElementLazyValue, MapElementLazyValue, StandardLazyValue {
 
     // Allows access to the "value" field with arbitrary memory semantics
     private static final VarHandle VALUE_HANDLE;

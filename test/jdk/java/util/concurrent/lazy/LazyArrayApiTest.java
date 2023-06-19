@@ -37,7 +37,7 @@ public class LazyArrayApiTest {
 
     @Test
     void testArrayFactories() {
-        List<LazyValue<Integer>> a = LazyValue.ofList(10, i -> i);
+        List<LazyValue<Integer>> a = LazyValue.ofListOfLazyValues(10, i -> i);
         assertEquals(5, a.get(5).get());
     }
 

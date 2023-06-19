@@ -132,7 +132,7 @@
  *     class DemoArray {
  *
  *         // 1. Declare a lazy list of size 32
- *         private static final List<LazyValue<Long>> VALUE_PO2_CACHE = LazyValue.ofList(32, index -> 1L << index);
+ *         private static final List<LazyValue<Long>> VALUE_PO2_CACHE = LazyValue.ofListOfLazyValues(32, index -> 1L << index);
  *
  *         public long powerOfTwo(int n) {
  *             // 2. The n:th slot is lazily computed and recorded here upon the

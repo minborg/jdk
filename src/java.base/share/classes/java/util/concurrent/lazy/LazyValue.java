@@ -26,17 +26,23 @@
 package java.util.concurrent.lazy;
 
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.util.concurrent.lazy.IntLazyList;
+import jdk.internal.util.concurrent.lazy.LazyList;
 import jdk.internal.util.concurrent.lazy.ListElementLazyValue;
+import jdk.internal.util.concurrent.lazy.MapElementLazyValue;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
 import jdk.internal.util.concurrent.lazy.AbstractLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyValue;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -49,7 +55,7 @@ import java.util.stream.IntStream;
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY)
 public sealed interface LazyValue<V>
         extends Supplier<V>
-        permits AbstractLazyValue, ListElementLazyValue, PreEvaluatedLazyValue, StandardLazyValue {
+        permits AbstractLazyValue, ListElementLazyValue, MapElementLazyValue, PreEvaluatedLazyValue, StandardLazyValue {
 
     /**
      * {@return {@code true} if no attempt has been made to bind a value}
@@ -184,15 +190,16 @@ public sealed interface LazyValue<V>
         return PreEvaluatedLazyValue.create(value);
     }
 
+
     /**
-     * {@return a new unmodifiable List of {@link LazyValue} elements with the provided
+     * {@return a new unmodifiable List of lazily evaluated elements with the provided
      * {@code size} and provided {@code presetMapper}}
      * <p>
-     * Below, an example of how to cache values in an array is shown:
+     * Below, an example of how to cache values in a list is shown:
      * {@snippet lang = java:
-     *     class DemoArray {
+     *     class DemoList {
      *
-     *         private static final List<LazyValue<Long>> PO2_CACHE =
+     *         private static final List<Long> PO2_CACHE =
      *                 LazyValue.ofList(32, index -> 1L << index);
      *
      *         public long powerOfTwoValue(int n) {
@@ -205,9 +212,77 @@ public sealed interface LazyValue<V>
      * @param size         the size of the List
      * @param presetMapper to invoke when lazily constructing and binding element values
      */
+    static <V> List<V> ofList(int size,
+                              IntFunction<? extends V> presetMapper) {
+        if (size < 0) {
+            throw new IllegalArgumentException();
+        }
+        Objects.requireNonNull(presetMapper);
+        return LazyList.create(size, presetMapper);
+    }
+
+    /**
+     * {@return a new unmodifiable List of lazily evaluated elements with the provided
+     * {@code size} and provided {@code presetMapper}}
+     * <p>
+     * Below, an example of how to cache values in a list is shown:
+     * {@snippet lang = java:
+     *     class DemoList {
+     *
+     *         private static final List<Long> PO2_CACHE =
+     *                 LazyValue.ofList(32, index -> 1L << index);
+     *
+     *         public long powerOfTwoValue(int n) {
+     *             return PO2_CACHE.get(n);
+     *         }
+     *     }
+     *}
+     *
+     * @param <V>          the type of the values
+     * @param type         a class to use for the backing array.
+     * @param size         the size of the List
+     * @param presetMapper to invoke when lazily constructing and binding element values
+     */
     @SuppressWarnings("unchecked")
-    static <V> List<LazyValue<V>> ofList(int size,
-                                         IntFunction<? extends V> presetMapper) {
+    static <V> List<V> ofList(Class<? super V> type,
+                              int size,
+                              IntFunction<? extends V> presetMapper) {
+        Objects.requireNonNull(type);
+        if (size < 0) {
+            throw new IllegalArgumentException();
+        }
+        Objects.requireNonNull(presetMapper);
+        if (type == int.class || type == Integer.class) {
+            return (List<V>) IntLazyList.create(size, (IntFunction<Integer>) presetMapper);
+        }
+        return LazyList.create(size, presetMapper);
+    }
+
+
+    /**
+     * {@return a new unmodifiable List of {@link LazyValue} elements with the provided
+     * {@code size} and provided {@code presetMapper}}
+     * <p>
+     * Below, an example of how to cache values in a list is shown:
+     * {@snippet lang = java:
+     *     class DemoList {
+     *
+     *         private static final List<LazyValue<Long>> PO2_CACHE =
+     *                 LazyValue.ofListOfLazyValues(32, index -> 1L << index);
+     *
+     *         public long powerOfTwoValue(int n) {
+     *             return PO2_CACHE.get(n);
+     *         }
+     *     }
+     *}
+     *
+     * @param <V>          the type of the values
+     * @param size         the size of the List
+     * @param presetMapper to invoke when lazily constructing and binding element values
+     */
+    @SuppressWarnings("unchecked")
+    static <V> List<LazyValue<V>> ofListOfLazyValues(int size,
+                                                     IntFunction<? extends V> presetMapper) {
         if (size < 0) {
             throw new IllegalArgumentException();
         }
@@ -216,6 +291,36 @@ public sealed interface LazyValue<V>
                 .mapToObj(i -> ListElementLazyValue.create(i, presetMapper))
                 .map(l -> (LazyValue<V>) l)
                 .toList();
+    }
+
+    /**
+     * {@return a new unmodifiable Map of {@link LazyValue} elements with the provided
+     * {@code keys} and provided {@code presetMapper}}
+     * <p>
+     * Below, an example of how to cache values in a map is shown:
+     * {@snippet lang = java:
+     *     class DemoMap {
+     *
+     *         private static final Map<Integer, LazyValue<User>> USER_ID_CACHE =
+     *                 LazyValue.ofMapOfLazyValues(DB::findUserById, Stream.of(0, 1, 1000));
+     *
+     *         public User fromCache(int userId) {
+     *             return USER_ID_CACHE.get(userId);
+     *         }
+     *     }
+     *}
+     *
+     * @param <K>          the type of the keys
+     * @param <V>          the type of the values
+     * @param keys         the keys to associate with LazyValue instances
+     * @param presetMapper to invoke when lazily constructing and binding element values
+     */
+    static <K, V> Map<K, LazyValue<V>> ofMapOfLazyValues(Collection<K> keys,
+                                                         Function<? super K, ? extends V> presetMapper) {
+        Objects.requireNonNull(keys);
+        Objects.requireNonNull(presetMapper);
+        return keys.stream()
+                .collect(Collectors.toUnmodifiableMap(Function.identity(), k -> MapElementLazyValue.create(k, presetMapper)));
     }
 
 }

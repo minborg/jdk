@@ -101,7 +101,7 @@ public class Snippets {
     class DemoArray {
 
         // 1. Declare a lazy array of length 32
-        private static final List<LazyValue<Long>> VALUE_PO2_CACHE = LazyValue.ofList(32, index -> 1L << index);
+        private static final List<LazyValue<Long>> VALUE_PO2_CACHE = LazyValue.ofListOfLazyValues(32, index -> 1L << index);
 
         public long powerOfTwo(int n) {
             // 2. The n:th slot is lazily computed and recorded here upon the
@@ -122,7 +122,7 @@ public class Snippets {
 
         // Turns an eager IntFunction into a caching lazy IntFunction
         private static final IntFunction<Value> LAZILY_CACHED_VALUES =
-                i -> LazyValue.ofList(64, EAGER_VALUE).get(i).get();
+                i -> LazyValue.ofListOfLazyValues(64, EAGER_VALUE).get(i).get();
 
         public static void main(String[] args) {
             Value value42 = LAZILY_CACHED_VALUES.apply(42);
@@ -176,7 +176,7 @@ public class Snippets {
     }
 
     static class Fibonacci {
-        private static final List<LazyValue<Integer>> FIBONACCI = LazyValue.ofList(1_000, Fibonacci::number);
+        private static final List<LazyValue<Integer>> FIBONACCI = LazyValue.ofListOfLazyValues(1_000, Fibonacci::number);
 
         public static int number(int n) {
             return (n < 2)

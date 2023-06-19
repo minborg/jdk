@@ -70,6 +70,11 @@ public final class LazyUtil {
         return result;
     }
 
+    static final byte BINDING = 1;
+    static final byte NON_NULL = 2;
+    static final byte NULL = 3;
+    static final byte ERROR = 4;
+
     static final Binding BINDING_SENTINEL = new Binding();
     static final NonNull NON_NULL_SENTINEL = new NonNull();
     static final Null NULL_SENTINEL = new Null();
