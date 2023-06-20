@@ -71,9 +71,14 @@ public final class LazyUtil {
     }
 
     static final byte BINDING = 1;
-    static final byte NON_NULL = 2;
-    static final byte NULL = 3;
-    static final byte ERROR = 4;
+    static final byte BOUND = 2;
+    static final byte NON_NULL = BOUND;
+    static final byte NULL = NON_NULL | 4;
+    static final byte ERROR = 8;
+
+    static boolean isBound(byte state) {
+        return (state & BOUND) != 0;
+    }
 
     static final Binding BINDING_SENTINEL = new Binding();
     static final NonNull NON_NULL_SENTINEL = new NonNull();

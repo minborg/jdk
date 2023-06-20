@@ -25,11 +25,13 @@
 
 package jdk.internal.util.concurrent.lazy;
 
+import jdk.internal.ValueBased;
 import jdk.internal.vm.annotation.Stable;
 
 import java.util.List;
 import java.util.function.IntFunction;
 
+@ValueBased
 public final class LazyList<E>
         extends AbstractLazyList<E>
         implements List<E> {

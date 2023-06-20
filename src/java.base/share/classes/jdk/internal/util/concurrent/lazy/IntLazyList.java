@@ -25,6 +25,7 @@
 
 package jdk.internal.util.concurrent.lazy;
 
+import jdk.internal.ValueBased;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
@@ -32,6 +33,7 @@ import java.lang.invoke.VarHandle;
 import java.util.List;
 import java.util.function.IntFunction;
 
+@ValueBased
 public final class IntLazyList
         extends AbstractLazyList<Integer>
         implements List<Integer> {

@@ -30,6 +30,7 @@ import jdk.internal.util.concurrent.lazy.IntLazyList;
 import jdk.internal.util.concurrent.lazy.LazyList;
 import jdk.internal.util.concurrent.lazy.ListElementLazyValue;
 import jdk.internal.util.concurrent.lazy.MapElementLazyValue;
+import jdk.internal.util.concurrent.lazy.OnDemandLazyList;
 import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
 import jdk.internal.util.concurrent.lazy.AbstractLazyValue;
 import jdk.internal.util.concurrent.lazy.StandardLazyValue;
@@ -258,7 +259,6 @@ public sealed interface LazyValue<V>
         return LazyList.create(size, presetMapper);
     }
 
-
     /**
      * {@return a new unmodifiable List of {@link LazyValue} elements with the provided
      * {@code size} and provided {@code presetMapper}}
@@ -280,17 +280,13 @@ public sealed interface LazyValue<V>
      * @param size         the size of the List
      * @param presetMapper to invoke when lazily constructing and binding element values
      */
-    @SuppressWarnings("unchecked")
     static <V> List<LazyValue<V>> ofListOfLazyValues(int size,
                                                      IntFunction<? extends V> presetMapper) {
         if (size < 0) {
             throw new IllegalArgumentException();
         }
         Objects.requireNonNull(presetMapper);
-        return IntStream.range(0, size)
-                .mapToObj(i -> ListElementLazyValue.create(i, presetMapper))
-                .map(l -> (LazyValue<V>) l)
-                .toList();
+        return OnDemandLazyList.create(size, presetMapper);
     }
 
     /**

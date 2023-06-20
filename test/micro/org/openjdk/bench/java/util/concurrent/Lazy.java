@@ -53,16 +53,10 @@ import java.util.function.Supplier;
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
 @Fork(value=3, jvmArgsAppend = "--enable-preview")
-public class LazyValueBench {
+public class Lazy {
 
     private static final Supplier<Integer> SUPPLIER = () -> 2 << 16;
     private static final Supplier<Integer> NULL_SUPPLIER = () -> null;
-
-    public static final Supplier<Integer> LAZY = LazyValue.of(SUPPLIER);
-    public static final Supplier<Integer> LAZY_NULL = LazyValue.of(NULL_SUPPLIER);
-    public static final Supplier<Integer> LAZY_DC = new VolatileDoubleChecked<>(SUPPLIER);
-
-    // Add chain
 
     public Supplier<Integer> lazy;
     public Supplier<Integer> lazyNull;
@@ -73,34 +67,10 @@ public class LazyValueBench {
     private static VarHandle valueHandle() {
         try {
             return MethodHandles.lookup()
-                    .findVarHandle(org.openjdk.bench.java.util.concurrent.LazyValueBench.class, "value", int.class);
+                    .findVarHandle(org.openjdk.bench.java.util.concurrent.Lazy.class, "value", int.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
-    }
-
-    private static final VarHandle VALUE_HANDLE = valueHandle();
-    private static final LazyValue<VarHandle> LAZY_VALUE_HANDLE = LazyValue.of(LazyValueBench::valueHandle);
-
-    private static final Map<Integer, Integer> FIB_MAP = new ConcurrentHashMap<>();
-    private static final List<LazyValue<Integer>> FIB_LAZY_ARRAY = LazyValue.ofListOfLazyValues(20, LazyValueBench::fibArrayFunction);
-
-    private static int fibArrayFunction(int n) {
-        return (n < 2)
-                ? n
-                : FIB_LAZY_ARRAY.get(n - 1).get() + FIB_LAZY_ARRAY.get(n - 2).get();
-    }
-
-    private static int fibArray(int n) {
-        return (n < 2)
-                ? n
-                : FIB_LAZY_ARRAY.get(n).get();
-    }
-
-    private static int fibMap(int n) {
-        return (n < 2)
-                ? n
-                : FIB_MAP.computeIfAbsent(n, nk -> fibMap(nk - 1) + fibMap(nk - 2) );
     }
 
     @State(Scope.Thread)
@@ -116,43 +86,16 @@ public class LazyValueBench {
     public void setupIteration() {
         lazy = LazyValue.of(SUPPLIER);
         lazyNull = LazyValue.of(NULL_SUPPLIER);
-        // threadUnsafe = new ThreadUnsafe<>(SUPPLIER);
         volatileDoubleChecked = new VolatileDoubleChecked<>(SUPPLIER);
-/*        volatileVhDoubleChecked = new VolatileVhDoubleChecked<>(SUPPLIER);
-        acquireReleaseDoubleChecked = new AquireReleaseDoubleChecked<>(SUPPLIER);
-        delegated = new DelegatorLazy<>(SUPPLIER);*/
     }
 
     @Benchmark
-    public void staticLazyRef(Blackhole bh) {
-        bh.consume(LAZY.get());
-    }
-
-    @Benchmark
-    public void staticLazyRefNull(Blackhole bh) {
-        bh.consume(LAZY_NULL.get());
-    }
-
-    @Benchmark
-    public void staticLocalClass(Blackhole bh) {
-        class Lazy {
-            private static final int INT = SUPPLIER.get();
-        }
-        bh.consume(Lazy.INT);
-    }
-
-    @Benchmark
-    public void staticVolatileDoubleChecked(Blackhole bh) {
-        bh.consume(LAZY_DC.get());
-    }
-
-    @Benchmark
-    public void lazyRef(Blackhole bh) {
+    public void lazy(Blackhole bh) {
         bh.consume(lazy.get());
     }
 
     @Benchmark
-    public void lazyRefNull(Blackhole bh) {
+    public void isNull(Blackhole bh) {
         bh.consume(lazyNull.get());
     }
 
@@ -160,27 +103,6 @@ public class LazyValueBench {
     public void volatileDoubleChecked(Blackhole bh) {
         bh.consume(volatileDoubleChecked.get());
     }
-
-    @Benchmark
-    public void fibConcurrentMap(MyState state, Blackhole bh) {
-        bh.consume(fibMap(state.n));
-    }
-
-    @Benchmark
-    public void fibLazyArray(MyState state, Blackhole bh) {
-        bh.consume(fibArray(state.n));
-    }
-
-    @Benchmark
-    public void methodHandle(Blackhole bh) {
-        bh.consume((int) VALUE_HANDLE.get(this));
-    }
-
-    @Benchmark
-    public void methodHandleLazy(Blackhole bh) {
-        bh.consume((int) LAZY_VALUE_HANDLE.get().get(this));
-    }
-
 
     private static final class DelegatorLazy<T> implements Supplier<T> {
 
@@ -330,6 +252,7 @@ public class LazyValueBench {
             return value;
         }
 
+        @SuppressWarnings("unchecked")
         T getAcquire() {
             return (T) VALUE_VH.getAcquire(this);
         }

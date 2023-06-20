@@ -43,7 +43,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.lazy.LazyValue;
-import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -54,7 +53,7 @@ import java.util.stream.IntStream;
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
 @Fork(value=3, jvmArgsAppend = "--enable-preview")
-public class LazyArrayBench {
+public class LazyStaticList {
 
     private static final int SIZE = 10;
     private static final int POS = SIZE / 2;
@@ -69,34 +68,24 @@ public class LazyArrayBench {
             .mapToObj(i -> new VolatileDoubleChecked<>(i, MAPPER))
             .toList();
 
-    // Add chain
-
-    public List<LazyValue<Integer>> lazyListOfLazy;
-    public List<LazyValue<Integer>> lazyListOfLazyNull;
-    public List<Integer> lazyList;
-    public List<Integer> lazyIntList;
-    public List<VolatileDoubleChecked<Integer>> volatileDoubleChecked;
-
     private int value;
 
     private static VarHandle valueHandle() {
         try {
             return MethodHandles.lookup()
-                    .findVarHandle(LazyArrayBench.class, "value", int.class);
+                    .findVarHandle(LazyStaticList.class, "value", int.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
     }
 
     private static final VarHandle VALUE_HANDLE = valueHandle();
-    private static final List<LazyValue<VarHandle>> LAZY_VALUE_HANDLE_LIST_OF_LAZY = LazyValue.ofListOfLazyValues(SIZE, i -> LazyArrayBench.valueHandle());
-    private static final List<VarHandle> LAZY_VALUE_HANDLE_LIST = LazyValue.ofList(SIZE, i -> LazyArrayBench.valueHandle());
+    private static final List<LazyValue<VarHandle>> LAZY_VALUE_HANDLE_LIST_OF_LAZY = LazyValue.ofListOfLazyValues(SIZE, i -> LazyStaticList.valueHandle());
+    private static final List<VarHandle> LAZY_VALUE_HANDLE_LIST = LazyValue.ofList(SIZE, i -> LazyStaticList.valueHandle());
 
     private static final Map<Integer, Integer> FIB_MAP = new ConcurrentHashMap<>();
-    private static final List<LazyValue<Integer>> FIB_LAZY_ARRAY = LazyValue.ofListOfLazyValues(20, LazyArrayBench::fibArrayFunction);
-    private static final Map<Integer, LazyValue<Integer>> FIB_LAZY_MAP = LazyValue.ofMapOfLazyValues(IntStream.range(0, 20).boxed().toList(), LazyArrayBench::fibMapFunction);
-
-    private static final List<Integer> SET_OF_0_to_999 = IntStream.range(0, 1000).boxed().toList();
+    private static final List<LazyValue<Integer>> FIB_LAZY_ARRAY = LazyValue.ofListOfLazyValues(20, LazyStaticList::fibArrayFunction);
+    private static final Map<Integer, LazyValue<Integer>> FIB_LAZY_MAP = LazyValue.ofMapOfLazyValues(IntStream.range(0, 20).boxed().toList(), LazyStaticList::fibMapFunction);
 
     private static int fibArrayFunction(int n) {
         return (n < 2)
@@ -133,64 +122,28 @@ public class LazyArrayBench {
         public int n = POS;
     }
 
-    /**
-     * The test variables are allocated every iteration so you can assume
-     * they are initialized to get similar behaviour across iterations
-     */
-    @Setup(Level.Iteration)
-    public void setupIteration() {
-        lazyListOfLazy = LazyValue.ofListOfLazyValues(SIZE, MAPPER);;
-        lazyListOfLazyNull = LazyValue.ofListOfLazyValues(SIZE, MAPPER);
-        // threadUnsafe = new ThreadUnsafe<>(SUPPLIER);
-        volatileDoubleChecked = IntStream.range(0, SIZE)
-                .mapToObj(i -> new VolatileDoubleChecked<>(i, MAPPER))
-                .toList();
-        lazyList = LazyValue.ofList(SIZE, MAPPER);
-        lazyIntList = LazyValue.ofList(int.class, SIZE, MAPPER);
-    }
-
     @Benchmark
-    public void createListOfLazyValues1000(Blackhole bh) {
-        bh.consume(LazyValue.ofListOfLazyValues(1000, MAPPER));
-    }
-
-    @Benchmark
-    public void createList1000(Blackhole bh) {
-        bh.consume(LazyValue.ofList(1000, MAPPER));
-    }
-
-    @Benchmark
-    public void createIntList1000(Blackhole bh) {
-        bh.consume(LazyValue.ofList(int.class, 1000, MAPPER));
-    }
-
-    @Benchmark
-    public void createMapOf1000(Blackhole bh) {
-        bh.consume(LazyValue.<Integer, Integer>ofMapOfLazyValues(SET_OF_0_to_999, Function.identity()));
-    }
-
-    @Benchmark
-    public void staticLazyListOfLazy(Blackhole bh) {
+    public void lazyListOfLazy(Blackhole bh) {
         bh.consume(LAZY_LIST_OF_LAZY.get(POS).get());
     }
 
     @Benchmark
-    public void staticLazyList(Blackhole bh) {
+    public void lazyList(Blackhole bh) {
         bh.consume(LAZY_LIST.get(POS));
     }
 
     @Benchmark
-    public void staticIntLazyList(Blackhole bh) {
+    public void intLazyList(Blackhole bh) {
         bh.consume(LAZY_INT_LIST.get(POS));
     }
 
     @Benchmark
-    public void staticLazyListOfLazyNull(Blackhole bh) {
+    public void lazyListOfLazyNull(Blackhole bh) {
         bh.consume(LAZY_LIST_OF_LAZY_NULL.get(POS).get());
     }
 
     @Benchmark
-    public void staticLocalClass(Blackhole bh) {
+    public void localClass(Blackhole bh) {
         class Lazy {
             private static final int[] INT = IntStream.range(0, SIZE).toArray();
         }
@@ -198,48 +151,23 @@ public class LazyArrayBench {
     }
 
     @Benchmark
-    public void staticVolatileDoubleChecked(Blackhole bh) {
+    public void volatileDoubleChecked(Blackhole bh) {
         bh.consume(LAZY_DC.get(POS).get());
     }
 
     @Benchmark
-    public void lazyListOfLazy(MyState state, Blackhole bh) {
-        bh.consume(lazyListOfLazy.get(state.n).get());
+    public void fibConcurrentMap(Blackhole bh) {
+        bh.consume(fibMap(POS));
     }
 
     @Benchmark
-    public void lazyListOfLazyNull(MyState state, Blackhole bh) {
-        bh.consume(lazyListOfLazyNull.get(state.n).get());
+    public void fibLazyList(Blackhole bh) {
+        bh.consume(fibArray(POS));
     }
 
     @Benchmark
-    public void volatileDoubleChecked(MyState state, Blackhole bh) {
-        bh.consume(volatileDoubleChecked.get(state.n).get());
-    }
-
-    @Benchmark
-    public void lazyList(MyState state, Blackhole bh) {
-        bh.consume(lazyList.get(state.n));
-    }
-
-    @Benchmark
-    public void lazyIntList(MyState state, Blackhole bh) {
-        bh.consume(lazyIntList.get(state.n));
-    }
-
-    @Benchmark
-    public void fibConcurrentMap(MyState state, Blackhole bh) {
-        bh.consume(fibMap(state.n));
-    }
-
-    @Benchmark
-    public void fibLazyArray(MyState state, Blackhole bh) {
-        bh.consume(fibArray(state.n));
-    }
-
-    @Benchmark
-    public void fibLazyMap(MyState state, Blackhole bh) {
-        bh.consume(fibLazyMap(state.n));
+    public void fibLazyMap(Blackhole bh) {
+        bh.consume(fibLazyMap(POS));
     }
 
     @Benchmark
