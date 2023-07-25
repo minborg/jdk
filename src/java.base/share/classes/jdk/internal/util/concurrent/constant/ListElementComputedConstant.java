@@ -30,7 +30,7 @@ import java.util.function.IntFunction;
 
 public final class ListElementComputedConstant<V>
         extends AbstractComputedConstant<V, IntFunction<? extends V>>
-        implements ComputedConstant<V> {
+        implements ComputedConstant.OfSupplied<V> {
 
     private final int index;
 
@@ -54,7 +54,7 @@ public final class ListElementComputedConstant<V>
         return "ListElementComputedConstant[" + index + "]";
     }
 
-    public static <V> ComputedConstant<V> create(int index, IntFunction<? extends V> provider) {
+    public static <V> ComputedConstant.OfSupplied<V> create(int index, IntFunction<? extends V> provider) {
         return new ListElementComputedConstant<>(index, provider);
     }
 

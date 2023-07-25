@@ -103,7 +103,7 @@ public class Snippets {
     class DemoArray {
 
         // 1. Declare a lazy array of length 32
-        private static final List<ComputedConstant<Long>> VALUE_PO2_CACHE = ComputedConstant.ofList(32, index -> 1L << index);
+        private static final List<ComputedConstant.OfSupplied<Long>> VALUE_PO2_CACHE = ComputedConstant.ofList(32, index -> 1L << index);
 
         public long powerOfTwo(int n) {
             // 2. The n:th slot is lazily computed and recorded here upon the
@@ -119,8 +119,7 @@ public class Snippets {
     class DemoIntFunction {
 
         // Eager IntFunction<Value>
-        private static final IntFunction<Value> EAGER_VALUE =
-                index -> new Value(index);
+        private static final IntFunction<Value> EAGER_VALUE = Value::new;
 
         // Turns an eager IntFunction into a caching lazy IntFunction
         private static final IntFunction<Value> LAZILY_CACHED_VALUES =
@@ -178,7 +177,7 @@ public class Snippets {
     }
 
     static class Fibonacci {
-        private static final List<ComputedConstant<Integer>> FIBONACCI = ComputedConstant.ofList(1_000, Fibonacci::number);
+        private static final List<ComputedConstant.OfSupplied<Integer>> FIBONACCI = ComputedConstant.ofList(1_000, Fibonacci::number);
 
         public static int number(int n) {
             return (n < 2)
@@ -196,13 +195,26 @@ public class Snippets {
 
     static
 
+    class Bar {
+        // 1. Declare a computed constant value
+        private static final ComputedConstant<Logger> LOGGER =
+                ComputedConstant.of( () -> Logger.getLogger("com.foo.Bar") );
+
+        static Logger logger() {
+            // 2. Access the computed value (evaluation made before the first access)
+            return LOGGER.get();
+        }
+    }
+
+    static
+
     class Labels {
 
         private static final ComputedConstant<ResourceBundle> BUNDLE = ComputedConstant.of(
                 () -> ResourceBundle.getBundle("LabelsBundle", Locale.GERMAN)
         );
 
-        private final List<ComputedConstant<String>> labels;
+        private final List<ComputedConstant.OfSupplied<String>> labels;
 
         public Labels(int size) {
             labels = ComputedConstant.ofList(
@@ -279,6 +291,14 @@ public class Snippets {
         public int[] values() {
             return values.clone();
         }
+    }
+
+    static class Logger {
+
+        static Logger getLogger(String id) {
+            return null;
+        }
+
     }
 
     static class Connection {

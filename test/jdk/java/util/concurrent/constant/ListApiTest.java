@@ -37,7 +37,7 @@ public class ListApiTest {
 
     @Test
     void testArrayFactories() {
-        List<ComputedConstant<Integer>> a = ComputedConstant.ofList(10, i -> i);
+        List<ComputedConstant.OfSupplied<Integer>> a = ComputedConstant.ofList(10, i -> i);
         assertEquals(5, a.get(5).get());
     }
 

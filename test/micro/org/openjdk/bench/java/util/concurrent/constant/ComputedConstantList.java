@@ -58,8 +58,8 @@ public class ComputedConstantList {
     private static final IntFunction<Integer> MAPPER = i -> i;
     private static final IntFunction<Integer> NULL_MAPPER = i -> null;
 
-    public List<ComputedConstant<Integer>> listOfConstants;
-    public List<ComputedConstant<Integer>> listOfConstantsNull;
+    public List<ComputedConstant.OfSupplied<Integer>> listOfConstants;
+    public List<ComputedConstant.OfSupplied<Integer>> listOfConstantsNull;
     public List<Integer> list;
     public List<Integer> intList;
     public List<VolatileDoubleChecked<Integer>> volatileDoubleChecked;

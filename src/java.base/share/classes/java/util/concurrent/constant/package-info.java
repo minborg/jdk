@@ -132,7 +132,7 @@
  *     class DemoArray {
  *
  *         // 1. Declare a list of ComputedConstant elements of size 32
- *         private static final List<ComputedConstant<Long>> VALUE_PO2_CACHE = ComputedConstant.ofList(32, index -> 1L << index);
+ *         private static final List<ComputedConstant.OfSupplied<Long>> VALUE_PO2_CACHE = ComputedConstant.ofList(32, index -> 1L << index);
  *
  *         public long powerOfTwo(int n) {
  *             // 2. The n:th slot is computed and bound here upon the

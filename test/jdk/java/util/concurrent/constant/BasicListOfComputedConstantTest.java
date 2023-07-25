@@ -49,7 +49,7 @@ final class BasicListOfComputedConstantTest {
     private static final int SIZE = 63;
     private static final int INDEX = 13;
 
-    List<ComputedConstant<Integer>> constants;
+    List<ComputedConstant.OfSupplied<Integer>> constants;
     CountingIntegerMapper mapper;
 
     @BeforeEach
@@ -74,7 +74,7 @@ final class BasicListOfComputedConstantTest {
         assertThrows(NullPointerException.class,
                 () -> ComputedConstant.ofList(SIZE, null));
         // Mapper returns null
-        List<ComputedConstant<Integer>> l = ComputedConstant.ofList(SIZE, i -> null);
+        List<ComputedConstant.OfSupplied<Integer>> l = ComputedConstant.ofList(SIZE, i -> null);
         assertNull(l.get(INDEX).get());
     }
 
@@ -94,7 +94,7 @@ final class BasicListOfComputedConstantTest {
             }
         };
 
-        List<ComputedConstant<Integer>> l = ComputedConstant.ofList(3, special);
+        List<ComputedConstant.OfSupplied<Integer>> l = ComputedConstant.ofList(3, special);
 
         System.out.println("l.getClass() = " + l.getClass());
 
@@ -108,56 +108,6 @@ final class BasicListOfComputedConstantTest {
 
         var toString = l.toString();
         assertEquals("[ListElementComputedConstant[0].unbound, ListElementComputedConstant[1][1], ListElementComputedConstant[2].error]", toString);
-    }
-
-    @Test
-    void bind() {
-        assertTrue(constant().isUnbound());
-        assertFalse(constant().isBinding());
-        assertFalse(constant().isBound());
-        assertFalse(constant().isError());
-        constant().bind(42);
-        assertEquals(42, constant().get());
-        assertFalse(constant().isUnbound());
-        assertFalse(constant().isBinding());
-        assertTrue(constant().isBound());
-        assertFalse(constant().isError());
-    }
-
-    @Test
-    void bindNull() {
-        assertTrue(constant().isUnbound());
-        assertFalse(constant().isBinding());
-        assertFalse(constant().isBound());
-        assertFalse(constant().isError());
-        constant().bind(null);
-        assertNull(constant().get());
-        assertFalse(constant().isUnbound());
-        assertFalse(constant().isBinding());
-        assertTrue(constant().isBound());
-        assertFalse(constant().isError());
-    }
-
-    @Test
-    void computeIfUnbound() {
-        int actual = constant().computeIfUnbound(() -> 42);
-        assertEquals(42, actual);
-        assertEquals(42, constant().get());
-        assertFalse(constant().isUnbound());
-        assertFalse(constant().isBinding());
-        assertTrue(constant().isBound());
-        assertFalse(constant().isError());
-    }
-
-    @Test
-    void computeIfUnboundNull() {
-        Integer actual = constant().computeIfUnbound(() -> null);
-        assertNull(actual);
-        assertNull(constant().get());
-        assertFalse(constant().isUnbound());
-        assertFalse(constant().isBinding());
-        assertTrue(constant().isBound());
-        assertFalse(constant().isError());
     }
 
     // Todo:repeat the test 1000 times
@@ -184,7 +134,7 @@ final class BasicListOfComputedConstantTest {
     @Test
     void fibTest() {
         class A {
-            final List<ComputedConstant<Integer>> fibonacci = ComputedConstant.ofList(20, this::fib);
+            final List<ComputedConstant.OfSupplied<Integer>> fibonacci = ComputedConstant.ofList(20, this::fib);
 
             int fib(int n) {
                 return (n < 2) ? n
@@ -208,7 +158,7 @@ final class BasicListOfComputedConstantTest {
     @Test
     void mapTest() {
 
-        Map<String, ComputedConstant<Integer>> lenMap = ComputedConstant.ofMap(List.of("A", "Ab", "Abc"), String::length);
+        Map<String, ComputedConstant.OfSupplied<Integer>> lenMap = ComputedConstant.ofMap(List.of("A", "Ab", "Abc"), String::length);
 
         assertEquals(1, lenMap.get("A").get());
         assertEquals(2, lenMap.get("Ab").get());
@@ -222,7 +172,7 @@ final class BasicListOfComputedConstantTest {
         assertEquals(6, len);
     }
 
-    private ComputedConstant<Integer> constant() {
+    private ComputedConstant.OfSupplied<Integer> constant() {
         return constants.get(INDEX);
     }
 

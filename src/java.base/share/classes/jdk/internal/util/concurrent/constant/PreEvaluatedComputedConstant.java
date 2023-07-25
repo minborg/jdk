@@ -30,7 +30,7 @@ import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.Supplier;
 
 public final class PreEvaluatedComputedConstant<V>
-        implements ComputedConstant<V> {
+        implements ComputedConstant.OfSupplied<V>, ComputedConstant.OfEmpty<V> {
 
     private final V value;
 
@@ -92,7 +92,11 @@ public final class PreEvaluatedComputedConstant<V>
         return "PreEvaluatedComputedConstant[" + value + "]";
     }
 
-    public static <V> ComputedConstant<V> create(V v) {
+    public static <V> ComputedConstant.OfSupplied<V> createSupplied(V v) {
+        return new PreEvaluatedComputedConstant<>(v);
+    }
+
+    public static <V> ComputedConstant.OfEmpty<V> createEmpty(V v) {
         return new PreEvaluatedComputedConstant<>(v);
     }
 

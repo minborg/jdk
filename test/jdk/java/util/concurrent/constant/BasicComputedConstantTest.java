@@ -106,7 +106,7 @@ final class BasicComputedConstantTest {
 
     @Test
     void bind() {
-        ComputedConstant<Integer> constant = ComputedConstant.ofEmpty();
+        ComputedConstant.OfEmpty<Integer> constant = ComputedConstant.ofEmpty();
         assertTrue(constant.isUnbound());
         assertFalse(constant.isBinding());
         assertFalse(constant.isBound());
@@ -121,7 +121,7 @@ final class BasicComputedConstantTest {
 
     @Test
     void bindNull() {
-        ComputedConstant<Integer> constant = ComputedConstant.ofEmpty();
+        ComputedConstant.OfEmpty<Integer> constant = ComputedConstant.ofEmpty();
         assertTrue(constant.isUnbound());
         assertFalse(constant.isBinding());
         assertFalse(constant.isBound());
@@ -136,7 +136,7 @@ final class BasicComputedConstantTest {
 
     @Test
     void computeIfUnbound() {
-        ComputedConstant<Integer> constant = ComputedConstant.ofEmpty();
+        ComputedConstant.OfEmpty<Integer> constant = ComputedConstant.ofEmpty();
         int actual = constant.computeIfUnbound(() -> 42);
         assertEquals(42, actual);
         assertEquals(42, constant.get());
@@ -148,7 +148,7 @@ final class BasicComputedConstantTest {
 
     @Test
     void computeIfUnboundNull() {
-        ComputedConstant<Integer> constant = ComputedConstant.ofEmpty();
+        ComputedConstant.OfEmpty<Integer> constant = ComputedConstant.ofEmpty();
         Integer actual = constant.computeIfUnbound(() -> null);
         assertNull(actual);
         assertNull(constant.get());
@@ -242,7 +242,7 @@ final class BasicComputedConstantTest {
     private static Stream<ComputedConstantVariant> computedConstantVariants() {
         return Stream.of(
                         new NamedConstructor("ComputedConstant::of(Supplier)", ComputedConstant::of),
-                        new NamedConstructor("ComputedConstant::of(Value)", s -> ComputedConstant.of(s.get())))
+                        new NamedConstructor("ComputedConstant::of(Value)", s -> ComputedConstant.ofSupplied(s.get())))
                 .map(nc -> {
                     var supplier = new CountingIntegerSupplier();
                     var constant = nc.constructor().apply(supplier);

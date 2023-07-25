@@ -36,7 +36,7 @@ import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.Supplier;
 
 public abstract sealed class AbstractComputedConstant<V, P>
-        implements ComputedConstant<V>
+        implements ComputedConstant.OfEmpty<V>, ComputedConstant.OfSupplied<V>
         permits ListElementComputedConstant,
         MapElementComputedConstant,
         StandardComputedConstant {

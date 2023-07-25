@@ -12,19 +12,19 @@ import java.util.function.IntFunction;
 
 @ValueBased
 public class OnDemandComputedConstantList<V>
-        extends AbstractList<ComputedConstant<V>>
-        implements List<ComputedConstant<V>> {
+        extends AbstractList<ComputedConstant.OfSupplied<V>>
+        implements List<ComputedConstant.OfSupplied<V>> {
 
     private static final VarHandle ARRAY_HANDLE = MethodHandles.arrayElementVarHandle(ComputedConstant[].class);
 
     private final IntFunction<? extends V> provider;
     @Stable
-    private ComputedConstant<V>[] values;
+    private ComputedConstant.OfSupplied<V>[] values;
 
     @SuppressWarnings("unchecked")
     private OnDemandComputedConstantList(int size, IntFunction<? extends V> provider) {
         this.provider = provider;
-        this.values = (ComputedConstant<V>[]) new ComputedConstant<?>[size];
+        this.values = (ComputedConstant.OfSupplied<V>[]) new ComputedConstant.OfSupplied<?>[size];
     }
 
     @Override
@@ -34,19 +34,19 @@ public class OnDemandComputedConstantList<V>
 
     @SuppressWarnings("unchecked")
     @Override
-    public ComputedConstant<V> get(int index) {
-        ComputedConstant<V> v = values[index];
+    public ComputedConstant.OfSupplied<V> get(int index) {
+        ComputedConstant.OfSupplied<V> v = values[index];
         if (v != null) {
             return v;
         }
         v = ListElementComputedConstant.create(index, provider);
         if (!ARRAY_HANDLE.compareAndSet(values, index, null, v)) {
-            v = (ComputedConstant<V>) ARRAY_HANDLE.getVolatile(values, index);
+            v = (ComputedConstant.OfSupplied<V>) ARRAY_HANDLE.getVolatile(values, index);
         }
         return v;
     }
 
-    public static <V> List<ComputedConstant<V>> create(int size, IntFunction<? extends V> provider) {
+    public static <V> List<ComputedConstant.OfSupplied<V>> create(int size, IntFunction<? extends V> provider) {
         return new OnDemandComputedConstantList<>(size, provider);
     }
 

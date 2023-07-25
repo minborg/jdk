@@ -30,7 +30,8 @@ import java.util.function.Supplier;
 
 public final class StandardComputedConstant<V>
         extends AbstractComputedConstant<V, Supplier<? extends V>>
-        implements ComputedConstant<V> {
+        implements ComputedConstant.OfEmpty<V>,
+        ComputedConstant.OfSupplied<V> {
 
     private StandardComputedConstant(Supplier<? extends V> provider) {
         super(provider);
@@ -51,12 +52,12 @@ public final class StandardComputedConstant<V>
         return "StandardComputedConstant";
     }
 
-    public static <V> ComputedConstant<V> create(Supplier<? extends V> provider) {
+    public static <V> ComputedConstant.OfSupplied<V> create(Supplier<? extends V> provider) {
         return new StandardComputedConstant<>(provider);
     }
 
-    public static <V> ComputedConstant<V> create() {
-        return create(ComputedConstantUtil.throwingSupplier());
+    public static <V> ComputedConstant.OfEmpty<V> create() {
+        return new StandardComputedConstant<>(ComputedConstantUtil.throwingSupplier());
     }
 
 }

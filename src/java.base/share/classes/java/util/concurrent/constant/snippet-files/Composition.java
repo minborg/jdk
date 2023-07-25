@@ -48,7 +48,7 @@ public class Composition {
     class Primes {
 
         // 1. A lazy field
-        private static final ComputedConstant<Integer> LARGE_PRIME = ComputedConstant.of(Primes::largePrime);
+        private static final ComputedConstant.OfSupplied<Integer> LARGE_PRIME = ComputedConstant.of(Primes::largePrime);
         // 2. A lazy field that is the result of lazily applying a mapping operation of an existing lazy field
         private static final ComputedConstant<Integer> EVEN_LARGER_PRIME = LARGE_PRIME.map(Primes::nextPrime);
         // 3. A field that lazily combines two existing lazy fields by lazily applying a reduction on the eventually bound values
@@ -115,7 +115,7 @@ public class Composition {
             }
         }
 
-        private static final ComputedConstant<MethodHandles.Lookup> LOOKUP = ComputedConstant.of(MethodHandles::lookup);
+        private static final ComputedConstant.OfSupplied<MethodHandles.Lookup> LOOKUP = ComputedConstant.of(MethodHandles::lookup);
 
         private static final ComputedConstant<MethodHandle> LENGTH = LOOKUP.map(
                 l -> find(l, "length", MethodType.methodType(int.class)));
@@ -172,7 +172,7 @@ public class Composition {
 
     abstract class LazyComposeSocket implements java.io.Closeable {
 
-        private static final ComputedConstant<MethodHandles.Lookup> LOOKUP = ComputedConstant.of(MethodHandles::lookup);
+        private static final ComputedConstant.OfSupplied<MethodHandles.Lookup> LOOKUP = ComputedConstant.of(MethodHandles::lookup);
         private static final ComputedConstant<VarHandle>
                 STATE = LOOKUP.map(l -> find(l, "state", int.class)),
                 IN = LOOKUP.map(l -> find(l, "in", InputStream.class)),
@@ -241,13 +241,13 @@ public class Composition {
         }
 
         // Lazy Evaluator
-        static ComputedConstant<Double> lazilyEval(Expr n) {
+        static ComputedConstant.OfSupplied<Double> lazilyEval(Expr n) {
             return switch (n) {
                 case Add(var left, var right) -> ComputedConstant.of(() -> lazilyEval(left).get() + lazilyEval(right).get());
                 case Mul(var left, var right) -> ComputedConstant.of(() -> lazilyEval(left).get() * lazilyEval(right).get());
                 case Neg(var exp)                 -> lazilyEval(exp).map(d -> -d);
-                case Const(double val)            -> ComputedConstant.of(val);
-                case Lazy(ComputedConstant<Double> lazy) -> lazy;
+                case Const(double val)            -> ComputedConstant.ofSupplied(val);
+                case Lazy(ComputedConstant.OfSupplied<Double> lazy) -> lazy;
             };
         }
 

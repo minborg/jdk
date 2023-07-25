@@ -57,14 +57,14 @@ public class ComputedConstantCreate {
     @Benchmark
     public void create1000(Blackhole bh) {
         for (int i = 0; i < 1000; i++) {
-            bh.consume(ComputedConstant.of(MAPPER));
+            bh.consume(ComputedConstant.ofSupplied(MAPPER));
         }
     }
 
     @Benchmark
     public void create100(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
-            bh.consume(ComputedConstant.of(MAPPER));
+            bh.consume(ComputedConstant.ofSupplied(MAPPER));
         }
     }
 

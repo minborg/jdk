@@ -30,7 +30,7 @@ import java.util.function.Function;
 
 public final class MapElementComputedConstant<K, V>
         extends AbstractComputedConstant<V, Function<? super K, ? extends V>>
-        implements ComputedConstant<V> {
+        implements ComputedConstant.OfSupplied<V> {
 
     private final K key;
 
@@ -54,7 +54,7 @@ public final class MapElementComputedConstant<K, V>
         return "MapElementComputedConstant[" + key + "]";
     }
 
-    public static <K, V> ComputedConstant<V> create(K key, Function<? super K, ? extends V> provider) {
+    public static <K, V> ComputedConstant.OfSupplied<V> create(K key, Function<? super K, ? extends V> provider) {
         return new MapElementComputedConstant<>(key, provider);
     }
 

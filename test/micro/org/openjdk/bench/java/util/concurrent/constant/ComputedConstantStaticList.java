@@ -60,8 +60,8 @@ public class ComputedConstantStaticList {
     private static final IntFunction<Integer> MAPPER = i -> i;
     private static final IntFunction<Integer> NULL_MAPPER = i -> null;
 
-    public static final List<ComputedConstant<Integer>> LIST_OF_CONSTANTS = ComputedConstant.ofList(SIZE, MAPPER);
-    public static final List<ComputedConstant<Integer>> LIST_OF_CONSTANTS_NULL = ComputedConstant.ofList(SIZE, NULL_MAPPER);
+    public static final List<ComputedConstant.OfSupplied<Integer>> LIST_OF_CONSTANTS = ComputedConstant.ofList(SIZE, MAPPER);
+    public static final List<ComputedConstant.OfSupplied<Integer>> LIST_OF_CONSTANTS_NULL = ComputedConstant.ofList(SIZE, NULL_MAPPER);
     public static final List<Integer> LIST = ComputedConstant.Hidden.ofActualList(SIZE, MAPPER);
     public static final List<Integer> INT_LIST = ComputedConstant.Hidden.ofActualList(int.class, SIZE, MAPPER);
     public static final List<VolatileDoubleChecked<Integer>> DC = IntStream.range(0, SIZE)
@@ -80,12 +80,12 @@ public class ComputedConstantStaticList {
     }
 
     private static final VarHandle VALUE_HANDLE = valueHandle();
-    private static final List<ComputedConstant<VarHandle>> VALUE_HANDLE_LIST_OF_CONSTANT = ComputedConstant.ofList(SIZE, i -> org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList.valueHandle());
+    private static final List<ComputedConstant.OfSupplied<VarHandle>> VALUE_HANDLE_LIST_OF_CONSTANT = ComputedConstant.ofList(SIZE, i -> org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList.valueHandle());
     private static final List<VarHandle> VALUE_HANDLE_LIST = ComputedConstant.Hidden.ofActualList(SIZE, i -> org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList.valueHandle());
 
     private static final Map<Integer, Integer> FIB_MAP = new ConcurrentHashMap<>();
-    private static final List<ComputedConstant<Integer>> FIB_LIST_CONSTANTS = ComputedConstant.ofList(20, org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList::fibArrayFunction);
-    private static final Map<Integer, ComputedConstant<Integer>> FIB_MAP_CONSTANTS = ComputedConstant.ofMap(IntStream.range(0, 20).boxed().toList(), org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList::fibMapFunction);
+    private static final List<ComputedConstant.OfSupplied<Integer>> FIB_LIST_CONSTANTS = ComputedConstant.ofList(20, org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList::fibArrayFunction);
+    private static final Map<Integer, ComputedConstant.OfSupplied<Integer>> FIB_MAP_CONSTANTS = ComputedConstant.ofMap(IntStream.range(0, 20).boxed().toList(), org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList::fibMapFunction);
 
     private static int fibArrayFunction(int n) {
         return (n < 2)

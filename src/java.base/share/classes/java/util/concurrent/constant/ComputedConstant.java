@@ -59,11 +59,8 @@ import java.util.stream.Collectors;
 @PreviewFeature(feature = PreviewFeature.Feature.COMPUTED_CONSTANTS)
 public sealed interface ComputedConstant<V>
         extends Supplier<V>
-        permits AbstractComputedConstant,
-        ListElementComputedConstant,
-        MapElementComputedConstant,
-        PreEvaluatedComputedConstant,
-        StandardComputedConstant {
+        permits ComputedConstant.OfEmpty,
+        ComputedConstant.OfSupplied {
 
     /**
      * {@return {@code true} if no attempt has been made to bind a value}
@@ -88,121 +85,172 @@ public sealed interface ComputedConstant<V>
     boolean isError();
 
     /**
-     * {@return the bound value of this computed constant. If no value is bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain ComputedConstant#of(Supplier) supplier}</em> (if any)}
-     * <p>
-     * If no attempt to bind a value was made previously and no pre-set supplier exists, throws a NoSuchElementException.
-     * If the pre-set supplier returns {@code null}, {@code null} is bound and returned.
-     * If the pre-set supplier throws an (unchecked) exception, the exception is wrapped into
-     * a {@link NoSuchElementException} which is thrown, and no value is bound.  If an Error
-     * is thrown by the per-set supplier, the Error is relayed to the caller.  If an Exception
-     * or an Error is thrown by the pre-set supplier, no further attempt is made to bind the value and all
-     * subsequent invocations of this method will throw a new {@link NoSuchElementException}.
-     * <p>
-     * The most common usage is to construct a new object serving as a memoized result, as in:
-     * <p>
-     * {@snippet lang = java:
-     *    ComputedConstant<V> constant = ComputedConstant.of(Value::new);
-     *    // ...
-     *    V value = constant.get();
-     *    assertNotNull(value); // Value is non-null
-     *}
-     * <p>
-     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
-     * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+     * An interface that represents an <em>empty</em> computed constant (<em>without</em> any pre-set supplier).
      *
-     * @throws NoSuchElementException if a value cannot be bound
-     * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
-     *                                indirectly in the same thread).
-     * @throws Error                  if the pre-set supplier throws an Error
+     * @param <V> The type of the value to be bound
      */
-    @Override
-    V get();
+    @PreviewFeature(feature = PreviewFeature.Feature.COMPUTED_CONSTANTS)
+    sealed interface OfEmpty<V>
+            extends ComputedConstant<V>
+            permits AbstractComputedConstant,
+            PreEvaluatedComputedConstant,
+            StandardComputedConstant {
+
+        /**
+         * Atomically binds the value of this computed constant to the provided {@code value}.
+         * <p>
+         * If a thread calls this method while being bound by another thread, the current thread will be suspended until
+         * the binding completes (successfully or not).
+         *
+         * @param value to bind
+         * @throws IllegalStateException if a value is already bound or a previous attempt was made to bind a value
+         */
+        void bind(V value);
+
+        /**
+         * {@return the bound value of this computed constant. If no value is bound, atomically attempts to
+         * compute and record a bound value using the provided {@code supplier}}
+         * <p>
+         * If the supplier returns {@code null}, {@code null} is bound and returned.
+         * If the supplier throws an (unchecked) exception, the exception is wrapped into
+         * a {@link NoSuchElementException} which is thrown, and no value is bound.  If an Error
+         * is thrown by the supplier, the Error is relayed to the caller.  If an Exception
+         * or an Error is thrown by the supplier, no further attempt is made to bind the value and all
+         * subsequent invocations of this method will throw a new {@link NoSuchElementException}.
+         * <p>
+         * The most common usage is to construct a new object serving as a memoized result, as in:
+         * <p>
+         * {@snippet lang = java:
+         *    ComputedConstant<V> constant = ComputedConstant.ofEmpty();
+         *    // ...
+         *    V value = constant.computeIfUnbound(Value::new);
+         *    assertNotNull(value); // Value is non-null
+         *}
+         * <p>
+         * If a thread calls this method while being bound by another thread, the current thread will be suspended until
+         * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+         *
+         * @param supplier to invoke when computing a value
+         * @throws NoSuchElementException if a value cannot be bound
+         * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
+         *                                indirectly in the same thread).
+         * @throws Error                  if the supplier throws an Error
+         */
+        V computeIfUnbound(Supplier<? extends V> supplier);
+
+        /**
+         * {@return the bound value of this computed constant or throws NoSuchElementException if no value is bound}
+         * <p>
+         * The most common usage is to construct a new object serving as a memoized result, as in:
+         * <p>
+         * {@snippet lang = java:
+         *    ComputedConstant<V> constant = ComputedConstant.ofEmpty();
+         *    constant.bind(new Value());
+         *    // ...
+         *    V value = constant.get();
+         *    assertNotNull(value); // Value is non-null
+         *}
+         * <p>
+         * If a thread calls this method while being bound by another thread, the current thread will be suspended until
+         * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+         *
+         * @throws NoSuchElementException if a value is not bound
+         */
+        @Override
+        V get();
+
+    }
 
     /**
-     * {@return the bound value of this computed constant.  If no value is bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain ComputedConstant#of(Supplier) supplier}</em>
-     * (if any), or, if the supplier throws an unchecked exception, returns the provided {@code other} value}
-     * <p>
-     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
-     * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+     * An interface that represents a <em>supplied</em> computed constant (<em>with</em> a pre-set supplier).
      *
-     * @param other to use if no value neither is bound nor can be bound (can be null)
-     * @throws NoSuchElementException if a value cannot be bound
-     * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
-     *                                indirectly in the same thread).
-     * @throws Error                  if the pre-set supplier throws an Error
+     * @param <V> The type of the value to be bound
      */
-    V orElse(V other);
+    @PreviewFeature(feature = PreviewFeature.Feature.COMPUTED_CONSTANTS)
+    sealed interface OfSupplied<V>
+            extends ComputedConstant<V>
+            permits AbstractComputedConstant,
+            PreEvaluatedComputedConstant,
+            StandardComputedConstant,
+            ListElementComputedConstant,
+            MapElementComputedConstant {
 
-    /**
-     * {@return the bound value of this computed constant. If no value is bound, atomically attempts
-     * to compute and record a bound value using the <em>pre-set {@linkplain ComputedConstant#of(Supplier) supplier}</em>
-     * (if any), or, if the supplier throws an unchecked exception, throws an exception produced by invoking the
-     * provided {@code exceptionSupplier} function}
-     * <p>
-     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
-     * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
-     *
-     * @param <X>               the type of the exception that may be thrown
-     * @param exceptionSupplier the supplying function that produces the exception to throw
-     * @throws X                if a value cannot be bound.
-     * @throws Error            if the pre-set supplier throws an Error
-     */
-    <X extends Throwable> V orElseThrow(Supplier<? extends X> exceptionSupplier) throws X;
+        /**
+         * {@return the bound value of this computed constant. If no value is bound, atomically attempts
+         * to compute and record a bound value using the <em>pre-set {@linkplain ComputedConstant#of(Supplier) supplier}</em>}
+         * <p>
+         * If no attempt to bind a value was made previously and no pre-set supplier exists, throws a NoSuchElementException.
+         * If the pre-set supplier returns {@code null}, {@code null} is bound and returned.
+         * If the pre-set supplier throws an (unchecked) exception, the exception is wrapped into
+         * a {@link NoSuchElementException} which is thrown, and no value is bound.  If an Error
+         * is thrown by the per-set supplier, the Error is relayed to the caller.  If an Exception
+         * or an Error is thrown by the pre-set supplier, no further attempt is made to bind the value and all
+         * subsequent invocations of this method will throw a new {@link NoSuchElementException}.
+         * <p>
+         * The most common usage is to construct a new object serving as a memoized result, as in:
+         * <p>
+         * {@snippet lang = java:
+         *    ComputedConstant<V> constant = ComputedConstant.of(Value::new);
+         *    // ...
+         *    V value = constant.get();
+         *    assertNotNull(value); // Value is non-null
+         *}
+         * <p>
+         * If a thread calls this method while being bound by another thread, the current thread will be suspended until
+         * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+         *
+         * @throws NoSuchElementException if a value cannot be bound
+         * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
+         *                                indirectly in the same thread).
+         * @throws Error                  if the pre-set supplier throws an Error
+         */
+        @Override
+        V get();
 
-    /**
-     * Atomically binds the value of this computed constant to the provided {@code value}.
-     * <p>
-     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
-     * the binding completes (successfully or not).
-     *
-     * @param value to bind
-     * @throws IllegalStateException if a value is already bound or a previous attempt was made to bind a value
-     */
-    void bind(V value);
+        /**
+         * {@return the bound value of this computed constant.  If no value is bound, atomically attempts
+         * to compute and record a bound value using the <em>pre-set {@linkplain ComputedConstant#of(Supplier) supplier}</em>
+         * , or, if the supplier throws an unchecked exception, returns the provided {@code other} value}
+         * <p>
+         * If a thread calls this method while being bound by another thread, the current thread will be suspended until
+         * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+         *
+         * @param other to use if no value neither is bound nor can be bound (can be null)
+         * @throws NoSuchElementException if a value cannot be bound
+         * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
+         *                                indirectly in the same thread).
+         * @throws Error                  if the pre-set supplier throws an Error
+         */
+        V orElse(V other);
 
-    /**
-     * {@return the bound value of this computed constant. If no value is bound, atomically attempts to
-     * compute and record a bound value using the provided {@code supplier}}
-     * <p>
-     * If the supplier returns {@code null}, {@code null} is bound and returned.
-     * If the supplier throws an (unchecked) exception, the exception is wrapped into
-     * a {@link NoSuchElementException} which is thrown, and no value is bound.  If an Error
-     * is thrown by the supplier, the Error is relayed to the caller.  If an Exception
-     * or an Error is thrown by the supplier, no further attempt is made to bind the value and all
-     * subsequent invocations of this method will throw a new {@link NoSuchElementException}.
-     * <p>
-     * The most common usage is to construct a new object serving as a memoized result, as in:
-     * <p>
-     * {@snippet lang = java:
-     *    ComputedConstant<V> constant = ComputedConstant.ofEmpty();
-     *    // ...
-     *    V value = constant.computeIfUnbound(Value::new);
-     *    assertNotNull(value); // Value is non-null
-     *}
-     * <p>
-     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
-     * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
-     *
-     * @param supplier to invoke when computing a value
-     * @throws NoSuchElementException if a value cannot be bound
-     * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
-     *                                indirectly in the same thread).
-     * @throws Error                  if the supplier throws an Error
-     */
-    V computeIfUnbound(Supplier<? extends V> supplier);
+        /**
+         * {@return the bound value of this computed constant. If no value is bound, atomically attempts
+         * to compute and record a bound value using the <em>pre-set {@linkplain ComputedConstant#of(Supplier) supplier}</em>
+         * , or, if the supplier throws an unchecked exception, throws an exception produced by invoking the
+         * provided {@code exceptionSupplier} function}
+         * <p>
+         * If a thread calls this method while being bound by another thread, the current thread will be suspended until
+         * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
+         *
+         * @param <X>               the type of the exception that may be thrown
+         * @param exceptionSupplier the supplying function that produces the exception to throw
+         * @throws X                if a value cannot be bound.
+         * @throws Error            if the pre-set supplier throws an Error
+         */
+        <X extends Throwable> V orElseThrow(Supplier<? extends X> exceptionSupplier) throws X;
 
-    /**
-     * {@return a new {@link ComputedConstant } that will use this computed constant's eventually bound value
-     * and then apply the provided {@code mapper}}
-     *
-     * @param mapper to apply to this computed constant
-     * @param <R>    the return type of the provided {@code mapper}
-     */
-    default <R> ComputedConstant<R> map(Function<? super V, ? extends R> mapper) {
-        Objects.requireNonNull(mapper);
-        return of(() -> mapper.apply(this.get()));
+        /**
+         * {@return a new {@link ComputedConstant } that will use this computed constant's eventually bound value
+         * and then apply the provided {@code mapper}}
+         *
+         * @param mapper to apply to this computed constant
+         * @param <R>    the return type of the provided {@code mapper}
+         */
+        default <R> ComputedConstant.OfSupplied<R> map(Function<? super V, ? extends R> mapper) {
+            Objects.requireNonNull(mapper);
+            return of(() -> mapper.apply(this.get()));
+        }
+
     }
 
     /**
@@ -225,7 +273,7 @@ public sealed interface ComputedConstant<V>
      *
      * @param <V> The type of the value
      */
-    static <V> ComputedConstant<V> ofEmpty() {
+    static <V> ComputedConstant.OfEmpty<V> ofEmpty() {
         return StandardComputedConstant.create();
     }
 
@@ -240,7 +288,7 @@ public sealed interface ComputedConstant<V>
      *
      *         private static final ComputedConstant<Foo> FOO = ComputedConstant.of(Foo::new);
      *
-     *         public Foo theBar() {
+     *         public Foo theFoo() {
      *             // Foo is lazily constructed and recorded here upon first invocation
      *             return FOO.get();
      *         }
@@ -250,19 +298,29 @@ public sealed interface ComputedConstant<V>
      * @param <V>            The type of the value
      * @param presetSupplier to invoke when computing a value
      */
-    static <V> ComputedConstant<V> of(Supplier<? extends V> presetSupplier) {
+    static <V> ComputedConstant.OfSupplied<V> of(Supplier<? extends V> presetSupplier) {
         Objects.requireNonNull(presetSupplier);
         return StandardComputedConstant.create(presetSupplier);
     }
 
     /**
-     * {@return a pre-evaluated {@link ComputedConstant } with the provided {@code value} bound}
+     * {@return a pre-evaluated {@link ComputedConstant.OfSupplied } with the provided {@code value} bound}
      *
      * @param <V>   The type of the value (can be {@code null})
      * @param value to bind
      */
-    static <V> ComputedConstant<V> of(V value) {
-        return PreEvaluatedComputedConstant.create(value);
+    static <V> ComputedConstant.OfSupplied<V> ofSupplied(V value) {
+        return PreEvaluatedComputedConstant.createSupplied(value);
+    }
+
+    /**
+     * {@return a pre-evaluated {@link ComputedConstant.OfEmpty } with the provided {@code value} bound}
+     *
+     * @param <V>   The type of the value (can be {@code null})
+     * @param value to bind
+     */
+    static <V> ComputedConstant.OfEmpty<V> ofEmpty(V value) {
+        return PreEvaluatedComputedConstant.createEmpty(value);
     }
 
     /**
@@ -359,8 +417,8 @@ public sealed interface ComputedConstant<V>
      * @param size         the size of the List
      * @param presetMapper to invoke when computing and binding element values
      */
-    static <V> List<ComputedConstant<V>> ofList(int size,
-                                                IntFunction<? extends V> presetMapper) {
+    static <V> List<ComputedConstant.OfSupplied<V>> ofList(int size,
+                                                           IntFunction<? extends V> presetMapper) {
         if (size < 0) {
             throw new IllegalArgumentException();
         }
@@ -390,8 +448,8 @@ public sealed interface ComputedConstant<V>
      * @param keys         the keys to associate with ComputedConstant instances
      * @param presetMapper to invoke when computing and binding element values
      */
-    static <K, V> Map<K, ComputedConstant<V>> ofMap(Collection<K> keys,
-                                                    Function<? super K, ? extends V> presetMapper) {
+    static <K, V> Map<K, ComputedConstant.OfSupplied<V>> ofMap(Collection<K> keys,
+                                                               Function<? super K, ? extends V> presetMapper) {
         Objects.requireNonNull(keys);
         Objects.requireNonNull(presetMapper);
         return keys.stream()
