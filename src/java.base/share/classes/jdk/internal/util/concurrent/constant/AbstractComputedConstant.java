@@ -23,7 +23,7 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.lazy;
+package jdk.internal.util.concurrent.constant;
 
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
@@ -31,15 +31,15 @@ import jdk.internal.vm.annotation.Stable;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.NoSuchElementException;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.Objects;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.Supplier;
 
-import static jdk.internal.util.concurrent.lazy.LazyUtil.NON_NULL_SENTINEL;
-import static jdk.internal.util.concurrent.lazy.LazyUtil.NULL_SENTINEL;
-
-public abstract sealed class AbstractLazyValue<V, P>
-        implements LazyValue<V>
-        permits ListElementLazyValue, MapElementLazyValue, StandardLazyValue {
+public abstract sealed class AbstractComputedConstant<V, P>
+        implements ComputedConstant<V>
+        permits ListElementComputedConstant,
+        MapElementComputedConstant,
+        StandardComputedConstant {
 
     // Allows access to the "value" field with arbitrary memory semantics
     private static final VarHandle VALUE_HANDLE;
@@ -64,7 +64,7 @@ public abstract sealed class AbstractLazyValue<V, P>
      */
     private Object auxiliary;
 
-    public AbstractLazyValue(P provider) {
+    public AbstractComputedConstant(P provider) {
         this.auxiliary = provider;
     }
 
@@ -75,20 +75,20 @@ public abstract sealed class AbstractLazyValue<V, P>
 
     @Override
     public final boolean isBinding() {
-        return auxiliaryVolatile() instanceof LazyUtil.Binding;
+        return auxiliaryVolatile() instanceof ComputedConstantUtil.Binding;
     }
 
     @ForceInline
     @Override
     public final boolean isBound() {
         // Try normal memory semantics first
-        return value != null || auxiliaryVolatile() instanceof LazyUtil.Bound;
+        return value != null || auxiliaryVolatile() instanceof ComputedConstantUtil.Bound;
     }
 
     @ForceInline
     @Override
     public final boolean isError() {
-        return auxiliaryVolatile() instanceof LazyUtil.Error;
+        return auxiliaryVolatile() instanceof ComputedConstantUtil.BindError;
     }
 
     @ForceInline
@@ -99,10 +99,12 @@ public abstract sealed class AbstractLazyValue<V, P>
         if (v != null) {
             return v;
         }
-        if (auxiliary instanceof LazyUtil.Null) {
+        if (auxiliary instanceof ComputedConstantUtil.Null) {
             return null;
         }
-        return slowPath(null, true);
+        @SuppressWarnings("unchecked")
+        P provider = (P) auxiliary;
+        return slowPath(provider, null, true);
     }
 
     @ForceInline
@@ -113,10 +115,12 @@ public abstract sealed class AbstractLazyValue<V, P>
         if (v != null) {
             return v;
         }
-        if (auxiliary instanceof LazyUtil.Null) {
+        if (auxiliary instanceof ComputedConstantUtil.Null) {
             return null;
         }
-        return slowPath(other, false);
+        @SuppressWarnings("unchecked")
+        P provider = (P) auxiliary;
+        return slowPath(provider, other, false);
     }
 
     @ForceInline
@@ -129,7 +133,37 @@ public abstract sealed class AbstractLazyValue<V, P>
         return v;
     }
 
-    private synchronized V slowPath(V other,
+    @Override
+    public synchronized void bind(V value) {
+        if (auxiliary instanceof ComputedConstantUtil.State state) {
+            ComputedConstantUtil.throwAlreadyBound(state);
+        }
+        if (value == null) {
+            auxiliary = ComputedConstantUtil.NULL_SENTINEL;
+        } else {
+            this.value = value;
+            auxiliary = ComputedConstantUtil.NON_NULL_SENTINEL;
+        }
+    }
+
+    @Override
+    public V computeIfUnbound(Supplier<? extends V> supplier) {
+        Objects.requireNonNull(supplier);
+        // Try normal memory semantics first
+        V v = value;
+        if (v != null) {
+            return v;
+        }
+        if (auxiliary instanceof ComputedConstantUtil.Null) {
+            return null;
+        }
+        @SuppressWarnings("unchecked")
+        P provider = (P) supplier;
+        return slowPath(provider, null, true);
+    }
+
+    private synchronized V slowPath(P provider,
+                                    V other,
                                     boolean rethrow) {
 
         // Under synchronization, visibility and atomicy is guaranteed for both
@@ -139,33 +173,36 @@ public abstract sealed class AbstractLazyValue<V, P>
             return v;
         }
         return switch (auxiliary) {
-            case LazyUtil.Null __ -> null;
-            case LazyUtil.Binding __ ->
+            case ComputedConstantUtil.Null __ -> null;
+            case ComputedConstantUtil.Binding __ ->
                     throw new StackOverflowError("Circular provider detected: " + toStringDescription());
-            case LazyUtil.Error __ ->
+            case ComputedConstantUtil.BindError __ ->
                     throw new NoSuchElementException("A previous provider threw an exception: "+toStringDescription());
-            default -> {
-                @SuppressWarnings("unchecked")
-                P provider = (P) auxiliary;
-                yield bindValue(rethrow, other, provider);
-            }
+            default -> bindValue(rethrow, other, provider);
         };
     }
 
+    @SuppressWarnings("unchecked")
     private V bindValue(boolean rethrow, V other, P provider) {
-        setAuxiliaryVolatile(LazyUtil.BINDING_SENTINEL);
+        setAuxiliaryVolatile(ComputedConstantUtil.BINDING_SENTINEL);
         try {
-            V v = evaluate(provider);
+            final V v;
+            if (provider instanceof Supplier<?> supplier) {
+                // Regardless of ComputedConstant implementation variant, computeIfUnbound might be called.
+                v = (V) supplier.get();
+            } else {
+                v = evaluate(provider);
+            }
             if (v == null) {
-                setAuxiliaryVolatile(NULL_SENTINEL);
+                setAuxiliaryVolatile(ComputedConstantUtil.NULL_SENTINEL);
             } else {
                 casValue(v);
-                setAuxiliaryVolatile(NON_NULL_SENTINEL);
+                setAuxiliaryVolatile(ComputedConstantUtil.NON_NULL_SENTINEL);
             }
             return v;
         } catch (Throwable e) {
-            setAuxiliaryVolatile(LazyUtil.ERROR_SENTINEL);
-            if (e instanceof Error err) {
+            setAuxiliaryVolatile(ComputedConstantUtil.BIND_ERROR_SENTINEL);
+            if (e instanceof java.lang.Error err) {
                 // Always rethrow errors
                 throw err;
             }
@@ -186,10 +223,10 @@ public abstract sealed class AbstractLazyValue<V, P>
     public final String toString() {
         var a = auxiliaryVolatile();
         String v = switch (a) {
-            case LazyUtil.Binding __ -> ".binding";
-            case LazyUtil.Null __ -> "null";
-            case LazyUtil.NonNull __ -> "[" + valueVolatile().toString() + "]";
-            case LazyUtil.Error __ -> ".error";
+            case ComputedConstantUtil.Binding __ -> ".binding";
+            case ComputedConstantUtil.Null __ -> "null";
+            case ComputedConstantUtil.NonNull __ -> "[" + valueVolatile().toString() + "]";
+            case ComputedConstantUtil.BindError __ -> ".error";
             default -> {
                 if (providerType().isInstance(a)) {
                     yield ".unbound";
@@ -223,9 +260,9 @@ public abstract sealed class AbstractLazyValue<V, P>
         try {
             var lookup = MethodHandles.lookup();
             VALUE_HANDLE = lookup
-                    .findVarHandle(AbstractLazyValue.class, "value", Object.class);
+                    .findVarHandle(AbstractComputedConstant.class, "value", Object.class);
             AUX_HANDLE = lookup
-                    .findVarHandle(AbstractLazyValue.class, "auxiliary", Object.class);
+                    .findVarHandle(AbstractComputedConstant.class, "auxiliary", Object.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }

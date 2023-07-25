@@ -23,7 +23,7 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.lazy;
+package jdk.internal.util.concurrent.constant;
 
 import jdk.internal.ValueBased;
 
@@ -37,9 +37,11 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @ValueBased
-sealed abstract class AbstractLazyList<E>
+sealed abstract class AbstractComputedConstantList<E>
         extends AbstractList<E>
-        implements List<E> permits LazyList, IntLazyList {
+        implements List<E>
+        permits ComputedConstantList,
+        IntComputedConstantList {
 
     protected static final VarHandle OBJECT_ARRAY_HANDLE = MethodHandles.arrayElementVarHandle(Object[].class);
     private static final VarHandle BYTE_ARRAY_HANDLE = MethodHandles.arrayElementVarHandle(byte[].class);
@@ -49,7 +51,7 @@ sealed abstract class AbstractLazyList<E>
     private final Object[] locks;
     private final byte[] states;
 
-    protected AbstractLazyList(int size, IntFunction<? extends E> presetMapper) {
+    protected AbstractComputedConstantList(int size, IntFunction<? extends E> presetMapper) {
         this.presetMapper = presetMapper;
         this.locks = new Object[size];
         this.states = new byte[size];
@@ -66,7 +68,7 @@ sealed abstract class AbstractLazyList<E>
         if (isNotDefaultValue(e)) {
             return e;
         }
-        if (states[index] == LazyUtil.NULL) {
+        if (states[index] == ComputedConstantUtil.NULL) {
             return null;
         }
         return slowPath(index);
@@ -74,7 +76,7 @@ sealed abstract class AbstractLazyList<E>
 
     private E slowPath(int index) {
         Object lock = lockVolatile(index);
-        if (lock instanceof LazyUtil.Bound) {
+        if (lock instanceof ComputedConstantUtil.Bound) {
             return elementVolatile(index);
         }
         if (lock == null) {
@@ -86,26 +88,26 @@ sealed abstract class AbstractLazyList<E>
         }
         synchronized (lock) {
             return switch (states[index]) {
-                case LazyUtil.BINDING -> throw circular(index);
-                case LazyUtil.NON_NULL -> element(index);
-                case LazyUtil.NULL -> null;
-                case LazyUtil.ERROR -> throw error(index);
+                case ComputedConstantUtil.BINDING -> throw circular(index);
+                case ComputedConstantUtil.NON_NULL -> element(index);
+                case ComputedConstantUtil.NULL -> null;
+                case ComputedConstantUtil.ERROR -> throw error(index);
                 default -> {
-                    setStateVolatile(index, LazyUtil.BINDING);
+                    setStateVolatile(index, ComputedConstantUtil.BINDING);
                     try {
                         E v = presetMapper.apply(index);
                         if (v == null) {
-                            setStateVolatile(index, LazyUtil.NULL);
-                            setLockVolatile(index, LazyUtil.NULL);
+                            setStateVolatile(index, ComputedConstantUtil.NULL);
+                            setLockVolatile(index, ComputedConstantUtil.NULL);
                         } else {
                             casElement(index, v);
-                            setStateVolatile(index, LazyUtil.NON_NULL);
-                            setLockVolatile(index, LazyUtil.NON_NULL);
+                            setStateVolatile(index, ComputedConstantUtil.NON_NULL);
+                            setLockVolatile(index, ComputedConstantUtil.NON_NULL);
                         }
                         // We do not need the lock object anymore
                         yield v;
                     } catch (Throwable e) {
-                        setStateVolatile(index, LazyUtil.ERROR);
+                        setStateVolatile(index, ComputedConstantUtil.ERROR);
                         if (e instanceof Error err) {
                             // Always rethrow errors
                             throw err;
@@ -121,10 +123,10 @@ sealed abstract class AbstractLazyList<E>
     public String toString() {
         return getClass().getSimpleName() + "[" + IntStream.range(0, size())
                 .mapToObj(i -> switch (stateVolatile(i)) {
-                    case LazyUtil.BINDING -> ".binding";
-                    case LazyUtil.NON_NULL -> elementVolatile(i).toString();
-                    case LazyUtil.NULL -> "null";
-                    case LazyUtil.ERROR -> ".error";
+                    case ComputedConstantUtil.BINDING -> ".binding";
+                    case ComputedConstantUtil.NON_NULL -> elementVolatile(i).toString();
+                    case ComputedConstantUtil.NULL -> "null";
+                    case ComputedConstantUtil.ERROR -> ".error";
                     default -> ".unbound";
                 })
                 .collect(Collectors.joining()) + "]";

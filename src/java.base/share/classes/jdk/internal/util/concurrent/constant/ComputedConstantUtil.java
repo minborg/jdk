@@ -23,11 +23,24 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.lazy;
+package jdk.internal.util.concurrent.constant;
 
-public final class LazyUtil {
+import java.util.NoSuchElementException;
+import java.util.function.Supplier;
 
-    private LazyUtil() {
+public final class ComputedConstantUtil {
+
+    private static final Supplier<?> THROWING_SUPPLIER = () -> {
+        throw new NoSuchElementException(
+                "This ComputedConstant does not have a pre-set supplier and no value was explicitly bound.");
+    };
+
+    private ComputedConstantUtil() {
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <V> Supplier<V> throwingSupplier() {
+        return (Supplier<V>) THROWING_SUPPLIER;
     }
 
     public static Byte[] toObjectArray(byte[] array) {
@@ -83,13 +96,14 @@ public final class LazyUtil {
     static final Binding BINDING_SENTINEL = new Binding();
     static final NonNull NON_NULL_SENTINEL = new NonNull();
     static final Null NULL_SENTINEL = new Null();
-    static final Error ERROR_SENTINEL = new Error();
+    static final BindError BIND_ERROR_SENTINEL = new BindError();
 
-    interface Bound{}
-    static final class Binding { private Binding() {} }
-    static final class Null implements Bound { private Null() {} }
-    static final class NonNull implements Bound { private NonNull() {} }
-    static final class Error { private Error() {} }
+    sealed interface State {}
+    sealed interface Bound {}
+    static final class Binding   implements State        { private Binding() {} }
+    static final class Null      implements State, Bound { private Null() {} }
+    static final class NonNull   implements State, Bound { private NonNull() {} }
+    static final class BindError implements State        { private BindError() {} }
 
     static byte[] nulls(Object[] array) {
         byte[] nulls = new byte[array.length];
@@ -99,6 +113,10 @@ public final class LazyUtil {
             }
         }
         return nulls;
+    }
+
+    static void throwAlreadyBound(State state) {
+        throw new IllegalStateException("Binding is already attempted or made: " + state.getClass().getSimpleName());
     }
 
 }

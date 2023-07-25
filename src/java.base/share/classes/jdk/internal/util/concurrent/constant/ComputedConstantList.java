@@ -23,40 +23,48 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.lazy;
+package jdk.internal.util.concurrent.constant;
 
-import java.util.concurrent.lazy.LazyValue;
-import java.util.function.Function;
+import jdk.internal.ValueBased;
+import jdk.internal.vm.annotation.Stable;
+
+import java.util.List;
 import java.util.function.IntFunction;
 
-public final class MapElementLazyValue<K, V>
-        extends AbstractLazyValue<V, Function<? super K, ? extends V>>
-        implements LazyValue<V> {
+@ValueBased
+public final class ComputedConstantList<E>
+        extends AbstractComputedConstantList<E>
+        implements List<E> {
 
-    private final K key;
+    @Stable
+    private final E[] elements;
 
-    private MapElementLazyValue(K key, Function<? super K, ? extends V> provider) {
-        super(provider);
-        this.key = key;
+    @SuppressWarnings("unchecked")
+    private ComputedConstantList(int size, IntFunction<? extends E> presetMapper) {
+        super(size, presetMapper);
+        this.elements = (E[]) new Object[size];
+    }
+
+    boolean isNotDefaultValue(E value) {
+        return value != null;
     }
 
     @Override
-    V evaluate(Function<? super K, ? extends V> provider) {
-        return provider.apply(key);
+    E element(int index) {
+        return elements[index];
     }
 
-    @Override
-    Class<?> providerType() {
-        return Function.class;
+    @SuppressWarnings("unchecked")
+    E elementVolatile(int index) {
+        return (E) OBJECT_ARRAY_HANDLE.getVolatile(elements, index);
     }
 
-    @Override
-    String toStringDescription() {
-        return "MapElementLazyValue[" + key + "]";
+    void casElement(int index, E value) {
+        OBJECT_ARRAY_HANDLE.compareAndSet(elements, index, null, index);
     }
 
-    public static <K, V> LazyValue<V> create(K key, Function<? super K, ? extends V> provider) {
-        return new MapElementLazyValue<>(key, provider);
+    public static <E> List<E> create(int size, IntFunction<? extends E> presetMapper) {
+        return new ComputedConstantList<>(size, presetMapper);
     }
 
 }

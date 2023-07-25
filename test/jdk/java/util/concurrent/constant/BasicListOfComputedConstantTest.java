@@ -23,9 +23,9 @@
 
 /*
  * @test
- * @summary Verify basic BasicLazyArrayTest operations
+ * @summary Verify basic List of ComputedConstant operations
  * @enablePreview
- * @run junit BasicLazyArrayTest
+ * @run junit BasicListOfComputedConstantTest
  */
 
 import org.junit.jupiter.api.*;
@@ -38,32 +38,32 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.IntFunction;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-final class BasicLazyArrayTest {
+final class BasicListOfComputedConstantTest {
 
     private static final int SIZE = 63;
     private static final int INDEX = 13;
 
-    List<LazyValue<Integer>> lazy;
+    List<ComputedConstant<Integer>> constants;
     CountingIntegerMapper mapper;
 
     @BeforeEach
     void setup() {
         mapper = new CountingIntegerMapper(SIZE);
-        lazy = LazyValue.ofListOfLazyValues(SIZE, mapper);
+        constants = ComputedConstant.ofList(SIZE, mapper);
     }
 
     @Test
     void compute() {
-        Integer val = lazy.get(INDEX).get();
+        Integer val = constant().get();
         assertEquals(INDEX, val);
         assertEquals(1, mapper.invocations(INDEX));
-        Integer val2 = lazy.get(INDEX).get();
+        Integer val2 = constant().get();
         assertEquals(INDEX, val);
         assertEquals(1, mapper.invocations(INDEX));
     }
@@ -72,9 +72,9 @@ final class BasicLazyArrayTest {
     void nulls() {
         // Mapper is null
         assertThrows(NullPointerException.class,
-                () -> LazyValue.ofListOfLazyValues(SIZE, null));
+                () -> ComputedConstant.ofList(SIZE, null));
         // Mapper returns null
-        List<LazyValue<Integer>> l = LazyValue.ofListOfLazyValues(SIZE, i -> null);
+        List<ComputedConstant<Integer>> l = ComputedConstant.ofList(SIZE, i -> null);
         assertNull(l.get(INDEX).get());
     }
 
@@ -94,7 +94,7 @@ final class BasicLazyArrayTest {
             }
         };
 
-        List<LazyValue<Integer>> l = LazyValue.ofListOfLazyValues(3, special);
+        List<ComputedConstant<Integer>> l = ComputedConstant.ofList(3, special);
 
         System.out.println("l.getClass() = " + l.getClass());
 
@@ -107,7 +107,57 @@ final class BasicLazyArrayTest {
         }
 
         var toString = l.toString();
-        assertEquals("[ListElementLazyValue[0].unbound, ListElementLazyValue[1][1], ListElementLazyValue[2].error]", toString);
+        assertEquals("[ListElementComputedConstant[0].unbound, ListElementComputedConstant[1][1], ListElementComputedConstant[2].error]", toString);
+    }
+
+    @Test
+    void bind() {
+        assertTrue(constant().isUnbound());
+        assertFalse(constant().isBinding());
+        assertFalse(constant().isBound());
+        assertFalse(constant().isError());
+        constant().bind(42);
+        assertEquals(42, constant().get());
+        assertFalse(constant().isUnbound());
+        assertFalse(constant().isBinding());
+        assertTrue(constant().isBound());
+        assertFalse(constant().isError());
+    }
+
+    @Test
+    void bindNull() {
+        assertTrue(constant().isUnbound());
+        assertFalse(constant().isBinding());
+        assertFalse(constant().isBound());
+        assertFalse(constant().isError());
+        constant().bind(null);
+        assertNull(constant().get());
+        assertFalse(constant().isUnbound());
+        assertFalse(constant().isBinding());
+        assertTrue(constant().isBound());
+        assertFalse(constant().isError());
+    }
+
+    @Test
+    void computeIfUnbound() {
+        int actual = constant().computeIfUnbound(() -> 42);
+        assertEquals(42, actual);
+        assertEquals(42, constant().get());
+        assertFalse(constant().isUnbound());
+        assertFalse(constant().isBinding());
+        assertTrue(constant().isBound());
+        assertFalse(constant().isError());
+    }
+
+    @Test
+    void computeIfUnboundNull() {
+        Integer actual = constant().computeIfUnbound(() -> null);
+        assertNull(actual);
+        assertNull(constant().get());
+        assertFalse(constant().isUnbound());
+        assertFalse(constant().isBinding());
+        assertTrue(constant().isBound());
+        assertFalse(constant().isError());
     }
 
     // Todo:repeat the test 1000 times
@@ -120,21 +170,21 @@ final class BasicLazyArrayTest {
                         Thread.onSpinWait();
                     }
                     // Try to access the instance "simultaneously"
-                    lazy.get(INDEX).get();
+                    constant().get();
                 }))
                 .toList();
         threads.forEach(Thread::start);
         Thread.sleep(10);
         gate.set(true);
         join(threads);
-        assertEquals(INDEX, lazy.get(INDEX).orElse(null));
+        assertEquals(INDEX, constant().orElse(null));
         assertEquals(1, mapper.invocations(INDEX));
     }
 
     @Test
     void fibTest() {
         class A {
-            List<LazyValue<Integer>> fibonacci = LazyValue.ofListOfLazyValues(20, this::fib);
+            final List<ComputedConstant<Integer>> fibonacci = ComputedConstant.ofList(20, this::fib);
 
             int fib(int n) {
                 return (n < 2) ? n
@@ -148,7 +198,7 @@ final class BasicLazyArrayTest {
 
         A a = new A();
         int[] array = IntStream.range(1, 10)
-                .map(n -> a.fib(n))
+                .map(a::fib)
                 .toArray(); // { 1, 1, 2, 3, 5, 8, 13, 21, 34 }
 
         assertArrayEquals(new int[]{1, 1, 2, 3, 5, 8, 13, 21, 34}, array);
@@ -158,7 +208,7 @@ final class BasicLazyArrayTest {
     @Test
     void mapTest() {
 
-        Map<String, LazyValue<Integer>> lenMap = LazyValue.ofMapOfLazyValues(List.of("A", "Ab", "Abc"), String::length);
+        Map<String, ComputedConstant<Integer>> lenMap = ComputedConstant.ofMap(List.of("A", "Ab", "Abc"), String::length);
 
         assertEquals(1, lenMap.get("A").get());
         assertEquals(2, lenMap.get("Ab").get());
@@ -167,9 +217,13 @@ final class BasicLazyArrayTest {
 
         String key = "Abc123";
         int len = Optional.ofNullable(lenMap.get(key))
-                .map(LazyValue::get)
+                .map(ComputedConstant::get)
                 .orElseGet(key::length);
         assertEquals(6, len);
+    }
+
+    private ComputedConstant<Integer> constant() {
+        return constants.get(INDEX);
     }
 
     private static void join(Collection<Thread> threads) {

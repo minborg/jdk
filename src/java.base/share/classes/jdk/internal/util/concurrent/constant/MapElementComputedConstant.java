@@ -23,39 +23,39 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.lazy;
+package jdk.internal.util.concurrent.constant;
 
-import java.util.concurrent.lazy.LazyValue;
-import java.util.function.IntFunction;
+import java.util.concurrent.constant.ComputedConstant;
+import java.util.function.Function;
 
-public final class ListElementLazyValue<V>
-        extends AbstractLazyValue<V, IntFunction<? extends V>>
-        implements LazyValue<V> {
+public final class MapElementComputedConstant<K, V>
+        extends AbstractComputedConstant<V, Function<? super K, ? extends V>>
+        implements ComputedConstant<V> {
 
-    private final int index;
+    private final K key;
 
-    private ListElementLazyValue(int index, IntFunction<? extends V> provider) {
+    private MapElementComputedConstant(K key, Function<? super K, ? extends V> provider) {
         super(provider);
-        this.index = index;
+        this.key = key;
     }
 
     @Override
-    V evaluate(IntFunction<? extends V> provider) {
-        return provider.apply(index);
+    V evaluate(Function<? super K, ? extends V> provider) {
+        return provider.apply(key);
     }
 
     @Override
     Class<?> providerType() {
-        return IntFunction.class;
+        return Function.class;
     }
 
     @Override
     String toStringDescription() {
-        return "ListElementLazyValue[" + index + "]";
+        return "MapElementComputedConstant[" + key + "]";
     }
 
-    public static <V> LazyValue<V> create(int index, IntFunction<? extends V> provider) {
-        return new ListElementLazyValue<>(index, provider);
+    public static <K, V> ComputedConstant<V> create(K key, Function<? super K, ? extends V> provider) {
+        return new MapElementComputedConstant<>(key, provider);
     }
 
 }

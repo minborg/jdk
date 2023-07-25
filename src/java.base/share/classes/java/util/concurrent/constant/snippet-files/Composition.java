@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package java.util.concurrent.lazy.snippets;
+package java.util.concurrent.constant.snippets;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -30,9 +30,8 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
-import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -49,24 +48,24 @@ public class Composition {
     class Primes {
 
         // 1. A lazy field
-        private static final LazyValue<Integer> LARGE_PRIME = LazyValue.of(Primes::largePrime);
+        private static final ComputedConstant<Integer> LARGE_PRIME = ComputedConstant.of(Primes::largePrime);
         // 2. A lazy field that is the result of lazily applying a mapping operation of an existing lazy field
-        private static final LazyValue<Integer> EVEN_LARGER_PRIME = LARGE_PRIME.map(Primes::nextPrime);
+        private static final ComputedConstant<Integer> EVEN_LARGER_PRIME = LARGE_PRIME.map(Primes::nextPrime);
         // 3. A field that lazily combines two existing lazy fields by lazily applying a reduction on the eventually bound values
-        private static final LazyValue<Integer> LARGE_PRIMES_SUM = LazyValue.of(() -> LARGE_PRIME.get() + EVEN_LARGER_PRIME.get());
+        private static final ComputedConstant<Integer> LARGE_PRIMES_SUM = ComputedConstant.of(() -> LARGE_PRIME.get() + EVEN_LARGER_PRIME.get());
 
-        private static final LazyValue<Integer> LARGE_PRIMES_SUM2 = LazyValue.of(() ->
+        private static final ComputedConstant<Integer> LARGE_PRIMES_SUM2 = ComputedConstant.of(() ->
                 Stream.of(LARGE_PRIME, EVEN_LARGER_PRIME)
-                        .map(LazyValue::get)
+                        .map(ComputedConstant::get)
                         .reduce(0, Integer::sum));
 
-        private static final LazyValue<Integer> LARGE_PRIMES_SUM3 = LazyValue.of(() -> Stream.of(LARGE_PRIME, EVEN_LARGER_PRIME)
-                .map(LazyValue::get)
+        private static final ComputedConstant<Integer> LARGE_PRIMES_SUM3 = ComputedConstant.of(() -> Stream.of(LARGE_PRIME, EVEN_LARGER_PRIME)
+                .map(ComputedConstant::get)
                 .reduce(Integer::sum)
                 .get());
 
-        private static final LazyValue<Integer> LARGE_PRIMES_SUM4 = LazyValue.of(() -> Stream.of(EVEN_LARGER_PRIME)
-                .map(LazyValue::get)
+        private static final ComputedConstant<Integer> LARGE_PRIMES_SUM4 = ComputedConstant.of(() -> Stream.of(EVEN_LARGER_PRIME)
+                .map(ComputedConstant::get)
                 .reduce(LARGE_PRIME.get(), Integer::sum));
 
         // Todo: Add reduce operation on several lazies.
@@ -116,12 +115,12 @@ public class Composition {
             }
         }
 
-        private static final LazyValue<MethodHandles.Lookup> LOOKUP = LazyValue.of(MethodHandles::lookup);
+        private static final ComputedConstant<MethodHandles.Lookup> LOOKUP = ComputedConstant.of(MethodHandles::lookup);
 
-        private static final LazyValue<MethodHandle> LENGTH = LOOKUP.map(
+        private static final ComputedConstant<MethodHandle> LENGTH = LOOKUP.map(
                 l -> find(l, "length", MethodType.methodType(int.class)));
 
-        private static final LazyValue<MethodHandle> EMPTY = LOOKUP.map(
+        private static final ComputedConstant<MethodHandle> EMPTY = LOOKUP.map(
                 l -> find(l, "isEmpty", MethodType.methodType(boolean.class)));
 
 
@@ -151,10 +150,10 @@ public class Composition {
     abstract class LazySocket implements java.io.Closeable {
 
         private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-        private static final LazyValue<VarHandle>
-                STATE = LazyValue.of(() -> find(LOOKUP, "state", int.class)),
-                IN = LazyValue.of(() -> find(LOOKUP, "in", InputStream.class)),
-                OUT = LazyValue.of(() -> find(LOOKUP, "out", OutputStream.class));
+        private static final ComputedConstant<VarHandle>
+                STATE = ComputedConstant.of(() -> find(LOOKUP, "state", int.class)),
+                IN = ComputedConstant.of(() -> find(LOOKUP, "in", InputStream.class)),
+                OUT = ComputedConstant.of(() -> find(LOOKUP, "out", OutputStream.class));
 
         static VarHandle find(MethodHandles.Lookup lookup, String name, Class<?> type) {
             try {
@@ -173,8 +172,8 @@ public class Composition {
 
     abstract class LazyComposeSocket implements java.io.Closeable {
 
-        private static final LazyValue<MethodHandles.Lookup> LOOKUP = LazyValue.of(MethodHandles::lookup);
-        private static final LazyValue<VarHandle>
+        private static final ComputedConstant<MethodHandles.Lookup> LOOKUP = ComputedConstant.of(MethodHandles::lookup);
+        private static final ComputedConstant<VarHandle>
                 STATE = LOOKUP.map(l -> find(l, "state", int.class)),
                 IN = LOOKUP.map(l -> find(l, "in", InputStream.class)),
                 OUT = LOOKUP.map(l -> find(l, "out", OutputStream.class));
@@ -206,9 +205,9 @@ public class Composition {
                     new Const(threePlusFour),
                     new Const(threePlusFour))); // 49
 
-            LazyValue<Double> lazyThreeTimesFour = lazilyEval(threePlusFourExpr);
+            ComputedConstant<Double> lazyThreeTimesFour = lazilyEval(threePlusFourExpr);
 
-            LazyValue<Double> lazyThreeTimesFourSquared = lazilyEval(new Mul(
+            ComputedConstant<Double> lazyThreeTimesFourSquared = lazilyEval(new Mul(
                     new Lazy(lazyThreeTimesFour),
                     new Lazy(lazyThreeTimesFour)));
 
@@ -228,7 +227,7 @@ public class Composition {
         record Mul(Expr left, Expr right) implements BinExpr {}
         record Neg(Expr node) implements Expr {}
         record Const(double val) implements Expr {}
-        record Lazy(LazyValue<Double> lazy) implements Expr {};
+        record Lazy(ComputedConstant<Double> lazy) implements Expr {};
 
         // Eager Evaluator
         static double eval(Expr n) {
@@ -237,18 +236,18 @@ public class Composition {
                 case Mul(var left, var right)     -> eval(left) * eval(right);
                 case Neg(var exp)                 -> -eval(exp);
                 case Const(double val)            -> val;
-                case Lazy(LazyValue<Double> lazy) -> lazy.get();
+                case Lazy(ComputedConstant<Double> lazy) -> lazy.get();
             };
         }
 
         // Lazy Evaluator
-        static LazyValue<Double> lazilyEval(Expr n) {
+        static ComputedConstant<Double> lazilyEval(Expr n) {
             return switch (n) {
-                case Add(var left, var right) -> LazyValue.of(() -> lazilyEval(left).get() + lazilyEval(right).get());
-                case Mul(var left, var right) -> LazyValue.of(() -> lazilyEval(left).get() * lazilyEval(right).get());
+                case Add(var left, var right) -> ComputedConstant.of(() -> lazilyEval(left).get() + lazilyEval(right).get());
+                case Mul(var left, var right) -> ComputedConstant.of(() -> lazilyEval(left).get() * lazilyEval(right).get());
                 case Neg(var exp)                 -> lazilyEval(exp).map(d -> -d);
-                case Const(double val)            -> LazyValue.of(val);
-                case Lazy(LazyValue<Double> lazy) -> lazy;
+                case Const(double val)            -> ComputedConstant.of(val);
+                case Lazy(ComputedConstant<Double> lazy) -> lazy;
             };
         }
 

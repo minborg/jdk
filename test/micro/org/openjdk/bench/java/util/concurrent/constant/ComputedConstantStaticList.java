@@ -21,7 +21,7 @@
  * questions.
  */
 
-package org.openjdk.bench.java.util.concurrent;
+package org.openjdk.bench.java.util.concurrent.constant;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -53,18 +53,18 @@ import java.util.stream.IntStream;
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
 @Fork(value=3, jvmArgsAppend = "--enable-preview")
-public class LazyStaticList {
+public class ComputedConstantStaticList {
 
     private static final int SIZE = 10;
     private static final int POS = SIZE / 2;
     private static final IntFunction<Integer> MAPPER = i -> i;
     private static final IntFunction<Integer> NULL_MAPPER = i -> null;
 
-    public static final List<LazyValue<Integer>> LAZY_LIST_OF_LAZY = LazyValue.ofListOfLazyValues(SIZE, MAPPER);
-    public static final List<LazyValue<Integer>> LAZY_LIST_OF_LAZY_NULL = LazyValue.ofListOfLazyValues(SIZE, NULL_MAPPER);
-    public static final List<Integer> LAZY_LIST = LazyValue.ofList(SIZE, MAPPER);
-    public static final List<Integer> LAZY_INT_LIST = LazyValue.ofList(int.class, SIZE, MAPPER);
-    public static final List<VolatileDoubleChecked<Integer>> LAZY_DC = IntStream.range(0, SIZE)
+    public static final List<ComputedConstant<Integer>> LIST_OF_CONSTANTS = ComputedConstant.ofList(SIZE, MAPPER);
+    public static final List<ComputedConstant<Integer>> LIST_OF_CONSTANTS_NULL = ComputedConstant.ofList(SIZE, NULL_MAPPER);
+    public static final List<Integer> LIST = ComputedConstant.Hidden.ofActualList(SIZE, MAPPER);
+    public static final List<Integer> INT_LIST = ComputedConstant.Hidden.ofActualList(int.class, SIZE, MAPPER);
+    public static final List<VolatileDoubleChecked<Integer>> DC = IntStream.range(0, SIZE)
             .mapToObj(i -> new VolatileDoubleChecked<>(i, MAPPER))
             .toList();
 
@@ -73,42 +73,42 @@ public class LazyStaticList {
     private static VarHandle valueHandle() {
         try {
             return MethodHandles.lookup()
-                    .findVarHandle(LazyStaticList.class, "value", int.class);
+                    .findVarHandle(ComputedConstantStaticList.class, "value", int.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
     }
 
     private static final VarHandle VALUE_HANDLE = valueHandle();
-    private static final List<LazyValue<VarHandle>> LAZY_VALUE_HANDLE_LIST_OF_LAZY = LazyValue.ofListOfLazyValues(SIZE, i -> LazyStaticList.valueHandle());
-    private static final List<VarHandle> LAZY_VALUE_HANDLE_LIST = LazyValue.ofList(SIZE, i -> LazyStaticList.valueHandle());
+    private static final List<ComputedConstant<VarHandle>> VALUE_HANDLE_LIST_OF_CONSTANT = ComputedConstant.ofList(SIZE, i -> org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList.valueHandle());
+    private static final List<VarHandle> VALUE_HANDLE_LIST = ComputedConstant.Hidden.ofActualList(SIZE, i -> org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList.valueHandle());
 
     private static final Map<Integer, Integer> FIB_MAP = new ConcurrentHashMap<>();
-    private static final List<LazyValue<Integer>> FIB_LAZY_ARRAY = LazyValue.ofListOfLazyValues(20, LazyStaticList::fibArrayFunction);
-    private static final Map<Integer, LazyValue<Integer>> FIB_LAZY_MAP = LazyValue.ofMapOfLazyValues(IntStream.range(0, 20).boxed().toList(), LazyStaticList::fibMapFunction);
+    private static final List<ComputedConstant<Integer>> FIB_LIST_CONSTANTS = ComputedConstant.ofList(20, org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList::fibArrayFunction);
+    private static final Map<Integer, ComputedConstant<Integer>> FIB_MAP_CONSTANTS = ComputedConstant.ofMap(IntStream.range(0, 20).boxed().toList(), org.openjdk.bench.java.util.concurrent.constant.ComputedConstantStaticList::fibMapFunction);
 
     private static int fibArrayFunction(int n) {
         return (n < 2)
                 ? n
-                : FIB_LAZY_ARRAY.get(n - 1).get() + FIB_LAZY_ARRAY.get(n - 2).get();
+                : FIB_LIST_CONSTANTS.get(n - 1).get() + FIB_LIST_CONSTANTS.get(n - 2).get();
     }
 
     private static int fibMapFunction(int n) {
         return (n < 2)
                 ? n
-                : FIB_LAZY_MAP.get(n - 1).get() + FIB_LAZY_MAP.get(n - 2).get();
+                : FIB_MAP_CONSTANTS.get(n - 1).get() + FIB_MAP_CONSTANTS.get(n - 2).get();
     }
 
     private static int fibArray(int n) {
         return (n < 2)
                 ? n
-                : FIB_LAZY_ARRAY.get(n).get();
+                : FIB_LIST_CONSTANTS.get(n).get();
     }
 
-    private static int fibLazyMap(int n) {
+    private static int fibConstantLazyMap(int n) {
         return (n < 2)
                 ? n
-                : FIB_LAZY_MAP.get(n).get();
+                : FIB_MAP_CONSTANTS.get(n).get();
     }
 
     private static int fibMap(int n) {
@@ -123,23 +123,23 @@ public class LazyStaticList {
     }
 
     @Benchmark
-    public void lazyListOfLazy(Blackhole bh) {
-        bh.consume(LAZY_LIST_OF_LAZY.get(POS).get());
+    public void listOfConstants(Blackhole bh) {
+        bh.consume(LIST_OF_CONSTANTS.get(POS).get());
     }
 
     @Benchmark
-    public void lazyList(Blackhole bh) {
-        bh.consume(LAZY_LIST.get(POS));
+    public void list(Blackhole bh) {
+        bh.consume(LIST.get(POS));
     }
 
     @Benchmark
-    public void intLazyList(Blackhole bh) {
-        bh.consume(LAZY_INT_LIST.get(POS));
+    public void intList(Blackhole bh) {
+        bh.consume(INT_LIST.get(POS));
     }
 
     @Benchmark
-    public void lazyListOfLazyNull(Blackhole bh) {
-        bh.consume(LAZY_LIST_OF_LAZY_NULL.get(POS).get());
+    public void listOfConstantsNull(Blackhole bh) {
+        bh.consume(LIST_OF_CONSTANTS_NULL.get(POS).get());
     }
 
     @Benchmark
@@ -152,7 +152,7 @@ public class LazyStaticList {
 
     @Benchmark
     public void volatileDoubleChecked(Blackhole bh) {
-        bh.consume(LAZY_DC.get(POS).get());
+        bh.consume(DC.get(POS).get());
     }
 
     @Benchmark
@@ -161,13 +161,13 @@ public class LazyStaticList {
     }
 
     @Benchmark
-    public void fibLazyList(Blackhole bh) {
+    public void fibConstantList(Blackhole bh) {
         bh.consume(fibArray(POS));
     }
 
     @Benchmark
-    public void fibLazyMap(Blackhole bh) {
-        bh.consume(fibLazyMap(POS));
+    public void fibConstantMap(Blackhole bh) {
+        bh.consume(fibConstantLazyMap(POS));
     }
 
     @Benchmark
@@ -176,13 +176,13 @@ public class LazyStaticList {
     }
 
     @Benchmark
-    public void methodHandleListOfLazy(Blackhole bh) {
-        bh.consume((int) LAZY_VALUE_HANDLE_LIST_OF_LAZY.get(POS).get().get(this));
+    public void valueHandleListOfConstant(Blackhole bh) {
+        bh.consume((int) VALUE_HANDLE_LIST_OF_CONSTANT.get(POS).get().get(this));
     }
 
     @Benchmark
     public void methodHandleList(Blackhole bh) {
-        bh.consume((int) LAZY_VALUE_HANDLE_LIST.get(POS).get(this));
+        bh.consume((int) VALUE_HANDLE_LIST.get(POS).get(this));
     }
 
     private static final class VolatileDoubleChecked<T> implements Supplier<T> {

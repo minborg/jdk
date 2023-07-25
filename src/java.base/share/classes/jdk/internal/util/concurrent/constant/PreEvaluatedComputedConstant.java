@@ -23,17 +23,18 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.lazy;
+package jdk.internal.util.concurrent.constant;
 
 import java.util.Objects;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.Supplier;
 
-public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
+public final class PreEvaluatedComputedConstant<V>
+        implements ComputedConstant<V> {
 
     private final V value;
 
-    private PreEvaluatedLazyValue(V value) {
+    private PreEvaluatedComputedConstant(V value) {
         this.value = value;
     }
 
@@ -74,12 +75,25 @@ public final class PreEvaluatedLazyValue<V> implements LazyValue<V> {
     }
 
     @Override
-    public String toString() {
-        return "PreEvaluatedLazyValue[" + value + "]";
+    public void bind(V value) {
+        ComputedConstantUtil.throwAlreadyBound(
+                value == null
+                        ? ComputedConstantUtil.NULL_SENTINEL
+                        : ComputedConstantUtil.NON_NULL_SENTINEL);
     }
 
-    public static <V> LazyValue<V> create(V v) {
-        return new PreEvaluatedLazyValue<>(v);
+    @Override
+    public V computeIfUnbound(Supplier<? extends V> supplier) {
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return "PreEvaluatedComputedConstant[" + value + "]";
+    }
+
+    public static <V> ComputedConstant<V> create(V v) {
+        return new PreEvaluatedComputedConstant<>(v);
     }
 
 }

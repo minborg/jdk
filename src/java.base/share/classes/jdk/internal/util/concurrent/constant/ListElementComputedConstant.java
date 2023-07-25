@@ -23,51 +23,39 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.lazy;
+package jdk.internal.util.concurrent.constant;
 
-import jdk.internal.ValueBased;
-import jdk.internal.vm.annotation.Stable;
-
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.util.List;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.IntFunction;
 
-@ValueBased
-public final class IntLazyList
-        extends AbstractLazyList<Integer>
-        implements List<Integer> {
+public final class ListElementComputedConstant<V>
+        extends AbstractComputedConstant<V, IntFunction<? extends V>>
+        implements ComputedConstant<V> {
 
-    private static final VarHandle INT_ARRAY_HANDLE = MethodHandles.arrayElementVarHandle(int[].class);
+    private final int index;
 
-    @Stable
-    private final int[] elements;
-
-    private IntLazyList(int size,
-                        IntFunction<? extends Integer> presetMapper) {
-        super(size, presetMapper);
-        this.elements = new int[size];
-    }
-
-    boolean isNotDefaultValue(Integer value) {
-        return value != 0;
+    private ListElementComputedConstant(int index, IntFunction<? extends V> provider) {
+        super(provider);
+        this.index = index;
     }
 
     @Override
-    Integer element(int index) {
-        return elements[index];
+    V evaluate(IntFunction<? extends V> provider) {
+        return provider.apply(index);
     }
 
-    Integer elementVolatile(int index) {
-        return (Integer) INT_ARRAY_HANDLE.getVolatile(elements, index);
+    @Override
+    Class<?> providerType() {
+        return IntFunction.class;
     }
 
-    void casElement(int index, Integer value) {
-        INT_ARRAY_HANDLE.compareAndSet(elements, index, 0, index);
+    @Override
+    String toStringDescription() {
+        return "ListElementComputedConstant[" + index + "]";
     }
 
-    public static List<Integer> create(int size, IntFunction<? extends Integer> presetMapper) {
-        return new IntLazyList(size, presetMapper);
+    public static <V> ComputedConstant<V> create(int index, IntFunction<? extends V> provider) {
+        return new ListElementComputedConstant<>(index, provider);
     }
 
 }

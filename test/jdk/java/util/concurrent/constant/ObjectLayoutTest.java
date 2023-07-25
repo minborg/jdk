@@ -23,16 +23,17 @@
 
 /*
  * @test
- * @summary Inspect the object layout of lazy implementations
+ * @summary Inspect the object layout of computed constant implementations
  * @enablePreview
  * @modules java.base/jdk.internal.misc
- * @modules java.base/jdk.internal.util.concurrent.lazy
+ * @modules java.base/jdk.internal.util.concurrent.constant
  * @run junit ObjectLayoutTest
  */
 
 import jdk.internal.misc.Unsafe;
-import jdk.internal.util.concurrent.lazy.PreEvaluatedLazyValue;
-import jdk.internal.util.concurrent.lazy.AbstractLazyValue;
+import jdk.internal.util.concurrent.constant.PreEvaluatedComputedConstant;
+import jdk.internal.util.concurrent.constant.AbstractComputedConstant;
+import jdk.internal.util.concurrent.constant.StandardComputedConstant;
 import org.junit.jupiter.api.*;
 
 import java.lang.reflect.Modifier;
@@ -47,26 +48,23 @@ final class ObjectLayoutTest {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    /**
-     * Inspect the object layout of lazy implementations
-     *
-     * @param args unused
-     */
-    public static void main(String[] args) {
-        analyze(AbstractLazyValue.class);
-        analyze(PreEvaluatedLazyValue.class);
+    @Test
+    void analyze() {
+        analyze(StandardComputedConstant.class);
+        analyze(PreEvaluatedComputedConstant.class);
+        analyze(AbstractComputedConstant.class);
         //analyze(OptimizedReferenceLazyArray.class);
     }
 
     static void analyze(Class<?> c) {
         System.out.println("Fields of " + c.getName());
 
-/*        intanceFields(c)
+/*        instanceFields(c)
                 .forEach(System.out::println);*/
 /*
         System.out.println("details:");*/
 
-        intanceFields(c)
+        instanceFields(c)
                 .map(cf -> new ClassFieldOffset(cf.clazz().getSimpleName(), cf.fieldName(), (int) UNSAFE.objectFieldOffset(cf.clazz(), cf.fieldName())))
                 .sorted(Comparator.comparingInt(ClassFieldOffset::offset))
                 .forEach(System.out::println);
@@ -75,7 +73,7 @@ final class ObjectLayoutTest {
     }
 
     @SuppressWarnings("unchecked")
-    static <T> Stream<ClassFieldName> intanceFields(Class<T> clazz) {
+    static <T> Stream<ClassFieldName> instanceFields(Class<T> clazz) {
         return Stream.iterate(clazz, c -> (Class<T>) c.getSuperclass())
                 .takeWhile(c -> c != Object.class)
                 .flatMap(c -> Arrays.stream(c.getDeclaredFields())
@@ -97,7 +95,7 @@ final class ObjectLayoutTest {
 
         var hex = Arrays.stream(mark)
                 .boxed()
-                .map(i -> Integer.toHexString(i))
+                .map(Integer::toHexString)
                 .collect(Collectors.joining(", "));
 
         System.out.println(hex);

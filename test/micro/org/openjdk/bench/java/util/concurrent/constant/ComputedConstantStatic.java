@@ -21,7 +21,7 @@
  * questions.
  */
 
-package org.openjdk.bench.java.util.concurrent;
+package org.openjdk.bench.java.util.concurrent.constant;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -29,7 +29,6 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
-import org.openjdk.jmh.annotations.OperationsPerInvocation;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
@@ -39,12 +38,9 @@ import org.openjdk.jmh.infra.Blackhole;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.Supplier;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -53,55 +49,65 @@ import java.util.function.Supplier;
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
 @Fork(value=3, jvmArgsAppend = "--enable-preview")
-public class Lazy {
+public class ComputedConstantStatic {
 
     private static final Supplier<Integer> SUPPLIER = () -> 2 << 16;
     private static final Supplier<Integer> NULL_SUPPLIER = () -> null;
 
-    public Supplier<Integer> lazy;
-    public Supplier<Integer> lazyNull;
-    public Supplier<Integer> volatileDoubleChecked;
+    public static final Supplier<Integer> CONSTANT = ComputedConstant.of(SUPPLIER);
+    public static final Supplier<Integer> CONSTANT_NULL = ComputedConstant.of(NULL_SUPPLIER);
+    public static final Supplier<Integer> DC = new VolatileDoubleChecked<>(SUPPLIER);
 
     private int value;
 
     private static VarHandle valueHandle() {
         try {
             return MethodHandles.lookup()
-                    .findVarHandle(org.openjdk.bench.java.util.concurrent.Lazy.class, "value", int.class);
+                    .findVarHandle(ComputedConstantStatic.class, "value", int.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
     }
+
+    private static final VarHandle VALUE_HANDLE = valueHandle();
+    private static final ComputedConstant<VarHandle> CONSTANT_VALUE_HANDLE = ComputedConstant.of(ComputedConstantStatic::valueHandle);
 
     @State(Scope.Thread)
     public static class MyState {
         public int n = 10;
     }
 
-    /**
-     * The test variables are allocated every iteration so you can assume
-     * they are initialized to get similar behaviour across iterations
-     */
-    @Setup(Level.Iteration)
-    public void setupIteration() {
-        lazy = LazyValue.of(SUPPLIER);
-        lazyNull = LazyValue.of(NULL_SUPPLIER);
-        volatileDoubleChecked = new VolatileDoubleChecked<>(SUPPLIER);
+    @Benchmark
+    public void constant(Blackhole bh) {
+        bh.consume(CONSTANT.get());
     }
 
     @Benchmark
-    public void lazy(Blackhole bh) {
-        bh.consume(lazy.get());
+    public void constantNull(Blackhole bh) {
+        bh.consume(CONSTANT_NULL.get());
     }
 
     @Benchmark
-    public void isNull(Blackhole bh) {
-        bh.consume(lazyNull.get());
+    public void staticLocalClass(Blackhole bh) {
+        class Lazy {
+            private static final int INT = SUPPLIER.get();
+        }
+        bh.consume(Lazy.INT);
     }
 
     @Benchmark
-    public void volatileDoubleChecked(Blackhole bh) {
-        bh.consume(volatileDoubleChecked.get());
+    public void staticVolatileDoubleChecked(Blackhole bh) {
+        bh.consume(DC.get());
+    }
+
+    @Benchmark
+    public void methodHandle(Blackhole bh) {
+        bh.consume((int) VALUE_HANDLE.get(this));
+    }
+
+    @Benchmark
+    public void methodHandleConstant(Blackhole bh) {
+        bh.consume((int) CONSTANT_VALUE_HANDLE.get().get(this));
     }
 
     private static final class DelegatorLazy<T> implements Supplier<T> {
@@ -199,66 +205,13 @@ public class Lazy {
             return v;
         }
 
+        @SuppressWarnings("unchecked")
         T getVolatile() {
             return (T) VALUE_VH.getVolatile(this);
         }
 
         void setVolatile(Object value) {
             VALUE_VH.setVolatile(this, value);
-        }
-
-    }
-
-    private static final class AquireReleaseDoubleChecked<T> implements Supplier<T> {
-
-        private Supplier<? extends T> supplier;
-
-        private Object value;
-
-        static final VarHandle VALUE_VH;
-
-        static {
-            try {
-                VALUE_VH = MethodHandles.lookup()
-                        .findVarHandle(AquireReleaseDoubleChecked.class, "value", Object.class);
-            } catch (ReflectiveOperationException e) {
-                throw new ExceptionInInitializerError(e);
-            }
-        }
-
-        public AquireReleaseDoubleChecked(Supplier<? extends T> supplier) {
-            this.supplier = supplier;
-        }
-
-        @Override
-        public T get() {
-            T value = getAcquire();
-            if (value == null) {
-                synchronized (this) {
-                    value = getAcquire();
-                    if (value == null) {
-                        if (supplier == null) {
-                            throw new IllegalArgumentException("No pre-set supplier specified.");
-                        }
-                        value = supplier.get();
-                        if (value == null) {
-                            throw new NullPointerException("The supplier returned null: " + supplier);
-                        }
-                        setRelease(value);
-                        supplier = null;
-                    }
-                }
-            }
-            return value;
-        }
-
-        @SuppressWarnings("unchecked")
-        T getAcquire() {
-            return (T) VALUE_VH.getAcquire(this);
-        }
-
-        void setRelease(Object value) {
-            VALUE_VH.setRelease(this, value);
         }
 
     }

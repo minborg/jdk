@@ -21,7 +21,7 @@
  * questions.
  */
 
-package org.openjdk.bench.java.util.concurrent;
+package org.openjdk.bench.java.util.concurrent.constant;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -40,7 +40,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -51,17 +51,17 @@ import java.util.stream.IntStream;
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
 @Fork(value=3, jvmArgsAppend = "--enable-preview")
-public class LazyList {
+public class ComputedConstantList {
 
     private static final int SIZE = 10;
     private static final int POS = SIZE / 2;
     private static final IntFunction<Integer> MAPPER = i -> i;
     private static final IntFunction<Integer> NULL_MAPPER = i -> null;
 
-    public List<LazyValue<Integer>> lazyListOfLazy;
-    public List<LazyValue<Integer>> lazyListOfLazyNull;
-    public List<Integer> lazyList;
-    public List<Integer> lazyIntList;
+    public List<ComputedConstant<Integer>> listOfConstants;
+    public List<ComputedConstant<Integer>> listOfConstantsNull;
+    public List<Integer> list;
+    public List<Integer> intList;
     public List<VolatileDoubleChecked<Integer>> volatileDoubleChecked;
 
     private int value;
@@ -69,7 +69,7 @@ public class LazyList {
     private static VarHandle valueHandle() {
         try {
             return MethodHandles.lookup()
-                    .findVarHandle(org.openjdk.bench.java.util.concurrent.LazyList.class, "value", int.class);
+                    .findVarHandle(ComputedConstantList.class, "value", int.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -86,23 +86,23 @@ public class LazyList {
      */
     @Setup(Level.Iteration)
     public void setupIteration() {
-        lazyListOfLazy = LazyValue.ofListOfLazyValues(SIZE, MAPPER);;
-        lazyListOfLazyNull = LazyValue.ofListOfLazyValues(SIZE, MAPPER);
+        listOfConstants = ComputedConstant.ofList(SIZE, MAPPER);;
+        listOfConstantsNull = ComputedConstant.ofList(SIZE, MAPPER);
         volatileDoubleChecked = IntStream.range(0, SIZE)
                 .mapToObj(i -> new VolatileDoubleChecked<>(i, MAPPER))
                 .toList();
-        lazyList = LazyValue.ofList(SIZE, MAPPER);
-        lazyIntList = LazyValue.ofList(int.class, SIZE, MAPPER);
+        list = ComputedConstant.Hidden.ofActualList(SIZE, MAPPER);
+        intList = ComputedConstant.Hidden.ofActualList(int.class, SIZE, MAPPER);
     }
 
     @Benchmark
-    public void ofLazy(MyState state, Blackhole bh) {
-        bh.consume(lazyListOfLazy.get(state.n).get());
+    public void ofConstant(MyState state, Blackhole bh) {
+        bh.consume(listOfConstants.get(state.n).get());
     }
 
     @Benchmark
-    public void ofLazyNull(MyState state, Blackhole bh) {
-        bh.consume(lazyListOfLazyNull.get(state.n).get());
+    public void ofConstantNull(MyState state, Blackhole bh) {
+        bh.consume(listOfConstantsNull.get(state.n).get());
     }
 
     @Benchmark
@@ -112,12 +112,12 @@ public class LazyList {
 
     @Benchmark
     public void list(MyState state, Blackhole bh) {
-        bh.consume(lazyList.get(state.n));
+        bh.consume(list.get(state.n));
     }
 
     @Benchmark
     public void intList(MyState state, Blackhole bh) {
-        bh.consume(lazyIntList.get(state.n));
+        bh.consume(intList.get(state.n));
     }
 
     private static final class VolatileDoubleChecked<T> implements Supplier<T> {

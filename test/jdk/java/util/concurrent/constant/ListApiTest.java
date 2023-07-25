@@ -22,7 +22,7 @@
  */
 
 import java.util.List;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.constant.ComputedConstant;
 
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,13 +31,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * @test
  * @summary Test the API
  * @enablePreview
- * @run junit LazyArrayApiTest
+ * @run junit ListApiTest
  */
-public class LazyArrayApiTest {
+public class ListApiTest {
 
     @Test
     void testArrayFactories() {
-        List<LazyValue<Integer>> a = LazyValue.ofListOfLazyValues(10, i -> i);
+        List<ComputedConstant<Integer>> a = ComputedConstant.ofList(10, i -> i);
         assertEquals(5, a.get(5).get());
     }
 

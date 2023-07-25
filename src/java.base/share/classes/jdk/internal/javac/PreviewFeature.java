@@ -69,8 +69,8 @@ public @interface PreviewFeature {
         @JEP(number=442, title="Foreign Function & Memory API", status="Third Preview")
         FOREIGN,
         // Real JEP number TBD
-        @JEP(number=8306917, title="Lazy Values & Arrays API", status="First Preview")
-        LAZY,
+        @JEP(number=8312611, title="Compute-at-most-once Constants API", status="First Preview")
+        COMPUTED_CONSTANTS,
         @JEP(number=430, title="String Templates")
         STRING_TEMPLATES,
         @JEP(number=443, title="Unnamed Patterns and Variables")

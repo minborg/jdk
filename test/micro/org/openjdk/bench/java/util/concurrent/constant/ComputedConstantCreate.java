@@ -21,7 +21,7 @@
  * questions.
  */
 
-package org.openjdk.bench.java.util.concurrent;
+package org.openjdk.bench.java.util.concurrent.constant;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -38,7 +38,7 @@ import org.openjdk.jmh.infra.Blackhole;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.stream.IntStream;
@@ -49,7 +49,7 @@ import java.util.stream.IntStream;
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
 @Fork(value = 3, jvmArgsAppend = "--enable-preview")
-public class LazyCreate {
+public class ComputedConstantCreate {
 
     private static final IntFunction<Integer> MAPPER = i -> i;
     private static final List<Integer> SET_OF_0_to_999 = IntStream.range(0, 1000).boxed().toList();
@@ -57,44 +57,44 @@ public class LazyCreate {
     @Benchmark
     public void create1000(Blackhole bh) {
         for (int i = 0; i < 1000; i++) {
-            bh.consume(LazyValue.of(MAPPER));
+            bh.consume(ComputedConstant.of(MAPPER));
         }
     }
 
     @Benchmark
     public void create100(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
-            bh.consume(LazyValue.of(MAPPER));
+            bh.consume(ComputedConstant.of(MAPPER));
         }
     }
 
     @Benchmark
-    public void createListOfLazyValues1000(Blackhole bh) {
-        bh.consume(LazyValue.ofListOfLazyValues(1000, MAPPER));
+    public void createListOfConstants1000(Blackhole bh) {
+        bh.consume(ComputedConstant.ofList(1000, MAPPER));
     }
 
     @Benchmark
-    public void createListOfLazyValues100(Blackhole bh) {
-        bh.consume(LazyValue.ofListOfLazyValues(100, MAPPER));
+    public void createListOfConstants100(Blackhole bh) {
+        bh.consume(ComputedConstant.ofList(100, MAPPER));
     }
 
     @Benchmark
     public void createList1000(Blackhole bh) {
-        bh.consume(LazyValue.ofList(1000, MAPPER));
+        bh.consume(ComputedConstant.Hidden.ofActualList(1000, MAPPER));
     }
 
     @Benchmark
     public void createList100(Blackhole bh) {
-        bh.consume(LazyValue.ofList(100, MAPPER));
+        bh.consume(ComputedConstant.Hidden.ofActualList(100, MAPPER));
     }
 
     @Benchmark
     public void createIntList1000(Blackhole bh) {
-        bh.consume(LazyValue.ofList(int.class, 1000, MAPPER));
+        bh.consume(ComputedConstant.Hidden.ofActualList(int.class, 1000, MAPPER));
     }
 
     @Benchmark
-    public void createMapOf1000(Blackhole bh) {
-        bh.consume(LazyValue.ofMapOfLazyValues(SET_OF_0_to_999, Function.identity()));
+    public void createMapOfConstants1000(Blackhole bh) {
+        bh.consume(ComputedConstant.ofMap(SET_OF_0_to_999, Function.identity()));
     }
 }

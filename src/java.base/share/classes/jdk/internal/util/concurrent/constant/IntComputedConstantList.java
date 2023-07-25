@@ -23,37 +23,51 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.lazy;
+package jdk.internal.util.concurrent.constant;
 
-import java.util.concurrent.lazy.LazyValue;
+import jdk.internal.ValueBased;
+import jdk.internal.vm.annotation.Stable;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.List;
 import java.util.function.IntFunction;
-import java.util.function.Supplier;
 
-public final class StandardLazyValue<V>
-        extends AbstractLazyValue<V, Supplier<? extends V>>
-        implements LazyValue<V> {
+@ValueBased
+public final class IntComputedConstantList
+        extends AbstractComputedConstantList<Integer>
+        implements List<Integer> {
 
-    private StandardLazyValue(Supplier<? extends V> provider) {
-        super(provider);
+    private static final VarHandle INT_ARRAY_HANDLE = MethodHandles.arrayElementVarHandle(int[].class);
+
+    @Stable
+    private final int[] elements;
+
+    private IntComputedConstantList(int size,
+                                    IntFunction<? extends Integer> presetMapper) {
+        super(size, presetMapper);
+        this.elements = new int[size];
+    }
+
+    boolean isNotDefaultValue(Integer value) {
+        return value != 0;
     }
 
     @Override
-    V evaluate(Supplier<? extends V> provider) {
-        return provider.get();
+    Integer element(int index) {
+        return elements[index];
     }
 
-    @Override
-    Class<?> providerType() {
-        return Supplier.class;
+    Integer elementVolatile(int index) {
+        return (Integer) INT_ARRAY_HANDLE.getVolatile(elements, index);
     }
 
-    @Override
-    String toStringDescription() {
-        return "StandardLazyValue";
+    void casElement(int index, Integer value) {
+        INT_ARRAY_HANDLE.compareAndSet(elements, index, 0, index);
     }
 
-    public static <V> LazyValue<V> create(Supplier<? extends V> provider) {
-        return new StandardLazyValue<>(provider);
+    public static List<Integer> create(int size, IntFunction<? extends Integer> presetMapper) {
+        return new IntComputedConstantList(size, presetMapper);
     }
 
 }

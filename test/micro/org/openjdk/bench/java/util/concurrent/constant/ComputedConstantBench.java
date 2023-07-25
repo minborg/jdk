@@ -21,7 +21,7 @@
  * questions.
  */
 
-package org.openjdk.bench.java.util.concurrent;
+package org.openjdk.bench.java.util.concurrent.constant;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -29,6 +29,7 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OperationsPerInvocation;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
@@ -40,7 +41,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.lazy.LazyValue;
+import java.util.concurrent.constant.ComputedConstant;
 import java.util.function.Supplier;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -49,65 +50,55 @@ import java.util.function.Supplier;
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
 @Fork(value=3, jvmArgsAppend = "--enable-preview")
-public class LazyStatic {
+public class ComputedConstantBench {
 
     private static final Supplier<Integer> SUPPLIER = () -> 2 << 16;
     private static final Supplier<Integer> NULL_SUPPLIER = () -> null;
 
-    public static final Supplier<Integer> LAZY = LazyValue.of(SUPPLIER);
-    public static final Supplier<Integer> LAZY_NULL = LazyValue.of(NULL_SUPPLIER);
-    public static final Supplier<Integer> LAZY_DC = new VolatileDoubleChecked<>(SUPPLIER);
+    public Supplier<Integer> constant;
+    public Supplier<Integer> constantNull;
+    public Supplier<Integer> volatileDoubleChecked;
 
     private int value;
 
     private static VarHandle valueHandle() {
         try {
             return MethodHandles.lookup()
-                    .findVarHandle(LazyStatic.class, "value", int.class);
+                    .findVarHandle(ComputedConstantBench.class, "value", int.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
     }
-
-    private static final VarHandle VALUE_HANDLE = valueHandle();
-    private static final LazyValue<VarHandle> LAZY_VALUE_HANDLE = LazyValue.of(LazyStatic::valueHandle);
 
     @State(Scope.Thread)
     public static class MyState {
         public int n = 10;
     }
 
-    @Benchmark
-    public void lazy(Blackhole bh) {
-        bh.consume(LAZY.get());
+    /**
+     * The test variables are allocated every iteration so you can assume
+     * they are initialized to get similar behaviour across iterations
+     */
+    @Setup(Level.Iteration)
+    public void setupIteration() {
+        constant = ComputedConstant.of(SUPPLIER);
+        constantNull = ComputedConstant.of(NULL_SUPPLIER);
+        volatileDoubleChecked = new VolatileDoubleChecked<>(SUPPLIER);
     }
 
     @Benchmark
-    public void isNull(Blackhole bh) {
-        bh.consume(LAZY_NULL.get());
+    public void constant(Blackhole bh) {
+        bh.consume(constant.get());
     }
 
     @Benchmark
-    public void staticLocalClass(Blackhole bh) {
-        class Lazy {
-            private static final int INT = SUPPLIER.get();
-        }
-        bh.consume(Lazy.INT);
+    public void constantNull(Blackhole bh) {
+        bh.consume(constantNull.get());
     }
 
     @Benchmark
-    public void staticVolatileDoubleChecked(Blackhole bh) {
-        bh.consume(LAZY_DC.get());
-    }
-
-    @Benchmark
-    public void methodHandle(Blackhole bh) {
-        bh.consume((int) VALUE_HANDLE.get(this));
-    }
-
-    @Benchmark
-    public void methodHandleLazy(Blackhole bh) {
-        bh.consume((int) LAZY_VALUE_HANDLE.get().get(this));
+    public void volatileDoubleChecked(Blackhole bh) {
+        bh.consume(volatileDoubleChecked.get());
     }
 
     private static final class DelegatorLazy<T> implements Supplier<T> {
@@ -205,13 +196,66 @@ public class LazyStatic {
             return v;
         }
 
-        @SuppressWarnings("unchecked")
         T getVolatile() {
             return (T) VALUE_VH.getVolatile(this);
         }
 
         void setVolatile(Object value) {
             VALUE_VH.setVolatile(this, value);
+        }
+
+    }
+
+    private static final class AquireReleaseDoubleChecked<T> implements Supplier<T> {
+
+        private Supplier<? extends T> supplier;
+
+        private Object value;
+
+        static final VarHandle VALUE_VH;
+
+        static {
+            try {
+                VALUE_VH = MethodHandles.lookup()
+                        .findVarHandle(AquireReleaseDoubleChecked.class, "value", Object.class);
+            } catch (ReflectiveOperationException e) {
+                throw new ExceptionInInitializerError(e);
+            }
+        }
+
+        public AquireReleaseDoubleChecked(Supplier<? extends T> supplier) {
+            this.supplier = supplier;
+        }
+
+        @Override
+        public T get() {
+            T value = getAcquire();
+            if (value == null) {
+                synchronized (this) {
+                    value = getAcquire();
+                    if (value == null) {
+                        if (supplier == null) {
+                            throw new IllegalArgumentException("No pre-set supplier specified.");
+                        }
+                        value = supplier.get();
+                        if (value == null) {
+                            throw new NullPointerException("The supplier returned null: " + supplier);
+                        }
+                        setRelease(value);
+                        supplier = null;
+                    }
+                }
+            }
+            return value;
+        }
+
+        @SuppressWarnings("unchecked")
+        T getAcquire() {
+            return (T) VALUE_VH.getAcquire(this);
+        }
+
+        void setRelease(Object value) {
+            VALUE_VH.setRelease(this, value);
         }
 
     }

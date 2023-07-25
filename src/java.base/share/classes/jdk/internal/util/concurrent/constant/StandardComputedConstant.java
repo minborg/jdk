@@ -23,48 +23,40 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.lazy;
+package jdk.internal.util.concurrent.constant;
 
-import jdk.internal.ValueBased;
-import jdk.internal.vm.annotation.Stable;
+import java.util.concurrent.constant.ComputedConstant;
+import java.util.function.Supplier;
 
-import java.util.List;
-import java.util.function.IntFunction;
+public final class StandardComputedConstant<V>
+        extends AbstractComputedConstant<V, Supplier<? extends V>>
+        implements ComputedConstant<V> {
 
-@ValueBased
-public final class LazyList<E>
-        extends AbstractLazyList<E>
-        implements List<E> {
-
-    @Stable
-    private final E[] elements;
-
-    @SuppressWarnings("unchecked")
-    private LazyList(int size, IntFunction<? extends E> presetMapper) {
-        super(size, presetMapper);
-        this.elements = (E[]) new Object[size];
-    }
-
-    boolean isNotDefaultValue(E value) {
-        return value != null;
+    private StandardComputedConstant(Supplier<? extends V> provider) {
+        super(provider);
     }
 
     @Override
-    E element(int index) {
-        return elements[index];
+    V evaluate(Supplier<? extends V> provider) {
+        return provider.get();
     }
 
-    @SuppressWarnings("unchecked")
-    E elementVolatile(int index) {
-        return (E) OBJECT_ARRAY_HANDLE.getVolatile(elements, index);
+    @Override
+    Class<?> providerType() {
+        return Supplier.class;
     }
 
-    void casElement(int index, E value) {
-        OBJECT_ARRAY_HANDLE.compareAndSet(elements, index, null, index);
+    @Override
+    String toStringDescription() {
+        return "StandardComputedConstant";
     }
 
-    public static <E> List<E> create(int size, IntFunction<? extends E> presetMapper) {
-        return new LazyList<>(size, presetMapper);
+    public static <V> ComputedConstant<V> create(Supplier<? extends V> provider) {
+        return new StandardComputedConstant<>(provider);
+    }
+
+    public static <V> ComputedConstant<V> create() {
+        return create(ComputedConstantUtil.throwingSupplier());
     }
 
 }
