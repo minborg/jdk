@@ -135,7 +135,7 @@ public abstract sealed class AbstractComputedConstant<V, P>
         return v;
     }
 
-    @Override
+
     public synchronized void bind(V value) {
         if (auxiliary instanceof ConstantUtil.State state) {
             ConstantUtil.throwAlreadyBound(state);
@@ -148,7 +148,7 @@ public abstract sealed class AbstractComputedConstant<V, P>
         }
     }
 
-    @Override
+
     public V computeIfUnbound(Supplier<? extends V> supplier) {
         Objects.requireNonNull(supplier);
         // Try normal memory semantics first

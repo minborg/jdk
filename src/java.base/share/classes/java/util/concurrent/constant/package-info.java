@@ -33,7 +33,7 @@
  * to the terminal state of <em>bound</em> when it is permanently associated with a fixed
  * value (the value can be {@code null}).
  * <p>
- * This contrasts with {@link java.util.concurrent.atomic.AtomicReferenceArray } where any number of
+ * This contrasts with {@link java.util.concurrent.atomic.AtomicReference } where any number of
  * updates can be done and where there is no simple way to atomically compute a value
  * (guaranteed to only be computed once) if missing. Computed constants also contrasts to
  * {@link java.util.concurrent.Future} where a value is computed in another thread.

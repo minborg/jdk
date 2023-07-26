@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
  */
 @PreviewFeature(feature = PreviewFeature.Feature.COMPUTED_CONSTANTS)
 public sealed interface ComputedConstant<V>
-        extends Supplier<V>, ConstantPredicates
+        extends Supplier<V>
         permits AbstractComputedConstant,
         ListElementComputedConstant,
         MapElementComputedConstant,
@@ -65,22 +65,24 @@ public sealed interface ComputedConstant<V>
         StandardComputedConstant {
 
     /**
-     * {@inheritDoc}
+     * {@return {@code true} if no attempt has been made to bind a value to this constant}
      */
     boolean isUnbound();
 
     /**
-     * {@inheritDoc}
+     * {@return {@code true} if a thread is in the process of binding a value to this constant
+     * but the outcome of the computation is not yet known}
      */
     boolean isBinding();
 
     /**
-     * {@inheritDoc}
+     * {@return {@code true} if a value is bound to this constant}
      */
     boolean isBound();
 
     /**
-     * {@inheritDoc}
+     * {@return {@code true} if an attempt was made to bind a value but
+     * a value could not be bound to this constant}
      */
     boolean isError();
 
@@ -149,48 +151,6 @@ public sealed interface ComputedConstant<V>
     <X extends Throwable> V orElseThrow(Supplier<? extends X> exceptionSupplier) throws X;
 
     /**
-     * Atomically binds the value of this computed constant to the provided {@code value}.
-     * <p>
-     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
-     * the binding completes (successfully or not).
-     *
-     * @param value to bind
-     * @throws IllegalStateException if a value is already bound or a previous attempt was made to bind a value
-     */
-    void bind(V value);
-
-    /**
-     * {@return the bound value of this computed constant. If no value is bound, atomically attempts to
-     * compute and record a bound value using the provided {@code supplier}}
-     * <p>
-     * If the supplier returns {@code null}, {@code null} is bound and returned.
-     * If the supplier throws an (unchecked) exception, the exception is wrapped into
-     * a {@link NoSuchElementException} which is thrown, and no value is bound.  If an Error
-     * is thrown by the supplier, the Error is relayed to the caller.  If an Exception
-     * or an Error is thrown by the supplier, no further attempt is made to bind the value and all
-     * subsequent invocations of this method will throw a new {@link NoSuchElementException}.
-     * <p>
-     * The most common usage is to construct a new object serving as a memoized result, as in:
-     * <p>
-     * {@snippet lang = java:
-     *    ComputedConstant<V> constant = ComputedConstant.ofEmpty();
-     *    // ...
-     *    V value = constant.computeIfUnbound(Value::new);
-     *    assertNotNull(value); // Value is non-null
-     *}
-     * <p>
-     * If a thread calls this method while being bound by another thread, the current thread will be suspended until
-     * the binding completes (successfully or not).  Otherwise, this method is guaranteed to be lock-free.
-     *
-     * @param supplier to invoke when computing a value
-     * @throws NoSuchElementException if a value cannot be bound
-     * @throws StackOverflowError     if a circular dependency is detected (i.e. calls itself directly or
-     *                                indirectly in the same thread).
-     * @throws Error                  if the supplier throws an Error
-     */
-    V computeIfUnbound(Supplier<? extends V> supplier);
-
-    /**
      * {@return a new {@link ComputedConstant } that will use this computed constant's eventually bound value
      * and then apply the provided {@code mapper}}
      *
@@ -253,89 +213,6 @@ public sealed interface ComputedConstant<V>
     }
 
     /**
-     * {@return a pre-evaluated {@link ComputedConstant } with the provided {@code value} bound}
-     *
-     * @param <V>   The type of the value
-     * @param value to bind (can be {@code null})
-     */
-    static <V> ComputedConstant<V> of(V value) {
-        return PreEvaluatedComputedConstant.create(value);
-    }
-
-    /**
-     * This interface hides prototype methods that should not be a part of the API.
-     */
-    @PreviewFeature(feature = PreviewFeature.Feature.COMPUTED_CONSTANTS)
-    interface Hidden {
-        /**
-         * {@return a new unmodifiable List of lazily evaluated elements with the provided
-         * {@code size} and provided {@code presetMapper}}
-         * <p>
-         * Below, an example of how to cache values in a list is shown:
-         * {@snippet lang = java:
-         *     class DemoList {
-         *
-         *         private static final List<Long> PO2_CACHE =
-         *                 ComputedConstant.ofActualList(32, index -> 1L << index);
-         *
-         *         public long powerOfTwoValue(int n) {
-         *             return PO2_CACHE.get(n);
-         *         }
-         *     }
-         *}
-         *
-         * @param <V>          the type of the values
-         * @param size         the size of the List
-         * @param presetMapper to invoke when computing and binding element values
-         */
-        static <V> List<V> ofActualList(int size,
-                                        IntFunction<? extends V> presetMapper) {
-            if (size < 0) {
-                throw new IllegalArgumentException();
-            }
-            Objects.requireNonNull(presetMapper);
-            return ComputedConstantList.create(size, presetMapper);
-        }
-
-        /**
-         * {@return a new unmodifiable List of lazily evaluated elements with the provided
-         * {@code size} and provided {@code presetMapper}}
-         * <p>
-         * Below, an example of how to cache values in a list is shown:
-         * {@snippet lang = java:
-         *     class DemoList {
-         *
-         *         private static final List<Long> PO2_CACHE =
-         *                 ComputedConstant.ofActualList(32, index -> 1L << index);
-         *
-         *         public long powerOfTwoValue(int n) {
-         *             return PO2_CACHE.get(n);
-         *         }
-         *     }
-         *}
-         *
-         * @param <V>          the type of the values
-         * @param type         a class to use for the backing array.
-         * @param size         the size of the List
-         * @param presetMapper to invoke when computing and binding element values
-         */
-        @SuppressWarnings("unchecked")
-        static <V> List<V> ofActualList(Class<? super V> type,
-                                        int size,
-                                        IntFunction<? extends V> presetMapper) {
-            Objects.requireNonNull(type);
-            if (size < 0) {
-                throw new IllegalArgumentException();
-            }
-            Objects.requireNonNull(presetMapper);
-            if (type == int.class || type == Integer.class) {
-                return (List<V>) IntComputedConstantList.create(size, (IntFunction<Integer>) presetMapper);
-            }
-            return ComputedConstantList.create(size, presetMapper);
-        }
-    }
-
-    /**
      * {@return a new unmodifiable List of {@link ComputedConstant } elements with the provided
      * {@code size} and provided {@code presetMapper}}
      * <p>
@@ -365,39 +242,6 @@ public sealed interface ComputedConstant<V>
         }
         Objects.requireNonNull(presetMapper);
         return OnDemandComputedConstantList.create(size, presetMapper);
-    }
-
-    /**
-     * {@return a new unmodifiable Map of {@link ComputedConstant } values with the provided
-     * {@code keys} and provided {@code presetMapper}}
-     * <p>
-     * The Map and its values are eligible for constant folding optimizations by the JVM.
-     * <p>
-     * Below, an example of how to cache values in a Map is shown:
-     * {@snippet lang = java:
-     *     class DemoMap {
-     *
-     *         private static final Map<Integer, ComputedConstant<User>> USER_ID_CACHE =
-     *                 ComputedConstant.ofMap(List.of(0, 1, 1000), DB::findUserById);
-     *
-     *         public User userFromCache(int userId) {
-     *             return USER_ID_CACHE.get(userId);
-     *         }
-     *     }
-     *}
-     *
-     * @param <K>          the type of the keys
-     * @param <V>          the type of the values
-     * @param keys         the keys to associate with ComputedConstant instances
-     * @param presetMapper to invoke when computing and binding element values
-     */
-    static <K, V> Map<K, ComputedConstant<V>> ofMap(Collection<K> keys,
-                                                    Function<? super K, ? extends V> presetMapper) {
-        Objects.requireNonNull(keys);
-        Objects.requireNonNull(presetMapper);
-        // Todo: Create a lazy populated list
-        return keys.stream()
-                .collect(Collectors.toUnmodifiableMap(Function.identity(), k -> MapElementComputedConstant.create(k, presetMapper)));
     }
 
 }

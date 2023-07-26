@@ -246,7 +246,7 @@ public class Composition {
                 case Add(var left, var right) -> ComputedConstant.of(() -> lazilyEval(left).get() + lazilyEval(right).get());
                 case Mul(var left, var right) -> ComputedConstant.of(() -> lazilyEval(left).get() * lazilyEval(right).get());
                 case Neg(var exp)                 -> lazilyEval(exp).map(d -> -d);
-                case Const(double val)            -> ComputedConstant.of(val);
+                case Const(double val)            -> null;
                 case Lazy(ComputedConstant<Double> lazy) -> lazy;
             };
         }

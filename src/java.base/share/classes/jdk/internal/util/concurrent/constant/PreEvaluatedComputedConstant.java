@@ -74,7 +74,6 @@ public final class PreEvaluatedComputedConstant<V>
         return value;
     }
 
-    @Override
     public void bind(V value) {
         ConstantUtil.throwAlreadyBound(
                 this.value == null
@@ -82,7 +81,6 @@ public final class PreEvaluatedComputedConstant<V>
                         : ConstantUtil.NON_NULL_SENTINEL);
     }
 
-    @Override
     public V computeIfUnbound(Supplier<? extends V> supplier) {
         return value;
     }
