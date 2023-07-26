@@ -23,40 +23,45 @@
  * questions.
  */
 
-package jdk.internal.util.concurrent.constant;
+package java.util.concurrent.constant;
 
-import java.util.concurrent.constant.ComputedConstant;
+import jdk.internal.javac.PreviewFeature;
+
+import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
-public final class StandardComputedConstant<V>
-        extends AbstractComputedConstant<V, Supplier<? extends V>>
-        implements ComputedConstant<V> {
+/**
+ * A set of query operations that are common for constant constructs.
+ *
+ * @sealedGraph
+ * @since 22
+ */
+@PreviewFeature(feature = PreviewFeature.Feature.COMPUTED_CONSTANTS)
+public sealed interface ConstantPredicates
+        permits ComputedConstant,
+        Constant {
 
-    private StandardComputedConstant(Supplier<? extends V> provider) {
-        super(provider);
-    }
+    /**
+     * {@return {@code true} if no attempt has been made to bind a value to this constant}
+     */
+    boolean isUnbound();
 
-    @Override
-    V evaluate(Supplier<? extends V> provider) {
-        return provider.get();
-    }
+    /**
+     * {@return {@code true} if a thread is in the process of binding a value to this constant
+     * but the outcome of the computation is not yet known}
+     */
+    boolean isBinding();
 
-    @Override
-    Class<?> providerType() {
-        return Supplier.class;
-    }
+    /**
+     * {@return {@code true} if a value is bound to this constant}
+     */
+    boolean isBound();
 
-    @Override
-    String toStringDescription() {
-        return "StandardComputedConstant";
-    }
-
-    public static <V> ComputedConstant<V> create(Supplier<? extends V> provider) {
-        return new StandardComputedConstant<>(provider);
-    }
-
-    public static <V> ComputedConstant<V> create() {
-        return create(ConstantUtil.throwingSupplier());
-    }
+    /**
+     * {@return {@code true} if an attempt was made to bind a value but
+     * a value could not be bound to this constant}
+     */
+    boolean isError();
 
 }

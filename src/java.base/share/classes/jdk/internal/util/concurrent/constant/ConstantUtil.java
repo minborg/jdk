@@ -28,14 +28,14 @@ package jdk.internal.util.concurrent.constant;
 import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
-public final class ComputedConstantUtil {
+public final class ConstantUtil {
 
     private static final Supplier<?> THROWING_SUPPLIER = () -> {
         throw new NoSuchElementException(
                 "This ComputedConstant does not have a pre-set supplier and no value was explicitly bound.");
     };
 
-    private ComputedConstantUtil() {
+    private ConstantUtil() {
     }
 
     @SuppressWarnings("unchecked")
@@ -83,16 +83,29 @@ public final class ComputedConstantUtil {
         return result;
     }
 
+    static final byte UNBOUND = 0;
     static final byte BINDING = 1;
     static final byte BOUND = 2;
     static final byte NON_NULL = BOUND;
     static final byte NULL = NON_NULL | 4;
-    static final byte ERROR = 8;
+    static final byte BIND_ERROR = 8;
 
     static boolean isBound(byte state) {
         return (state & BOUND) != 0;
     }
 
+    static State toState(byte state) {
+        return switch (state) {
+            case UNBOUND -> UNBOUND_SENTINEL;
+            case BINDING -> BINDING_SENTINEL;
+            case NON_NULL -> NON_NULL_SENTINEL;
+            case NULL -> NULL_SENTINEL;
+            case BIND_ERROR -> BIND_ERROR_SENTINEL;
+            default -> throw new IllegalStateException("Unexpected value: " + state);
+        };
+    }
+
+    static final Unbound UNBOUND_SENTINEL = new Unbound();
     static final Binding BINDING_SENTINEL = new Binding();
     static final NonNull NON_NULL_SENTINEL = new NonNull();
     static final Null NULL_SENTINEL = new Null();
@@ -100,6 +113,7 @@ public final class ComputedConstantUtil {
 
     sealed interface State {}
     sealed interface Bound {}
+    static final class Unbound   implements State        { private Unbound() {} }
     static final class Binding   implements State        { private Binding() {} }
     static final class Null      implements State, Bound { private Null() {} }
     static final class NonNull   implements State, Bound { private NonNull() {} }

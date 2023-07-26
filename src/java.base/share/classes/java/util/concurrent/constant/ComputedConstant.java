@@ -53,12 +53,11 @@ import java.util.stream.Collectors;
  * be lock free and are eligible for constant folding optimizations by the JVM.
  *
  * @param <V> The type of the value to be bound
- * @sealedGraph
  * @since 22
  */
 @PreviewFeature(feature = PreviewFeature.Feature.COMPUTED_CONSTANTS)
 public sealed interface ComputedConstant<V>
-        extends Supplier<V>
+        extends Supplier<V>, ConstantPredicates
         permits AbstractComputedConstant,
         ListElementComputedConstant,
         MapElementComputedConstant,
@@ -66,24 +65,22 @@ public sealed interface ComputedConstant<V>
         StandardComputedConstant {
 
     /**
-     * {@return {@code true} if no attempt has been made to bind a value}
+     * {@inheritDoc}
      */
     boolean isUnbound();
 
     /**
-     * {@return {@code true} if a thread is in the process of binding a value but
-     * the outcome of the evaluation is not yet known}
+     * {@inheritDoc}
      */
     boolean isBinding();
 
     /**
-     * {@return {@code true} if a value is bound to this constant}
+     * {@inheritDoc}
      */
     boolean isBound();
 
     /**
-     * {@return {@code true} if an attempt was made to bind a value but
-     * a value could not be bound to this constant}
+     * {@inheritDoc}
      */
     boolean isError();
 
@@ -258,8 +255,8 @@ public sealed interface ComputedConstant<V>
     /**
      * {@return a pre-evaluated {@link ComputedConstant } with the provided {@code value} bound}
      *
-     * @param <V>   The type of the value (can be {@code null})
-     * @param value to bind
+     * @param <V>   The type of the value
+     * @param value to bind (can be {@code null})
      */
     static <V> ComputedConstant<V> of(V value) {
         return PreEvaluatedComputedConstant.create(value);
@@ -342,6 +339,8 @@ public sealed interface ComputedConstant<V>
      * {@return a new unmodifiable List of {@link ComputedConstant } elements with the provided
      * {@code size} and provided {@code presetMapper}}
      * <p>
+     * The List and its elements are eligible for constant folding optimizations by the JVM.
+     * <p>
      * Below, an example of how to cache values in a list is shown:
      * {@snippet lang = java:
      *     class DemoList {
@@ -372,6 +371,8 @@ public sealed interface ComputedConstant<V>
      * {@return a new unmodifiable Map of {@link ComputedConstant } values with the provided
      * {@code keys} and provided {@code presetMapper}}
      * <p>
+     * The Map and its values are eligible for constant folding optimizations by the JVM.
+     * <p>
      * Below, an example of how to cache values in a Map is shown:
      * {@snippet lang = java:
      *     class DemoMap {
@@ -394,6 +395,7 @@ public sealed interface ComputedConstant<V>
                                                     Function<? super K, ? extends V> presetMapper) {
         Objects.requireNonNull(keys);
         Objects.requireNonNull(presetMapper);
+        // Todo: Create a lazy populated list
         return keys.stream()
                 .collect(Collectors.toUnmodifiableMap(Function.identity(), k -> MapElementComputedConstant.create(k, presetMapper)));
     }

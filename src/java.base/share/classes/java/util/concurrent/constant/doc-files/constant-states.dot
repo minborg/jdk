@@ -1,5 +1,6 @@
 digraph G {
-    unbound -> binding [ label=" get()\n orElse()\n orElseThrow()\n" ];
+    unbound -> bound [ label=" bind()\n" ];
+    unbound -> binding [ label=" computeIfUnbound()\n" ];
     binding -> bound [ label=" provider -> value" ];
     binding -> error [ label=" provider -> Throwable" ];
 

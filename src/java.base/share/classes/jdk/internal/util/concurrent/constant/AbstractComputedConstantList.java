@@ -68,7 +68,7 @@ sealed abstract class AbstractComputedConstantList<E>
         if (isNotDefaultValue(e)) {
             return e;
         }
-        if (states[index] == ComputedConstantUtil.NULL) {
+        if (states[index] == ConstantUtil.NULL) {
             return null;
         }
         return slowPath(index);
@@ -76,7 +76,7 @@ sealed abstract class AbstractComputedConstantList<E>
 
     private E slowPath(int index) {
         Object lock = lockVolatile(index);
-        if (lock instanceof ComputedConstantUtil.Bound) {
+        if (lock instanceof ConstantUtil.Bound) {
             return elementVolatile(index);
         }
         if (lock == null) {
@@ -88,26 +88,26 @@ sealed abstract class AbstractComputedConstantList<E>
         }
         synchronized (lock) {
             return switch (states[index]) {
-                case ComputedConstantUtil.BINDING -> throw circular(index);
-                case ComputedConstantUtil.NON_NULL -> element(index);
-                case ComputedConstantUtil.NULL -> null;
-                case ComputedConstantUtil.ERROR -> throw error(index);
+                case ConstantUtil.BINDING -> throw circular(index);
+                case ConstantUtil.NON_NULL -> element(index);
+                case ConstantUtil.NULL -> null;
+                case ConstantUtil.BIND_ERROR -> throw error(index);
                 default -> {
-                    setStateVolatile(index, ComputedConstantUtil.BINDING);
+                    setStateVolatile(index, ConstantUtil.BINDING);
                     try {
                         E v = presetMapper.apply(index);
                         if (v == null) {
-                            setStateVolatile(index, ComputedConstantUtil.NULL);
-                            setLockVolatile(index, ComputedConstantUtil.NULL);
+                            setStateVolatile(index, ConstantUtil.NULL);
+                            setLockVolatile(index, ConstantUtil.NULL);
                         } else {
                             casElement(index, v);
-                            setStateVolatile(index, ComputedConstantUtil.NON_NULL);
-                            setLockVolatile(index, ComputedConstantUtil.NON_NULL);
+                            setStateVolatile(index, ConstantUtil.NON_NULL);
+                            setLockVolatile(index, ConstantUtil.NON_NULL);
                         }
                         // We do not need the lock object anymore
                         yield v;
                     } catch (Throwable e) {
-                        setStateVolatile(index, ComputedConstantUtil.ERROR);
+                        setStateVolatile(index, ConstantUtil.BIND_ERROR);
                         if (e instanceof Error err) {
                             // Always rethrow errors
                             throw err;
@@ -123,10 +123,10 @@ sealed abstract class AbstractComputedConstantList<E>
     public String toString() {
         return getClass().getSimpleName() + "[" + IntStream.range(0, size())
                 .mapToObj(i -> switch (stateVolatile(i)) {
-                    case ComputedConstantUtil.BINDING -> ".binding";
-                    case ComputedConstantUtil.NON_NULL -> elementVolatile(i).toString();
-                    case ComputedConstantUtil.NULL -> "null";
-                    case ComputedConstantUtil.ERROR -> ".error";
+                    case ConstantUtil.BINDING -> ".binding";
+                    case ConstantUtil.NON_NULL -> elementVolatile(i).toString();
+                    case ConstantUtil.NULL -> "null";
+                    case ConstantUtil.BIND_ERROR -> ".error";
                     default -> ".unbound";
                 })
                 .collect(Collectors.joining()) + "]";

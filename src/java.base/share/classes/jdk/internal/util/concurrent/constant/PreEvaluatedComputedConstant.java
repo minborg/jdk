@@ -76,10 +76,10 @@ public final class PreEvaluatedComputedConstant<V>
 
     @Override
     public void bind(V value) {
-        ComputedConstantUtil.throwAlreadyBound(
-                value == null
-                        ? ComputedConstantUtil.NULL_SENTINEL
-                        : ComputedConstantUtil.NON_NULL_SENTINEL);
+        ConstantUtil.throwAlreadyBound(
+                this.value == null
+                        ? ConstantUtil.NULL_SENTINEL
+                        : ConstantUtil.NON_NULL_SENTINEL);
     }
 
     @Override

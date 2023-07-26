@@ -68,27 +68,29 @@ public abstract sealed class AbstractComputedConstant<V, P>
         this.auxiliary = provider;
     }
 
+    @ForceInline
     @Override
     public final boolean isUnbound() {
         return providerType().isInstance(auxiliaryVolatile());
     }
 
+    @ForceInline
     @Override
     public final boolean isBinding() {
-        return auxiliaryVolatile() instanceof ComputedConstantUtil.Binding;
+        return auxiliaryVolatile() instanceof ConstantUtil.Binding;
     }
 
     @ForceInline
     @Override
     public final boolean isBound() {
         // Try normal memory semantics first
-        return value != null || auxiliaryVolatile() instanceof ComputedConstantUtil.Bound;
+        return value != null || auxiliaryVolatile() instanceof ConstantUtil.Bound;
     }
 
     @ForceInline
     @Override
     public final boolean isError() {
-        return auxiliaryVolatile() instanceof ComputedConstantUtil.BindError;
+        return auxiliaryVolatile() instanceof ConstantUtil.BindError;
     }
 
     @ForceInline
@@ -99,7 +101,7 @@ public abstract sealed class AbstractComputedConstant<V, P>
         if (v != null) {
             return v;
         }
-        if (auxiliary instanceof ComputedConstantUtil.Null) {
+        if (auxiliary instanceof ConstantUtil.Null) {
             return null;
         }
         @SuppressWarnings("unchecked")
@@ -115,7 +117,7 @@ public abstract sealed class AbstractComputedConstant<V, P>
         if (v != null) {
             return v;
         }
-        if (auxiliary instanceof ComputedConstantUtil.Null) {
+        if (auxiliary instanceof ConstantUtil.Null) {
             return null;
         }
         @SuppressWarnings("unchecked")
@@ -135,14 +137,14 @@ public abstract sealed class AbstractComputedConstant<V, P>
 
     @Override
     public synchronized void bind(V value) {
-        if (auxiliary instanceof ComputedConstantUtil.State state) {
-            ComputedConstantUtil.throwAlreadyBound(state);
+        if (auxiliary instanceof ConstantUtil.State state) {
+            ConstantUtil.throwAlreadyBound(state);
         }
         if (value == null) {
-            auxiliary = ComputedConstantUtil.NULL_SENTINEL;
+            auxiliary = ConstantUtil.NULL_SENTINEL;
         } else {
             this.value = value;
-            auxiliary = ComputedConstantUtil.NON_NULL_SENTINEL;
+            auxiliary = ConstantUtil.NON_NULL_SENTINEL;
         }
     }
 
@@ -154,7 +156,7 @@ public abstract sealed class AbstractComputedConstant<V, P>
         if (v != null) {
             return v;
         }
-        if (auxiliary instanceof ComputedConstantUtil.Null) {
+        if (auxiliary instanceof ConstantUtil.Null) {
             return null;
         }
         @SuppressWarnings("unchecked")
@@ -173,10 +175,10 @@ public abstract sealed class AbstractComputedConstant<V, P>
             return v;
         }
         return switch (auxiliary) {
-            case ComputedConstantUtil.Null __ -> null;
-            case ComputedConstantUtil.Binding __ ->
+            case ConstantUtil.Null __ -> null;
+            case ConstantUtil.Binding __ ->
                     throw new StackOverflowError("Circular provider detected: " + toStringDescription());
-            case ComputedConstantUtil.BindError __ ->
+            case ConstantUtil.BindError __ ->
                     throw new NoSuchElementException("A previous provider threw an exception: "+toStringDescription());
             default -> bindValue(rethrow, other, provider);
         };
@@ -184,7 +186,7 @@ public abstract sealed class AbstractComputedConstant<V, P>
 
     @SuppressWarnings("unchecked")
     private V bindValue(boolean rethrow, V other, P provider) {
-        setAuxiliaryVolatile(ComputedConstantUtil.BINDING_SENTINEL);
+        setAuxiliaryVolatile(ConstantUtil.BINDING_SENTINEL);
         try {
             final V v;
             if (provider instanceof Supplier<?> supplier) {
@@ -194,14 +196,14 @@ public abstract sealed class AbstractComputedConstant<V, P>
                 v = evaluate(provider);
             }
             if (v == null) {
-                setAuxiliaryVolatile(ComputedConstantUtil.NULL_SENTINEL);
+                setAuxiliaryVolatile(ConstantUtil.NULL_SENTINEL);
             } else {
                 casValue(v);
-                setAuxiliaryVolatile(ComputedConstantUtil.NON_NULL_SENTINEL);
+                setAuxiliaryVolatile(ConstantUtil.NON_NULL_SENTINEL);
             }
             return v;
         } catch (Throwable e) {
-            setAuxiliaryVolatile(ComputedConstantUtil.BIND_ERROR_SENTINEL);
+            setAuxiliaryVolatile(ConstantUtil.BIND_ERROR_SENTINEL);
             if (e instanceof java.lang.Error err) {
                 // Always rethrow errors
                 throw err;
@@ -223,10 +225,10 @@ public abstract sealed class AbstractComputedConstant<V, P>
     public final String toString() {
         var a = auxiliaryVolatile();
         String v = switch (a) {
-            case ComputedConstantUtil.Binding __ -> ".binding";
-            case ComputedConstantUtil.Null __ -> "null";
-            case ComputedConstantUtil.NonNull __ -> "[" + valueVolatile().toString() + "]";
-            case ComputedConstantUtil.BindError __ -> ".error";
+            case ConstantUtil.Binding __ -> ".binding";
+            case ConstantUtil.Null __ -> "null";
+            case ConstantUtil.NonNull __ -> "[" + valueVolatile().toString() + "]";
+            case ConstantUtil.BindError __ -> ".error";
             default -> {
                 if (providerType().isInstance(a)) {
                     yield ".unbound";
