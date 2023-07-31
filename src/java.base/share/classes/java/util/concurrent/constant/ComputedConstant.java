@@ -163,30 +163,6 @@ public sealed interface ComputedConstant<V>
     }
 
     /**
-     * {@return a new empty {@link ComputedConstant } with no pre-set supplier}
-     * <p>
-     * If a later attempt is made to invoke the {@link ComputedConstant#get()} method when no element is bound,
-     * a {@link NoSuchElementException} will be thrown.
-     * <p>
-     * {@snippet lang = java:
-     *     class DemoSet {
-     *
-     *         private static final ComputedConstant<Foo> FOO = ComputedConstant.ofEmpty();
-     *
-     *         public Foo theBar() {
-     *             // Foo is lazily constructed and recorded here upon first invocation
-     *             return FOO.computeIfUnbound(Foo::new);
-     *         }
-     *     }
-     *}
-     *
-     * @param <V> The type of the value
-     */
-    static <V> ComputedConstant<V> ofEmpty() {
-        return StandardComputedConstant.create();
-    }
-
-    /**
      * {@return a new {@link ComputedConstant } with the provided {@code presetSupplier}}
      * <p>
      * If a later attempt is made to invoke the {@link ComputedConstant#get()} method when no element is bound,
