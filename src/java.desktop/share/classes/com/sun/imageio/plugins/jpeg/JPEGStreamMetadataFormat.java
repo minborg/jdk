@@ -26,11 +26,10 @@
 package com.sun.imageio.plugins.jpeg;
 
 import javax.imageio.metadata.IIOMetadataFormat;
-import javax.imageio.metadata.IIOMetadataFormatImpl;
 
 public class JPEGStreamMetadataFormat extends JPEGMetadataFormat {
 
-    private static JPEGStreamMetadataFormat theInstance = null;
+    private static final Monotonic<JPEGStreamMetadataFormat> INSTANCE = Monotonic.of();
 
     private JPEGStreamMetadataFormat() {
         super(JPEG.nativeStreamMetadataFormatName,
@@ -38,10 +37,8 @@ public class JPEGStreamMetadataFormat extends JPEGMetadataFormat {
         addStreamElements(getRootName());
     }
 
-    public static synchronized IIOMetadataFormat getInstance() {
-        if (theInstance == null) {
-            theInstance = new JPEGStreamMetadataFormat();
-        }
-        return theInstance;
+    public static IIOMetadataFormat getInstance() {
+        return INSTANCE.computeIfAbsent(JPEGStreamMetadataFormat::new);
     }
+
 }

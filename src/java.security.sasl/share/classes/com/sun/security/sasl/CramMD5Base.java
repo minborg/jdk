@@ -33,6 +33,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.MessageDigest;
 
 import java.util.Arrays;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 /**
@@ -46,9 +47,7 @@ abstract class CramMD5Base {
     protected boolean aborted = false;
     protected byte[] pw;
 
-    protected CramMD5Base() {
-        initLogger();
-    }
+    protected CramMD5Base() {}
 
     /**
      * Retrieves this mechanism's name.
@@ -213,16 +212,12 @@ abstract class CramMD5Base {
     }
 
     /**
-     * Sets logger field.
-     */
-    private static synchronized void initLogger() {
-        if (logger == null) {
-            logger = Logger.getLogger(SASL_LOGGER_NAME);
-        }
-    }
-    /**
      * Logger for debug messages
      */
     private static final String SASL_LOGGER_NAME = "javax.security.sasl";
-    protected static Logger logger;  // set in initLogger(); lazily loads logger
+    protected static final Monotonic<Logger> LOGGER = Monotonic.of();
+    protected static Logger logger() {
+        return LOGGER.computeIfAbsent(() -> Logger.getLogger(SASL_LOGGER_NAME));
+    }
+
 }

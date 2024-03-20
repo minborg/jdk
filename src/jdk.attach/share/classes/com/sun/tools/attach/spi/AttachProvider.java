@@ -35,6 +35,7 @@ import com.sun.tools.attach.VirtualMachineDescriptor;
 import com.sun.tools.attach.AttachPermission;
 import com.sun.tools.attach.AttachNotSupportedException;
 import java.util.ServiceLoader;
+import java.util.function.Supplier;
 
 /**
  * Attach provider class for attaching to a Java virtual machine.
@@ -77,8 +78,8 @@ import java.util.ServiceLoader;
 
 public abstract class AttachProvider {
 
-    private static final Object lock = new Object();
-    private static List<AttachProvider> providers = null;
+    private static final Supplier<List<AttachProvider>> PROVIDERS =
+            Monotonics.asMemoized(AttachProvider::providers0);
 
     /**
      * Initializes a new instance of this class.
@@ -247,26 +248,27 @@ public abstract class AttachProvider {
      * @return  A list of the installed attach providers.
      */
     public static List<AttachProvider> providers() {
-        synchronized (lock) {
-            if (providers == null) {
-                providers = new ArrayList<AttachProvider>();
-
-                ServiceLoader<AttachProvider> providerLoader =
-                    ServiceLoader.load(AttachProvider.class,
-                                       AttachProvider.class.getClassLoader());
-
-                Iterator<AttachProvider> i = providerLoader.iterator();
-
-                while (i.hasNext()) {
-                    try {
-                        providers.add(i.next());
-                    } catch (Throwable t) {
-                        // Log errors and exceptions since we cannot return them
-                        t.printStackTrace();
-                    }
-                }
-            }
-            return Collections.unmodifiableList(providers);
-        }
+        return PROVIDERS.get();
     }
+
+    private static List<AttachProvider> providers0() {
+        List<AttachProvider> providers = new ArrayList<>();
+
+        ServiceLoader<AttachProvider> providerLoader =
+                ServiceLoader.load(AttachProvider.class,
+                        AttachProvider.class.getClassLoader());
+
+        Iterator<AttachProvider> i = providerLoader.iterator();
+
+        while (i.hasNext()) {
+            try {
+                providers.add(i.next());
+            } catch (Throwable t) {
+                // Log errors and exceptions since we cannot return them
+                t.printStackTrace();
+            }
+        }
+        return List.copyOf(providers);
+    }
+
 }

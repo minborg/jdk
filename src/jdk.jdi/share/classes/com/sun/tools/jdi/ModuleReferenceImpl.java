@@ -39,41 +39,42 @@ class ModuleReferenceImpl extends ObjectReferenceImpl implements ModuleReference
         return "ModuleReference " + ref();
     }
 
-    private String name;
-    private ClassLoaderReference classLoader;
+    private final Monotonic<String> name = Monotonic.of();
+    private final Monotonic<ClassLoaderReference> classLoader = Monotonic.of();
 
-    private boolean cachedName = false;
-    private boolean cachedClassLoader = false;
+    public String name() {
+        return name.computeIfAbsent(this::name0);
+    }
 
-
-    public synchronized String name() {
-        if (cachedName) {
-            return name;
-        }
+    public String name0() {
         try {
-            name = JDWP.ModuleReference.Name.process(this.vm, this).name;
-            if (name != null && name.length() == 0) {
+            String n = JDWP.ModuleReference.Name.process(this.vm, this).name;
+            if (n != null && n.isEmpty()) {
                 // The JDWP returns empty name for unnamed modules
-                name = null;
+                n = null;
             }
-            cachedName = true;
+            return n;
         } catch (JDWPException ex) {
             throw ex.toJDIException();
         }
-        return name;
+
     }
 
     public synchronized ClassLoaderReference classLoader() {
-        if (cachedClassLoader) {
-            return classLoader;
+        return classLoader.isPresent()
+                ? classLoader.get()
+                : classLoader.bindIfAbsent(classLoader0());
+    }
+
+    public synchronized ClassLoaderReference classLoader0() {
+        if (classLoader.isPresent()) {
+            return null;
         }
         try {
-            classLoader = JDWP.ModuleReference.ClassLoader.
+            return JDWP.ModuleReference.ClassLoader.
                 process(this.vm, this).classLoader;
-            cachedClassLoader = true;
         } catch (JDWPException ex) {
             throw ex.toJDIException();
         }
-        return classLoader;
     }
 }

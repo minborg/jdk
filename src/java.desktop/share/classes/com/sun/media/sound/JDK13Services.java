@@ -66,7 +66,7 @@ public final class JDK13Services {
      * Properties loaded from the properties file for default provider
      * properties.
      */
-    private static Properties properties;
+    private static final Monotonic<Properties> PROPERTIES = Monotonic.of();
 
     /**
      * Private, no-args constructor to ensure against instantiation.
@@ -186,11 +186,12 @@ public final class JDK13Services {
         properties file. If the properties file could not be loaded,
         the properties bundle is empty.
     */
-    private static synchronized Properties getProperties() {
-        if (properties == null) {
-            properties = new Properties();
+    private static Properties getProperties() {
+        return PROPERTIES.computeIfAbsent(() -> {
+            Properties properties = new Properties();
             JSSecurityManager.loadProperties(properties);
-        }
-        return properties;
+            return properties;
+        });
     }
+
 }

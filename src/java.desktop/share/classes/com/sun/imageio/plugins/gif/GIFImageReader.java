@@ -1116,29 +1116,31 @@ public class GIFImageReader extends ImageReader {
         fallbackColorTable = null;
     }
 
-    private static byte[] defaultPalette = null;
+    private static final Monotonic<byte[]> DEFAULT_PALETTE = Monotonic.of();
 
-    private static synchronized byte[] getDefaultPalette() {
-        if (defaultPalette == null) {
-            BufferedImage img = new BufferedImage(1, 1,
-                    BufferedImage.TYPE_BYTE_INDEXED);
-            IndexColorModel icm = (IndexColorModel) img.getColorModel();
+    private static byte[] getDefaultPalette() {
+        return DEFAULT_PALETTE.computeIfAbsent(GIFImageReader::getDefaultPalette0);
+    }
 
-            final int size = icm.getMapSize();
-            byte[] r = new byte[size];
-            byte[] g = new byte[size];
-            byte[] b = new byte[size];
-            icm.getReds(r);
-            icm.getGreens(g);
-            icm.getBlues(b);
+    private static byte[] getDefaultPalette0() {
+        BufferedImage img = new BufferedImage(1, 1,
+                BufferedImage.TYPE_BYTE_INDEXED);
+        IndexColorModel icm = (IndexColorModel) img.getColorModel();
 
-            defaultPalette = new byte[size * 3];
+        final int size = icm.getMapSize();
+        byte[] r = new byte[size];
+        byte[] g = new byte[size];
+        byte[] b = new byte[size];
+        icm.getReds(r);
+        icm.getGreens(g);
+        icm.getBlues(b);
 
-            for (int i = 0; i < size; i++) {
-                defaultPalette[3 * i + 0] = r[i];
-                defaultPalette[3 * i + 1] = g[i];
-                defaultPalette[3 * i + 2] = b[i];
-            }
+        byte[] defaultPalette = new byte[size * 3];
+
+        for (int i = 0; i < size; i++) {
+            defaultPalette[3 * i + 0] = r[i];
+            defaultPalette[3 * i + 1] = g[i];
+            defaultPalette[3 * i + 2] = b[i];
         }
         return defaultPalette;
     }

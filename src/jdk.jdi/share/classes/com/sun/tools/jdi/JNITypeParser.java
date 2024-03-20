@@ -34,13 +34,15 @@ public class JNITypeParser {
     static final char SIGNATURE_FUNC = '(';
     static final char SIGNATURE_ENDFUNC = ')';
 
-    private String signature;
-    private List<String> typeNameList;
-    private List<String> signatureList;
+    private final String signature;
+    private final Monotonic<List<String>> typeNameList;
+    private final Monotonic<List<String>> signatureList;
     private int currentIndex;
 
     JNITypeParser(String signature) {
         this.signature = signature;
+        this.typeNameList = Monotonic.of();
+        this.signatureList = Monotonic.of();
     }
 
     static String typeNameToSignature(String typeName) {
@@ -176,42 +178,49 @@ public class JNITypeParser {
         }
     }
 
-    private synchronized List<String> signatureList() {
-        if (signatureList == null) {
-            signatureList = new ArrayList<>(10);
-            String elem;
-
-            currentIndex = 0;
-
-            while(currentIndex < signature.length()) {
-                elem = nextSignature();
-                signatureList.add(elem);
-            }
-            if (signatureList.size() == 0) {
-                throw new IllegalArgumentException("Invalid JNI signature '" +
-                                                   signature + "'");
-            }
-        }
-        return signatureList;
+    private List<String> signatureList() {
+        return signatureList.computeIfAbsent(this::signatureList0);
     }
 
-    private synchronized List<String> typeNameList() {
-        if (typeNameList == null) {
-            typeNameList = new ArrayList<>(10);
-            String elem;
+    private List<String> signatureList0() {
 
-            currentIndex = 0;
+        List<String> signatureList = new ArrayList<>(10);
+        String elem;
 
-            while(currentIndex < signature.length()) {
-                elem = nextTypeName();
-                typeNameList.add(elem);
-            }
-            if (typeNameList.size() == 0) {
-                throw new IllegalArgumentException("Invalid JNI signature '" +
-                                                   signature + "'");
-            }
+        currentIndex = 0;
+
+        while (currentIndex < signature.length()) {
+            elem = nextSignature();
+            signatureList.add(elem);
         }
-        return typeNameList;
+        if (signatureList.isEmpty()) {
+            throw new IllegalArgumentException("Invalid JNI signature '" +
+                    signature + "'");
+        }
+
+        return List.copyOf(signatureList);
+    }
+
+    private List<String> typeNameList() {
+        return typeNameList.computeIfAbsent(this::typeNameList0);
+    }
+
+    private List<String> typeNameList0() {
+
+        List<String> typeNameList = new ArrayList<>(10);
+        String elem;
+
+        currentIndex = 0;
+
+        while (currentIndex < signature.length()) {
+            elem = nextTypeName();
+            typeNameList.add(elem);
+        }
+        if (typeNameList.isEmpty()) {
+            throw new IllegalArgumentException("Invalid JNI signature '" +
+                    signature + "'");
+        }
+        return List.copyOf(typeNameList);
     }
 
     private String nextSignature() {

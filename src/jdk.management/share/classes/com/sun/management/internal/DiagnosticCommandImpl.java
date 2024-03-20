@@ -342,20 +342,19 @@ public class DiagnosticCommandImpl extends NotificationEmitterSupport
         "jmx.mbean.info.changed"
     };
 
-    private MBeanNotificationInfo[] notifInfo = null;
+    private final Monotonic<MBeanNotificationInfo[]> notifInfo = Monotonic.of();
 
     @Override
     public MBeanNotificationInfo[] getNotificationInfo() {
-        synchronized (this) {
-            if (notifInfo == null) {
-                 notifInfo = new MBeanNotificationInfo[1];
-                 notifInfo[0] =
-                         new MBeanNotificationInfo(diagFramNotifTypes,
-                                                   notifName,
-                                                   "Diagnostic Framework Notification");
-            }
-        }
-        return notifInfo.clone();
+        return notifInfo.computeIfAbsent(this::getNotificationInfo0);
+    }
+
+    public MBeanNotificationInfo[] getNotificationInfo0() {
+        MBeanNotificationInfo[] info = new MBeanNotificationInfo[1];
+        info[0] = new MBeanNotificationInfo(diagFramNotifTypes,
+                        notifName,
+                        "Diagnostic Framework Notification");
+        return info;
     }
 
     private static long seqNumber = 0;

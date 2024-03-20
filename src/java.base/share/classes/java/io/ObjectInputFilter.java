@@ -583,7 +583,7 @@ public interface ObjectInputFilter {
         /**
          * Current static filter.
          */
-        private static volatile ObjectInputFilter serialFilter;
+        private static final Monotonic<ObjectInputFilter> SERIAL_FILTER = Monotonic.of();
 
         /**
          * Saved message if the jdk.serialFilter property is invalid.
@@ -648,7 +648,7 @@ public interface ObjectInputFilter {
                 configLog.log(DEBUG,
                         "Creating deserialization filter from {0}", filterString);
                 try {
-                    serialFilter = createFilter(filterString);
+                    SERIAL_FILTER.bind(createFilter(filterString));
                 } catch (RuntimeException re) {
                     configLog.log(ERROR,
                             "Error configuring filter: {0}", (Object) re);
@@ -721,7 +721,7 @@ public interface ObjectInputFilter {
             if (invalidFilterMessage != null) {
                 throw new IllegalStateException(invalidFilterMessage);
             }
-            return serialFilter;
+            return SERIAL_FILTER.get();
         }
 
         /**
@@ -744,12 +744,7 @@ public interface ObjectInputFilter {
             if (invalidFilterMessage != null) {
                 throw new IllegalStateException(invalidFilterMessage);
             }
-            synchronized (serialFilterLock) {
-                if (serialFilter != null) {
-                    throw new IllegalStateException("Serial filter can only be set once");
-                }
-                serialFilter = filter;
-            }
+            SERIAL_FILTER.bind(filter);
         }
 
         /**

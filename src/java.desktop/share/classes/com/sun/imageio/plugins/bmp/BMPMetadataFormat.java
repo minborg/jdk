@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2004, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,14 @@
 
 package com.sun.imageio.plugins.bmp;
 
-import java.util.Arrays;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.metadata.IIOMetadataFormat;
 import javax.imageio.metadata.IIOMetadataFormatImpl;
+import java.util.function.Supplier;
 
 public class BMPMetadataFormat extends IIOMetadataFormatImpl {
 
-    private static IIOMetadataFormat instance = null;
+    private static final Monotonic<IIOMetadataFormat> INSTANCE = Monotonic.of();
 
     private BMPMetadataFormat() {
         super(BMPMetadata.nativeMetadataFormatName,
@@ -199,10 +199,8 @@ public class BMPMetadataFormat extends IIOMetadataFormatImpl {
         return true;
     }
 
-    public static synchronized IIOMetadataFormat getInstance() {
-        if (instance == null) {
-            instance = new BMPMetadataFormat();
-        }
-        return instance;
+    public static IIOMetadataFormat getInstance1() {
+        return INSTANCE.computeIfAbsent(BMPMetadataFormat::new);
     }
+
 }

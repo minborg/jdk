@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,17 +40,14 @@ public final class SimpleCMYKColorSpace extends ColorSpace {
     @Serial
     private static final long serialVersionUID = 5387117338644522424L;
 
-    private static ColorSpace theInstance = null;
-    private ColorSpace csRGB;
+    private static final Monotonic<ColorSpace> INSTANCE = Monotonic.of();
+    private final ColorSpace csRGB;
 
     /** The exponent for gamma correction. */
     private static final double power1 = 1.0 / 2.4;
 
-    public static final synchronized ColorSpace getInstance() {
-        if(theInstance == null) {
-            theInstance = new SimpleCMYKColorSpace();
-        }
-        return theInstance;
+    public static ColorSpace getInstance() {
+        return INSTANCE.computeIfAbsent(SimpleCMYKColorSpace::new);
     }
 
     private SimpleCMYKColorSpace() {
@@ -63,7 +60,7 @@ public final class SimpleCMYKColorSpace extends ColorSpace {
     }
 
     public int hashCode() {
-        return System.identityHashCode(theInstance);
+        return System.identityHashCode(getInstance());
     }
 
     public float[] toRGB(float[] colorvalue) {

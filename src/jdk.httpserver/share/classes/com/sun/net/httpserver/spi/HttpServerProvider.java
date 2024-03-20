@@ -36,6 +36,7 @@ import java.security.PrivilegedAction;
 import java.util.Iterator;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.function.Supplier;
 
 /**
  * Service provider class for HttpServer.
@@ -77,8 +78,8 @@ public abstract class HttpServerProvider {
                                                   int backlog)
         throws IOException;
 
-    private static final Object lock = new Object();
-    private static HttpServerProvider provider = null;
+    private static final Supplier<HttpServerProvider> PROVIDER =
+            Monotonics.asMemoized(HttpServerProvider::provider0);
 
     /**
      * Initializes a new instance of this class.
@@ -94,15 +95,14 @@ public abstract class HttpServerProvider {
             sm.checkPermission(new RuntimePermission("httpServerProvider"));
     }
 
-    private static boolean loadProviderFromProperty() {
+    private static HttpServerProvider loadProviderFromProperty() {
         String cn = System.getProperty("com.sun.net.httpserver.HttpServerProvider");
         if (cn == null)
-            return false;
+            return null;
         try {
             var cls = Class.forName(cn, false, ClassLoader.getSystemClassLoader());
             if (HttpServerProvider.class.isAssignableFrom(cls)) {
-                provider = (HttpServerProvider) cls.getDeclaredConstructor().newInstance();
-                return true;
+                return (HttpServerProvider) cls.getDeclaredConstructor().newInstance();
             } else {
                 throw new ServiceConfigurationError("not assignable to HttpServerProvider: "
                         + cls.getName());
@@ -117,7 +117,7 @@ public abstract class HttpServerProvider {
         }
     }
 
-    private static boolean loadProviderAsService() {
+    private static HttpServerProvider loadProviderAsService() {
         Iterator<HttpServerProvider> i =
             ServiceLoader.load(HttpServerProvider.class,
                                ClassLoader.getSystemClassLoader())
@@ -125,9 +125,8 @@ public abstract class HttpServerProvider {
         for (;;) {
             try {
                 if (!i.hasNext())
-                    return false;
-                provider = i.next();
-                return true;
+                    return null;
+                return i.next();
             } catch (ServiceConfigurationError sce) {
                 if (sce.getCause() instanceof SecurityException) {
                     // Ignore the security exception, try the next provider
@@ -174,23 +173,26 @@ public abstract class HttpServerProvider {
      *
      * @return  The system-wide default HttpServerProvider
      */
-    @SuppressWarnings("removal")
     public static HttpServerProvider provider () {
-        synchronized (lock) {
-            if (provider != null)
-                return provider;
-            return (HttpServerProvider)AccessController
+        return PROVIDER.get();
+    }
+
+    @SuppressWarnings("removal")
+    private static HttpServerProvider provider0() {
+        return (HttpServerProvider) AccessController
                 .doPrivileged(new PrivilegedAction<Object>() {
-                        public Object run() {
-                            if (loadProviderFromProperty())
-                                return provider;
-                            if (loadProviderAsService())
-                                return provider;
-                            provider = new sun.net.httpserver.DefaultHttpServerProvider();
+                    public Object run() {
+                        HttpServerProvider provider = loadProviderFromProperty();
+                        if (provider != null) {
                             return provider;
                         }
-                    });
-        }
+                        provider = loadProviderAsService();
+                        if (provider != null) {
+                            return provider;
+                        }
+                        return new sun.net.httpserver.DefaultHttpServerProvider();
+                    }
+                });
     }
 
 }

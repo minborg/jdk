@@ -35,6 +35,8 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
+
 import jdk.internal.util.StaticProperty;
 
 /**
@@ -249,6 +251,7 @@ public class File
      */
     private File(String pathname, int prefixLength) {
         this.path = pathname;
+        this.filePath = Monotonics.asMemoized(this::toPath0);
         this.prefixLength = prefixLength;
     }
 
@@ -261,6 +264,7 @@ public class File
         assert parent.path != null;
         assert (!parent.path.isEmpty());
         this.path = FS.resolve(parent.path, child);
+        this.filePath = Monotonics.asMemoized(this::toPath0);
         this.prefixLength = parent.prefixLength;
     }
 
@@ -278,6 +282,7 @@ public class File
             throw new NullPointerException();
         }
         this.path = FS.normalize(pathname);
+        this.filePath = Monotonics.asMemoized(this::toPath0);
         this.prefixLength = FS.prefixLength(this.path);
     }
 
@@ -328,6 +333,7 @@ public class File
         } else {
             this.path = FS.normalize(child);
         }
+        this.filePath = Monotonics.asMemoized(this::toPath0);
         this.prefixLength = FS.prefixLength(this.path);
     }
 
@@ -371,6 +377,7 @@ public class File
         } else {
             this.path = FS.normalize(child);
         }
+        this.filePath = Monotonics.asMemoized(this::toPath0);
         this.prefixLength = FS.prefixLength(this.path);
     }
 
@@ -436,6 +443,7 @@ public class File
         if (File.separatorChar != '/')
             p = p.replace('/', File.separatorChar);
         this.path = FS.normalize(p);
+        this.filePath = Monotonics.asMemoized(this::toPath0);
         this.prefixLength = FS.prefixLength(this.path);
     }
 
@@ -2376,7 +2384,7 @@ public class File
 
     // -- Integration with java.nio.file --
 
-    private transient volatile Path filePath;
+    private final transient Supplier<Path> filePath;
 
     /**
      * Returns a {@link Path java.nio.file.Path} object constructed from
@@ -2405,16 +2413,11 @@ public class File
      * @see Path#toFile
      */
     public Path toPath() {
-        Path result = filePath;
-        if (result == null) {
-            synchronized (this) {
-                result = filePath;
-                if (result == null) {
-                    result = FileSystems.getDefault().getPath(path);
-                    filePath = result;
-                }
-            }
-        }
-        return result;
+        return filePath.get();
     }
+
+    private Path toPath0() {
+        return FileSystems.getDefault().getPath(path);
+    }
+
 }

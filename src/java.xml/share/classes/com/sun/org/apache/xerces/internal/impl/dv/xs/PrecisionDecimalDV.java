@@ -373,19 +373,16 @@ class PrecisionDecimalDV extends TypeValidator {
             return ret == 0 ? EQUAL : (ret > 0 ? GREATER_THAN : LESS_THAN);
         }
 
-        private String canonical;
+        private final Monotonic<String> canonical = Monotonic.of();
 
         @Override
-        public synchronized String toString() {
-            if (canonical == null) {
-                makeCanonical();
-            }
-            return canonical;
+        public String toString() {
+            return canonical.computeIfAbsent(this::canonical);
         }
 
-        private void makeCanonical() {
+        private String canonical() {
             // REVISIT: to be determined by working group
-            canonical = "TBD by Working Group";
+            return "TBD by Working Group";
         }
 
         /**

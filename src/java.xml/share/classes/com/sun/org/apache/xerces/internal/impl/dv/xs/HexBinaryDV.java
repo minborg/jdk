@@ -59,11 +59,9 @@ public class HexBinaryDV extends TypeValidator {
         public XHex(byte[] data) {
             super(data);
         }
-        public synchronized String toString() {
-            if (canonical == null) {
-                canonical = HexBin.encode(data);
-            }
-            return canonical;
+
+        public String toString() {
+            return canonical.computeIfAbsent(() -> HexBin.encode(data));
         }
 
         public boolean equals(Object obj) {

@@ -56,13 +56,10 @@ public class GarbageCollectorExtImpl extends GarbageCollectorImpl
     // The memory pools are static and won't be changed.
     // TODO: If the hotspot implementation begins to have pools
     // dynamically created and removed, this needs to be modified.
-    private String[] poolNames = null;
-    private synchronized String[] getAllPoolNames() {
-        if (poolNames == null) {
-            // The order of all memory pool names is important as GcInfo is also created with same order.
-            poolNames = ManagementFactoryHelper.getAllMemoryPoolNames();
-        }
-        return poolNames;
+    private final Monotonic<String[]> poolNames = Monotonic.of();
+    private String[] getAllPoolNames() {
+        // The order of all memory pool names is important as GcInfo is also created with same order.
+        return poolNames.computeIfAbsent(ManagementFactoryHelper::getAllMemoryPoolNames);
     }
 
     public GcInfo getLastGcInfo() {
@@ -151,13 +148,16 @@ public class GarbageCollectorExtImpl extends GarbageCollectorImpl
         }
     }
 
-    private GcInfoBuilder gcInfoBuilder;
+    private final Monotonic<GcInfoBuilder> gcInfoBuilder = Monotonic.of();
     // Invoked also by the VM
-    private synchronized GcInfoBuilder getGcInfoBuilder() {
-        if(gcInfoBuilder == null) {
-            gcInfoBuilder = new GcInfoBuilder(this, getAllPoolNames());
-        }
-        return gcInfoBuilder;
+    private GcInfoBuilder getGcInfoBuilder() {
+        return gcInfoBuilder.isPresent()
+                ? gcInfoBuilder.get()
+                : gcInfoBuilder.bindIfAbsent(getGcInfoBuilder0());
+    }
+
+    private synchronized GcInfoBuilder getGcInfoBuilder0() {
+        return gcInfoBuilder.isPresent() ? null : new GcInfoBuilder(this, getAllPoolNames());
     }
 
     private native void setNotificationEnabled(GarbageCollectorMXBean gc,

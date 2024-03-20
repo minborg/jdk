@@ -50,8 +50,8 @@ public final class PlatformMBeanProviderImpl extends PlatformMBeanProvider {
         "com.sun.management:type=DiagnosticCommand";
 
     private final List<PlatformComponent<?>> mxbeanList;
-    private static HotSpotDiagnostic hsDiagMBean = null;
-    private static OperatingSystemMXBean osMBean = null;
+    private static final Monotonic<HotSpotDiagnostic> HS_DIAG_M_BEAN = Monotonic.of();
+    private static final Monotonic<OperatingSystemMXBean> OS_M_BEAN = Monotonic.of();
 
     static {
        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
@@ -133,7 +133,7 @@ public final class PlatformMBeanProviderImpl extends PlatformMBeanProvider {
                             Stream.of("java.lang.management.ThreadMXBean",
                                     "com.sun.management.ThreadMXBean")
                             .collect(Collectors.toSet()));
-            private ThreadMXBean threadMBean = null;
+            private Monotonic<ThreadMXBean> threadMBean = Monotonic.of();
 
             @Override
             public Set<Class<? extends java.lang.management.ThreadMXBean>> mbeanInterfaces() {
@@ -153,14 +153,12 @@ public final class PlatformMBeanProviderImpl extends PlatformMBeanProvider {
             }
 
             @Override
-            public synchronized Map<String, java.lang.management.ThreadMXBean> nameToMBeanMap() {
-                if (threadMBean == null) {
-                    threadMBean = new HotSpotThreadImpl(ManagementFactoryHelper.getVMManagement());
-                }
-                return Collections.singletonMap(
+            public Map<String, java.lang.management.ThreadMXBean> nameToMBeanMap() {
+                return Map.of(
                         ManagementFactory.THREAD_MXBEAN_NAME,
-                        threadMBean);
+                        threadMBean.computeIfAbsent(() -> new HotSpotThreadImpl(ManagementFactoryHelper.getVMManagement())));
             }
+
         });
 
         /**
@@ -268,17 +266,23 @@ public final class PlatformMBeanProviderImpl extends PlatformMBeanProvider {
         return initMBeanList;
     }
 
-    private static synchronized HotSpotDiagnosticMXBean getDiagnosticMXBean() {
-        if (hsDiagMBean == null) {
-            hsDiagMBean = new HotSpotDiagnostic();
-        }
-        return hsDiagMBean;
+    private static HotSpotDiagnosticMXBean getDiagnosticMXBean() {
+        return HS_DIAG_M_BEAN.isPresent()
+                ? HS_DIAG_M_BEAN.get()
+                : HS_DIAG_M_BEAN.bindIfAbsent(getDiagnosticMXBean0());
     }
 
-    private static synchronized OperatingSystemMXBean getOperatingSystemMXBean() {
-        if (osMBean == null) {
-            osMBean = new OperatingSystemImpl(ManagementFactoryHelper.getVMManagement());
-        }
-        return osMBean;
+    private static synchronized HotSpotDiagnostic getDiagnosticMXBean0() {
+        return HS_DIAG_M_BEAN.isPresent() ? null : new HotSpotDiagnostic();
+    }
+
+    private static OperatingSystemMXBean getOperatingSystemMXBean() {
+        return OS_M_BEAN.isPresent()
+                ? OS_M_BEAN.get()
+                : OS_M_BEAN.bindIfAbsent(getOperatingSystemMXBean0());
+    }
+
+    private static synchronized OperatingSystemMXBean getOperatingSystemMXBean0() {
+        return OS_M_BEAN.isPresent() ? null : new OperatingSystemImpl(ManagementFactoryHelper.getVMManagement());
     }
 }

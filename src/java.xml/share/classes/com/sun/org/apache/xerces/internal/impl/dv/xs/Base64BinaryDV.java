@@ -62,11 +62,8 @@ public class Base64BinaryDV extends TypeValidator {
         public XBase64(byte[] data) {
             super(data);
         }
-        public synchronized String toString() {
-            if (canonical == null) {
-                canonical = Base64.encode(data);
-            }
-            return canonical;
+        public String toString() {
+            return canonical.computeIfAbsent(() -> Base64.encode(data));
         }
 
         public boolean equals(Object obj) {

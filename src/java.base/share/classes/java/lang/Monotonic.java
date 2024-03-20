@@ -53,7 +53,7 @@ import static jdk.internal.javac.PreviewFeature.*;
  * @param <V> value type
  * @since 23
  */
-@PreviewFeature(feature = Feature.MONOTONIC_VALUES)
+//@PreviewFeature(feature = Feature.MONOTONIC_VALUES)
 public sealed interface Monotonic<V> permits MonotonicImpl {
 
     /**

@@ -67,7 +67,7 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
 
     private boolean isClassLoaderCached = false;
     private ClassLoaderReference classLoader = null;
-    private ClassObjectReference classObject = null;
+    private final Monotonic<ClassObjectReference> classObject = Monotonic.of();
     private ModuleReference module = null;
 
     private int status = 0;
@@ -693,21 +693,18 @@ public abstract class ReferenceTypeImpl extends TypeImpl implements ReferenceTyp
     }
 
     public ClassObjectReference classObject() {
-        if (classObject == null) {
-            // Are classObjects unique for an Object, or
-            // created each time? Is this spec'ed?
-            synchronized(this) {
-                if (classObject == null) {
-                    try {
-                        classObject = JDWP.ReferenceType.ClassObject.
-                            process(vm, this).classObject;
-                    } catch (JDWPException exc) {
-                        throw exc.toJDIException();
-                    }
-                }
-            }
+        return classObject.computeIfAbsent(this::classObject0);
+    }
+
+    private ClassObjectReference classObject0() {
+        // Are classObjects unique for an Object, or
+        // created each time? Is this spec'ed?
+        try {
+            return JDWP.ReferenceType.ClassObject.
+                    process(vm, this).classObject;
+        } catch (JDWPException exc) {
+            throw exc.toJDIException();
         }
-        return classObject;
     }
 
     SDE.Stratum stratum(String stratumID) {

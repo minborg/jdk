@@ -44,7 +44,7 @@ public class NTSystem {
     private String[] groupIDs;
     private String primaryGroupID;
 
-    private long   impersonationToken;
+    private final Monotonic<Long> impersonationToken = Monotonic.of();
 
     /**
      * Instantiate an {@code NTSystem} and load
@@ -122,13 +122,9 @@ public class NTSystem {
      *
      * @return an impersonation token for the current NT user.
      */
-    public synchronized long getImpersonationToken() {
-        if (impersonationToken == 0) {
-            impersonationToken = getImpersonationToken0();
-        }
-        return impersonationToken;
+    public long getImpersonationToken() {
+        return impersonationToken.computeIfAbsent(this::getImpersonationToken0);
     }
-
 
     private void loadNative() {
         System.loadLibrary("jaas");

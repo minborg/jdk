@@ -57,23 +57,28 @@ public class ListDV extends TypeValidator{
 
     final static class ListData extends AbstractList<Object> implements ObjectList {
         final Object[] data;
-        private String canonical;
+        private final Monotonic<String> canonical = Monotonic.of();
         public ListData(Object[] data) {
             this.data = data;
         }
-        public synchronized String toString() {
-            if (canonical == null) {
-                int len = data.length;
-                StringBuffer buf = new StringBuffer();
-                if (len > 0) {
-                    buf.append(data[0].toString());
-                }
-                for (int i = 1; i < len; i++) {
-                    buf.append(' ');
-                    buf.append(data[i].toString());
-                }
-                canonical = buf.toString();
+
+        @Override
+        public String toString() {
+            return canonical.computeIfAbsent(this::canonical);
+        }
+
+        public String canonical() {
+            String canonical;
+            int len = data.length;
+            StringBuilder buf = new StringBuilder();
+            if (len > 0) {
+                buf.append(data[0].toString());
             }
+            for (int i = 1; i < len; i++) {
+                buf.append(' ');
+                buf.append(data[i].toString());
+            }
+            canonical = buf.toString();
             return canonical;
         }
         public int getLength() {

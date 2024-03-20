@@ -78,7 +78,7 @@ public class AWTKeyStroke implements Serializable {
      * done to avoid the overhead of the reflective call to find the
      * constant.
      */
-    private static VKCollection vks;
+    private static final Monotonic<VKCollection> VKS = Monotonic.of();
 
     //A key for the collection of AWTKeyStrokes within AppContext.
     private static Object APP_CONTEXT_CACHE_KEY = new Object();
@@ -523,10 +523,7 @@ public class AWTKeyStroke implements Serializable {
     }
 
     private static VKCollection getVKCollection() {
-        if (vks == null) {
-            vks = new VKCollection();
-        }
-        return vks;
+        return VKS.computeIfAbsent(VKCollection::new);
     }
     /**
      * Returns the integer constant for the KeyEvent.VK field named

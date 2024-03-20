@@ -32,7 +32,7 @@ import javax.imageio.metadata.IIOMetadataFormatImpl;
 
 public class GIFImageMetadataFormat extends IIOMetadataFormatImpl {
 
-    private static IIOMetadataFormat instance = null;
+    private static final Monotonic<IIOMetadataFormat> INSTANCE = Monotonic.of();
 
     private GIFImageMetadataFormat() {
         super(GIFImageMetadata.nativeMetadataFormatName,
@@ -162,10 +162,7 @@ public class GIFImageMetadataFormat extends IIOMetadataFormatImpl {
         return true;
     }
 
-    public static synchronized IIOMetadataFormat getInstance() {
-        if (instance == null) {
-            instance = new GIFImageMetadataFormat();
-        }
-        return instance;
+    public static IIOMetadataFormat getInstance() {
+        return INSTANCE.computeIfAbsent(GIFImageMetadataFormat::new);
     }
 }

@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.ServiceLoader;
+import java.util.function.Supplier;
 
 import com.sun.jdi.JDIPermission;
 import com.sun.jdi.VMDisconnectedException;
@@ -55,8 +56,8 @@ public class VirtualMachineManagerImpl implements VirtualMachineManagerService {
     private static final int majorVersion = Runtime.version().feature();
     private static final int minorVersion = 0;
 
-    private static final Object lock = new Object();
-    private static VirtualMachineManagerImpl vmm;
+    private static final Supplier<VirtualMachineManagerImpl> VMM =
+            Monotonics.asMemoized(VirtualMachineManagerImpl::new);
 
     public static VirtualMachineManager virtualMachineManager() {
         @SuppressWarnings("removal")
@@ -66,12 +67,7 @@ public class VirtualMachineManagerImpl implements VirtualMachineManagerService {
                 new JDIPermission("virtualMachineManager");
             sm.checkPermission(vmmPermission);
         }
-        synchronized (lock) {
-            if (vmm == null) {
-                vmm = new VirtualMachineManagerImpl();
-            }
-        }
-        return vmm;
+        return VMM.get();
     }
 
     protected VirtualMachineManagerImpl() {

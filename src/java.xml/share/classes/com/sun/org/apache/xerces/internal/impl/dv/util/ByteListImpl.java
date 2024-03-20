@@ -39,7 +39,7 @@ public class ByteListImpl extends AbstractList<Byte> implements ByteList {
     protected final byte[] data;
 
     // canonical representation of the data
-    protected String canonical;
+    protected final Monotonic<String> canonical = Monotonic.of();
 
     public ByteListImpl(byte[] data) {
         this.data = data;

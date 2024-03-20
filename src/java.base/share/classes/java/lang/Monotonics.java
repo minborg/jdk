@@ -18,7 +18,7 @@ import java.util.function.Supplier;
  * A collection of utility methods that makes it more convenient to use
  * {@linkplain Monotonic} values.
  */
-@PreviewFeature(feature = Feature.MONOTONIC_VALUES)
+//@PreviewFeature(feature = Feature.MONOTONIC_VALUES)
 public final class Monotonics {
 
     // Suppresses default constructor, ensuring non-instantiability.
@@ -99,9 +99,9 @@ public final class Monotonics {
     }
 
     /**
-     * {@return a thread-safe, memoized {@linkplain IntFunction} backed by a new list
-     * of {@code size} empty monotonic elements where the memoized values is obtained by
-     * invoking the provided {@code mapper} at most once per index}
+     * {@return a wrapped, thread-safe, memoized {@linkplain IntFunction} backed by a
+     * new list of {@code size} empty monotonic elements where the memoized values are
+     * obtained by invoking the provided {@code mapper} at most once per index}
      * <p>
      * The returned memoized {@linkplain  IntFunction} is equivalent to
      * the following {@linkplain  IntFunction}:
@@ -127,9 +127,9 @@ public final class Monotonics {
     }
 
     /**
-     * {@return a thread-safe, memoized {@linkplain Function} backed by a new map
-     * with the {@code keys} and of empty monotonic elements where the memoized values
-     * is obtained by invoking the provided {@code mapper} at most once per key}
+     * {@return a wrapped, thread-safe, memoized {@linkplain Function} backed by a
+     * new map with the {@code keys} and of empty monotonic elements where the memoized
+     * values are obtained by invoking the provided {@code mapper} at most once per key}
      * <p>
      * The returned memoized {@linkplain Function} is equivalent to
      * the following {@linkplain Function}:

@@ -60,7 +60,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -115,7 +114,8 @@ public abstract class FileSystemProvider {
     private static final Object lock = new Object();
 
     // installed providers
-    private static volatile List<FileSystemProvider> installedProviders;
+    private static final Monotonic<List<FileSystemProvider>> INSTALLED_PROVIDERS =
+            Monotonic.of();
 
     // used to avoid recursive loading of installed providers
     private static boolean loadingProviders  = false;
@@ -188,33 +188,38 @@ public abstract class FileSystemProvider {
      *          When an error occurs while loading a service provider
      */
     public static List<FileSystemProvider> installedProviders() {
-        if (installedProviders == null) {
-            // ensure default provider is initialized
-            FileSystemProvider defaultProvider = FileSystems.getDefault().provider();
+        return INSTALLED_PROVIDERS.computeIfAbsent(FileSystemProvider::installedProviders0);
+    }
 
-            synchronized (lock) {
-                if (installedProviders == null) {
-                    if (loadingProviders) {
-                        throw new Error("Circular loading of installed providers detected");
-                    }
-                    loadingProviders = true;
+    private static List<FileSystemProvider> installedProviders0() {
+        // ensure default provider is initialized
+        FileSystemProvider defaultProvider = FileSystems.getDefault().provider();
 
-                    @SuppressWarnings("removal")
-                    List<FileSystemProvider> list = AccessController
-                        .doPrivileged(new PrivilegedAction<>() {
-                            @Override
-                            public List<FileSystemProvider> run() {
-                                return loadInstalledProviders();
-                        }});
-
-                    // insert the default provider at the start of the list
-                    list.add(0, defaultProvider);
-
-                    installedProviders = Collections.unmodifiableList(list);
-                }
+        synchronized (lock) {
+            if (INSTALLED_PROVIDERS.isPresent()) {
+                return null;
             }
+
+            if (loadingProviders) {
+                throw new Error("Circular loading of installed providers detected");
+            }
+            loadingProviders = true;
+
+            @SuppressWarnings("removal")
+            List<FileSystemProvider> list = AccessController
+                    .doPrivileged(new PrivilegedAction<>() {
+                        @Override
+                        public List<FileSystemProvider> run() {
+                            return loadInstalledProviders();
+                        }
+                    });
+
+            // insert the default provider at the start of the list
+            list.addFirst(defaultProvider);
+
+            return List.copyOf(list);
         }
-        return installedProviders;
+
     }
 
     /**

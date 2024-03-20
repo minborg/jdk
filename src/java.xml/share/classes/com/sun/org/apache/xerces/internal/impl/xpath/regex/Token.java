@@ -1031,11 +1031,11 @@ class Token implements java.io.Serializable {
     +"\u0E3A"//;THAI CHARACTER PHINTHU;Mn;9;ON;;;;;N;THAI VOWEL SIGN PHINTHU;;;;
     +"\u0F84";//;TIBETAN MARK HALANTA;Mn;9;ON;;;;;N;TIBETAN VIRAMA;;;;
 
-    static private Token token_grapheme = null;
-    static synchronized Token getGraphemePattern() {
-        if (Token.token_grapheme != null)
-            return Token.token_grapheme;
-
+    private static final Monotonic<Token> TOKEN_GRAPHEME = Monotonic.of();
+    static Token getGraphemePattern() {
+        return TOKEN_GRAPHEME.computeIfAbsent(Token::getGraphemePattern0);
+    }
+    private static Token getGraphemePattern0() {
         Token base_char = Token.createRange();  // [{ASSIGNED}]-[{M},{C}]
         base_char.mergeRanges(Token.getRange("ASSIGNED", true));
         base_char.subtractRanges(Token.getRange("M", true));
@@ -1062,23 +1062,20 @@ class Token implements java.io.Serializable {
         foo = Token.createClosure(foo);
 
         foo = Token.createConcat(left, foo);
-
-        Token.token_grapheme = foo;
-        return Token.token_grapheme;
+        return foo;
     }
 
     /**
      * Combing Character Sequence in Perl 5.6.
      */
-    static private Token token_ccs = null;
-    static synchronized Token getCombiningCharacterSequence() {
-        if (Token.token_ccs != null)
-            return Token.token_ccs;
-
+    private static final Monotonic<Token> TOKEN_CCS = Monotonic.of();
+    static Token getCombiningCharacterSequence() {
+        return TOKEN_CCS.computeIfAbsent(Token::getCombiningCharacterSequence0);
+    }
+    private static Token getCombiningCharacterSequence0() {
         Token foo = Token.createClosure(Token.getRange("M", true)); // \pM*
         foo = Token.createConcat(Token.getRange("M", false), foo); // \PM + \pM*
-        Token.token_ccs = foo;
-        return Token.token_ccs;
+        return foo;
     }
 
     // ------------------------------------------------------

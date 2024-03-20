@@ -41,9 +41,7 @@ import com.sun.management.GcInfo;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import sun.management.LazyCompositeData;
-import static sun.management.LazyCompositeData.getLong;
 import sun.management.MappedMXBeanType;
-import sun.management.Util;
 
 /**
  * A CompositeData for GcInfo for the local management support.
@@ -258,23 +256,24 @@ public class GcInfoCompositeData extends LazyCompositeData {
     }
 
     // This is only used for validation.
-    private static CompositeType baseGcInfoCompositeType = null;
-    static synchronized CompositeType getBaseGcInfoCompositeType() {
-        if (baseGcInfoCompositeType == null) {
-            try {
-                baseGcInfoCompositeType =
-                    new CompositeType("sun.management.BaseGcInfoCompositeType",
-                                      "CompositeType for Base GcInfo",
-                                      getBaseGcInfoItemNames(),
-                                      getBaseGcInfoItemNames(),
-                                      getBaseGcInfoItemTypes());
-            } catch (OpenDataException e) {
-                // shouldn't reach here
-                throw new RuntimeException(e);
-            }
-        }
-        return baseGcInfoCompositeType;
+    private static final Monotonic<CompositeType> BASE_GC_INFO_COMPOSITE_TYPE = Monotonic.of();
+    static CompositeType getBaseGcInfoCompositeType() {
+        return BASE_GC_INFO_COMPOSITE_TYPE.computeIfAbsent(GcInfoCompositeData::getBaseGcInfoCompositeType0);
     }
+
+    static CompositeType getBaseGcInfoCompositeType0() {
+        try {
+            return new CompositeType("sun.management.BaseGcInfoCompositeType",
+                            "CompositeType for Base GcInfo",
+                            getBaseGcInfoItemNames(),
+                            getBaseGcInfoItemNames(),
+                            getBaseGcInfoItemTypes());
+        } catch (OpenDataException e) {
+            // shouldn't reach here
+            throw new RuntimeException(e);
+        }
+    }
+
 
     private static final long serialVersionUID = -5716428894085882742L;
 }

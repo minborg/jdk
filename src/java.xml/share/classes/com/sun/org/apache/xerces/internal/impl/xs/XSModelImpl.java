@@ -102,7 +102,7 @@ public final class XSModelImpl extends AbstractList<XSNamespaceItem> implements 
     // a string list of all the target namespaces.
     private final StringList fNamespacesList;
     // store all annotations
-    private XSObjectList fAnnotations = null;
+    private final Monotonic<XSObjectList> fAnnotations = Monotonic.of();
 
     // whether there is any IDC in this XSModel
     private final boolean fHasIDC;
@@ -664,10 +664,11 @@ public final class XSModelImpl extends AbstractList<XSNamespaceItem> implements 
      *  [annotations]: a set of annotations if it exists, otherwise an empty
      * <code>XSObjectList</code>.
      */
-    public synchronized XSObjectList getAnnotations() {
-        if (fAnnotations != null) {
-            return fAnnotations;
-        }
+    public XSObjectList getAnnotations() {
+        return fAnnotations.computeIfAbsent(this::getAnnotations0);
+    }
+
+    public XSObjectList getAnnotations0() {
 
         // do this in two passes to avoid inaccurate array size
         int totalAnnotations = 0;
@@ -675,8 +676,7 @@ public final class XSModelImpl extends AbstractList<XSNamespaceItem> implements 
             totalAnnotations += fGrammarList[i].fNumAnnotations;
         }
         if (totalAnnotations == 0) {
-            fAnnotations = XSObjectListImpl.EMPTY_LIST;
-            return fAnnotations;
+            return XSObjectListImpl.EMPTY_LIST;
         }
         XSAnnotationImpl [] annotations = new XSAnnotationImpl [totalAnnotations];
         int currPos = 0;
@@ -687,8 +687,7 @@ public final class XSModelImpl extends AbstractList<XSNamespaceItem> implements 
                 currPos += currGrammar.fNumAnnotations;
             }
         }
-        fAnnotations = new XSObjectListImpl(annotations, annotations.length);
-        return fAnnotations;
+        return new XSObjectListImpl(annotations, annotations.length);
     }
 
     private static final String null2EmptyString(String str) {

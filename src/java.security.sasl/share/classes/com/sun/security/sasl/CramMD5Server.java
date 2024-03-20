@@ -127,7 +127,7 @@ final class CramMD5Server extends CramMD5Base implements SaslServer {
                 sb.append('>');
                 String challengeStr = sb.toString();
 
-                logger.log(Level.FINE,
+                logger().log(Level.FINE,
                     "CRAMSRV01:Generated challenge: {0}", challengeStr);
 
                 challengeData = challengeStr.getBytes(UTF_8);
@@ -135,8 +135,8 @@ final class CramMD5Server extends CramMD5Base implements SaslServer {
 
             } else {
                 // Examine response to see if correctly encrypted challengeData
-                if(logger.isLoggable(Level.FINE)) {
-                    logger.log(Level.FINE,
+                if(logger().isLoggable(Level.FINE)) {
+                    logger().log(Level.FINE,
                         "CRAMSRV02:Received response: {0}",
                         new String(responseData, UTF_8));
                 }
@@ -156,7 +156,7 @@ final class CramMD5Server extends CramMD5Base implements SaslServer {
                 }
                 String username = new String(responseData, 0, ulen, UTF_8);
 
-                logger.log(Level.FINE,
+                logger().log(Level.FINE,
                     "CRAMSRV03:Extracted username: {0}", username);
 
                 // Get user's password
@@ -183,7 +183,7 @@ final class CramMD5Server extends CramMD5Base implements SaslServer {
                 // original challenge.
                 String digest = HMAC_MD5(pw, challengeData);
 
-                logger.log(Level.FINE,
+                logger().log(Level.FINE,
                     "CRAMSRV04:Expecting digest: {0}", digest);
 
                 // clear pw when we no longer need it
@@ -216,7 +216,7 @@ final class CramMD5Server extends CramMD5Base implements SaslServer {
                         "CRAM-MD5: user not authorized: " + username);
                 }
 
-                logger.log(Level.FINE,
+                logger().log(Level.FINE,
                     "CRAMSRV05:Authorization id: {0}", authzid);
 
                 completed = true;

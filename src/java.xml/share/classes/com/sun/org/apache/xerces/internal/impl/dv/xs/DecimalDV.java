@@ -271,45 +271,38 @@ public class DecimalDV extends TypeValidator {
             return ret == 0 ? 0 : (ret > 0 ? 1 : -1);
         }
 
-        private String canonical;
+        private final Monotonic<String> canonical = Monotonic.of();
         @Override
-        public synchronized String toString() {
-            if (canonical == null) {
-                makeCanonical();
-            }
-            return canonical;
-        }
-
-        private void makeCanonical() {
-            if (sign == 0) {
-                if (integer)
-                    canonical = "0";
+        public String toString() {
+            return canonical.computeIfAbsent(() -> {
+                if (sign == 0) {
+                    if (integer)
+                        return "0";
+                    else
+                        return  "0.0";
+                }
+                if (integer && sign > 0) {
+                    return ivalue;
+                }
+                // for -0.1, total digits is 1, so we need 3 extra spots
+                final StringBuilder buffer = new StringBuilder(totalDigits+3);
+                if (sign == -1)
+                    buffer.append('-');
+                if (intDigits != 0)
+                    buffer.append(ivalue);
                 else
-                    canonical = "0.0";
-                return;
-            }
-            if (integer && sign > 0) {
-                canonical = ivalue;
-                return;
-            }
-            // for -0.1, total digits is 1, so we need 3 extra spots
-            final StringBuilder buffer = new StringBuilder(totalDigits+3);
-            if (sign == -1)
-                buffer.append('-');
-            if (intDigits != 0)
-                buffer.append(ivalue);
-            else
-                buffer.append('0');
-            if (!integer) {
-                buffer.append('.');
-                if (fracDigits != 0) {
-                    buffer.append(fvalue);
-                }
-                else {
                     buffer.append('0');
+                if (!integer) {
+                    buffer.append('.');
+                    if (fracDigits != 0) {
+                        buffer.append(fvalue);
+                    }
+                    else {
+                        buffer.append('0');
+                    }
                 }
-            }
-            canonical = buffer.toString();
+                return buffer.toString();
+            });
         }
 
         @Override

@@ -71,7 +71,7 @@ abstract class AbstractMidiDevice implements MidiDevice, ReferenceCountingDevice
 
     /** List of Receivers and Transmitters that opened the device implicitly.
      */
-    private List<Object> openKeepingObjects;
+    private final Monotonic<List<Object>> openKeepingObjects;
 
     /**
      * This is the device handle returned from native code.
@@ -88,6 +88,7 @@ abstract class AbstractMidiDevice implements MidiDevice, ReferenceCountingDevice
     protected AbstractMidiDevice(MidiDevice.Info info) {
         this.info = info;
         openRefCount = 0;
+        openKeepingObjects = Monotonic.of();
     }
 
     // MIDI DEVICE METHODS
@@ -344,11 +345,8 @@ abstract class AbstractMidiDevice implements MidiDevice, ReferenceCountingDevice
 
     /** Return the list of objects that have opened the device implicitly.
      */
-    private synchronized List<Object> getOpenKeepingObjects() {
-        if (openKeepingObjects == null) {
-            openKeepingObjects = new ArrayList<>();
-        }
-        return openKeepingObjects;
+    private List<Object> getOpenKeepingObjects() {
+        return openKeepingObjects.computeIfAbsent(ArrayList::new);
     }
 
     // RECEIVER HANDLING METHODS

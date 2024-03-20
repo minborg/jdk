@@ -47,7 +47,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 
 public class SocketTransportService extends TransportService {
-    private ResourceBundle messages = null;
+    private final Monotonic<ResourceBundle> messages = Monotonic.of();
 
     /**
      * The listener returned by startListening encapsulates
@@ -167,12 +167,8 @@ public class SocketTransportService extends TransportService {
      * Return localized description of this transport service
      */
     public String description() {
-        synchronized (this) {
-            if (messages == null) {
-                messages = ResourceBundle.getBundle("com.sun.tools.jdi.resources.jdi");
-            }
-        }
-        return messages.getString("socket_transportservice.description");
+        return messages.computeIfAbsent(() -> ResourceBundle.getBundle("com.sun.tools.jdi.resources.jdi"))
+                .getString("socket_transportservice.description");
     }
 
     /**

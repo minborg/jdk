@@ -53,7 +53,7 @@ public class JdbcRowSetResourceBundle implements Serializable {
      * The constructor initializes to this object
      *
      */
-    private static volatile JdbcRowSetResourceBundle jpResBundle;
+    private static final Monotonic<JdbcRowSetResourceBundle> JP_RES_BUNDLE = Monotonic.of();
 
     /**
      * The variable which will represent the properties
@@ -116,16 +116,14 @@ public class JdbcRowSetResourceBundle implements Serializable {
      * @throws IOException if unable to find the RowSetResourceBundle.properties
      */
     public static JdbcRowSetResourceBundle getJdbcRowSetResourceBundle()
-    throws IOException {
+            throws IOException {
+        return JP_RES_BUNDLE.isPresent()
+                ? JP_RES_BUNDLE.get()
+                : JP_RES_BUNDLE.bindIfAbsent(getJdbcRowSetResourceBundle0());
+    }
 
-         if(jpResBundle == null){
-             synchronized(JdbcRowSetResourceBundle.class) {
-                if(jpResBundle == null){
-                    jpResBundle = new JdbcRowSetResourceBundle();
-                } //end if
-             } //end synchronized block
-         } //end if
-         return jpResBundle;
+    public static JdbcRowSetResourceBundle getJdbcRowSetResourceBundle0() throws IOException {
+        return new JdbcRowSetResourceBundle();
     }
 
     /**

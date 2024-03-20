@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import com.sun.jdi.BooleanType;
 import com.sun.jdi.BooleanValue;
@@ -136,16 +138,18 @@ class VirtualMachineImpl extends MirrorImpl
 
     // Per-vm singletons for primitive types and for void.
     // singleton-ness protected by "synchronized(this)".
-    private BooleanType theBooleanType;
-    private ByteType    theByteType;
-    private CharType    theCharType;
-    private ShortType   theShortType;
-    private IntegerType theIntegerType;
-    private LongType    theLongType;
-    private FloatType   theFloatType;
-    private DoubleType  theDoubleType;
 
-    private VoidType    theVoidType;
+    private final Map<Class<? extends Type>, Monotonic<Type>> theTypes =
+            Monotonic.ofMap(Set.of(
+                    BooleanType.class,
+                    ByteType.class,
+                    CharType.class,
+                    ShortType.class,
+                    IntegerType.class,
+                    LongType.class,
+                    FloatType.class,
+                    DoubleType.class,
+                    VoidType.class));
 
     private VoidValue voidVal;
 
@@ -1192,126 +1196,60 @@ class VirtualMachineImpl extends MirrorImpl
                                          "Type " + parser.typeName() + " not loaded");
     }
 
+    @SuppressWarnings("unchecked")
+    private <T extends Type> T theType(Class<T> type, Function<VirtualMachineImpl, ? extends T> constructor) {
+        return (T) Monotonics.computeIfAbsent(theTypes, type, _ -> constructor.apply(this));
+    }
+
     BooleanType theBooleanType() {
-        if (theBooleanType == null) {
-            synchronized(this) {
-                if (theBooleanType == null) {
-                    theBooleanType = new BooleanTypeImpl(this);
-                }
-            }
-        }
-        return theBooleanType;
+        return theType(BooleanType.class, BooleanTypeImpl::new);
     }
 
     ByteType theByteType() {
-        if (theByteType == null) {
-            synchronized(this) {
-                if (theByteType == null) {
-                    theByteType = new ByteTypeImpl(this);
-                }
-            }
-        }
-        return theByteType;
+        return theType(ByteType.class, ByteTypeImpl::new);
     }
 
     CharType theCharType() {
-        if (theCharType == null) {
-            synchronized(this) {
-                if (theCharType == null) {
-                    theCharType = new CharTypeImpl(this);
-                }
-            }
-        }
-        return theCharType;
+        return theType(CharType.class, CharTypeImpl::new);
     }
 
     ShortType theShortType() {
-        if (theShortType == null) {
-            synchronized(this) {
-                if (theShortType == null) {
-                    theShortType = new ShortTypeImpl(this);
-                }
-            }
-        }
-        return theShortType;
+        return theType(ShortType.class, ShortTypeImpl::new);
     }
 
     IntegerType theIntegerType() {
-        if (theIntegerType == null) {
-            synchronized(this) {
-                if (theIntegerType == null) {
-                    theIntegerType = new IntegerTypeImpl(this);
-                }
-            }
-        }
-        return theIntegerType;
+        return theType(IntegerType.class, IntegerTypeImpl::new);
     }
 
     LongType theLongType() {
-        if (theLongType == null) {
-            synchronized(this) {
-                if (theLongType == null) {
-                    theLongType = new LongTypeImpl(this);
-                }
-            }
-        }
-        return theLongType;
+        return theType(LongType.class, LongTypeImpl::new);
     }
 
     FloatType theFloatType() {
-        if (theFloatType == null) {
-            synchronized(this) {
-                if (theFloatType == null) {
-                    theFloatType = new FloatTypeImpl(this);
-                }
-            }
-        }
-        return theFloatType;
+        return theType(FloatType.class, FloatTypeImpl::new);
     }
 
     DoubleType theDoubleType() {
-        if (theDoubleType == null) {
-            synchronized(this) {
-                if (theDoubleType == null) {
-                    theDoubleType = new DoubleTypeImpl(this);
-                }
-            }
-        }
-        return theDoubleType;
+        return theType(DoubleType.class, DoubleTypeImpl::new);
     }
 
     VoidType theVoidType() {
-        if (theVoidType == null) {
-            synchronized(this) {
-                if (theVoidType == null) {
-                    theVoidType = new VoidTypeImpl(this);
-                }
-            }
-        }
-        return theVoidType;
+        return theType(VoidType.class, VoidTypeImpl::new);
     }
 
     PrimitiveType primitiveTypeMirror(byte tag) {
-        switch (tag) {
-            case JDWP.Tag.BOOLEAN:
-                return theBooleanType();
-            case JDWP.Tag.BYTE:
-                return theByteType();
-            case JDWP.Tag.CHAR:
-                return theCharType();
-            case JDWP.Tag.SHORT:
-                return theShortType();
-            case JDWP.Tag.INT:
-                return theIntegerType();
-            case JDWP.Tag.LONG:
-                return theLongType();
-            case JDWP.Tag.FLOAT:
-                return theFloatType();
-            case JDWP.Tag.DOUBLE:
-                return theDoubleType();
-            default:
-                throw new IllegalArgumentException("Unrecognized primitive tag " + tag);
-        }
+        return switch (tag) {
+            case JDWP.Tag.BOOLEAN -> theBooleanType();
+            case JDWP.Tag.BYTE -> theByteType();
+            case JDWP.Tag.CHAR -> theCharType();
+            case JDWP.Tag.SHORT -> theShortType();
+            case JDWP.Tag.INT -> theIntegerType();
+            case JDWP.Tag.LONG -> theLongType();
+            case JDWP.Tag.FLOAT -> theFloatType();
+            case JDWP.Tag.DOUBLE -> theDoubleType();
+            default ->
+                    throw new IllegalArgumentException("Unrecognized primitive tag " + tag);
+        };
     }
 
     private void processBatchedDisposes() {

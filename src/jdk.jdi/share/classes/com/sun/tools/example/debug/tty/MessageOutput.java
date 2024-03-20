@@ -53,7 +53,7 @@ public class MessageOutput {
     static ResourceBundle textResources;
 
     /** Our message formatter.  Allocated once, used many times */
-    private static MessageFormat messageFormat;
+    private static final Monotonic<MessageFormat> MESSAGE_FORMAT = Monotonic.of();
 
     /**
      * Fatal shutdown notification.  This is sent to System.err
@@ -84,13 +84,24 @@ public class MessageOutput {
     /**
      * Fetch a string by key lookup and format in the arguments.
      */
-    static synchronized String format(String key, Object [] arguments) {
-        if (messageFormat == null) {
-            messageFormat = new MessageFormat (textResources.getString(key));
-        } else {
-            messageFormat.applyPattern (textResources.getString(key));
+    static String format(String key, Object [] arguments) {
+        return messageFormat(key)
+                .format(arguments);
+    }
+
+    static MessageFormat messageFormat(String key) {
+        if (MESSAGE_FORMAT.isPresent()) {
+            MessageFormat mf = MESSAGE_FORMAT.get();
+            mf.applyPattern(textResources.getString(key));
+            return mf;
         }
-        return (messageFormat.format (arguments));
+        return MESSAGE_FORMAT.bindIfAbsent(messageFormat0(key));
+    }
+
+    static synchronized MessageFormat messageFormat0(String key) {
+        return MESSAGE_FORMAT.isPresent()
+                ? null
+                : new MessageFormat(textResources.getString(key));
     }
 
     /**

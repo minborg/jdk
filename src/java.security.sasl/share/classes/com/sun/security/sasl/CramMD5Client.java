@@ -26,9 +26,7 @@
 package com.sun.security.sasl;
 
 import javax.security.sasl.*;
-import java.security.NoSuchAlgorithmException;
 
-import java.util.logging.Logger;
 import java.util.logging.Level;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -103,8 +101,8 @@ final class CramMD5Client extends CramMD5Base implements SaslClient {
 
         // generate a keyed-MD5 digest from the user's password and challenge.
         try {
-            if (logger.isLoggable(Level.FINE)) {
-                logger.log(Level.FINE, "CRAMCLNT01:Received challenge: {0}",
+            if (logger().isLoggable(Level.FINE)) {
+                logger().log(Level.FINE, "CRAMCLNT01:Received challenge: {0}",
                     new String(challengeData, UTF_8));
             }
 
@@ -116,7 +114,7 @@ final class CramMD5Client extends CramMD5Base implements SaslClient {
             // response is username + " " + digest
             String resp = username + " " + digest;
 
-            logger.log(Level.FINE, "CRAMCLNT02:Sending response: {0}", resp);
+            logger().log(Level.FINE, "CRAMCLNT02:Sending response: {0}", resp);
 
             completed = true;
 

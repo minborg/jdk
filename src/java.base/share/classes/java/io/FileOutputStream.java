@@ -77,7 +77,7 @@ public class FileOutputStream extends OutputStream
     /**
      * The associated channel, initialized lazily.
      */
-    private volatile FileChannel channel;
+    private final Monotonic<FileChannel> channel = Monotonic.of();
 
     /**
      * The path of the referenced file
@@ -455,23 +455,19 @@ public class FileOutputStream extends OutputStream
      * @since 1.4
      */
     public FileChannel getChannel() {
-        FileChannel fc = this.channel;
-        if (fc == null) {
-            synchronized (this) {
-                fc = this.channel;
-                if (fc == null) {
-                    this.channel = fc = FileChannelImpl.open(fd, path, false,
-                        true, false, this);
-                    if (closed) {
-                        try {
-                            // possible race with close(), benign since
-                            // FileChannel.close is final and idempotent
-                            fc.close();
-                        } catch (IOException ioe) {
-                            throw new InternalError(ioe); // should not happen
-                        }
-                    }
-                }
+        return channel.computeIfAbsent(this::getChannel0);
+    }
+
+    private FileChannel getChannel0() {
+        FileChannel fc = FileChannelImpl.open(fd, path, false,
+                true, false, this);
+        if (closed) {
+            try {
+                // possible race with close(), benign since
+                // FileChannel.close is final and idempotent
+                fc.close();
+            } catch (IOException ioe) {
+                throw new InternalError(ioe); // should not happen
             }
         }
         return fc;

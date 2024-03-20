@@ -61,7 +61,7 @@ public class XSNamedMapImpl extends AbstractMap<QName, XSObject> implements XSNa
     // used when this map is accessed as a list.
     int fLength = -1;
     // Set of Map.Entry<QName,XSObject> for the java.util.Map methods
-    private Set<Map.Entry<QName,XSObject>> fEntrySet = null;
+    private final Monotonic<Set<Map.Entry<QName,XSObject>>> fEntrySet = Monotonic.of();
 
     /**
      * Construct an XSNamedMap implementation for one namespace
@@ -221,40 +221,46 @@ public class XSNamedMapImpl extends AbstractMap<QName, XSObject> implements XSNa
         return getLength();
     }
 
-    public synchronized Set<Map.Entry<QName,XSObject>> entrySet() {
+    public Set<Map.Entry<QName,XSObject>> entrySet() {
         // Defer creation of the entry set until it is actually needed.
-        if (fEntrySet == null) {
-            final int length = getLength();
-            final XSNamedMapEntry[] entries = new XSNamedMapEntry[length];
-            for (int i = 0; i < length; ++i) {
-                XSObject xso = item(i);
-                entries[i] = new XSNamedMapEntry(new QName(xso.getNamespace(), xso.getName()), xso);
-            }
-            // Create a view of this immutable map.
-            fEntrySet = new AbstractSet<Map.Entry<QName,XSObject>>() {
-                public Iterator<Map.Entry<QName,XSObject>> iterator() {
-                    return new Iterator<Map.Entry<QName,XSObject>>() {
-                        private int index = 0;
-                        public boolean hasNext() {
-                            return (index < length);
-                        }
-                        public Map.Entry<QName,XSObject> next() {
-                            if (index < length) {
-                                return entries[index++];
-                            }
-                            throw new NoSuchElementException();
-                        }
-                        public void remove() {
-                            throw new UnsupportedOperationException();
-                        }
-                    };
-                }
-                public int size() {
-                    return length;
-                }
-            };
+        return fEntrySet.computeIfAbsent(this::entrySet0);
+    }
+
+    private Set<Map.Entry<QName,XSObject>> entrySet0() {
+
+        final int length = getLength();
+        final XSNamedMapEntry[] entries = new XSNamedMapEntry[length];
+        for (int i = 0; i < length; ++i) {
+            XSObject xso = item(i);
+            entries[i] = new XSNamedMapEntry(new QName(xso.getNamespace(), xso.getName()), xso);
         }
-        return fEntrySet;
+        // Create a view of this immutable map.
+        return new AbstractSet<Map.Entry<QName, XSObject>>() {
+            public Iterator<Map.Entry<QName, XSObject>> iterator() {
+                return new Iterator<Map.Entry<QName, XSObject>>() {
+                    private int index = 0;
+
+                    public boolean hasNext() {
+                        return (index < length);
+                    }
+
+                    public Map.Entry<QName, XSObject> next() {
+                        if (index < length) {
+                            return entries[index++];
+                        }
+                        throw new NoSuchElementException();
+                    }
+
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+                };
+            }
+
+            public int size() {
+                return length;
+            }
+        };
     }
 
     /** An entry in the XSNamedMap. **/
