@@ -105,18 +105,24 @@ import sun.security.util.SecurityConstants;
 public final class Module implements AnnotatedElement {
 
     // the layer that contains this module, can be null
+    @Stable
     private final ModuleLayer layer;
 
     // module name and loader, these fields are read by VM
+    @Stable
     private final String name;
+    @Stable
     private final ClassLoader loader;
 
     // the module descriptor
+    @Stable
     private final ModuleDescriptor descriptor;
 
-    // true, if this module allows restricted native access
-    // Accessing this variable is made through Unsafe in order to use the
-    // memory semantics that preserves ordering and visibility across threads.
+    // `true`, if this module allows restricted native access.
+    // Reading of this field can be done using both plain and volatile semantics.
+    // Writing to this field is made through Unsafe in order to make
+    // sure ordering and visibility across threads are ensured even under
+    // reads using plain memory semantics.
     @Stable
     private boolean enableNativeAccess;
 
@@ -287,12 +293,18 @@ public final class Module implements AnnotatedElement {
         private static final long FIELD_OFFSET = UNSAFE.objectFieldOffset(Module.class, "enableNativeAccess");
 
         private static boolean isNativeAccessEnabled(Module target) {
-            return UNSAFE.getBooleanVolatile(target, FIELD_OFFSET);
+            // Try plain memory semantics first which is sometimes faster
+            return target.enableNativeAccess ||
+                    // Fall back to volatile semantics
+                    UNSAFE.getBooleanVolatile(target, FIELD_OFFSET);
         }
 
         // Atomically sets enableNativeAccess if not already set
         // returning if the value was updated
         private static boolean trySetEnableNativeAccess(Module target) {
+            // `enableNativeAccess` is read under plain memory semantics by other threads
+            // so this fence makes sure, no reordering can be observed by those threads.
+            UNSAFE.storeStoreFence();
             return UNSAFE.compareAndSetBoolean(target, FIELD_OFFSET, false, true);
         }
     }
