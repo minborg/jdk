@@ -37,22 +37,41 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 /**
- * Factory methods that produce memoized constructs that safely wrap the internal
+ * Factory methods that produce stable collections that safely wrap the internal
  * {@linkplain jdk.internal.vm.annotation.Stable} annotation.
  * <p>
  * As such, the memoized objects are eligible for certain optimizations by the JVM.
+ * <p>
+ * All returned objects are thread-safe.
  */
-public interface StableCollections {
+public final class StableCollections {
 
+    // Suppresses default constructor, ensuring non-instantiability.
+    private StableCollections() {}
+
+    /**
+     * {@return a new thread-safe, stable, lazily computed {@linkplain Supplier supplier}
+     * that records the value of the provided {@code original} supplier upon being first
+     * accessed via {@linkplain Supplier#get()}}
+     * <p>
+     * The provided {@code original} supplier is guaranteed to be invoked at most once
+     * even in a multi-threaded environment.
+     *
+     * @param original supplier
+     * @param <T> the type of results supplied by the returned supplier
+     */
     static <T> Supplier<T> ofSupplier(Supplier<? extends T> original) {
         throw new UnsupportedOperationException();
     }
 
     /**
      * {@return an unmodifiable, shallowly immutable, thread-safe, stable, lazily
-     * computed {@linkplain List} containing {@code size} elements where the stable
+     * computed {@linkplain List list} containing {@code size} elements where the stable
      * elements are lazily computed upon being first accessed (e.g. via
      * {@linkplain List#get(int)})}
+     * <p>
+     * The provided {@code mapper} is guaranteed to be invoked at most once per index
+     * even in a multi-threaded environment.
      * <p>
      * If non-empty, neither the returned list nor its elements are {@linkplain Serializable}.
      * <p>
@@ -74,13 +93,15 @@ public interface StableCollections {
 
     /**
      * {@return an unmodifiable, shallowly immutable, thread-safe, stable,
-     * value-lazy computed {@linkplain Map} where the {@linkplain java.util.Map#keySet() keys}
+     * value-lazy computed {@linkplain Map map} where the {@linkplain java.util.Map#keySet() keys}
      * contains precisely the distinct provided set of {@code keys} and where the
      * stable values are, in turn, lazily computed upon being first accessed
      * (e.g. via {@linkplain Map#get(Object) get(key)})}
      * <p>
-     * If non-empty, neither the returned map nor its values are {@linkplain Serializable}.
+     * The provided {@code mapper} is guaranteed to be invoked at most once per key
+     * even in a multi-threaded environment.
      * <p>
+     * If non-empty, neither the returned map nor its values are {@linkplain Serializable}.
      * <p>
      * This static factory methods return map instances that are
      * <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
