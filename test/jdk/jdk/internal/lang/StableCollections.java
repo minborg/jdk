@@ -60,7 +60,7 @@ public final class StableCollections {
      * @param original supplier
      * @param <T> the type of results supplied by the returned supplier
      */
-    static <T> Supplier<T> ofSupplier(Supplier<? extends T> original) {
+    public static <T> Supplier<T> ofSupplier(Supplier<? extends T> original) {
         throw new UnsupportedOperationException();
     }
 
@@ -86,8 +86,8 @@ public final class StableCollections {
      *
      * @since 23
      */
-    static <E> List<E> ofList(int size,
-                              IntFunction<? extends E> mapper) {
+    public static <E> List<E> ofList(int size,
+                                     IntFunction<? extends E> mapper) {
         throw new UnsupportedOperationException();
     }
 
@@ -115,8 +115,8 @@ public final class StableCollections {
      * @param <K> the type of keys maintained by the returned map
      * @param <V> the type of mapped values
      */
-    static <K, V> Map<K, V> ofMap(Set<? extends K> keys,
-                                  Function<? super K, ? extends V> mapper) {
+    public static <K, V> Map<K, V> ofMap(Set<? extends K> keys,
+                                         Function<? super K, ? extends V> mapper) {
         throw new UnsupportedOperationException();
     }
 
@@ -125,7 +125,7 @@ public final class StableCollections {
      * Demo
      * @param args not used
      */
-    static void main(String[] args) {
+    public static void main(String[] args) {
 
         List<Integer> list = StableCollections.ofList(3, i -> i); // [1, 2, 3]
         IntFunction<Integer> memoizedIntFunction = list::get;
