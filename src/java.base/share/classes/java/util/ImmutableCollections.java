@@ -117,7 +117,7 @@ class ImmutableCollections {
         }
     }
 
-    static final class Access {
+    static class Access {
         static {
             SharedSecrets.setJavaUtilCollectionAccess(new JavaUtilCollectionAccess() {
                 public <E> List<E> listFromTrustedArray(Object[] array) {
@@ -1360,7 +1360,6 @@ class ImmutableCollections {
             return new CollSer(CollSer.IMM_MAP, array);
         }
     }
-
 }
 
 // ---------- Serialization Proxy ----------

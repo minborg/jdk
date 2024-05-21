@@ -54,8 +54,6 @@ public record MemoizedFunction<T, R>(Function<? super T, ? extends R> original,
                 }
             }
 
-            // IntFunction<K> mappedOriginal = i -> original.apply(keys.getOrThrow(i));
-
             return new MemoizedFunction<>(
                     original,
                     keys,
