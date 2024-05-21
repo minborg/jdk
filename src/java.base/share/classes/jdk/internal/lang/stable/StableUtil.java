@@ -22,9 +22,12 @@ final class StableUtil {
     // Indicates a computation operation has been invoked.
     static final byte INVOKED = 1;
 
-        static final Unsafe UNSAFE = Unsafe.getUnsafe();
+    static final Unsafe UNSAFE = Unsafe.getUnsafe();
     // Sentinel value used to mark that a mutex will not be used anymore
     static final Object TOMBSTONE = new Object();
 
+    static long objectOffset(int index) {
+        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+    }
 
 }

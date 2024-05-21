@@ -1,7 +1,6 @@
 package jdk.internal.lang.stable;
 
 import jdk.internal.lang.StableValue;
-import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
@@ -27,6 +26,8 @@ public final class StableValueImpl<T> implements StableValue<T> {
     private StableValueImpl() {}
 
     public boolean trySet(T value) {
+        // Prevent reordering under plain read semantics
+        UNSAFE.storeStoreFence();
         return UNSAFE.compareAndSetReference(this, ELEMENT_OFFSET, null, value);
     }
 
@@ -60,20 +61,21 @@ public final class StableValueImpl<T> implements StableValue<T> {
     }
 
     @Override
-    public String toString() {
-        return "StableValue[" + getOrNull() + ']';
-    }
-
-    @Override
     public int hashCode() {
         return Objects.hashCode(getOrNull());
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof StableValueImpl<?> other
-                && Objects.equals(getOrNull(), other.getOrNull());
+        return obj instanceof StableValueImpl<?> other &&
+                Objects.equals(getOrNull(), other.getOrNull());
     }
+
+    @Override
+    public String toString() {
+        return "StableValue[" + getOrNull() + ']';
+    }
+
 
     // Factory
     public static <T> StableValueImpl<T> of() {

@@ -98,7 +98,7 @@ public final class SharedSecrets {
     private static final StableValue<JavaxSecurityAccess> javaxSecurityAccess = StableValue.of();
 
     public static void setJavaUtilCollectionAccess(JavaUtilCollectionAccess juca) {
-        javaUtilCollectionAccess.setOrThrow(juca);
+        javaUtilCollectionAccess.trySet(juca);
     }
 
     public static JavaUtilCollectionAccess getJavaUtilCollectionAccess() {
