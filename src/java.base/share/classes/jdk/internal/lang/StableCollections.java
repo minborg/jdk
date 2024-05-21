@@ -23,15 +23,17 @@
  * questions.
  */
 
-package internal.lang;
+package jdk.internal.lang;
+
+import jdk.internal.access.SharedSecrets;
+import jdk.internal.lang.stable.StableSupplier;
 
 import java.io.Serializable;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ThreadFactory;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -43,6 +45,8 @@ import java.util.function.Supplier;
  * As such, the memoized objects are eligible for certain optimizations by the JVM.
  * <p>
  * All returned objects are thread-safe.
+ *
+ * @since 23
  */
 public final class StableCollections {
 
@@ -56,22 +60,35 @@ public final class StableCollections {
      * <p>
      * The provided {@code original} supplier is guaranteed to be invoked at most once
      * even in a multi-threaded environment.
+     * <p>
+     * If the provided {@code original} supplier throws an exception, it is relayed
+     * to the initial caller. Subsequent read operations will throw
+     * {@linkplain java.util.NoSuchElementException}. The class of the original exception
+     * is also recorded and is available via the {@linkplain Object#toString()} method.
+     * For security reasons, the entire original exception is not retained.
      *
      * @param original supplier
      * @param <T> the type of results supplied by the returned supplier
      */
     public static <T> Supplier<T> ofSupplier(Supplier<? extends T> original) {
-        throw new UnsupportedOperationException();
+        Objects.requireNonNull(original);
+        return StableSupplier.create(original);
     }
 
     /**
      * {@return an unmodifiable, shallowly immutable, thread-safe, stable, lazily
      * computed {@linkplain List list} containing {@code size} elements where the stable
      * elements are lazily computed upon being first accessed (e.g. via
-     * {@linkplain List#get(int)})}
+     * {@linkplain List#get(int)}) by applying the provided {@code mapper}}
      * <p>
      * The provided {@code mapper} is guaranteed to be invoked at most once per index
      * even in a multi-threaded environment.
+     * <p>
+     * If the provided {@code mapper} throws an exception for a certain index, it is relayed
+     * to the initial caller. Subsequent read operations for the same index will throw
+     * {@linkplain java.util.NoSuchElementException}. The class of the original exception
+     * is also recorded and is available via the {@linkplain Object#toString()} method.
+     * For security reasons, the entire original exception is not retained.
      * <p>
      * If non-empty, neither the returned list nor its elements are {@linkplain Serializable}.
      * <p>
@@ -88,7 +105,13 @@ public final class StableCollections {
      */
     public static <E> List<E> ofList(int size,
                                      IntFunction<? extends E> mapper) {
-        throw new UnsupportedOperationException();
+        if (size < 0) {
+            throw new IllegalArgumentException();
+        }
+        Objects.requireNonNull(mapper);
+        return size == 0
+                ? List.of()
+                : SharedSecrets.getJavaUtilCollectionAccess().stableList(size, mapper);
     }
 
     /**
@@ -100,6 +123,12 @@ public final class StableCollections {
      * <p>
      * The provided {@code mapper} is guaranteed to be invoked at most once per key
      * even in a multi-threaded environment.
+     * <p>
+     * If the provided {@code mapper} throws an exception for a certain key, it is relayed
+     * to the initial caller. Subsequent read operations for the same key will throw
+     * {@linkplain java.util.NoSuchElementException}. The class of the original exception
+     * is also recorded and is available via the {@linkplain Object#toString()} method.
+     * For security reasons, the entire original exception is not retained.
      * <p>
      * If non-empty, neither the returned map nor its values are {@linkplain Serializable}.
      * <p>
@@ -117,47 +146,11 @@ public final class StableCollections {
      */
     public static <K, V> Map<K, V> ofMap(Set<? extends K> keys,
                                          Function<? super K, ? extends V> mapper) {
-        throw new UnsupportedOperationException();
+        Objects.requireNonNull(keys);
+        Objects.requireNonNull(mapper);
+        return keys.isEmpty()
+                ? Map.of()
+                : SharedSecrets.getJavaUtilCollectionAccess().stableMap(keys, mapper);
     }
-
-
-    /**
-     * Demo
-     * @param args not used
-     */
-    public static void main(String[] args) {
-
-        List<Integer> list = StableCollections.ofList(3, i -> i); // [1, 2, 3]
-        IntFunction<Integer> memoizedIntFunction = list::get;
-
-        Map<String, Integer> map = StableCollections.ofMap(Set.of("A", "AB"), String::length);
-        Function<String, Integer> memoizedFunction = map::get;
-
-        Map<String, Integer> mapBg = compute(Thread.ofVirtual().factory(),
-                ofMap(Set.of("ABC", "263tvg1"), String::length),
-                Comparator.naturalOrder());
-    }
-
-
-
-    // Drop the background-thread-compute methods below?
-
-    static <T> Supplier<T> compute(ThreadFactory threadFactory,
-                                   Supplier<T> supplier) {
-        throw new UnsupportedOperationException();
-    }
-
-    static <E extends Comparable<? super E>> List<E> compute(ThreadFactory threadFactory,
-                                                             List<E> list,
-                                                             Comparator<? super E> order) {
-        throw new UnsupportedOperationException();
-    }
-
-    static <K extends Comparable<? super K>, V> Map<K, V> compute(ThreadFactory threadFactory,
-                                                                  Map<K, V> map,
-                                                                  Comparator<? super K> order) {
-        throw new UnsupportedOperationException();
-    }
-
 
 }

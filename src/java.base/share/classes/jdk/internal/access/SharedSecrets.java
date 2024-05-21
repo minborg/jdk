@@ -25,6 +25,8 @@
 
 package jdk.internal.access;
 
+import jdk.internal.lang.StableValue;
+
 import javax.crypto.SealedObject;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ObjectInputFilter;
@@ -55,478 +57,481 @@ import javax.security.auth.x500.X500Principal;
     This framework avoids the primary disadvantage of using reflection
     for this purpose, namely the loss of compile-time checking. */
 
-public class SharedSecrets {
-    private static JavaAWTAccess javaAWTAccess;
-    private static JavaAWTFontAccess javaAWTFontAccess;
-    private static JavaBeansAccess javaBeansAccess;
-    private static JavaLangAccess javaLangAccess;
-    private static JavaLangInvokeAccess javaLangInvokeAccess;
-    private static JavaLangModuleAccess javaLangModuleAccess;
-    private static JavaLangRefAccess javaLangRefAccess;
-    private static JavaLangReflectAccess javaLangReflectAccess;
-    private static JavaIOAccess javaIOAccess;
-    private static JavaIOPrintStreamAccess javaIOPrintStreamAccess;
-    private static JavaIOPrintWriterAccess javaIOPrintWriterAccess;
-    private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
-    private static JavaIOFilePermissionAccess javaIOFilePermissionAccess;
-    private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
-    private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
-    private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
-    private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
-    private static JavaNetInetAddressAccess javaNetInetAddressAccess;
-    private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
-    private static JavaNetUriAccess javaNetUriAccess;
-    private static JavaNetURLAccess javaNetURLAccess;
-    private static JavaNioAccess javaNioAccess;
-    private static JavaUtilCollectionAccess javaUtilCollectionAccess;
-    private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
-    private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
-    private static JavaUtilJarAccess javaUtilJarAccess;
-    private static JavaUtilZipFileAccess javaUtilZipFileAccess;
-    private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
-    private static JavaSecurityAccess javaSecurityAccess;
-    private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
-    private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
-    private static JavaSecuritySpecAccess javaSecuritySpecAccess;
-    private static JavaxCryptoSealedObjectAccess javaxCryptoSealedObjectAccess;
-    private static JavaxCryptoSpecAccess javaxCryptoSpecAccess;
-    private static JavaxSecurityAccess javaxSecurityAccess;
+public final class SharedSecrets {
+
+    private SharedSecrets() {}
+
+    private static final StableValue<JavaAWTAccess> javaAWTAccess = StableValue.of();
+    private static final StableValue<JavaAWTFontAccess> javaAWTFontAccess = StableValue.of();
+    private static final StableValue<JavaBeansAccess> javaBeansAccess = StableValue.of();
+    private static final StableValue<JavaLangAccess> javaLangAccess = StableValue.of();
+    private static final StableValue<JavaLangInvokeAccess> javaLangInvokeAccess = StableValue.of();
+    private static final StableValue<JavaLangModuleAccess> javaLangModuleAccess = StableValue.of();
+    private static final StableValue<JavaLangRefAccess> javaLangRefAccess = StableValue.of();
+    private static final StableValue<JavaLangReflectAccess> javaLangReflectAccess = StableValue.of();
+    private static final StableValue<JavaIOAccess> javaIOAccess = StableValue.of();
+    private static final StableValue<JavaIOPrintStreamAccess> javaIOPrintStreamAccess = StableValue.of();
+    private static final StableValue<JavaIOPrintWriterAccess> javaIOPrintWriterAccess = StableValue.of();
+    private static final StableValue<JavaIOFileDescriptorAccess> javaIOFileDescriptorAccess = StableValue.of();
+    private static final StableValue<JavaIOFilePermissionAccess> javaIOFilePermissionAccess = StableValue.of();
+    private static final StableValue<JavaIORandomAccessFileAccess> javaIORandomAccessFileAccess = StableValue.of();
+    private static final StableValue<JavaObjectInputStreamReadString> javaObjectInputStreamReadString = StableValue.of();
+    private static final StableValue<JavaObjectInputStreamAccess> javaObjectInputStreamAccess = StableValue.of();
+    private static final StableValue<JavaObjectInputFilterAccess> javaObjectInputFilterAccess = StableValue.of();
+    private static final StableValue<JavaNetInetAddressAccess> javaNetInetAddressAccess = StableValue.of();
+    private static final StableValue<JavaNetHttpCookieAccess> javaNetHttpCookieAccess = StableValue.of();
+    private static final StableValue<JavaNetUriAccess> javaNetUriAccess = StableValue.of();
+    private static final StableValue<JavaNetURLAccess> javaNetURLAccess = StableValue.of();
+    private static final StableValue<JavaNioAccess> javaNioAccess = StableValue.of();
+    private static final StableValue<JavaUtilCollectionAccess> javaUtilCollectionAccess = StableValue.of();
+    private static final StableValue<JavaUtilConcurrentTLRAccess> javaUtilConcurrentTLRAccess = StableValue.of();
+    private static final StableValue<JavaUtilConcurrentFJPAccess> javaUtilConcurrentFJPAccess = StableValue.of();
+    private static final StableValue<JavaUtilJarAccess> javaUtilJarAccess = StableValue.of();
+    private static final StableValue<JavaUtilZipFileAccess> javaUtilZipFileAccess = StableValue.of();
+    private static final StableValue<JavaUtilResourceBundleAccess> javaUtilResourceBundleAccess = StableValue.of();
+    private static final StableValue<JavaSecurityAccess> javaSecurityAccess = StableValue.of();
+    private static final StableValue<JavaSecurityPropertiesAccess> javaSecurityPropertiesAccess = StableValue.of();
+    private static final StableValue<JavaSecuritySignatureAccess> javaSecuritySignatureAccess = StableValue.of();
+    private static final StableValue<JavaSecuritySpecAccess> javaSecuritySpecAccess = StableValue.of();
+    private static final StableValue<JavaxCryptoSealedObjectAccess> javaxCryptoSealedObjectAccess = StableValue.of();
+    private static final StableValue<JavaxCryptoSpecAccess> javaxCryptoSpecAccess = StableValue.of();
+    private static final StableValue<JavaxSecurityAccess> javaxSecurityAccess = StableValue.of();
 
     public static void setJavaUtilCollectionAccess(JavaUtilCollectionAccess juca) {
-        javaUtilCollectionAccess = juca;
+        javaUtilCollectionAccess.setOrThrow(juca);
     }
 
     public static JavaUtilCollectionAccess getJavaUtilCollectionAccess() {
-        var access = javaUtilCollectionAccess;
+        var access = javaUtilCollectionAccess.getOrNull();
         if (access == null) {
             try {
                 Class.forName("java.util.ImmutableCollections$Access", true, null);
-                access = javaUtilCollectionAccess;
+                access = javaUtilCollectionAccess.getOrThrow();
             } catch (ClassNotFoundException e) {}
         }
         return access;
     }
 
     public static void setJavaUtilConcurrentTLRAccess(JavaUtilConcurrentTLRAccess access) {
-        javaUtilConcurrentTLRAccess = access;
+        javaUtilConcurrentTLRAccess.setOrThrow(access);
     }
 
     public static JavaUtilConcurrentTLRAccess getJavaUtilConcurrentTLRAccess() {
-        var access = javaUtilConcurrentTLRAccess;
+        var access = javaUtilConcurrentTLRAccess.getOrNull();
         if (access == null) {
             try {
                 Class.forName("java.util.concurrent.ThreadLocalRandom$Access", true, null);
-                access = javaUtilConcurrentTLRAccess;
+                access = javaUtilConcurrentTLRAccess.getOrThrow();
             } catch (ClassNotFoundException e) {}
         }
         return access;
     }
 
     public static void setJavaUtilConcurrentFJPAccess(JavaUtilConcurrentFJPAccess access) {
-        javaUtilConcurrentFJPAccess = access;
+        javaUtilConcurrentFJPAccess.setOrThrow(access);
     }
 
     public static JavaUtilConcurrentFJPAccess getJavaUtilConcurrentFJPAccess() {
-        var access = javaUtilConcurrentFJPAccess;
+        var access = javaUtilConcurrentFJPAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(ForkJoinPool.class);
-            access = javaUtilConcurrentFJPAccess;
+            access = javaUtilConcurrentFJPAccess.getOrThrow();
         }
         return access;
     }
 
     public static JavaUtilJarAccess javaUtilJarAccess() {
-        var access = javaUtilJarAccess;
+        var access = javaUtilJarAccess.getOrNull();
         if (access == null) {
             // Ensure JarFile is initialized; we know that this class
             // provides the shared secret
             ensureClassInitialized(JarFile.class);
-            access = javaUtilJarAccess;
+            access = javaUtilJarAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
-        javaUtilJarAccess = access;
+        javaUtilJarAccess.setOrThrow(access);
     }
 
     public static void setJavaLangAccess(JavaLangAccess jla) {
-        javaLangAccess = jla;
+        javaLangAccess.setOrThrow(jla);
     }
 
     public static JavaLangAccess getJavaLangAccess() {
-        return javaLangAccess;
+        return javaLangAccess.getOrThrow();
     }
 
     public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {
-        javaLangInvokeAccess = jlia;
+        javaLangInvokeAccess.setOrThrow(jlia);
     }
 
     public static JavaLangInvokeAccess getJavaLangInvokeAccess() {
-        var access = javaLangInvokeAccess;
+        var access = javaLangInvokeAccess.getOrNull();
         if (access == null) {
             try {
                 Class.forName("java.lang.invoke.MethodHandleImpl", true, null);
-                access = javaLangInvokeAccess;
+                access = javaLangInvokeAccess.getOrThrow();
             } catch (ClassNotFoundException e) {}
         }
         return access;
     }
 
     public static void setJavaLangModuleAccess(JavaLangModuleAccess jlrma) {
-        javaLangModuleAccess = jlrma;
+        javaLangModuleAccess.setOrThrow(jlrma);
     }
 
     public static JavaLangModuleAccess getJavaLangModuleAccess() {
-        var access = javaLangModuleAccess;
+        var access = javaLangModuleAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(ModuleDescriptor.class);
-            access = javaLangModuleAccess;
+            access = javaLangModuleAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaLangRefAccess(JavaLangRefAccess jlra) {
-        javaLangRefAccess = jlra;
+        javaLangRefAccess.setOrThrow(jlra);
     }
 
     public static JavaLangRefAccess getJavaLangRefAccess() {
-        return javaLangRefAccess;
+        return javaLangRefAccess.getOrThrow();
     }
 
     public static void setJavaLangReflectAccess(JavaLangReflectAccess jlra) {
-        javaLangReflectAccess = jlra;
+        javaLangReflectAccess.setOrThrow(jlra);
     }
 
     public static JavaLangReflectAccess getJavaLangReflectAccess() {
-        return javaLangReflectAccess;
+        return javaLangReflectAccess.getOrThrow();
     }
 
     public static void setJavaNetUriAccess(JavaNetUriAccess jnua) {
-        javaNetUriAccess = jnua;
+        javaNetUriAccess.setOrThrow(jnua);
     }
 
     public static JavaNetUriAccess getJavaNetUriAccess() {
-        var access = javaNetUriAccess;
+        var access = javaNetUriAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(java.net.URI.class);
-            access = javaNetUriAccess;
+            access = javaNetUriAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaNetURLAccess(JavaNetURLAccess jnua) {
-        javaNetURLAccess = jnua;
+        javaNetURLAccess.setOrThrow(jnua);
     }
 
     public static JavaNetURLAccess getJavaNetURLAccess() {
-        var access = javaNetURLAccess;
+        var access = javaNetURLAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(java.net.URL.class);
-            access = javaNetURLAccess;
+            access = javaNetURLAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaNetInetAddressAccess(JavaNetInetAddressAccess jna) {
-        javaNetInetAddressAccess = jna;
+        javaNetInetAddressAccess.setOrThrow(jna);
     }
 
     public static JavaNetInetAddressAccess getJavaNetInetAddressAccess() {
-        var access = javaNetInetAddressAccess;
+        var access = javaNetInetAddressAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(java.net.InetAddress.class);
-            access = javaNetInetAddressAccess;
+            access = javaNetInetAddressAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaNetHttpCookieAccess(JavaNetHttpCookieAccess a) {
-        javaNetHttpCookieAccess = a;
+        javaNetHttpCookieAccess.setOrThrow(a);
     }
 
     public static JavaNetHttpCookieAccess getJavaNetHttpCookieAccess() {
-        var access = javaNetHttpCookieAccess;
+        var access = javaNetHttpCookieAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(java.net.HttpCookie.class);
-            access = javaNetHttpCookieAccess;
+            access = javaNetHttpCookieAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaNioAccess(JavaNioAccess jna) {
-        javaNioAccess = jna;
+        javaNioAccess.setOrThrow(jna);
     }
 
     public static JavaNioAccess getJavaNioAccess() {
-        var access = javaNioAccess;
+        var access = javaNioAccess.getOrNull();
         if (access == null) {
             // Ensure java.nio.Buffer is initialized, which provides the
             // shared secret.
             ensureClassInitialized(java.nio.Buffer.class);
-            access = javaNioAccess;
+            access = javaNioAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaIOAccess(JavaIOAccess jia) {
-        javaIOAccess = jia;
+        javaIOAccess.setOrThrow(jia);
     }
 
     public static JavaIOAccess getJavaIOAccess() {
-        var access = javaIOAccess;
+        var access = javaIOAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(Console.class);
-            access = javaIOAccess;
+            access = javaIOAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaIOCPrintWriterAccess(JavaIOPrintWriterAccess a) {
-        javaIOPrintWriterAccess = a;
+        javaIOPrintWriterAccess.setOrThrow(a);
     }
 
     public static JavaIOPrintWriterAccess getJavaIOPrintWriterAccess() {
-        var access = javaIOPrintWriterAccess;
+        var access = javaIOPrintWriterAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(PrintWriter.class);
-            access = javaIOPrintWriterAccess;
+            access = javaIOPrintWriterAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaIOCPrintStreamAccess(JavaIOPrintStreamAccess a) {
-        javaIOPrintStreamAccess = a;
+        javaIOPrintStreamAccess.setOrThrow(a);
     }
 
     public static JavaIOPrintStreamAccess getJavaIOPrintStreamAccess() {
-        var access = javaIOPrintStreamAccess;
+        var access = javaIOPrintStreamAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(PrintStream.class);
-            access = javaIOPrintStreamAccess;
+            access = javaIOPrintStreamAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaIOFileDescriptorAccess(JavaIOFileDescriptorAccess jiofda) {
-        javaIOFileDescriptorAccess = jiofda;
+        javaIOFileDescriptorAccess.setOrThrow(jiofda);
     }
 
     public static JavaIOFilePermissionAccess getJavaIOFilePermissionAccess() {
-        var access = javaIOFilePermissionAccess;
+        var access = javaIOFilePermissionAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(FilePermission.class);
-            access = javaIOFilePermissionAccess;
+            access = javaIOFilePermissionAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaIOFilePermissionAccess(JavaIOFilePermissionAccess jiofpa) {
-        javaIOFilePermissionAccess = jiofpa;
+        javaIOFilePermissionAccess.setOrThrow(jiofpa);
     }
 
     public static JavaIOFileDescriptorAccess getJavaIOFileDescriptorAccess() {
-        var access = javaIOFileDescriptorAccess;
+        var access = javaIOFileDescriptorAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(FileDescriptor.class);
-            access = javaIOFileDescriptorAccess;
+            access = javaIOFileDescriptorAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaSecurityAccess(JavaSecurityAccess jsa) {
-        javaSecurityAccess = jsa;
+        javaSecurityAccess.setOrThrow(jsa);
     }
 
     public static JavaSecurityAccess getJavaSecurityAccess() {
-        var access = javaSecurityAccess;
+        var access = javaSecurityAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(ProtectionDomain.class);
-            access = javaSecurityAccess;
+            access = javaSecurityAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaSecurityPropertiesAccess(JavaSecurityPropertiesAccess jspa) {
-        javaSecurityPropertiesAccess = jspa;
+        javaSecurityPropertiesAccess.setOrThrow(jspa);
     }
 
     public static JavaSecurityPropertiesAccess getJavaSecurityPropertiesAccess() {
-        var access = javaSecurityPropertiesAccess;
+        var access = javaSecurityPropertiesAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(Security.class);
-            access = javaSecurityPropertiesAccess;
+            access = javaSecurityPropertiesAccess.getOrThrow();
         }
         return access;
     }
 
     public static JavaUtilZipFileAccess getJavaUtilZipFileAccess() {
-        var access = javaUtilZipFileAccess;
+        var access = javaUtilZipFileAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(java.util.zip.ZipFile.class);
-            access = javaUtilZipFileAccess;
+            access = javaUtilZipFileAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaUtilZipFileAccess(JavaUtilZipFileAccess access) {
-        javaUtilZipFileAccess = access;
+        javaUtilZipFileAccess.setOrThrow(access);
     }
 
     public static void setJavaAWTAccess(JavaAWTAccess jaa) {
-        javaAWTAccess = jaa;
+        javaAWTAccess.trySet(jaa);
     }
 
     public static JavaAWTAccess getJavaAWTAccess() {
         // this may return null in which case calling code needs to
         // provision for.
-        return javaAWTAccess;
+        return javaAWTAccess.getOrNull();
     }
 
     public static void setJavaAWTFontAccess(JavaAWTFontAccess jafa) {
-        javaAWTFontAccess = jafa;
+        javaAWTFontAccess.setOrThrow(jafa);
     }
 
     public static JavaAWTFontAccess getJavaAWTFontAccess() {
         // this may return null in which case calling code needs to
         // provision for.
-        return javaAWTFontAccess;
+        return javaAWTFontAccess.getOrNull();
     }
 
     public static JavaBeansAccess getJavaBeansAccess() {
-        return javaBeansAccess;
+        return javaBeansAccess.getOrNull();
     }
 
     public static void setJavaBeansAccess(JavaBeansAccess access) {
-        javaBeansAccess = access;
+        javaBeansAccess.setOrThrow(access);
     }
 
     public static JavaUtilResourceBundleAccess getJavaUtilResourceBundleAccess() {
-        var access = javaUtilResourceBundleAccess;
+        var access = javaUtilResourceBundleAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(ResourceBundle.class);
-            access = javaUtilResourceBundleAccess;
+            access = javaUtilResourceBundleAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
-        javaUtilResourceBundleAccess = access;
+        javaUtilResourceBundleAccess.setOrThrow(access);
     }
 
     public static JavaObjectInputStreamReadString getJavaObjectInputStreamReadString() {
-        var access = javaObjectInputStreamReadString;
+        var access = javaObjectInputStreamReadString.getOrNull();
         if (access == null) {
             ensureClassInitialized(ObjectInputStream.class);
-            access = javaObjectInputStreamReadString;
+            access = javaObjectInputStreamReadString.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaObjectInputStreamReadString(JavaObjectInputStreamReadString access) {
-        javaObjectInputStreamReadString = access;
+        javaObjectInputStreamReadString.setOrThrow(access);
     }
 
     public static JavaObjectInputStreamAccess getJavaObjectInputStreamAccess() {
-        var access = javaObjectInputStreamAccess;
+        var access = javaObjectInputStreamAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(ObjectInputStream.class);
-            access = javaObjectInputStreamAccess;
+            access = javaObjectInputStreamAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaObjectInputStreamAccess(JavaObjectInputStreamAccess access) {
-        javaObjectInputStreamAccess = access;
+        javaObjectInputStreamAccess.setOrThrow(access);
     }
 
     public static JavaObjectInputFilterAccess getJavaObjectInputFilterAccess() {
-        var access = javaObjectInputFilterAccess;
+        var access = javaObjectInputFilterAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(ObjectInputFilter.Config.class);
-            access = javaObjectInputFilterAccess;
+            access = javaObjectInputFilterAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaObjectInputFilterAccess(JavaObjectInputFilterAccess access) {
-        javaObjectInputFilterAccess = access;
+        javaObjectInputFilterAccess.setOrThrow(access);
     }
 
     public static void setJavaIORandomAccessFileAccess(JavaIORandomAccessFileAccess jirafa) {
-        javaIORandomAccessFileAccess = jirafa;
+        javaIORandomAccessFileAccess.setOrThrow(jirafa);
     }
 
     public static JavaIORandomAccessFileAccess getJavaIORandomAccessFileAccess() {
-        var access = javaIORandomAccessFileAccess;
+        var access = javaIORandomAccessFileAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(RandomAccessFile.class);
-            access = javaIORandomAccessFileAccess;
+            access = javaIORandomAccessFileAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaSecuritySignatureAccess(JavaSecuritySignatureAccess jssa) {
-        javaSecuritySignatureAccess = jssa;
+        javaSecuritySignatureAccess.setOrThrow(jssa);
     }
 
     public static JavaSecuritySignatureAccess getJavaSecuritySignatureAccess() {
-        var access = javaSecuritySignatureAccess;
+        var access = javaSecuritySignatureAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(Signature.class);
-            access = javaSecuritySignatureAccess;
+            access = javaSecuritySignatureAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaSecuritySpecAccess(JavaSecuritySpecAccess jssa) {
-        javaSecuritySpecAccess = jssa;
+        javaSecuritySpecAccess.setOrThrow(jssa);
     }
 
     public static JavaSecuritySpecAccess getJavaSecuritySpecAccess() {
-        var access = javaSecuritySpecAccess;
+        var access = javaSecuritySpecAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(EncodedKeySpec.class);
-            access = javaSecuritySpecAccess;
+            access = javaSecuritySpecAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaxCryptoSpecAccess(JavaxCryptoSpecAccess jcsa) {
-        javaxCryptoSpecAccess = jcsa;
+        javaxCryptoSpecAccess.setOrThrow(jcsa);
     }
 
     public static JavaxCryptoSpecAccess getJavaxCryptoSpecAccess() {
-        var access = javaxCryptoSpecAccess;
+        var access = javaxCryptoSpecAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(SecretKeySpec.class);
-            access = javaxCryptoSpecAccess;
+            access = javaxCryptoSpecAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaxCryptoSealedObjectAccess(JavaxCryptoSealedObjectAccess jcsoa) {
-        javaxCryptoSealedObjectAccess = jcsoa;
+        javaxCryptoSealedObjectAccess.setOrThrow(jcsoa);
     }
 
     public static JavaxCryptoSealedObjectAccess getJavaxCryptoSealedObjectAccess() {
-        var access = javaxCryptoSealedObjectAccess;
+        var access = javaxCryptoSealedObjectAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(SealedObject.class);
-            access = javaxCryptoSealedObjectAccess;
+            access = javaxCryptoSealedObjectAccess.getOrThrow();
         }
         return access;
     }
 
     public static void setJavaxSecurityAccess(JavaxSecurityAccess jsa) {
-        javaxSecurityAccess = jsa;
+        javaxSecurityAccess.setOrThrow(jsa);
     }
 
     public static JavaxSecurityAccess getJavaxSecurityAccess() {
-        var access = javaxSecurityAccess;
+        var access = javaxSecurityAccess.getOrNull();
         if (access == null) {
             ensureClassInitialized(X500Principal.class);
-            access = javaxSecurityAccess;
+            access = javaxSecurityAccess.getOrThrow();
         }
         return access;
     }
