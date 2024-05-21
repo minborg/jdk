@@ -13,6 +13,8 @@ import java.util.NoSuchElementException;
  */
 public sealed interface StableValue<T> permits StableValueImpl {
 
+    // Principal methods
+
     /**
      * {@return {@code true} if the stable value was set to the provided {@code value},
      * otherwise returns {@code false}}
@@ -25,6 +27,8 @@ public sealed interface StableValue<T> permits StableValueImpl {
      * {@return the set value (nullable) if set, otherwise {@code null}
      */
     T getOrNull();
+
+    // Convenience methods
 
     /**
      * Sets the stable value to the provided {@code value} if not set to a non-null value

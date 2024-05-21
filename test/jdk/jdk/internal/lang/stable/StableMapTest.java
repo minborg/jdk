@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -102,6 +103,37 @@ final class StableMapTest {
             }
             assertEquals(set, seen);
         }
+    }
+
+    @Test
+    void toStringTest() {
+        for (var set : sets()) {
+            Map<String, Integer> map = StableCollections.ofMap(set, MAPPER);
+            String expected = new HashMap<>(map).toString();
+            assertEquals(expected, map.toString());
+        }
+    }
+
+    @Test
+    void computeException() {
+        String text = "abc123";
+        String key = "C";
+        Map<String, Integer> map = StableCollections.ofMap(Arrays.stream(KEYS).collect(Collectors.toSet()), k -> {
+            if (k.equals(key)) {
+                System.out.println("OOPS!");
+                throw new UnsupportedOperationException(text);
+            }
+            return MAPPER.apply(k);
+        });
+        // Initial call
+        UnsupportedOperationException uoe = assertThrows(UnsupportedOperationException.class, () -> map.get(key));
+        assertTrue(uoe.getMessage().contains(text));
+        // Subsequent call
+        NoSuchElementException nse = assertThrows(NoSuchElementException.class, () -> map.get(key));
+        assertTrue(nse.getMessage().contains(UnsupportedOperationException.class.getSimpleName()));
+        assertFalse(nse.getMessage().contains(text));
+        String s = map.toString();
+        assertTrue(s.contains(".error(" + UnsupportedOperationException.class.getName() + ")"));
     }
 
     @ParameterizedTest

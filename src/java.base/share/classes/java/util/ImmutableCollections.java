@@ -1480,29 +1480,19 @@ class ImmutableCollections {
                 }
                 byte state = UNSAFE.getByteVolatile(states, StableUtil.byteOffset(i));
                 if (state == ERROR) {
-                    appendErrorMessage(sb, i);
+                    appendErrorMessage(sb, mutexes, i);
                 } else {
                     try {
                         E element = get(i);
-                        sb.append(element);
+                        sb.append(renderElement(this, element, "Collection"));
                     } catch (NoSuchElementException e) {
                         // There might be a race so, we need to check for
                         // an exception again.
-                        appendErrorMessage(sb, i);
+                        appendErrorMessage(sb, mutexes, i);
                     }
                 }
             }
             return sb.append(']').toString();
-        }
-
-        private void appendErrorMessage(StringBuilder sb, int index) {
-            sb.append(".error(")
-                    .append(((Class<?>)UNSAFE.getReferenceVolatile(mutexes, StableUtil.objectOffset(index))).getName())
-                    .append(')');
-        }
-
-        private String renderElement(Object e) {
-            return e == this ? "(this Collection)" : e.toString();
         }
 
         static <E> List<E> create(int size,
@@ -1555,9 +1545,9 @@ class ImmutableCollections {
             this.keys = keys;
             this.mapper = mapper;
             this.elements = newGenericArray(len);
-            this.states = new byte[size];
-            this.mutexes = new Object[size];
-            this.computeInvokes = new byte[size];
+            this.states = new byte[len];
+            this.mutexes = new Object[len];
+            this.computeInvokes = new byte[len];
         }
 
         private int probe(Object pk) {
@@ -1634,6 +1624,11 @@ class ImmutableCollections {
                     hash += key.hashCode() ^ get(key).hashCode();
             }
             return hash;
+        }
+
+        @Override
+        public String toString() {
+            return mapToString(this, i -> keys[i], elements, states, mutexes);
         }
 
         final class StableMapIterator implements Iterator<Map.Entry<K, V>> {
@@ -1795,6 +1790,11 @@ class ImmutableCollections {
             return containsKey(key)
                     ? value(arrayIndex(key))
                     : null;
+        }
+
+        @Override
+        public String toString() {
+            return mapToString(this, i -> isPresent.test(i) ? key(i) : null, elements, states, mutexes);
         }
 
         @ForceInline
@@ -1983,8 +1983,45 @@ class ImmutableCollections {
             };
         }
 
-        static NoSuchElementException notSet() {
-            return new NoSuchElementException("No value set");
+        static <K, V> String mapToString(Map<K, V> map,
+                                         IntFunction<K> keyExtractor,
+                                         V[] elements,
+                                         byte[] states,
+                                         Object[] mutexes) {
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+            for (int i = 0; i < elements.length; i++) {
+                if (i != 0) {
+                    sb.append(',').append(' ');
+                }
+                byte state = UNSAFE.getByteVolatile(states, StableUtil.byteOffset(i));
+                if (state == ERROR) {
+                    appendErrorMessage(sb, mutexes, i);
+                } else {
+                    K key = keyExtractor.apply(i);
+                    if (key != null) {
+                        try {
+                            V element = map.get(key);
+                            sb.append(renderElement(map, element, "Map"));
+                        } catch (NoSuchElementException e) {
+                            // There might be a race so, we need to check for
+                            // an exception again.
+                            appendErrorMessage(sb, mutexes, i);
+                        }
+                    }
+                }
+            }
+            return sb.append('}').toString();
+        }
+
+        static void appendErrorMessage(StringBuilder sb, Object[] mutexes, int index) {
+            sb.append(".error(")
+                    .append(((Class<?>)UNSAFE.getReferenceVolatile(mutexes, StableUtil.objectOffset(index))).getName())
+                    .append(')');
+        }
+
+        static String renderElement(Object container, Object e, String type) {
+            return e == container ? "(this " + type + ")" : e.toString();
         }
 
         static NoSuchElementException previousError(Object object) {
@@ -2027,6 +2064,8 @@ class ImmutableCollections {
         }
 
         private static Object acquireMutex(Object[] mutexes, int index) {
+            assert index < mutexes.length && index >= 0;
+
             Object mutex = UNSAFE.getReferenceVolatile(mutexes, objectOffset(index));
             if (mutex == null) {
                 mutex = caeMutex(mutexes, index);
