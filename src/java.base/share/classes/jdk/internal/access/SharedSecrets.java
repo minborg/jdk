@@ -113,7 +113,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaUtilConcurrentTLRAccess(JavaUtilConcurrentTLRAccess access) {
-        javaUtilConcurrentTLRAccess.setOrThrow(access);
+        javaUtilConcurrentTLRAccess.trySet(access);
     }
 
     public static JavaUtilConcurrentTLRAccess getJavaUtilConcurrentTLRAccess() {
@@ -128,7 +128,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaUtilConcurrentFJPAccess(JavaUtilConcurrentFJPAccess access) {
-        javaUtilConcurrentFJPAccess.setOrThrow(access);
+        javaUtilConcurrentFJPAccess.trySet(access);
     }
 
     public static JavaUtilConcurrentFJPAccess getJavaUtilConcurrentFJPAccess() {
@@ -152,11 +152,11 @@ public final class SharedSecrets {
     }
 
     public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
-        javaUtilJarAccess.setOrThrow(access);
+        javaUtilJarAccess.trySet(access);
     }
 
     public static void setJavaLangAccess(JavaLangAccess jla) {
-        javaLangAccess.setOrThrow(jla);
+        javaLangAccess.trySet(jla);
     }
 
     public static JavaLangAccess getJavaLangAccess() {
@@ -164,7 +164,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {
-        javaLangInvokeAccess.setOrThrow(jlia);
+        javaLangInvokeAccess.trySet(jlia);
     }
 
     public static JavaLangInvokeAccess getJavaLangInvokeAccess() {
@@ -179,7 +179,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaLangModuleAccess(JavaLangModuleAccess jlrma) {
-        javaLangModuleAccess.setOrThrow(jlrma);
+        javaLangModuleAccess.trySet(jlrma);
     }
 
     public static JavaLangModuleAccess getJavaLangModuleAccess() {
@@ -192,7 +192,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaLangRefAccess(JavaLangRefAccess jlra) {
-        javaLangRefAccess.setOrThrow(jlra);
+        javaLangRefAccess.trySet(jlra);
     }
 
     public static JavaLangRefAccess getJavaLangRefAccess() {
@@ -200,7 +200,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaLangReflectAccess(JavaLangReflectAccess jlra) {
-        javaLangReflectAccess.setOrThrow(jlra);
+        javaLangReflectAccess.trySet(jlra);
     }
 
     public static JavaLangReflectAccess getJavaLangReflectAccess() {
@@ -208,7 +208,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaNetUriAccess(JavaNetUriAccess jnua) {
-        javaNetUriAccess.setOrThrow(jnua);
+        javaNetUriAccess.trySet(jnua);
     }
 
     public static JavaNetUriAccess getJavaNetUriAccess() {
@@ -221,7 +221,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaNetURLAccess(JavaNetURLAccess jnua) {
-        javaNetURLAccess.setOrThrow(jnua);
+        javaNetURLAccess.trySet(jnua);
     }
 
     public static JavaNetURLAccess getJavaNetURLAccess() {
@@ -234,7 +234,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaNetInetAddressAccess(JavaNetInetAddressAccess jna) {
-        javaNetInetAddressAccess.setOrThrow(jna);
+        javaNetInetAddressAccess.trySet(jna);
     }
 
     public static JavaNetInetAddressAccess getJavaNetInetAddressAccess() {
@@ -247,7 +247,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaNetHttpCookieAccess(JavaNetHttpCookieAccess a) {
-        javaNetHttpCookieAccess.setOrThrow(a);
+        javaNetHttpCookieAccess.trySet(a);
     }
 
     public static JavaNetHttpCookieAccess getJavaNetHttpCookieAccess() {
@@ -260,7 +260,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaNioAccess(JavaNioAccess jna) {
-        javaNioAccess.setOrThrow(jna);
+        javaNioAccess.trySet(jna);
     }
 
     public static JavaNioAccess getJavaNioAccess() {
@@ -275,7 +275,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaIOAccess(JavaIOAccess jia) {
-        javaIOAccess.setOrThrow(jia);
+        javaIOAccess.trySet(jia);
     }
 
     public static JavaIOAccess getJavaIOAccess() {
@@ -288,7 +288,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaIOCPrintWriterAccess(JavaIOPrintWriterAccess a) {
-        javaIOPrintWriterAccess.setOrThrow(a);
+        javaIOPrintWriterAccess.trySet(a);
     }
 
     public static JavaIOPrintWriterAccess getJavaIOPrintWriterAccess() {
@@ -301,7 +301,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaIOCPrintStreamAccess(JavaIOPrintStreamAccess a) {
-        javaIOPrintStreamAccess.setOrThrow(a);
+        javaIOPrintStreamAccess.trySet(a);
     }
 
     public static JavaIOPrintStreamAccess getJavaIOPrintStreamAccess() {
@@ -314,7 +314,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaIOFileDescriptorAccess(JavaIOFileDescriptorAccess jiofda) {
-        javaIOFileDescriptorAccess.setOrThrow(jiofda);
+        javaIOFileDescriptorAccess.trySet(jiofda);
     }
 
     public static JavaIOFilePermissionAccess getJavaIOFilePermissionAccess() {
@@ -327,7 +327,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaIOFilePermissionAccess(JavaIOFilePermissionAccess jiofpa) {
-        javaIOFilePermissionAccess.setOrThrow(jiofpa);
+        javaIOFilePermissionAccess.trySet(jiofpa);
     }
 
     public static JavaIOFileDescriptorAccess getJavaIOFileDescriptorAccess() {
@@ -340,7 +340,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaSecurityAccess(JavaSecurityAccess jsa) {
-        javaSecurityAccess.setOrThrow(jsa);
+        javaSecurityAccess.trySet(jsa);
     }
 
     public static JavaSecurityAccess getJavaSecurityAccess() {
@@ -353,7 +353,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaSecurityPropertiesAccess(JavaSecurityPropertiesAccess jspa) {
-        javaSecurityPropertiesAccess.setOrThrow(jspa);
+        javaSecurityPropertiesAccess.trySet(jspa);
     }
 
     public static JavaSecurityPropertiesAccess getJavaSecurityPropertiesAccess() {
@@ -375,7 +375,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaUtilZipFileAccess(JavaUtilZipFileAccess access) {
-        javaUtilZipFileAccess.setOrThrow(access);
+        javaUtilZipFileAccess.trySet(access);
     }
 
     public static void setJavaAWTAccess(JavaAWTAccess jaa) {
@@ -389,7 +389,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaAWTFontAccess(JavaAWTFontAccess jafa) {
-        javaAWTFontAccess.setOrThrow(jafa);
+        javaAWTFontAccess.trySet(jafa);
     }
 
     public static JavaAWTFontAccess getJavaAWTFontAccess() {
@@ -403,7 +403,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaBeansAccess(JavaBeansAccess access) {
-        javaBeansAccess.setOrThrow(access);
+        javaBeansAccess.trySet(access);
     }
 
     public static JavaUtilResourceBundleAccess getJavaUtilResourceBundleAccess() {
@@ -416,7 +416,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
-        javaUtilResourceBundleAccess.setOrThrow(access);
+        javaUtilResourceBundleAccess.trySet(access);
     }
 
     public static JavaObjectInputStreamReadString getJavaObjectInputStreamReadString() {
@@ -429,7 +429,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaObjectInputStreamReadString(JavaObjectInputStreamReadString access) {
-        javaObjectInputStreamReadString.setOrThrow(access);
+        javaObjectInputStreamReadString.trySet(access);
     }
 
     public static JavaObjectInputStreamAccess getJavaObjectInputStreamAccess() {
@@ -442,7 +442,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaObjectInputStreamAccess(JavaObjectInputStreamAccess access) {
-        javaObjectInputStreamAccess.setOrThrow(access);
+        javaObjectInputStreamAccess.trySet(access);
     }
 
     public static JavaObjectInputFilterAccess getJavaObjectInputFilterAccess() {
@@ -455,11 +455,11 @@ public final class SharedSecrets {
     }
 
     public static void setJavaObjectInputFilterAccess(JavaObjectInputFilterAccess access) {
-        javaObjectInputFilterAccess.setOrThrow(access);
+        javaObjectInputFilterAccess.trySet(access);
     }
 
     public static void setJavaIORandomAccessFileAccess(JavaIORandomAccessFileAccess jirafa) {
-        javaIORandomAccessFileAccess.setOrThrow(jirafa);
+        javaIORandomAccessFileAccess.trySet(jirafa);
     }
 
     public static JavaIORandomAccessFileAccess getJavaIORandomAccessFileAccess() {
@@ -472,7 +472,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaSecuritySignatureAccess(JavaSecuritySignatureAccess jssa) {
-        javaSecuritySignatureAccess.setOrThrow(jssa);
+        javaSecuritySignatureAccess.trySet(jssa);
     }
 
     public static JavaSecuritySignatureAccess getJavaSecuritySignatureAccess() {
@@ -485,7 +485,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaSecuritySpecAccess(JavaSecuritySpecAccess jssa) {
-        javaSecuritySpecAccess.setOrThrow(jssa);
+        javaSecuritySpecAccess.trySet(jssa);
     }
 
     public static JavaSecuritySpecAccess getJavaSecuritySpecAccess() {
@@ -498,7 +498,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaxCryptoSpecAccess(JavaxCryptoSpecAccess jcsa) {
-        javaxCryptoSpecAccess.setOrThrow(jcsa);
+        javaxCryptoSpecAccess.trySet(jcsa);
     }
 
     public static JavaxCryptoSpecAccess getJavaxCryptoSpecAccess() {
@@ -511,7 +511,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaxCryptoSealedObjectAccess(JavaxCryptoSealedObjectAccess jcsoa) {
-        javaxCryptoSealedObjectAccess.setOrThrow(jcsoa);
+        javaxCryptoSealedObjectAccess.trySet(jcsoa);
     }
 
     public static JavaxCryptoSealedObjectAccess getJavaxCryptoSealedObjectAccess() {
@@ -524,7 +524,7 @@ public final class SharedSecrets {
     }
 
     public static void setJavaxSecurityAccess(JavaxSecurityAccess jsa) {
-        javaxSecurityAccess.setOrThrow(jsa);
+        javaxSecurityAccess.trySet(jsa);
     }
 
     public static JavaxSecurityAccess getJavaxSecurityAccess() {
