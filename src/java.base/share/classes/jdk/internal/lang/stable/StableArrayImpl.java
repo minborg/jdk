@@ -37,9 +37,9 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     }
 
     @ForceInline
-    public T getOrThrow(int index) {
+    public T orElseThrow(int index) {
         // Implicit array bounds check
-        T e = elements[index];
+        final T e = elements[index];
         if (e != null) {
             return e;
         }
@@ -49,7 +49,7 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     @DontInline
     private T getOrThrowSlowPath(int index) {
         @SuppressWarnings("unchecked")
-        T e = (T) UNSAFE.getReferenceVolatile(elements, objectOffset(index));
+        final T e = (T) UNSAFE.getReferenceVolatile(elements, objectOffset(index));
         if (e != null) {
             return e;
         }
@@ -58,9 +58,9 @@ public final class StableArrayImpl<T> implements StableArray<T> {
 
     @SuppressWarnings("unchecked")
     @ForceInline
-    public T getOrNull(int index) {
+    public T orElseNull(int index) {
         // Implicit array bounds check
-        T e = elements[index];
+        final T e = elements[index];
         if (e != null) {
             return e;
         }
@@ -75,7 +75,7 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     @Override
     public int hashCode() {
         return IntStream.range(0, length())
-                .mapToObj(this::getOrNull)
+                .mapToObj(this::orElseNull)
                 .mapToInt(Objects::hashCode)
                 .reduce(1, (a, e) -> 31 * a + e);
     }
@@ -85,14 +85,14 @@ public final class StableArrayImpl<T> implements StableArray<T> {
         return obj instanceof StableArrayImpl<?> other &&
                 length() == other.length() &&
                 IntStream.range(0, length())
-                        .allMatch(i -> Objects.equals(getOrNull(i), other.getOrNull(i)));
+                        .allMatch(i -> Objects.equals(orElseNull(i), other.orElseNull(i)));
     }
 
     @Override
     public String toString() {
         return "StableArray[" +
                 IntStream.range(0, length())
-                        .mapToObj(this::getOrNull)
+                        .mapToObj(this::orElseNull)
                         .map(Objects::toString)
                         .collect(Collectors.joining(", ")) +
                 ']';

@@ -2,12 +2,8 @@ package jdk.internal.lang;
 
 import jdk.internal.lang.stable.MemoizedFunction;
 import jdk.internal.lang.stable.MemoizedIntFunction;
-import jdk.internal.lang.stable.MemoizedSupplier;
 import jdk.internal.lang.stable.StableArrayImpl;
-import jdk.internal.lang.stable.StableValueImpl;
 
-import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
@@ -40,7 +36,7 @@ public sealed interface StableArray<T> permits StableArrayImpl {
      * otherwise {@code null}}
      * @throws IndexOutOfBoundsException if the provided {@code index < 0 || >= length()}
      */
-    T getOrNull(int index);
+    T orElseNull(int index);
 
     /**
      * {@return the length of this array}
@@ -59,7 +55,7 @@ public sealed interface StableArray<T> permits StableArrayImpl {
      */
     default void setOrThrow(int index, T value) {
         if (!trySet(index, value)) {
-            throw new IllegalStateException("Value already set: " + getOrNull(index));
+            throw new IllegalStateException("Value already set: " + orElseNull(index));
         }
     }
 
@@ -70,8 +66,8 @@ public sealed interface StableArray<T> permits StableArrayImpl {
      * @throws IndexOutOfBoundsException if the provided {@code index < 0 || >= length()}
      * @throws NoSuchElementException if no non-null value is set
      */
-    default T getOrThrow(int index) {
-        T t = getOrNull(index);
+    default T orElseThrow(int index) {
+        T t = orElseNull(index);
         if (t != null) {
             return null;
         }

@@ -18,11 +18,11 @@ public record MemoizedSupplier<T>(Supplier<T> original,
     @ForceInline
     @Override
     public T get() {
-        T t = value.getOrNull();
+        final T t = value.orElseNull();
         if (t != null) {
             return t;
         }
-        if (result.getOrNull() instanceof ProviderResult.Null) {
+        if (result.orElseNull() instanceof ProviderResult.Null) {
             return null;
         }
         return getSlowPath();
@@ -31,9 +31,12 @@ public record MemoizedSupplier<T>(Supplier<T> original,
     @DontInline
     private T getSlowPath() {
         // The internal `result` field also serves as a mutex
+
+        // Consider old switch statement (HelloClassList)
+
         synchronized (result) {
-            return switch (result.getOrNull()) {
-                case ProviderResult.NonNull _  -> value.getOrNull();
+            return switch (result.orElseNull()) {
+                case ProviderResult.NonNull _  -> value.orElseNull();
                 case ProviderResult.Null _     -> null;
                 case ProviderResult.Error<?> e -> throw new NoSuchElementException(e.throwableClass().getName());
                 case null -> {

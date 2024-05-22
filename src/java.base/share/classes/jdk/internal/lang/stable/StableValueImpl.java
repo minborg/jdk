@@ -32,8 +32,8 @@ public final class StableValueImpl<T> implements StableValue<T> {
     }
 
     @ForceInline
-    public T getOrThrow() {
-        T e = element;
+    public T orElseThrow() {
+        final T e = element;
         if (e != null) {
             return e;
         }
@@ -43,7 +43,7 @@ public final class StableValueImpl<T> implements StableValue<T> {
     @DontInline
     private T getOrThrowSlowPath() {
         @SuppressWarnings("unchecked")
-        T e = (T) UNSAFE.getReferenceVolatile(this, ELEMENT_OFFSET);
+        final T e = (T) UNSAFE.getReferenceVolatile(this, ELEMENT_OFFSET);
         if (e != null) {
             return e;
         }
@@ -52,8 +52,8 @@ public final class StableValueImpl<T> implements StableValue<T> {
 
     @SuppressWarnings("unchecked")
     @ForceInline
-    public T getOrNull() {
-        T e = element;
+    public T orElseNull() {
+        final T e = element;
         if (e != null) {
             return e;
         }
@@ -62,18 +62,18 @@ public final class StableValueImpl<T> implements StableValue<T> {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(getOrNull());
+        return Objects.hashCode(orElseNull());
     }
 
     @Override
     public boolean equals(Object obj) {
         return obj instanceof StableValueImpl<?> other &&
-                Objects.equals(getOrNull(), other.getOrNull());
+                Objects.equals(orElseNull(), other.orElseNull());
     }
 
     @Override
     public String toString() {
-        return "StableValue[" + getOrNull() + ']';
+        return "StableValue[" + orElseNull() + ']';
     }
 
 

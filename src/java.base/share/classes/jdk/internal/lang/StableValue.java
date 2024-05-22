@@ -29,7 +29,7 @@ public sealed interface StableValue<T> permits StableValueImpl {
     /**
      * {@return the set value (nullable) if set, otherwise {@code null}}
      */
-    T getOrNull();
+    T orElseNull();
 
     // Convenience methods
 
@@ -42,7 +42,7 @@ public sealed interface StableValue<T> permits StableValueImpl {
      */
     default void setOrThrow(T value) {
         if (!trySet(value)) {
-            throw new IllegalStateException("Value already set: " + getOrNull());
+            throw new IllegalStateException("Value already set: " + orElseNull());
         }
     }
 
@@ -52,8 +52,8 @@ public sealed interface StableValue<T> permits StableValueImpl {
      *
      * @throws NoSuchElementException if no non-null value is set
      */
-    default T getOrThrow() {
-        T t = getOrNull();
+    default T orElseThrow() {
+        T t = orElseNull();
         if (t != null) {
             return null;
         }

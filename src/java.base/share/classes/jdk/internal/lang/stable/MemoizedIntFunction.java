@@ -16,11 +16,11 @@ public record MemoizedIntFunction<R>(IntFunction<? extends R> original,
     @ForceInline
     @Override
     public R apply(int i) {
-        R t = values.getOrNull(i);
+        final R t = values.orElseNull(i);
         if (t != null) {
             return t;
         }
-        if (results.getOrNull(i) instanceof ProviderResult.Null) {
+        if (results.orElseNull(i) instanceof ProviderResult.Null) {
             return null;
         }
         return getSlowPath(i);
@@ -29,8 +29,8 @@ public record MemoizedIntFunction<R>(IntFunction<? extends R> original,
     @DontInline
     private R getSlowPath(int i) {
         synchronized (mutexes[i]) {
-            return switch (results.getOrNull(i)) {
-                case ProviderResult.NonNull _  -> values.getOrNull(i);
+            return switch (results.orElseNull(i)) {
+                case ProviderResult.NonNull _  -> values.orElseNull(i);
                 case ProviderResult.Null _     -> null;
                 case ProviderResult.Error<?> e -> throw new NoSuchElementException(e.throwableClass().getName());
                 case null -> {

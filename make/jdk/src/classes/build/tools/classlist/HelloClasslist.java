@@ -31,6 +31,12 @@
  */
 package build.tools.classlist;
 
+/*
+import jdk.internal.lang.StableArray;
+import jdk.internal.lang.StableValue;
+import jdk.internal.lang.stable.MemoizedSupplier;
+*/
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -40,6 +46,8 @@ import java.nio.file.FileSystems;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.function.IntFunction;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.logging.*;
 import java.util.Arrays;
@@ -156,6 +164,17 @@ public class HelloClasslist {
         // an inconsistency in the classlist between builds (see JDK-8295951).
         // To avoid the problem, load the class explicitly.
         Class<?> striped64Class = Class.forName("java.util.concurrent.atomic.Striped64$Cell");
+
+/*        // Enhanced switch statements
+        MemoizedSupplier<Integer> memoizedSupplier =
+                StableValue.memoizedSupplier(new Supplier<Integer>() {
+                    @Override public Integer get() { return 42; }
+                });
+
+        MemoizedIntSupplier<Integer> intSupplier =
+                StableArray.memoizedIntFunction(new IntFunction<>() {
+                    @Override public Object apply(int value) { return 42; }
+                });*/
     }
 
     public HelloClasslist() {}
