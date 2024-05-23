@@ -31,6 +31,10 @@
 import jdk.internal.lang.StableValue;
 import org.junit.jupiter.api.Test;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.lang.reflect.Field;
+import java.lang.reflect.InaccessibleObjectException;
 import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,8 +44,8 @@ public class StableValueTest {
     @Test
     void unset() {
         StableValue<Integer> stable = StableValue.of();
-        assertNull(stable.getOrNull());
-        assertThrows(NoSuchElementException.class, stable::getOrThrow);
+        assertNull(stable.orElseNull());
+        assertThrows(NoSuchElementException.class, stable::orElseThrow);
         assertEquals("StableValue[null]",stable.toString());
         assertTrue(stable.trySet(null));
         assertTrue(stable.trySet(null));
@@ -53,8 +57,8 @@ public class StableValueTest {
         StableValue<Integer> stable = StableValue.of();
         assertTrue(stable.trySet(null));
         assertEquals("StableValue[null]",stable.toString());
-        assertNull(stable.getOrNull());
-        assertThrows(NoSuchElementException.class, stable::getOrThrow);
+        assertNull(stable.orElseNull());
+        assertThrows(NoSuchElementException.class, stable::orElseThrow);
         assertTrue(stable.trySet(null));
         assertTrue(stable.trySet(1));
     }
@@ -64,7 +68,7 @@ public class StableValueTest {
         StableValue<Integer> stable = StableValue.of();
         assertTrue(stable.trySet(42));
         assertEquals("StableValue[42]",stable.toString());
-        assertEquals(42, stable.getOrNull());
+        assertEquals(42, stable.orElseNull());
         assertFalse(stable.trySet(null));
         assertFalse(stable.trySet(1));
         assertThrows(IllegalStateException.class, () -> stable.setOrThrow(1));

@@ -1,7 +1,33 @@
+/*
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package jdk.internal.lang;
 
 import jdk.internal.lang.stable.MemoizedSupplier;
 import jdk.internal.lang.stable.StableValueImpl;
+import jdk.internal.lang.stable.TrustedFieldType;
 
 import java.util.List;
 import java.util.Map;
@@ -21,7 +47,9 @@ import java.util.stream.Stream;
  *
  * @since 23
  */
-public sealed interface StableValue<T> permits StableValueImpl {
+public sealed interface StableValue<T>
+        extends TrustedFieldType
+        permits StableValueImpl {
 
     // Principal methods
 
@@ -99,8 +127,8 @@ public sealed interface StableValue<T> permits StableValueImpl {
     }
 
     /**
-     * {@return a stable unmodifiable list containing {@code size} distinct
-     * fresh unset StableValue elements}
+     * {@return a stable unmodifiable list containing {@code size} distinct,
+     * fresh, unset, StableValue elements}
      *
      * @param <E> the returned {@code List}'s element type
      * @throws IllegalArgumentException if the provide {@code size} is negative.
@@ -114,7 +142,7 @@ public sealed interface StableValue<T> permits StableValueImpl {
 
     /**
      * {@return a stable unmodifiable map containing {@code keys} each associated with
-     * a distinct fresh unset StableValue value}
+     * a distinct, fresh, unset StableValue value}
      *
      * @param <K> the returned {@code Map}'s key type
      * @param <V> the returned {@code Map}'s value type

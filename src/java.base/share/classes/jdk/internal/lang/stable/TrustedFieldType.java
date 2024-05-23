@@ -25,31 +25,15 @@
 
 package jdk.internal.lang.stable;
 
+import jdk.internal.lang.StableArray;
+import jdk.internal.lang.StableValue;
+
 /**
- * Sealed class hierarchy for expressing the results of a provider invocation.
+ * This sealed marker interface signals fields that are _declared_ as a class that
+ * implements this interface is "trusted" and therefore somewhat protected from being
+ * modified via {@linkplain sun.misc.Unsafe} and {@linkplain java.lang.reflect.Field#setAccessible(boolean)}
+ * operations.
  */
-sealed interface ProviderResult {
-
-    /**
-     * Models an error from a provider invocation.
-     *
-     * @param throwableClass class of the throwable thrown by the provider
-     * @param <X> throwable type
-     */
-    record Error<X extends Throwable>(Class<X> throwableClass) implements ProviderResult {}
-
-    /**
-     * Models a non-null result from a provider.
-     */
-    enum NonNull implements ProviderResult { INSTANCE;
-        @Override public String toString() { return "NonNull"; }
-    }
-
-    /**
-     * Models a {@code null} result from a provider.
-     */
-    enum Null implements ProviderResult { INSTANCE;
-        @Override public String toString() { return "Null"; }
-    }
-
-}
+public sealed interface TrustedFieldType
+        permits StableValue,
+        StableArray { }
