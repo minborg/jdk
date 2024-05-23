@@ -3,9 +3,15 @@ package jdk.internal.lang;
 import jdk.internal.lang.stable.MemoizedSupplier;
 import jdk.internal.lang.stable.StableValueImpl;
 
+import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Ultra-thin, lock free, stable value wrapper that will not constant-fold null values.
@@ -89,6 +95,36 @@ public sealed interface StableValue<T> permits StableValueImpl {
     static <T> Supplier<T> memoizedSupplier(Supplier<T> original) {
         Objects.requireNonNull(original);
         return new MemoizedSupplier<>(original);
+    }
+
+    /**
+     * {@return a stable unmodifiable list containing {@code size} distinct
+     * fresh unset StableValue elements}
+     *
+     * @param <E> the returned {@code List}'s element type
+     * @throws IllegalArgumentException if the provide {@code size} is negative.
+     *
+     */
+    static <E> List<StableValue<E>> ofList(int size) {
+        return Stream.generate(StableValue::<E>of)
+                .limit(size)
+                .toList();
+    }
+
+    /**
+     * {@return a stable unmodifiable map containing {@code keys} each associated with
+     * a distinct fresh unset StableValue value}
+     *
+     * @param <K> the returned {@code Map}'s key type
+     * @param <V> the returned {@code Map}'s value type
+     *
+     */
+    static <K, V> Map<K, StableValue<V>> ofMap(Set<K> keys) {
+        return keys.stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        Function.identity(),
+                        _ -> StableValue.of()
+                ));
     }
 
 }

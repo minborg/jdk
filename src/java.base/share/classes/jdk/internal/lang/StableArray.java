@@ -86,6 +86,8 @@ public sealed interface StableArray<T> permits StableArrayImpl {
         return StableArrayImpl.of(length);
     }
 
+
+
     /**
      * {@return a new <em>memoized</em> {@linkplain IntFunction } backed by an internal
      * stable array of the provided {@code size} where the provided {@code original}
