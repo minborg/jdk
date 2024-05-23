@@ -31,12 +31,6 @@
  */
 package build.tools.classlist;
 
-/*
-import jdk.internal.lang.StableArray;
-import jdk.internal.lang.StableValue;
-import jdk.internal.lang.stable.MemoizedSupplier;
-*/
-
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -165,16 +159,19 @@ public class HelloClasslist {
         // To avoid the problem, load the class explicitly.
         Class<?> striped64Class = Class.forName("java.util.concurrent.atomic.Striped64$Cell");
 
-/*        // Enhanced switch statements
-        MemoizedSupplier<Integer> memoizedSupplier =
+        // Generate enhanced switch statements
+        // Todo: Enable when in a public API
+/*        MemoizedSupplier<Integer> memoizedSupplier =
                 StableValue.memoizedSupplier(new Supplier<Integer>() {
                     @Override public Integer get() { return 42; }
                 });
-
-        MemoizedIntSupplier<Integer> intSupplier =
+        memoizedSupplier.get();
+        MemoizedIntSupplier<Integer> intFunction =
                 StableArray.memoizedIntFunction(new IntFunction<>() {
                     @Override public Object apply(int value) { return 42; }
-                });*/
+                });
+        intFunction.apply(0);*/
+
     }
 
     public HelloClasslist() {}
