@@ -35,7 +35,12 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.InaccessibleObjectException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -72,6 +77,26 @@ public class StableValueTest {
         assertFalse(stable.trySet(null));
         assertFalse(stable.trySet(1));
         assertThrows(IllegalStateException.class, () -> stable.setOrThrow(1));
+    }
+
+    @Test
+    void ofList() {
+        List<StableValue<Integer>> list = StableValue.ofList(4);
+        assertEquals("java.util.ImmutableCollections$ListN", list.getClass().getName());
+        assertEquals(Stream.generate(StableValue::of).limit(list.size()).toList().toString(), list.toString());
+    }
+
+    @Test
+    void ofMap() {
+        Set<Integer> keys = Set.of(0, 1, 2, 3);
+        Map<Integer, StableValue<Integer>> list = StableValue.ofMap(keys);
+        assertEquals("java.util.ImmutableCollections$MapN", list.getClass().getName());
+        Map<Integer, StableValue<Integer>> expected = Map.of(
+                0, StableValue.of(),
+                1, StableValue.of(),
+                2, StableValue.of(),
+                3, StableValue.of());
+        assertEquals(expected.toString(), list.toString());
     }
 
 }
