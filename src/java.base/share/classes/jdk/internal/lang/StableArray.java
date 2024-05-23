@@ -11,9 +11,10 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 
 /**
- * Ultra-thin, lock free, stable array wrapper that will not constant-fold null values.
+ * A thin, lock free, set-at-most-once-per-index, stable array wrapper eligible for
+ * certain JVM optimizations for components set to a non-null value.
  *
- * @param <T> component type to hold
+ * @param <T> type of the wrapped components
  *
  * @since 23
  */
@@ -85,8 +86,6 @@ public sealed interface StableArray<T> permits StableArrayImpl {
         }
         return StableArrayImpl.of(length);
     }
-
-
 
     /**
      * {@return a new <em>memoized</em> {@linkplain IntFunction } backed by an internal

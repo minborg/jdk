@@ -14,9 +14,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Ultra-thin, lock free, stable value wrapper that will not constant-fold null values.
+ * A thin, lock free, set-at-most-once, stable value wrapper eligible for certain
+ * JVM optimizations if set to a non-null value.
  *
- * @param <T> type to hold
+ * @param <T> type of the wrapped value
  *
  * @since 23
  */
