@@ -37,10 +37,20 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 
 /**
- * A thin, lock free, set-at-most-once-per-index, stable array wrapper eligible for
- * certain JVM optimizations for components set to a non-null value.
- *
- * @param <T> type of the wrapped components
+ * A thin, atomic, thread-safe, lock free, set-at-most-once-per-index, stable array holder
+ * eligible for certain JVM optimizations for components set to a non-null value.
+ * <p>
+ * A stable array's component is said to be monotonic because the state of a stable value
+ * can only go from <em>unset</em> to <em>set</em> and consequently, a value can only be
+ * set at most once.
+ <p>
+ * To create a new fresh StableArray, use the {@linkplain StableArray#of(int)}
+ * factory.
+ * <p>
+ * Except for a StableArray component's value itself, all method parameters must be
+ * <em>non-null</em> and all collections provided must only contain <em>non-null</em>
+ * elements or a {@link NullPointerException} will be thrown.
+ * @param <T> type of the components
  *
  * @since 23
  */
@@ -75,8 +85,8 @@ public sealed interface StableArray<T>
     // Convenience methods
 
     /**
-     * Sets the stable value to the provided {@code value} if not set to a non-null value
-     * otherwise throws {@linkplain IllegalStateException}}
+     * Sets the stable value at the provided {@code index} to the provided {@code value},
+     * or, if already set to a non-null value, throws {@linkplain IllegalStateException}}
      *
      * @param value to set (nullable)
      * @throws IndexOutOfBoundsException if the provided {@code index < 0 || >= length()}
@@ -89,8 +99,8 @@ public sealed interface StableArray<T>
     }
 
     /**
-     * {@return the set value if set to a non-null value, otherwise throws
-     * {@code NoSuchElementException}}
+     * {@return the set value at the provided {@code index} if set to a non-null value,
+     * otherwise throws {@code NoSuchElementException}}
      *
      * @throws IndexOutOfBoundsException if the provided {@code index < 0 || >= length()}
      * @throws NoSuchElementException if no non-null value is set
@@ -104,7 +114,7 @@ public sealed interface StableArray<T>
     }
 
     /**
-     * {@return a fresh stable value with an unset value}
+     * {@return a fresh stable array with unset ({@code null}) elements}
      *
      * @param <T> the value type to set
      */
@@ -116,9 +126,19 @@ public sealed interface StableArray<T>
     }
 
     /**
-     * {@return a new <em>memoized</em> {@linkplain IntFunction } backed by an internal
+     * {@return a new <em>memoized</em> {@linkplain IntFunction} backed by an internal
      * stable array of the provided {@code size} where the provided {@code original}
      * IntFunction will only be invoked at most once per distinct {@code int} value}
+     * <p>
+     * The provided {@code original} IntFunction is guaranteed to be invoked at most once
+     * per input value, even in a multi-threaded environment.
+     * <p>
+     * If the provided {@code original} IntFunction throws an exception for a certain input
+     * value, it is relayed to the initial caller. Subsequent read operations for the
+     * same input value will throw {@linkplain java.util.NoSuchElementException}. The
+     * class of the original exception is also recorded and is available via the
+     * {@linkplain Object#toString()} method.
+     * For security reasons, the entire original exception is not retained.
      * <p>
      * If the {@code original} IntFunction invokes the returned IntFunction recursively
      * for a specific input value, a StackOverflowError will be thrown when the returned
@@ -141,9 +161,20 @@ public sealed interface StableArray<T>
     }
 
     /**
-     * {@return a new <em>memoized</em> {@linkplain Function } backed by an internal
+     * {@return a new <em>memoized</em> {@linkplain Function} backed by an internal
      * stable array with the provided {@code inputs} keys mapped to indices where the
-     * provided {@code original} Function will only be invoked at most once per distinct input}
+     * provided {@code original} Function will only be invoked at most once per distinct
+     * input}
+     * <p>
+     * The provided {@code original} Function is guaranteed to be invoked at most once
+     * per input value, even in a multi-threaded environment.
+     * <p>
+     * If the provided {@code original} Function throws an exception for a certain input
+     * value, it is relayed to the initial caller. Subsequent read operations for the
+     * same input value will throw {@linkplain java.util.NoSuchElementException}. The
+     * class of the original exception is also recorded and is available via the
+     * {@linkplain Object#toString()} method.
+     * For security reasons, the entire original exception is not retained.
      * <p>
      * If the {@code original} Function invokes the returned Function recursively
      * for a specific input value, a StackOverflowError will be thrown when the returned
@@ -151,7 +182,7 @@ public sealed interface StableArray<T>
      * <p>
      * The returned Function will throw {@linkplain NoSuchElementException} if
      * {@linkplain Function#apply(Object)} is invoked with a value that is not in the
-     * given {@code input} Set.
+     * given {@code inputs} Set.
      *
      * @param original the original Function to convert to a memoized Function
      * @param inputs   the potential input values to the Function

@@ -46,7 +46,6 @@ import java.security.ProtectionDomain;
 import java.security.Signature;
 import javax.security.auth.x500.X500Principal;
 
-
 /** A repository of "shared secrets", which are a mechanism for
     calling implementation-private methods in another package without
     using reflection. A package-private class implements a public

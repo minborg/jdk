@@ -29,6 +29,7 @@ import jdk.internal.lang.stable.MemoizedSupplier;
 import jdk.internal.lang.stable.StableValueImpl;
 import jdk.internal.lang.stable.TrustedFieldType;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -40,8 +41,26 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * A thin, lock free, set-at-most-once, stable value wrapper eligible for certain
- * JVM optimizations if set to a non-null value.
+ * A thin, atomic, thread-safe, lock free, set-at-most-once, stable value holder
+ * eligible for certain JVM optimizations if set to a non-null value.
+ * <p>
+ * A stable value is said to be monotonic because the state of a stable value can only go
+ * from <em>unset</em> to <em>set</em> and consequently, a value can only be set
+ * at most once.
+ <p>
+ * To create a new fresh (unset) StableValue, use the {@linkplain StableValue#of()}
+ * factory.
+ * <p>
+ * To create collections of <em>wrapped stable elements</em>, that, in turn, are also
+ * eligible for certain JVM optimizations, the following factories can be used:
+ * <ul>
+ *     <li>{@linkplain StableValue#ofList(int)}</li>
+ *     <li>{@linkplain StableValue#ofMap(Set)}</li>
+ *</ul>
+ * <p>
+ * Except for a StableValue's value itself, all method parameters must be <em>non-null</em>
+ * and all collections provided must only contain <em>non-null</em> elements or a
+ * {@link NullPointerException} will be thrown.
  *
  * @param <T> type of the wrapped value
  *
@@ -69,8 +88,8 @@ public sealed interface StableValue<T>
     // Convenience methods
 
     /**
-     * Sets the stable value to the provided {@code value} if not set to a non-null value
-     * otherwise throws {@linkplain IllegalStateException}}
+     * Sets the stable value to the provided {@code value}, or, if already set to a
+     * non-null value, throws {@linkplain IllegalStateException}}
      *
      * @param value to set (nullable)
      * @throws IllegalArgumentException if a non-null value is already set
@@ -96,7 +115,7 @@ public sealed interface StableValue<T>
     }
 
     /**
-     * {@return a fresh stable value with an unset value}
+     * {@return a fresh stable value with an unset ({@code null}) value}
      *
      * @param <T> the value type to set
      */
@@ -111,6 +130,10 @@ public sealed interface StableValue<T>
      * <p>
      * The provided {@code original} supplier is guaranteed to be invoked at most once
      * even in a multi-threaded environment.
+     * <p>
+     * If the {@code original} Supplier invokes the returned Supplier recursively,
+     * a StackOverflowError will be thrown when the returned
+     * Supplier's {@linkplain Function#apply(Object)}} method is invoked.
      * <p>
      * If the provided {@code original} supplier throws an exception, it is relayed
      * to the initial caller. Subsequent read operations will throw
@@ -127,12 +150,27 @@ public sealed interface StableValue<T>
     }
 
     /**
-     * {@return a stable unmodifiable list containing {@code size} distinct,
-     * fresh, unset, StableValue elements}
+     * {@return an unmodifiable, shallowly immutable, thread-safe, stable
+     * {@linkplain List} containing {@code size} {@linkplain StableValue } elements}
+     * <p>
+     * If non-empty, neither the returned list nor its elements are {@linkplain Serializable}.
+     * <p>
+     * The returned list and its elements are eligible for certain optimizations by
+     * the JVM and is equivalent to:
+     * {@snippet lang = java:
+     * List<StableValue<V>> list = Stream.generate(StableValue::<V>of)
+     *         .limit(size)
+     *         .toList();
+     *}
+     * <p>
+     * This static factory methods return list instances that are
+     * <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
+     * Programmers should not use list for synchronization, or unpredictable behavior may
+     * occur. For example, in a future release, synchronization may fail.
      *
-     * @param <E> the returned {@code List}'s element type
-     * @throws IllegalArgumentException if the provide {@code size} is negative.
-     *
+     * @param <E>  the generic type of the stable value elements in the returned {@code List}
+     * @param size the number of elements in the list
+     * @throws IllegalArgumentException if the provided {@code size} is negative
      */
     static <E> List<StableValue<E>> ofList(int size) {
         return Stream.generate(StableValue::<E>of)
@@ -141,12 +179,30 @@ public sealed interface StableValue<T>
     }
 
     /**
-     * {@return a stable unmodifiable map containing {@code keys} each associated with
-     * a distinct, fresh, unset StableValue value}
+     * {@return an unmodifiable, shallowly immutable, thread-safe, stable,
+     * {@linkplain Map} where the {@linkplain java.util.Map#keySet() keys}
+     * contains precisely the distinct provided set of {@code keys}}
+     * <p>
+     * If non-empty, neither the returned map nor its values are {@linkplain Serializable}.
+     * <p>
+     * The returned map and its values are eligible for certain optimizations by
+     * the JVM and is equivalent to:
+     * {@snippet lang = java:
+     * Map<K, StableValue<V>> map = Map.copyOf(keys.stream()
+     *         .distinct()
+     *         .map(Objects::requireNonNull)
+     *         .collect(Collectors.toMap(Function.identity(), _ -> StableValue.of())));
+     * }
+     * <p>
+     * This static factory methods return map instances that are
+     * <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
+     * Programmers should not use map and value instances for synchronization, or
+     * unpredictable behavior may occur. For example, in a future release, synchronization
+     * may fail.
      *
-     * @param <K> the returned {@code Map}'s key type
-     * @param <V> the returned {@code Map}'s value type
-     *
+     * @param keys the keys in the map
+     * @param <K>  the type of keys maintained by the returned map
+     * @param <V>  the type of mapped StableValue values
      */
     static <K, V> Map<K, StableValue<V>> ofMap(Set<K> keys) {
         return keys.stream()
