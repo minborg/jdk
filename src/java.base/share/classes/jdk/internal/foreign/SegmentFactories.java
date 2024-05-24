@@ -171,6 +171,44 @@ public class SegmentFactories {
         return segment;
     }
 
+    public sealed interface SegmentAllocation {
+
+        MemorySegment segment();
+
+        record SegmentAllocationImpl(@Override MemorySegment segment,
+                                     long buf,
+                                     long alignedSize,
+                                     long byteSize) implements SegmentAllocation {}
+    }
+
+    public static SegmentAllocation segmentAllocation(long byteSize, long byteAlignment) {
+        ensureInitialized();
+        if (VM.isDirectMemoryPageAligned()) {
+            byteAlignment = Math.max(byteAlignment, AbstractMemorySegmentImpl.NIO_ACCESS.pageSize());
+        }
+        long alignedSize = Math.max(1L, byteAlignment > MAX_MALLOC_ALIGN ?
+                byteSize + (byteAlignment - 1) :
+                byteSize);
+
+        AbstractMemorySegmentImpl.NIO_ACCESS.reserveMemory(alignedSize, byteSize);
+
+        long buf = allocateMemoryWrapper(alignedSize);
+        long alignedBuf = Utils.alignUp(buf, byteAlignment);
+        AbstractMemorySegmentImpl segment = new NativeMemorySegmentImpl(buf, alignedSize,
+                false, MemorySessionImpl.GLOBAL_SESSION);
+        if (alignedSize != byteSize) {
+            long delta = alignedBuf - buf;
+            segment = segment.asSlice(delta, byteSize);
+        }
+        return new SegmentAllocation.SegmentAllocationImpl(segment, buf, alignedSize, byteSize);
+    }
+
+    public static void free(SegmentAllocation allocation) {
+        SegmentAllocation.SegmentAllocationImpl alloc = (SegmentAllocation.SegmentAllocationImpl) allocation;
+        UNSAFE.freeMemory(alloc.buf());
+        AbstractMemorySegmentImpl.NIO_ACCESS.unreserveMemory(alloc.alignedSize(), alloc.byteSize());
+    }
+
     private static long allocateMemoryWrapper(long size) {
         try {
             return UNSAFE.allocateMemory(size);
