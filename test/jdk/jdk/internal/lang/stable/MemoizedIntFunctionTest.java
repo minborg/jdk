@@ -35,7 +35,7 @@ import java.util.function.IntFunction;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class MemoizedIntFunctionTest {
+final class MemoizedIntFunctionTest {
 
     private static final int SIZE = 3;
     private static final int INDEX = 1;
@@ -54,10 +54,10 @@ public class MemoizedIntFunctionTest {
     @Test
     void toStringTest() {
         IntFunction<Integer> function = StableArray.memoizedIntFunction(SIZE, FUNCTION);
-        String expectedEmpty = "MemoizedIntFunction[original=" + FUNCTION + ", values=StableArray[null, null, null], results=StableArray[null, null, null], mutexes=";
+        String expectedEmpty = "MemoizedIntFunction[original=" + FUNCTION + ", results=StableArray[null, null, null], mutexes=";
         assertTrue(function.toString().startsWith(expectedEmpty), function.toString());
         function.apply(INDEX);
-        assertTrue(function.toString().contains("results=StableArray[null, NonNull, null]"), function.toString());
+        assertTrue(function.toString().contains("results=StableArray[null, NonNull[value=" + INDEX + "], null]"), function.toString());
     }
 
 }

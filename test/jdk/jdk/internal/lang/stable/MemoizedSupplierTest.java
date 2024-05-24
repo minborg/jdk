@@ -35,7 +35,7 @@ import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class MemoizedSupplierTest {
+final class MemoizedSupplierTest {
 
     private static final int VALUE = 42;
     private static final Supplier<Integer> SUPPLIER = () -> VALUE;
@@ -53,10 +53,10 @@ public class MemoizedSupplierTest {
     @Test
     void toStringTest() {
         Supplier<Integer> supplier = StableValue.memoizedSupplier(SUPPLIER);
-        String expectedEmpty = "MemoizedSupplier[original=" + SUPPLIER + ", value=StableValue[null], result=StableValue[null]]";
+        String expectedEmpty = "MemoizedSupplier[original=" + SUPPLIER + ", result=StableValue[null]]";
         assertEquals(expectedEmpty, supplier.toString());
         supplier.get();
-        String expectedSet = "MemoizedSupplier[original=" + SUPPLIER + ", value=StableValue[" + VALUE + "], result=StableValue[NonNull]]";
+        String expectedSet = "MemoizedSupplier[original=" + SUPPLIER + ", result=StableValue[NonNull[value=" + VALUE + "]]]";
         assertEquals(expectedSet, supplier.toString());
     }
 

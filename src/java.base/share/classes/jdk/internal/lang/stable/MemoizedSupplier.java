@@ -33,21 +33,20 @@ import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
 public record MemoizedSupplier<T>(Supplier<T> original,
-                                  StableValue<T> value,
-                                  StableValue<ProviderResult> result) implements Supplier<T> {
+                                  StableValue<ProviderResult<T>> result) implements Supplier<T> {
 
     public MemoizedSupplier(Supplier<T> original) {
-        this(original, StableValue.of(), StableValue.of());
+        this(original, StableValue.of());
     }
 
     @ForceInline
     @Override
     public T get() {
-        final T t = value.orElseNull();
-        if (t != null) {
-            return t;
+        final ProviderResult<T> r = result.orElseNull();
+        if (r instanceof ProviderResult.NonNull<T> nn) {
+            return nn.value();
         }
-        if (result.orElseNull() instanceof ProviderResult.Null) {
+        if (r instanceof ProviderResult.Null) {
             return null;
         }
         return getSlowPath();
@@ -57,21 +56,19 @@ public record MemoizedSupplier<T>(Supplier<T> original,
     private T getSlowPath() {
         // The internal `result` field also serves as a mutex
 
-        // Consider old switch statement (HelloClassList)
-
+        // Consider old switch statement or use HelloClassList
         synchronized (result) {
             return switch (result.orElseNull()) {
-                case ProviderResult.NonNull _  -> value.orElseNull();
-                case ProviderResult.Null _     -> null;
-                case ProviderResult.Error<?> e -> throw new NoSuchElementException(e.throwableClass().getName());
+                case ProviderResult.NonNull<T> n  -> n.value();
+                case ProviderResult.Null _        -> null;
+                case ProviderResult.Error<T, ?> e -> throw new NoSuchElementException(e.throwableClass().getName());
                 case null -> {
                     try {
                         T t = original.get();
                         if (t != null) {
-                            value.setOrThrow(t);
-                            result.setOrThrow(ProviderResult.NonNull.INSTANCE);
+                            result.setOrThrow(new ProviderResult.NonNull<>(t));
                         } else {
-                            result.setOrThrow(ProviderResult.Null.INSTANCE);
+                            result.setOrThrow(ProviderResult.Null.instance());
                         }
                         yield t;
                     } catch (Throwable th) {

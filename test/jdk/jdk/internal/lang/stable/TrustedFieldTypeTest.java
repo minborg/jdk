@@ -41,7 +41,7 @@ import java.lang.reflect.InaccessibleObjectException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TrustedFieldTypeTest {
+final class TrustedFieldTypeTest {
 
     @Test
     void trustedFieldType() {

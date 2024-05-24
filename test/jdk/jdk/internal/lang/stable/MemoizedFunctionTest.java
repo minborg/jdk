@@ -39,7 +39,7 @@ import java.util.stream.IntStream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class MemoizedFunctionTest {
+final class MemoizedFunctionTest {
 
     private static final int SIZE = 3;
     private static final int INDEX = 1;

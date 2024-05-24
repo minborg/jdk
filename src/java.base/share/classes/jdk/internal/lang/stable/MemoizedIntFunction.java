@@ -34,18 +34,17 @@ import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 public record MemoizedIntFunction<R>(IntFunction<? extends R> original,
-                                     StableArray<R> values,
-                                     StableArray<ProviderResult> results,
+                                     StableArray<ProviderResult<R>> results,
                                      Object[] mutexes) implements IntFunction<R> {
 
     @ForceInline
     @Override
     public R apply(int i) {
-        final R t = values.orElseNull(i);
-        if (t != null) {
-            return t;
+        final ProviderResult<R> r = results.orElseNull(i);
+        if (r instanceof ProviderResult.NonNull<R> nn) {
+            return nn.value();
         }
-        if (results.orElseNull(i) instanceof ProviderResult.Null) {
+        if (r instanceof ProviderResult.Null) {
             return null;
         }
         return getSlowPath(i);
@@ -55,17 +54,16 @@ public record MemoizedIntFunction<R>(IntFunction<? extends R> original,
     private R getSlowPath(int i) {
         synchronized (mutexes[i]) {
             return switch (results.orElseNull(i)) {
-                case ProviderResult.NonNull _  -> values.orElseNull(i);
-                case ProviderResult.Null _     -> null;
-                case ProviderResult.Error<?> e -> throw new NoSuchElementException(e.throwableClass().getName());
+                case ProviderResult.NonNull<R> n  -> n.value();
+                case ProviderResult.Null _        -> null;
+                case ProviderResult.Error<R, ?> e -> throw new NoSuchElementException(e.throwableClass().getName());
                 case null -> {
                     try {
                         R t = original.apply(i);
                         if (t != null) {
-                            values.setOrThrow(i, t);
-                            results.setOrThrow(i, ProviderResult.NonNull.INSTANCE);
+                            results.setOrThrow(i, new ProviderResult.NonNull<>(t));
                         } else {
-                            results.setOrThrow(i, ProviderResult.Null.INSTANCE);
+                            results.setOrThrow(i, ProviderResult.Null.instance());
                         }
                         yield t;
                     } catch (Throwable th) {
@@ -81,7 +79,6 @@ public record MemoizedIntFunction<R>(IntFunction<? extends R> original,
                                                          IntFunction<? extends R> original) {
         return new MemoizedIntFunction<>(
                 original,
-                StableArray.of(length),
                 StableArray.of(length),
                 Stream.generate(Object::new).limit(length).toArray()
         );
