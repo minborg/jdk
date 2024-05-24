@@ -87,7 +87,7 @@ public class SegmentFactories {
      *
      * @param byteSize to allocate
      */
-    public static MemorySegment makeNativeSegmentUnchecked(int byteSize) {
+    public static MemorySegment makeNativeSegmentUnchecked(long byteSize) {
         return makeNativeSegmentUnchecked(allocateMemoryWrapper(byteSize), byteSize);
     }
 

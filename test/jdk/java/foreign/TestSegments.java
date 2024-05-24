@@ -24,11 +24,13 @@
 /*
  * @test
  * @requires vm.bits == 64
+ * @modules java.base/jdk.internal.foreign
  * @run testng/othervm -Xmx4G -XX:MaxDirectMemorySize=1M --enable-native-access=ALL-UNNAMED TestSegments
  */
 
 import java.lang.foreign.*;
 
+import jdk.internal.foreign.SegmentFactories;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -37,6 +39,7 @@ import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntFunction;
@@ -451,6 +454,19 @@ public class TestSegments {
         assertEquals(thrown, iae);
         assertEquals(counter.get(), 1);
         assertEquals(thrown.getSuppressed().length, 0);
+    }
+
+    @Test
+    void testMakeNativeSegmentUnchecked() {
+        long size = 1234;
+        MemorySegment segment = SegmentFactories.makeNativeSegmentUnchecked(size);
+        assertTrue(segment.maxByteAlignment() >= 8);
+        assertEquals(segment.byteSize(), size);
+        assertTrue(segment.isAccessibleBy(new Thread(Thread::yield)));
+        assertTrue(segment.isNative());
+        assertFalse(segment.isMapped());
+        assertFalse(segment.isReadOnly());
+        SegmentFactories.free(segment);
     }
 
     @DataProvider(name = "badSizeAndAlignments")
