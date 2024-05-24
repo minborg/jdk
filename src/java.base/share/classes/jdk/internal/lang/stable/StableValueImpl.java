@@ -35,11 +35,6 @@ import java.util.Objects;
 
 import static jdk.internal.lang.stable.StableUtil.UNSAFE;
 
-/**
- * Ultra-thin stable value wrapper that will not constant-fold null values.
- *
- * @param <T> type to hold
- */
 public final class StableValueImpl<T> implements StableValue<T> {
 
     private static final long ELEMENT_OFFSET =

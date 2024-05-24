@@ -41,8 +41,8 @@ import java.util.function.IntFunction;
  * eligible for certain JVM optimizations for components set to a non-null value.
  * <p>
  * A stable array's component is said to be monotonic because the state of a stable value
- * can only go from <em>unset</em> to <em>set</em> and consequently, a value can only be
- * set at most once.
+ * can only go from <em>unset</em> to <em>set</em> and consequently, a non-null value can
+ * only be set at most once.
  <p>
  * To create a new fresh StableArray, use the {@linkplain StableArray#of(int)}
  * factory.
@@ -50,6 +50,11 @@ import java.util.function.IntFunction;
  * Except for a StableArray component's value itself, all method parameters must be
  * <em>non-null</em> and all collections provided must only contain <em>non-null</em>
  * elements or a {@link NullPointerException} will be thrown.
+ * <p>
+ * StableArrays are <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
+ * Programmers should not use StableArrays for synchronization, or unpredictable behavior
+ * may occur. For example, in a future release, synchronization may fail.
+ *
  * @param <T> type of the components
  *
  * @since 23

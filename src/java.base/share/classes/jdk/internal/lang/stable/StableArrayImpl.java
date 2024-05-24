@@ -25,6 +25,7 @@
 
 package jdk.internal.lang.stable;
 
+import jdk.internal.ValueBased;
 import jdk.internal.lang.StableArray;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
@@ -38,11 +39,7 @@ import java.util.stream.IntStream;
 import static jdk.internal.lang.stable.StableUtil.UNSAFE;
 import static jdk.internal.lang.stable.StableUtil.objectOffset;
 
-/**
- * Ultra-thin stable value wrapper that will not constant-fold null values.
- *
- * @param <T> type to hold
- */
+@ValueBased
 public final class StableArrayImpl<T> implements StableArray<T> {
 
     @Stable

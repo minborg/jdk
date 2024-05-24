@@ -45,7 +45,7 @@ import java.util.stream.Stream;
  * eligible for certain JVM optimizations if set to a non-null value.
  * <p>
  * A stable value is said to be monotonic because the state of a stable value can only go
- * from <em>unset</em> to <em>set</em> and consequently, a value can only be set
+ * from <em>unset</em> to <em>set</em> and consequently, a non-null value can only be set
  * at most once.
  <p>
  * To create a new fresh (unset) StableValue, use the {@linkplain StableValue#of()}
