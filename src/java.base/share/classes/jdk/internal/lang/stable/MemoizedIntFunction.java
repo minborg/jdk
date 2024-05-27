@@ -34,18 +34,14 @@ import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 public record MemoizedIntFunction<R>(IntFunction<? extends R> original,
-                                     StableArray<ProviderResult<R>> results,
+                                     StableArray<Computation<R>> results,
                                      Object[] mutexes) implements IntFunction<R> {
 
     @ForceInline
     @Override
     public R apply(int i) {
-        final ProviderResult<R> r = results.orElseNull(i);
-        if (r instanceof ProviderResult.NonNull<R> nn) {
+        if (results.orElseNull(i) instanceof Computation.Value<R> nn) {
             return nn.value();
-        }
-        if (r instanceof ProviderResult.Null) {
-            return null;
         }
         return getSlowPath(i);
     }
@@ -54,20 +50,19 @@ public record MemoizedIntFunction<R>(IntFunction<? extends R> original,
     private R getSlowPath(int i) {
         synchronized (mutexes[i]) {
             return switch (results.orElseNull(i)) {
-                case ProviderResult.NonNull<R> n  -> n.value();
-                case ProviderResult.Null _        -> null;
-                case ProviderResult.Error<R, ?> e -> throw new NoSuchElementException(e.throwableClass().getName());
+                case Computation.Value<R> n    -> n.value();
+                case Computation.Error<R, ?> e -> throw new NoSuchElementException(e.throwableClass().getName());
                 case null -> {
                     try {
                         R t = original.apply(i);
                         if (t != null) {
-                            results.setOrThrow(i, new ProviderResult.NonNull<>(t));
+                            results.setOrThrow(i, new Computation.Value<>(t));
                         } else {
-                            results.setOrThrow(i, ProviderResult.Null.instance());
+                            results.setOrThrow(i, Computation.Value.ofNull());
                         }
                         yield t;
                     } catch (Throwable th) {
-                        results.setOrThrow(i, new ProviderResult.Error<>(th.getClass()));
+                        results.setOrThrow(i, new Computation.Error<>(th.getClass()));
                         throw th;
                     }
                 }

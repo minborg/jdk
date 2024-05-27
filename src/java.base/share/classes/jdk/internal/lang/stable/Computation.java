@@ -29,24 +29,19 @@ package jdk.internal.lang.stable;
  * Sealed class hierarchy for expressing the results of a provider invocation.
  * @param <T> value holder type
  */
-sealed interface ProviderResult<T> {
+sealed interface Computation<T> {
 
     /**
-     * Models a non-null result from a provider.
+     * Models a valid value from a provider.
      */
-    record NonNull<T>(T value) implements ProviderResult<T> {}
-
-    /**
-     * Models a {@code null} result from a provider.
-     */
-    enum Null implements ProviderResult<Object> { INSTANCE;
-        @Override public String toString() { return "Null"; }
-
+    record Value<T>(T value) implements Computation<T> {
         @SuppressWarnings("unchecked")
-        static <T> ProviderResult<T> instance() {
-            return (ProviderResult<T>) INSTANCE;
+        static <T> Computation<T> ofNull() {
+            final class Holder {
+                static final Value<?> INSTANCE = new Value<>(null);
+            }
+            return (Computation<T>) Holder.INSTANCE;
         }
-
     }
 
     /**
@@ -55,6 +50,6 @@ sealed interface ProviderResult<T> {
      * @param throwableClass class of the throwable thrown by the provider
      * @param <X> throwable type
      */
-    record Error<T, X extends Throwable>(Class<X> throwableClass) implements ProviderResult<T> {}
+    record Error<T, X extends Throwable>(Class<X> throwableClass) implements Computation<T> {}
 
 }

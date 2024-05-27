@@ -46,7 +46,10 @@ public final class StableValueImpl<T> implements StableValue<T> {
     private StableValueImpl() {}
 
     public boolean trySet(T value) {
-        // Prevent reordering under plain read semantics
+        // Prevent store/store reordering to assure newly created object's fields are all
+        // visible before they can be observed by other threads that are loading under
+        // plain memory semantics.
+        // In other words, avoids partially constructed objects to be observed.
         UNSAFE.storeStoreFence();
         return UNSAFE.compareAndSetReference(this, ELEMENT_OFFSET, null, value);
     }

@@ -53,7 +53,10 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     public boolean trySet(int index, T value) {
         // Explicitly check the index as we are performing unsafe operations later on
         Objects.checkIndex(index, elements.length);
-        // Prevent reordering under plain read semantics
+        // Prevent store/store reordering to assure newly created object's fields are all
+        // visible before they can be observed by other threads that are loading under
+        // plain memory semantics.
+        // In other words, avoids partially constructed objects to be observed.
         UNSAFE.storeStoreFence();
         return UNSAFE.compareAndSetReference(elements, objectOffset(index), null, value);
     }
