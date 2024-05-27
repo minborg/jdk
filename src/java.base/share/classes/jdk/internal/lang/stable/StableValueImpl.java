@@ -40,7 +40,7 @@ public final class StableValueImpl<T> implements StableValue<T> {
     private static final long ELEMENT_OFFSET =
             UNSAFE.objectFieldOffset(StableValueImpl.class, "element");
 
-    // The `element` filed is accessed using Unsafe
+    // The `element` field is reflectively accessed using Unsafe
     @Stable
     private T element;
 
