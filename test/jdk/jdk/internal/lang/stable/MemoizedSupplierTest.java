@@ -56,7 +56,7 @@ final class MemoizedSupplierTest {
         String expectedEmpty = "MemoizedSupplier[original=" + SUPPLIER + ", result=StableValue[null]]";
         assertEquals(expectedEmpty, supplier.toString());
         supplier.get();
-        String expectedSet = "MemoizedSupplier[original=" + SUPPLIER + ", result=StableValue[NonNull[value=" + VALUE + "]]]";
+        String expectedSet = "MemoizedSupplier[original=" + SUPPLIER + ", result=StableValue[Value[value=" + VALUE + "]]]";
         assertEquals(expectedSet, supplier.toString());
     }
 

@@ -42,10 +42,9 @@ public record MemoizedSupplier<T>(Supplier<T> original,
     @ForceInline
     @Override
     public T get() {
-        if (result.orElseNull() instanceof Computation.Value<T> nn) {
-            return nn.value();
-        }
-        return getSlowPath();
+        return result.orElseNull() instanceof Computation.Value<T> v
+                ? v.value()
+                : getSlowPath();
     }
 
     @DontInline
@@ -55,19 +54,15 @@ public record MemoizedSupplier<T>(Supplier<T> original,
         // Consider old switch statement or use HelloClassList
         synchronized (result) {
             return switch (result.orElseNull()) {
-                case Computation.Value<T> n    -> n.value();
-                case Computation.Error<T, ?> e -> throw new NoSuchElementException(e.throwableClass().getName());
+                case Computation.Value<T> n -> n.value();
+                case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
                 case null -> {
                     try {
                         T t = original.get();
-                        if (t != null) {
-                            result.setOrThrow(new Computation.Value<>(t));
-                        } else {
-                            result.setOrThrow(Computation.Value.ofNull());
-                        }
+                        result.setOrThrow(Computation.Value.of(t));
                         yield t;
                     } catch (Throwable th) {
-                        result.setOrThrow(new Computation.Error<>(th.getClass()));
+                        result.setOrThrow(Computation.Error.of(th));
                         throw th;
                     }
                 }

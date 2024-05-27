@@ -40,29 +40,24 @@ public record MemoizedIntFunction<R>(IntFunction<? extends R> original,
     @ForceInline
     @Override
     public R apply(int i) {
-        if (results.orElseNull(i) instanceof Computation.Value<R> nn) {
-            return nn.value();
-        }
-        return getSlowPath(i);
+        return results.orElseNull(i) instanceof Computation.Value<R> r
+                ? r.value()
+                : getSlowPath(i);
     }
 
     @DontInline
     private R getSlowPath(int i) {
         synchronized (mutexes[i]) {
             return switch (results.orElseNull(i)) {
-                case Computation.Value<R> n    -> n.value();
-                case Computation.Error<R, ?> e -> throw new NoSuchElementException(e.throwableClass().getName());
+                case Computation.Value<R> n -> n.value();
+                case Computation.Error<R> e -> throw new NoSuchElementException(e.throwableClassName());
                 case null -> {
                     try {
-                        R t = original.apply(i);
-                        if (t != null) {
-                            results.setOrThrow(i, new Computation.Value<>(t));
-                        } else {
-                            results.setOrThrow(i, Computation.Value.ofNull());
-                        }
-                        yield t;
+                        R r = original.apply(i);
+                        results.setOrThrow(i, Computation.Value.of(r));
+                        yield r;
                     } catch (Throwable th) {
-                        results.setOrThrow(i, new Computation.Error<>(th.getClass()));
+                        results.setOrThrow(i, Computation.Error.of(th));
                         throw th;
                     }
                 }

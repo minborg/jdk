@@ -36,20 +36,25 @@ sealed interface Computation<T> {
      */
     record Value<T>(T value) implements Computation<T> {
         @SuppressWarnings("unchecked")
-        static <T> Computation<T> ofNull() {
+        static <T> Computation<T> of(T value) {
             final class Holder {
                 static final Value<?> INSTANCE = new Value<>(null);
             }
-            return (Computation<T>) Holder.INSTANCE;
+            return value == null
+                    ? (Computation<T>) Holder.INSTANCE
+                    : new Value<>(value);
         }
     }
 
     /**
      * Models an error from a provider invocation.
      *
-     * @param throwableClass class of the throwable thrown by the provider
-     * @param <X> throwable type
+     * @param throwableClassName class name of the throwable thrown by the provider
      */
-    record Error<T, X extends Throwable>(Class<X> throwableClass) implements Computation<T> {}
+    record Error<T>(String throwableClassName) implements Computation<T> {
+        static <T, X extends Throwable> Computation<T> of(X throwable) {
+            return new Error<>(throwable.getClass().getName());
+        }
+    }
 
 }

@@ -57,7 +57,7 @@ final class MemoizedIntFunctionTest {
         String expectedEmpty = "MemoizedIntFunction[original=" + FUNCTION + ", results=StableArray[null, null, null], mutexes=";
         assertTrue(function.toString().startsWith(expectedEmpty), function.toString());
         function.apply(INDEX);
-        assertTrue(function.toString().contains("results=StableArray[null, NonNull[value=" + INDEX + "], null]"), function.toString());
+        assertTrue(function.toString().contains("results=StableArray[null, Value[value=" + INDEX + "], null]"), function.toString());
     }
 
 }
