@@ -51,6 +51,9 @@ public final class StableValueImpl<T> implements StableValue<T> {
 
     @Override
     public boolean trySet(T value) {
+        if (computation != null) {
+            return false;
+        }
         synchronized (mutex) {
             return trySet0(Computation.Value.of(value));
         }

@@ -55,8 +55,10 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     }
 
     public boolean trySet(int index, T value) {
-        // Explicitly check the index as we are performing unsafe operations later on
-        Objects.checkIndex(index, computations.length);
+        // Implicit index check
+        if (computations[index] != null) {
+            return false;
+        }
         synchronized (mutexes[index]) {
             return trySet0(index, Computation.Value.of(value));
         }
@@ -92,6 +94,10 @@ public final class StableArrayImpl<T> implements StableArray<T> {
 
     @Override
     public T computeIfUnset(int index, IntFunction<? extends T> mapper) {
+        Objects.checkIndex(index, computations.length);
+        if (computationUnchecked(index) instanceof Computation.Value<T> v) {
+            return v.value();
+        }
         // Implicit range checking of `index`
         synchronized (mutexes[index]) {
             return switch (computationUnchecked(index)) {
