@@ -46,7 +46,7 @@ final class MemoizedFunctionTest {
     private static final int SIZE = 3;
     private static final int INDEX = 1;
     private static final Set<Integer> INPUTS = IntStream.range(0, SIZE).boxed().collect(Collectors.toSet());
-    private static final Function<Integer, Integer> FUNCTION = i -> i;
+    private static final Function<Integer, Integer> FUNCTION = Function.identity();
 
     @Test
     void basic() {

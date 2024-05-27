@@ -53,26 +53,14 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     public boolean trySet(int index, T value) {
         // Explicitly check the index as we are performing unsafe operations later on
         Objects.checkIndex(index, elements.length);
-        // Prevent store/store reordering to assure newly created object's fields are all
-        // visible before they can be observed by other threads that are loading under
-        // plain memory semantics.
-        // In other words, avoids partially constructed objects to be observed.
-        UNSAFE.storeStoreFence();
         return UNSAFE.compareAndSetReference(elements, objectOffset(index), null, value);
     }
 
     @ForceInline
     public T orElseThrow(int index) {
+        // Explicitly check the index as we are performing unsafe operations later on
+        Objects.checkIndex(index, elements.length);
         // Implicit array bounds check
-        final T e = elements[index];
-        if (e != null) {
-            return e;
-        }
-        return getOrThrowSlowPath(index);
-    }
-
-    @DontInline
-    private T getOrThrowSlowPath(int index) {
         @SuppressWarnings("unchecked")
         final T e = (T) UNSAFE.getReferenceVolatile(elements, objectOffset(index));
         if (e != null) {
@@ -84,11 +72,8 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     @SuppressWarnings("unchecked")
     @ForceInline
     public T orElseNull(int index) {
-        // Implicit array bounds check
-        final T e = elements[index];
-        if (e != null) {
-            return e;
-        }
+        // Explicitly check the index as we are performing unsafe operations later on
+        Objects.checkIndex(index, elements.length);
         return (T) UNSAFE.getReferenceVolatile(elements, objectOffset(index));
     }
 

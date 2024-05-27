@@ -40,31 +40,18 @@ public final class StableValueImpl<T> implements StableValue<T> {
     private static final long ELEMENT_OFFSET =
             UNSAFE.objectFieldOffset(StableValueImpl.class, "element");
 
+    // The `element` filed is accessed using Unsafe
     @Stable
     private T element;
 
     private StableValueImpl() {}
 
     public boolean trySet(T value) {
-        // Prevent store/store reordering to assure newly created object's fields are all
-        // visible before they can be observed by other threads that are loading under
-        // plain memory semantics.
-        // In other words, avoids partially constructed objects to be observed.
-        UNSAFE.storeStoreFence();
         return UNSAFE.compareAndSetReference(this, ELEMENT_OFFSET, null, value);
     }
 
     @ForceInline
     public T orElseThrow() {
-        final T e = element;
-        if (e != null) {
-            return e;
-        }
-        return getOrThrowSlowPath();
-    }
-
-    @DontInline
-    private T getOrThrowSlowPath() {
         @SuppressWarnings("unchecked")
         final T e = (T) UNSAFE.getReferenceVolatile(this, ELEMENT_OFFSET);
         if (e != null) {
@@ -76,10 +63,6 @@ public final class StableValueImpl<T> implements StableValue<T> {
     @SuppressWarnings("unchecked")
     @ForceInline
     public T orElseNull() {
-        final T e = element;
-        if (e != null) {
-            return e;
-        }
         return (T) UNSAFE.getReferenceVolatile(this, ELEMENT_OFFSET);
     }
 

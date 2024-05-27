@@ -55,6 +55,7 @@ final class StableValueTest {
         assertTrue(stable.trySet(null));
         assertTrue(stable.trySet(null));
         assertTrue(stable.trySet(1));
+        assertFalse(stable.trySet(2));
     }
 
     @Test
