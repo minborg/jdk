@@ -31,6 +31,7 @@
 import jdk.internal.lang.StableArray;
 import org.junit.jupiter.api.Test;
 
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -38,6 +39,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 final class MemoizedFunctionTest {
 
@@ -54,6 +56,13 @@ final class MemoizedFunctionTest {
         assertEquals(1, original.cnt());
         assertEquals(INDEX, function.apply(INDEX));
         assertEquals(1, original.cnt());
+    }
+
+    @Test
+    void empty() {
+        StableTestUtil.CountingFunction<Integer, Integer> original = new StableTestUtil.CountingFunction<>(FUNCTION);
+        Function<Integer, Integer> function = StableArray.memoizedFunction(Set.of(), original);
+        assertThrows(NoSuchElementException.class, () -> function.apply(INDEX));
     }
 
     @Test

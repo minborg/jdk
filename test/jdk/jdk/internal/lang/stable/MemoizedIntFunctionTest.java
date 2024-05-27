@@ -31,6 +31,9 @@
 import jdk.internal.lang.StableArray;
 import org.junit.jupiter.api.Test;
 
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,6 +52,14 @@ final class MemoizedIntFunctionTest {
         assertEquals(1, original.cnt());
         assertEquals(INDEX, function.apply(INDEX));
         assertEquals(1, original.cnt());
+        assertThrows(IndexOutOfBoundsException.class, () -> function.apply(SIZE));
+    }
+
+    @Test
+    void empty() {
+        StableTestUtil.CountingIntFunction<Integer> original = new StableTestUtil.CountingIntFunction<>(FUNCTION);
+        IntFunction<Integer> function = StableArray.memoizedIntFunction(0, original);
+        assertThrows(IndexOutOfBoundsException.class, () -> function.apply(INDEX));
     }
 
     @Test
