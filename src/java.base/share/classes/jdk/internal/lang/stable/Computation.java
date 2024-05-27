@@ -26,13 +26,14 @@
 package jdk.internal.lang.stable;
 
 /**
- * Sealed class hierarchy for expressing the results of a provider invocation.
+ * Sealed class hierarchy for expressing the results of a provider computation.
+ *
  * @param <T> value holder type
  */
 sealed interface Computation<T> {
 
     /**
-     * Models a valid value from a provider.
+     * Models a valid value from a provider computation.
      */
     record Value<T>(T value) implements Computation<T> {
         @SuppressWarnings("unchecked")
@@ -47,7 +48,7 @@ sealed interface Computation<T> {
     }
 
     /**
-     * Models an error from a provider invocation.
+     * Models an error from a provider computation.
      *
      * @param throwableClassName class name of the throwable thrown by the provider
      */

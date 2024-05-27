@@ -136,7 +136,10 @@ public sealed interface StableArray<T>
      * IntFunction will only be invoked at most once per distinct {@code int} value}
      * <p>
      * The provided {@code original} IntFunction is guaranteed to be invoked at most once
-     * per input value, even in a multi-threaded environment.
+     * per input value, even in a multi-threaded environment. Competing threads invoking
+     * the {@linkplain IntFunction#apply(int)} method for an input value already under
+     * computation will block until a value is computed or an exception is thrown by the
+     * computing thread.
      * <p>
      * If the provided {@code original} IntFunction throws an exception for a certain input
      * value, it is relayed to the initial caller. Subsequent read operations for the
@@ -172,7 +175,10 @@ public sealed interface StableArray<T>
      * input}
      * <p>
      * The provided {@code original} Function is guaranteed to be invoked at most once
-     * per input value, even in a multi-threaded environment.
+     * per input value, even in a multi-threaded environment. Competing threads invoking
+     * the {@linkplain Function#apply(Object)} method for an input value already under
+     * computation will block until a value is computed or an exception is thrown by the
+     * computing thread.
      * <p>
      * If the provided {@code original} Function throws an exception for a certain input
      * value, it is relayed to the initial caller. Subsequent read operations for the

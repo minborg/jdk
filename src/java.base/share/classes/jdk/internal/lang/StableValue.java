@@ -36,6 +36,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -129,7 +130,10 @@ public sealed interface StableValue<T>
      * accessed via {@linkplain Supplier#get()}}
      * <p>
      * The provided {@code original} supplier is guaranteed to be invoked at most once
-     * even in a multi-threaded environment.
+     * even in a multi-threaded environment. Competing threads invoking the
+     * {@linkplain Supplier#get()} method when a value is already under computation
+     * will block until a value is computed or an exception is thrown by the
+     * computing thread.
      * <p>
      * If the {@code original} Supplier invokes the returned Supplier recursively,
      * a StackOverflowError will be thrown when the returned
