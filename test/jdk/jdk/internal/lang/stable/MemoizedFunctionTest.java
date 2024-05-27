@@ -72,7 +72,7 @@ final class MemoizedFunctionTest {
         String expectedEmpty = "MemoizedFunction[original=" + FUNCTION;
         assertTrue(function.toString().startsWith(expectedEmpty), function.toString());
         function.apply(INDEX);
-        assertTrue(function.toString().contains("Value[value=" + INDEX + "]"), function.toString());
+        assertTrue(function.toString().contains("[" + INDEX + "]"), function.toString());
     }
 
 }

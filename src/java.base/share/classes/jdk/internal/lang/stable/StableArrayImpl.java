@@ -27,14 +27,15 @@ package jdk.internal.lang.stable;
 
 import jdk.internal.ValueBased;
 import jdk.internal.lang.StableArray;
-import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static jdk.internal.lang.stable.StableUtil.UNSAFE;
 import static jdk.internal.lang.stable.StableUtil.objectOffset;
@@ -43,49 +44,77 @@ import static jdk.internal.lang.stable.StableUtil.objectOffset;
 public final class StableArrayImpl<T> implements StableArray<T> {
 
     @Stable
-    private final T[] elements;
+    private final Computation<T>[] computations;
+    @Stable
+    private final Object[] mutexes;
 
     @SuppressWarnings("unchecked")
     private StableArrayImpl(int length) {
-        elements =  (T[]) new Object[length];
+        computations = (Computation<T>[]) new Computation<?>[length];
+        mutexes = Stream.generate(Object::new).limit(length).toArray();
     }
 
     public boolean trySet(int index, T value) {
         // Explicitly check the index as we are performing unsafe operations later on
-        Objects.checkIndex(index, elements.length);
-        return UNSAFE.compareAndSetReference(elements, objectOffset(index), null, value);
+        Objects.checkIndex(index, computations.length);
+        synchronized (mutexes[index]) {
+            return trySet0(index, Computation.Value.of(value));
+        }
     }
 
+    private boolean trySet0(int index, Computation<T> comp) {
+        return UNSAFE.compareAndSetReference(computations, objectOffset(index), null, comp);
+    }
+
+    @Override
     @ForceInline
     public T orElseThrow(int index) {
-        // Explicitly check the index as we are performing unsafe operations later on
-        Objects.checkIndex(index, elements.length);
-        // Implicit array bounds check
-        @SuppressWarnings("unchecked")
-        final T e = (T) UNSAFE.getReferenceVolatile(elements, objectOffset(index));
-        if (e != null) {
-            return e;
-        }
-        throw new NoSuchElementException();
+        return switch (computation(index)) {
+            case Computation.Value<T> n -> n.value();
+            case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
+            case null                   -> throw new NoSuchElementException("No value set");
+        };
     }
 
-    @SuppressWarnings("unchecked")
-    @ForceInline
-    public T orElseNull(int index) {
-        // Explicitly check the index as we are performing unsafe operations later on
-        Objects.checkIndex(index, elements.length);
-        return (T) UNSAFE.getReferenceVolatile(elements, objectOffset(index));
+    @Override
+    public T orElse(int index, T other) {
+        return switch (computation(index)) {
+            case Computation.Value<T> n -> n.value();
+            case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
+            case null                   -> other;
+        };
     }
 
     @Override
     public int length() {
-        return elements.length;
+        return computations.length;
+    }
+
+    @Override
+    public T computeIfUnset(int index, IntFunction<? extends T> mapper) {
+        // Implicit range checking of `index`
+        synchronized (mutexes[index]) {
+            return switch (computationUnchecked(index)) {
+                case Computation.Value<T> n -> n.value();
+                case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
+                case null -> {
+                    try {
+                        T t = mapper.apply(index);
+                        trySet0(index, Computation.Value.of(t));
+                        yield t;
+                    } catch (Throwable th) {
+                        trySet0(index, Computation.Error.of(th));
+                        throw th;
+                    }
+                }
+            };
+        }
     }
 
     @Override
     public int hashCode() {
         return IntStream.range(0, length())
-                .mapToObj(this::orElseNull)
+                .mapToObj(this::computationUnchecked)
                 .mapToInt(Objects::hashCode)
                 .reduce(1, (a, e) -> 31 * a + e);
     }
@@ -95,17 +124,30 @@ public final class StableArrayImpl<T> implements StableArray<T> {
         return obj instanceof StableArrayImpl<?> other &&
                 length() == other.length() &&
                 IntStream.range(0, length())
-                        .allMatch(i -> Objects.equals(orElseNull(i), other.orElseNull(i)));
+                        .allMatch(i -> Objects.equals(computationUnchecked(i), other.computationUnchecked(i)));
     }
 
     @Override
     public String toString() {
         return "StableArray[" +
                 IntStream.range(0, length())
-                        .mapToObj(this::orElseNull)
-                        .map(Objects::toString)
+                        .mapToObj(this::computationUnchecked)
+                        .map(StableUtil::render)
                         .collect(Collectors.joining(", ")) +
                 ']';
+    }
+
+    @ForceInline
+    private Computation<T> computation(int index) {
+        // Explicitly check the index as we are performing unsafe operations later on
+        Objects.checkIndex(index, computations.length);
+        return computationUnchecked(index);
+    }
+
+    @ForceInline
+    @SuppressWarnings("unchecked")
+    private Computation<T> computationUnchecked(int index) {
+        return (Computation<T>) UNSAFE.getReferenceVolatile(computations, objectOffset(index));
     }
 
     // Factory

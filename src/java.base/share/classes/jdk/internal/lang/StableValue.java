@@ -30,6 +30,7 @@ import jdk.internal.lang.stable.StableValueImpl;
 import jdk.internal.lang.stable.TrustedFieldType;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -42,26 +43,18 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * A thin, atomic, thread-safe, lock free, set-at-most-once, stable value holder
- * eligible for certain JVM optimizations if set to a non-null value.
+ * A thin, atomic, thread-safe, set-at-most-once, stable value holder eligible for
+ * certain JVM optimizations if set to a value.
  * <p>
  * A stable value is said to be monotonic because the state of a stable value can only go
- * from <em>unset</em> to <em>set</em> and consequently, a non-null value can only be set
+ * from <em>unset</em> to <em>set</em> and consequently, a value can only be set
  * at most once.
  <p>
  * To create a new fresh (unset) StableValue, use the {@linkplain StableValue#of()}
  * factory.
  * <p>
- * To create collections of <em>wrapped stable elements</em>, that, in turn, are also
- * eligible for certain JVM optimizations, the following factories can be used:
- * <ul>
- *     <li>{@linkplain StableValue#ofList(int)}</li>
- *     <li>{@linkplain StableValue#ofMap(Set)}</li>
- *</ul>
- * <p>
  * Except for a StableValue's value itself, all method parameters must be <em>non-null</em>
- * and all collections provided must only contain <em>non-null</em> elements or a
- * {@link NullPointerException} will be thrown.
+ * or a {@link NullPointerException} will be thrown.
  *
  * @param <T> type of the wrapped value
  *
@@ -82,9 +75,18 @@ public sealed interface StableValue<T>
     boolean trySet(T value);
 
     /**
-     * {@return the set value (nullable) if set, otherwise {@code null}}
+     * {@return the set value (nullable) if set, otherwise return the {@code other} value}
+     * @param other to return if the stable value is not set
      */
-    T orElseNull();
+    T orElse(T other);
+
+    /**
+     * {@return the set value if set, otherwise throws
+     * {@code NoSuchElementException}}
+     *
+     * @throws NoSuchElementException if no value is set
+     */
+    T orElseThrow();
 
     // Convenience methods
 
@@ -97,23 +99,45 @@ public sealed interface StableValue<T>
      */
     default void setOrThrow(T value) {
         if (!trySet(value)) {
-            throw new IllegalStateException("Value already set: " + orElseNull());
+            throw new IllegalStateException("Value already set: " + orElseThrow());
         }
     }
 
     /**
-     * {@return the set value if set to a non-null value, otherwise throws
-     * {@code NoSuchElementException}}
+     * If the stable value is unset (or is set to {@code null}), attempts to compute its
+     * value using the given supplier function and enters it into this stable value
+     * unless {@code null}.
      *
-     * @throws NoSuchElementException if no non-null value is set
+     * <p>If the supplier function returns {@code null}, no value is set. If the supplier
+     * function itself throws an (unchecked) exception, the exception is rethrown, and
+     * no value is set. The most common usage is to construct a new object serving as
+     * an initial value or memoized result, as in:
+     *
+     * <pre> {@code
+     * T t = stable.computeIfUnset(T::new);
+     * }</pre>
+     *
+     * @implSpec
+     * The default implementation is equivalent to the following steps for this
+     * {@code stable}, then returning the current value or {@code null} if now
+     * absent:
+     *
+     * <pre> {@code
+     * if (stable.orElseNull() == null) {
+     *     T newValue = supplier.apply(key);
+     *     if (newValue != null)
+     *         stable.trySet(newValue);
+     * }
+     * }</pre>
+     * Except, the method is atomic, thread-safe and guarantees the provided
+     * supplier function is successfully invoked at most once even in
+     * a multi-thread environment.
+     *
+     * @param supplier the mapping supplier to compute a value
+     * @return the current (existing or computed) value associated with
+     *         the stable value
      */
-    default T orElseThrow() {
-        T t = orElseNull();
-        if (t != null) {
-            return null;
-        }
-        throw new NoSuchElementException();
-    }
+    T computeIfUnset(Supplier<? extends T> supplier);
 
     /**
      * {@return a fresh stable value with an unset ({@code null}) value}
@@ -150,70 +174,7 @@ public sealed interface StableValue<T>
      */
     static <T> Supplier<T> memoizedSupplier(Supplier<T> original) {
         Objects.requireNonNull(original);
-        return new MemoizedSupplier<>(original);
-    }
-
-    /**
-     * {@return an unmodifiable, shallowly immutable, thread-safe, stable
-     * {@linkplain List} containing {@code size} {@linkplain StableValue } elements}
-     * <p>
-     * If non-empty, neither the returned list nor its elements are {@linkplain Serializable}.
-     * <p>
-     * The returned list and its elements are eligible for certain optimizations by
-     * the JVM and is equivalent to:
-     * {@snippet lang = java:
-     * List<StableValue<V>> list = Stream.generate(StableValue::<V>of)
-     *         .limit(size)
-     *         .toList();
-     *}
-     * <p>
-     * This static factory methods return list instances that are
-     * <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
-     * Programmers should not use list for synchronization, or unpredictable behavior may
-     * occur. For example, in a future release, synchronization may fail.
-     *
-     * @param <E>  the generic type of the stable value elements in the returned {@code List}
-     * @param size the number of elements in the list
-     * @throws IllegalArgumentException if the provided {@code size} is negative
-     */
-    static <E> List<StableValue<E>> ofList(int size) {
-        return Stream.generate(StableValue::<E>of)
-                .limit(size)
-                .toList();
-    }
-
-    /**
-     * {@return an unmodifiable, shallowly immutable, thread-safe, stable,
-     * {@linkplain Map} where the {@linkplain java.util.Map#keySet() keys}
-     * contains precisely the distinct provided set of {@code keys}}
-     * <p>
-     * If non-empty, neither the returned map nor its values are {@linkplain Serializable}.
-     * <p>
-     * The returned map and its values are eligible for certain optimizations by
-     * the JVM and is equivalent to:
-     * {@snippet lang = java:
-     * Map<K, StableValue<V>> map = Map.copyOf(keys.stream()
-     *         .distinct()
-     *         .map(Objects::requireNonNull)
-     *         .collect(Collectors.toMap(Function.identity(), _ -> StableValue.of())));
-     * }
-     * <p>
-     * This static factory methods return map instances that are
-     * <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
-     * Programmers should not use map and value instances for synchronization, or
-     * unpredictable behavior may occur. For example, in a future release, synchronization
-     * may fail.
-     *
-     * @param keys the keys in the map
-     * @param <K>  the type of keys maintained by the returned map
-     * @param <V>  the type of mapped StableValue values
-     */
-    static <K, V> Map<K, StableValue<V>> ofMap(Set<K> keys) {
-        return keys.stream()
-                .collect(Collectors.toUnmodifiableMap(
-                        Function.identity(),
-                        _ -> StableValue.of()
-                ));
+        return new MemoizedSupplier<>(original, StableValue.of());
     }
 
 }

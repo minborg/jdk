@@ -72,7 +72,7 @@ public record MemoizedFunction<T, R>(Function<? super T, ? extends R> original,
             return new MemoizedFunction<>(
                     original,
                     keys,
-                    MemoizedIntFunction.memoizedIntFunction(len, i -> original.apply(keys.orElseThrow(i)))
+                    new MemoizedIntFunction<>(i -> original.apply(keys.orElseThrow(i)), StableArray.of(len))
             );
 
     }
@@ -81,7 +81,7 @@ public record MemoizedFunction<T, R>(Function<? super T, ? extends R> original,
         int idx = Math.floorMod(pk.hashCode(), keys.length());
         // Linear probing
         while (true) {
-            T ek = keys.orElseNull(idx);
+            T ek = keys.orElse(idx, null);
             if (ek == null) {
                 return -idx - 1;
             } else if (pk.equals(ek)) {

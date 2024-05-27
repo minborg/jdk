@@ -34,44 +34,12 @@ import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 public record MemoizedIntFunction<R>(IntFunction<? extends R> original,
-                                     StableArray<Computation<R>> results,
-                                     Object[] mutexes) implements IntFunction<R> {
+                                     StableArray<R> delegate) implements IntFunction<R> {
 
     @ForceInline
     @Override
     public R apply(int i) {
-        return results.orElseNull(i) instanceof Computation.Value<R> r
-                ? r.value()
-                : getSlowPath(i);
-    }
-
-    @DontInline
-    private R getSlowPath(int i) {
-        synchronized (mutexes[i]) {
-            return switch (results.orElseNull(i)) {
-                case Computation.Value<R> n -> n.value();
-                case Computation.Error<R> e -> throw new NoSuchElementException(e.throwableClassName());
-                case null -> {
-                    try {
-                        R r = original.apply(i);
-                        results.setOrThrow(i, Computation.Value.of(r));
-                        yield r;
-                    } catch (Throwable th) {
-                        results.setOrThrow(i, Computation.Error.of(th));
-                        throw th;
-                    }
-                }
-            };
-        }
-    }
-
-    public static <R> IntFunction<R> memoizedIntFunction(int length,
-                                                         IntFunction<? extends R> original) {
-        return new MemoizedIntFunction<>(
-                original,
-                StableArray.of(length),
-                Stream.generate(Object::new).limit(length).toArray()
-        );
+        return delegate.computeIfUnset(i, original);
     }
 
 }

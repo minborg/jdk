@@ -53,10 +53,10 @@ final class MemoizedSupplierTest {
     @Test
     void toStringTest() {
         Supplier<Integer> supplier = StableValue.memoizedSupplier(SUPPLIER);
-        String expectedEmpty = "MemoizedSupplier[original=" + SUPPLIER + ", result=StableValue[null]]";
+        String expectedEmpty = "MemoizedSupplier[original=" + SUPPLIER + ", delegate=StableValue.unset]";
         assertEquals(expectedEmpty, supplier.toString());
         supplier.get();
-        String expectedSet = "MemoizedSupplier[original=" + SUPPLIER + ", result=StableValue[Value[value=" + VALUE + "]]]";
+        String expectedSet = "MemoizedSupplier[original=" + SUPPLIER + ", delegate=StableValue[" + VALUE + "]]";
         assertEquals(expectedSet, supplier.toString());
     }
 

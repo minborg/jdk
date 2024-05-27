@@ -32,56 +32,97 @@ import jdk.internal.vm.annotation.Stable;
 
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import static jdk.internal.lang.stable.StableUtil.UNSAFE;
 
 public final class StableValueImpl<T> implements StableValue<T> {
 
-    private static final long ELEMENT_OFFSET =
-            UNSAFE.objectFieldOffset(StableValueImpl.class, "element");
+    private static final long COMPUTATION_OFFSET =
+            UNSAFE.objectFieldOffset(StableValueImpl.class, "computation");
 
-    // The `element` field is reflectively accessed using Unsafe
     @Stable
-    private T element;
+    private final Object mutex = new Object();
+    // The `computation` field is reflectively accessed using Unsafe
+    @Stable
+    private volatile Computation<T> computation;
 
     private StableValueImpl() {}
 
+    @Override
     public boolean trySet(T value) {
-        return UNSAFE.compareAndSetReference(this, ELEMENT_OFFSET, null, value);
+        synchronized (mutex) {
+            return trySet0(Computation.Value.of(value));
+        }
     }
 
+    private boolean trySet0(Computation<T> comp) {
+        return UNSAFE.compareAndSetReference(this, COMPUTATION_OFFSET, null, comp);
+    }
+
+    @Override
     @ForceInline
     public T orElseThrow() {
-        @SuppressWarnings("unchecked")
-        final T e = (T) UNSAFE.getReferenceVolatile(this, ELEMENT_OFFSET);
-        if (e != null) {
-            return e;
-        }
-        throw new NoSuchElementException();
+        return switch (computation) {
+            case Computation.Value<T> n -> n.value();
+            case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
+            case null                   -> throw new NoSuchElementException("No value set");
+        };
     }
 
-    @SuppressWarnings("unchecked")
+    @Override
     @ForceInline
-    public T orElseNull() {
-        return (T) UNSAFE.getReferenceVolatile(this, ELEMENT_OFFSET);
+    public T orElse(T other) {
+        return switch (computation) {
+            case Computation.Value<T> n -> n.value();
+            case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
+            case null                   -> other;
+        };
+    }
+
+    @ForceInline
+    @Override
+    public T computeIfUnset(Supplier<? extends T> supplier) {
+        return computation instanceof Computation.Value<T> v
+                ? v.value()
+                : computeIfUnset0(supplier);
+    }
+
+    @DontInline
+    private T computeIfUnset0(Supplier<? extends T> supplier) {
+        synchronized (mutex) {
+            return switch (computation) {
+                case Computation.Value<T> n -> n.value();
+                case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
+                case null -> {
+                    try {
+                        T t = supplier.get();
+                        trySet0(Computation.Value.of(t));
+                        yield t;
+                    } catch (Throwable th) {
+                        trySet0(Computation.Error.of(th));
+                        throw th;
+                    }
+                }
+            };
+        }
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(orElseNull());
+        return Objects.hashCode(computation);
     }
 
     @Override
     public boolean equals(Object obj) {
         return obj instanceof StableValueImpl<?> other &&
-                Objects.equals(orElseNull(), other.orElseNull());
+                Objects.equals(computation, other.computation);
     }
 
     @Override
     public String toString() {
-        return "StableValue[" + orElseNull() + ']';
+        return "StableValue" + StableUtil.render(computation);
     }
-
 
     // Factory
     public static <T> StableValueImpl<T> of() {

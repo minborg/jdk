@@ -37,4 +37,12 @@ final class StableUtil {
         return Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE;
     }
 
+    static <T> String render(Computation<T> computation) {
+        return switch (computation) {
+            case Computation.Value<T> n -> "[" + n.value() + "]";
+            case Computation.Error<T> e -> ".error[" + e.throwableClassName() + "]";
+            case null                   -> ".unset";
+        };
+    }
+
 }

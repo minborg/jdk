@@ -65,10 +65,10 @@ final class MemoizedIntFunctionTest {
     @Test
     void toStringTest() {
         IntFunction<Integer> function = StableArray.memoizedIntFunction(SIZE, FUNCTION);
-        String expectedEmpty = "MemoizedIntFunction[original=" + FUNCTION + ", results=StableArray[null, null, null], mutexes=";
+        String expectedEmpty = "MemoizedIntFunction[original=" + FUNCTION + ", delegate=StableArray[.unset, .unset, .unset]";
         assertTrue(function.toString().startsWith(expectedEmpty), function.toString());
         function.apply(INDEX);
-        assertTrue(function.toString().contains("results=StableArray[null, Value[value=" + INDEX + "], null]"), function.toString());
+        assertTrue(function.toString().contains("delegate=StableArray[.unset, [" + INDEX + "], .unset]"), function.toString());
     }
 
 }

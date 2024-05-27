@@ -35,14 +35,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
 /**
- * A thin, atomic, thread-safe, lock free, set-at-most-once-per-index, stable array holder
- * eligible for certain JVM optimizations for components set to a non-null value.
+ * A thin, atomic, thread-safe, set-at-most-once-per-index, stable array holder
+ * eligible for certain JVM optimizations for components set to a value.
  * <p>
  * A stable array's component is said to be monotonic because the state of a stable value
- * can only go from <em>unset</em> to <em>set</em> and consequently, a non-null value can
- * only be set at most once.
+ * can only go from <em>unset</em> to <em>set</em> and consequently, a value can only be
+ * set at most once.
  <p>
  * To create a new fresh StableArray, use the {@linkplain StableArray#of(int)}
  * factory.
@@ -78,9 +79,12 @@ public sealed interface StableArray<T>
     /**
      * {@return the set value (nullable) at the provided {@code index} if set,
      * otherwise {@code null}}
+     *
+     * @param index in the array
+     * @param other to return if a value at {@code index} is not set
      * @throws IndexOutOfBoundsException if the provided {@code index < 0 || >= length()}
      */
-    T orElseNull(int index);
+    T orElse(int index, T other);
 
     /**
      * {@return the length of this array}
@@ -93,30 +97,63 @@ public sealed interface StableArray<T>
      * Sets the stable value at the provided {@code index} to the provided {@code value},
      * or, if already set to a non-null value, throws {@linkplain IllegalStateException}}
      *
+     * @param index in the array
      * @param value to set (nullable)
      * @throws IndexOutOfBoundsException if the provided {@code index < 0 || >= length()}
      * @throws IllegalArgumentException if a non-null value is already set
      */
     default void setOrThrow(int index, T value) {
         if (!trySet(index, value)) {
-            throw new IllegalStateException("Value already set: " + orElseNull(index));
+            throw new IllegalStateException("Value already set: " + orElseThrow(index));
         }
     }
 
     /**
-     * {@return the set value at the provided {@code index} if set to a non-null value,
+     * {@return the set value at the provided {@code index} if set to a value,
      * otherwise throws {@code NoSuchElementException}}
      *
+     * @param index in the array
      * @throws IndexOutOfBoundsException if the provided {@code index < 0 || >= length()}
      * @throws NoSuchElementException if no non-null value is set
      */
-    default T orElseThrow(int index) {
-        T t = orElseNull(index);
-        if (t != null) {
-            return null;
-        }
-        throw new NoSuchElementException();
-    }
+    T orElseThrow(int index);
+
+    /**
+     * If the stable value at the provided {@code index} is unset
+     * (or is set to {@code null}), attempts to compute its value using the given mapper
+     * function and enters it into this stable value unless {@code null}.
+     *
+     * <p>If the mapper function returns {@code null}, no value is set. If the supplier
+     * function itself throws an (unchecked) exception, the exception is rethrown, and
+     * no value is set. The most common usage is to construct a new object serving as
+     * an initial value or memoized result, as in:
+     *
+     * <pre> {@code
+     * T t = array.computeIfUnset(42, T::new);
+     * }</pre>
+     *
+     * @implSpec
+     * The default implementation is equivalent to the following steps for this
+     * {@code array} and {@code index}, then returning the current value or {@code null}
+     * if now absent:
+     *
+     * <pre> {@code
+     * if (array.orElseNull(index) == null) {
+     *     T newValue = supplier.apply(index);
+     *     if (newValue != null)
+     *         array.trySet(newValue);
+     * }
+     * }</pre>
+     * Except, the method is atomic, thread-safe and guarantees the provided
+     * mapper function is successfully invoked at most once even in
+     * a multi-thread environment.
+     *
+     * @param index in the array
+     * @param mapper the mapping function to compute a value
+     * @return the current (existing or computed) value associated with
+     *         the stable value
+     */
+    T computeIfUnset(int index, IntFunction<? extends T> mapper);
 
     /**
      * {@return a fresh stable array with unset ({@code null}) elements}
@@ -165,7 +202,7 @@ public sealed interface StableArray<T>
             throw new IllegalArgumentException();
         }
         Objects.requireNonNull(original);
-        return MemoizedIntFunction.memoizedIntFunction(length, original);
+        return new MemoizedIntFunction<>(original, StableArray.of(length));
     }
 
     /**

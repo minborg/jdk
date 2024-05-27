@@ -26,48 +26,17 @@
 package jdk.internal.lang.stable;
 
 import jdk.internal.lang.StableValue;
-import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 
-import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
-public record MemoizedSupplier<T>(Supplier<T> original,
-                                  StableValue<Computation<T>> result) implements Supplier<T> {
-
-    public MemoizedSupplier(Supplier<T> original) {
-        this(original, StableValue.of());
-    }
+public record MemoizedSupplier<T>(Supplier<? extends T> original,
+                                  StableValue<T> delegate) implements Supplier<T> {
 
     @ForceInline
     @Override
     public T get() {
-        return result.orElseNull() instanceof Computation.Value<T> v
-                ? v.value()
-                : getSlowPath();
-    }
-
-    @DontInline
-    private T getSlowPath() {
-        // The internal `result` field also serves as a mutex
-
-        // Consider old switch statement or use HelloClassList
-        synchronized (result) {
-            return switch (result.orElseNull()) {
-                case Computation.Value<T> n -> n.value();
-                case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
-                case null -> {
-                    try {
-                        T t = original.get();
-                        result.setOrThrow(Computation.Value.of(t));
-                        yield t;
-                    } catch (Throwable th) {
-                        result.setOrThrow(Computation.Error.of(th));
-                        throw th;
-                    }
-                }
-            };
-        }
+        return delegate.computeIfUnset(original);
     }
 
 }

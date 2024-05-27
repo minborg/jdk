@@ -22,10 +22,10 @@
  */
 
 /* @test
- * @summary Basic tests for StableValue implementations
+ * @summary Basic tests for StableArray implementations
  * @modules java.base/jdk.internal.lang
- * @compile --enable-preview -source ${jdk.version} StableValueTest.java
- * @run junit/othervm --enable-preview StableValueTest
+ * @compile --enable-preview -source ${jdk.version} StableArrayTest.java
+ * @run junit/othervm --enable-preview StableArrayTest
  */
 
 import jdk.internal.lang.StableArray;
@@ -49,7 +49,7 @@ final class StableArrayTest {
     @Test
     void empty() {
         StableArray<Integer> array = StableArray.of(0);
-        assertThrows(IndexOutOfBoundsException.class, () -> array.orElseNull(0));
+        assertThrows(IndexOutOfBoundsException.class, () -> array.orElse(0, null));
         assertThrows(IndexOutOfBoundsException.class, () -> array.orElseThrow(0));
         assertThrows(IndexOutOfBoundsException.class, () -> array.trySet(0, 0));
         assertThrows(IndexOutOfBoundsException.class, () -> array.setOrThrow(0, 0));
@@ -60,31 +60,32 @@ final class StableArrayTest {
     void unset() {
         StableArray<Integer> array = StableArray.of(LENGTH);
         assertEquals(LENGTH, array.length());
-        assertNull(array.orElseNull(INDEX));
+        assertNull(array.orElse(INDEX, null));
         assertThrows(NoSuchElementException.class, () -> array.orElseThrow(INDEX));
-        assertEquals("StableArray[null, null, null]",array.toString());
+        assertEquals("StableArray[.unset, .unset, .unset]",array.toString());
         assertTrue(array.trySet(INDEX, null));
-        assertTrue(array.trySet(INDEX, null));
-        assertTrue(array.trySet(INDEX, INDEX));
+        assertFalse(array.trySet(INDEX, null));
+        assertFalse(array.trySet(INDEX, INDEX));
+        assertNull(array.orElseThrow(INDEX));
     }
 
     @Test
     void setNull() {
         StableArray<Integer> array = StableArray.of(LENGTH);
         assertTrue(array.trySet(INDEX, null));
-        assertEquals("StableArray[null, null, null]", array.toString());
-        assertNull(array.orElseNull(INDEX));
-        assertThrows(NoSuchElementException.class, () -> array.orElseThrow(INDEX));
-        assertTrue(array.trySet(INDEX, null));
-        assertTrue(array.trySet(INDEX, 1));
+        assertEquals("StableArray[.unset, [null], .unset]", array.toString());
+        assertNull(array.orElse(INDEX, null));
+        assertNull(array.orElseThrow(INDEX));
+        assertFalse(array.trySet(INDEX, null));
+        assertFalse(array.trySet(INDEX, 1));
     }
 
     @Test
     void setNonNull() {
         StableArray<Integer> array = StableArray.of(LENGTH);
         assertTrue(array.trySet(INDEX,42));
-        assertEquals("StableArray[null, 42, null]", array.toString());
-        assertEquals(42, array.orElseNull(INDEX));
+        assertEquals("StableArray[.unset, [42], .unset]", array.toString());
+        assertEquals(42, array.orElse(INDEX, null));
         assertFalse(array.trySet(INDEX, null));
         assertFalse(array.trySet(INDEX, 1));
         assertThrows(IllegalStateException.class, () -> array.setOrThrow(INDEX, 1));
