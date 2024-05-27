@@ -56,6 +56,7 @@ final class MemoizedFunctionTest {
         assertEquals(1, original.cnt());
         assertEquals(INDEX, function.apply(INDEX));
         assertEquals(1, original.cnt());
+        assertThrows(NoSuchElementException.class, () -> function.apply(SIZE));
     }
 
     @Test
