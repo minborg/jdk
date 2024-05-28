@@ -88,21 +88,6 @@ public sealed interface StableValue<T>
      */
     T orElseThrow();
 
-    // Convenience methods
-
-    /**
-     * Sets the stable value to the provided {@code value}, or, if already set to a
-     * non-null value, throws {@linkplain IllegalStateException}}
-     *
-     * @param value to set (nullable)
-     * @throws IllegalArgumentException if a non-null value is already set
-     */
-    default void setOrThrow(T value) {
-        if (!trySet(value)) {
-            throw new IllegalStateException("Value already set: " + orElseThrow());
-        }
-    }
-
     /**
      * If the stable value is unset (or is set to {@code null}), attempts to compute its
      * value using the given supplier function and enters it into this stable value
@@ -138,6 +123,23 @@ public sealed interface StableValue<T>
      *         the stable value
      */
     T computeIfUnset(Supplier<? extends T> supplier);
+
+    // Convenience methods
+
+    /**
+     * Sets the stable value to the provided {@code value}, or, if already set to a
+     * non-null value, throws {@linkplain IllegalStateException}}
+     *
+     * @param value to set (nullable)
+     * @throws IllegalArgumentException if a non-null value is already set
+     */
+    default void setOrThrow(T value) {
+        if (!trySet(value)) {
+            throw new IllegalStateException("Value already set: " + this);
+        }
+    }
+
+    // Factories
 
     /**
      * {@return a fresh stable value with an unset ({@code null}) value}

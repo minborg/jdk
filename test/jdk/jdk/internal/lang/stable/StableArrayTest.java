@@ -32,11 +32,18 @@ import jdk.internal.lang.StableArray;
 import jdk.internal.lang.StableValue;
 import org.junit.jupiter.api.Test;
 
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.BiPredicate;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -89,6 +96,129 @@ final class StableArrayTest {
         assertFalse(array.trySet(INDEX, null));
         assertFalse(array.trySet(INDEX, 1));
         assertThrows(IllegalStateException.class, () -> array.setOrThrow(INDEX, 1));
+    }
+
+    @Test
+    void computeIfUnset() {
+        StableArray<Integer> array = StableArray.of(LENGTH);
+        assertEquals(42, array.computeIfUnset(INDEX, _ -> 42));
+        assertEquals(42, array.computeIfUnset(INDEX, _ -> 13));
+        assertEquals("StableArray[.unset, [42], .unset]", array.toString());
+        assertEquals(42, array.orElse(INDEX, null));
+        assertFalse(array.trySet(INDEX, null));
+        assertFalse(array.trySet(INDEX, 1));
+        assertThrows(IllegalStateException.class, () -> array.setOrThrow(INDEX, 1));
+    }
+
+    @Test
+    void computeIfUnsetException() {
+        StableArray<Integer> array = StableArray.of(LENGTH);
+        IntFunction<Integer> mapper = _ -> { throw new UnsupportedOperationException("aaa"); };
+        var x = assertThrows(UnsupportedOperationException.class, () -> array.computeIfUnset(INDEX, mapper));
+        assertTrue(x.getMessage().contains("aaa"));
+        var nsee = assertThrows(NoSuchElementException.class, () -> array.computeIfUnset(INDEX, _ -> 13));
+        assertFalse(nsee.getMessage().contains("aaa"));
+        assertEquals("StableArray[.unset, .error[java.lang.UnsupportedOperationException], .unset]", array.toString());
+        assertEquals(13, array.orElse(INDEX, 13));
+        assertFalse(array.trySet(INDEX, null));
+        assertFalse(array.trySet(INDEX, 1));
+        assertThrows(IllegalStateException.class, () -> array.setOrThrow(INDEX, 1));
+    }
+
+    @Test
+    void testHashCode() {
+        StableArray<Integer> a0 = StableArray.of(LENGTH);
+        StableArray<Integer> a1 = StableArray.of(LENGTH);
+        assertEquals(a0.hashCode(), a1.hashCode());
+        a0.setOrThrow(INDEX, 42);
+        a1.setOrThrow(INDEX, 42);
+        assertEquals(a0.hashCode(), a1.hashCode());
+    }
+
+    @Test
+    void testEquals() {
+        StableArray<Integer> a0 = StableArray.of(LENGTH);
+        StableArray<Integer> a1 = StableArray.of(LENGTH);
+        assertEquals(a0, a1);
+        a0.setOrThrow(INDEX, 42);
+        a1.setOrThrow(INDEX, 42);
+        assertEquals(a0, a1);
+        StableArray<Integer> other = StableArray.of(LENGTH);
+        other.setOrThrow(INDEX, 13);
+        assertNotEquals(a0, other);
+        assertNotEquals(a0, "a");
+    }
+
+    private static final BiPredicate<StableArray<Integer>, Integer> TRY_SET = (s, i) -> s.trySet(INDEX, i);
+    private static final BiPredicate<StableArray<Integer>, Integer> SET_OR_THROW = (s, i) -> {
+        try {
+            s.setOrThrow(INDEX, i);
+            return true;
+        } catch (IllegalStateException e) {
+            return false;
+        }
+    };
+    private static final BiPredicate<StableArray<Integer>, Integer> COMPUTE_IF_UNSET = (s, i) -> {
+        int r = s.computeIfUnset(INDEX, _ -> i);
+        return r == i;
+    };
+
+    @Test
+    void raceTrySet() {
+        race(TRY_SET);
+    }
+
+    @Test
+    void raceSetOrThrow() {
+        race(SET_OR_THROW);
+    }
+
+    @Test
+    void raceComputeIfUnset() {
+        race(COMPUTE_IF_UNSET);
+    }
+
+    @Test
+    void raceMixed() {
+        race((s, i) -> switch (i % 3) {
+            case 0 -> TRY_SET.test(s, i);
+            case 1 -> SET_OR_THROW.test(s, i);
+            case 2 -> COMPUTE_IF_UNSET.test(s, i);
+            default -> fail("should not reach here");
+        });
+    }
+
+    void race(BiPredicate<StableArray<Integer>, Integer> winnerPredicate) {
+        int noThreads = 10;
+        CountDownLatch starter = new CountDownLatch(1);
+        StableArray<Integer> stable = StableArray.of(LENGTH);
+        BitSet winner = new BitSet(noThreads);
+        List<Thread> threads = IntStream.range(0, noThreads).mapToObj(i -> new Thread(() -> {
+                    try {
+                        // Ready, set ...
+                        starter.await();
+                        // Here we go!
+                        winner.set(i, winnerPredicate.test(stable, i));
+                    } catch (Throwable t) {
+                        fail(t);
+                    }
+                }))
+                .toList();
+        threads.forEach(Thread::start);
+        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
+        // Start the race
+        starter.countDown();
+        threads.forEach(StableArrayTest::join);
+        // There can only be one winner
+        assertEquals(1, winner.cardinality());
+    }
+
+    private static void join(Thread thread) {
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+            fail(e);
+        }
     }
 
 }

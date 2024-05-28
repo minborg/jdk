@@ -87,28 +87,6 @@ public sealed interface StableArray<T>
     T orElse(int index, T other);
 
     /**
-     * {@return the length of this array}
-     */
-    int length();
-
-    // Convenience methods
-
-    /**
-     * Sets the stable value at the provided {@code index} to the provided {@code value},
-     * or, if already set to a non-null value, throws {@linkplain IllegalStateException}}
-     *
-     * @param index in the array
-     * @param value to set (nullable)
-     * @throws IndexOutOfBoundsException if the provided {@code index < 0 || >= length()}
-     * @throws IllegalArgumentException if a non-null value is already set
-     */
-    default void setOrThrow(int index, T value) {
-        if (!trySet(index, value)) {
-            throw new IllegalStateException("Value already set: " + orElseThrow(index));
-        }
-    }
-
-    /**
      * {@return the set value at the provided {@code index} if set to a value,
      * otherwise throws {@code NoSuchElementException}}
      *
@@ -154,6 +132,30 @@ public sealed interface StableArray<T>
      *         the stable value
      */
     T computeIfUnset(int index, IntFunction<? extends T> mapper);
+
+    /**
+     * {@return the length of this array}
+     */
+    int length();
+
+    // Convenience methods
+
+    /**
+     * Sets the stable value at the provided {@code index} to the provided {@code value},
+     * or, if already set to a non-null value, throws {@linkplain IllegalStateException}}
+     *
+     * @param index in the array
+     * @param value to set (nullable)
+     * @throws IndexOutOfBoundsException if the provided {@code index < 0 || >= length()}
+     * @throws IllegalArgumentException if a non-null value is already set
+     */
+    default void setOrThrow(int index, T value) {
+        if (!trySet(index, value)) {
+            throw new IllegalStateException("Value already set: " + this);
+        }
+    }
+
+    // Factories
 
     /**
      * {@return a fresh stable array with unset ({@code null}) elements}

@@ -80,11 +80,9 @@ public final class StableArrayImpl<T> implements StableArray<T> {
 
     @Override
     public T orElse(int index, T other) {
-        return switch (computation(index)) {
-            case Computation.Value<T> n -> n.value();
-            case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
-            case null                   -> other;
-        };
+        return computation(index) instanceof Computation.Value<T> v
+                ? v.value()
+                : other;
     }
 
     @Override

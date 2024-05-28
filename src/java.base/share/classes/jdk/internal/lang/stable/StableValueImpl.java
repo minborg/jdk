@@ -75,11 +75,9 @@ public final class StableValueImpl<T> implements StableValue<T> {
     @Override
     @ForceInline
     public T orElse(T other) {
-        return switch (computation) {
-            case Computation.Value<T> n -> n.value();
-            case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
-            case null                   -> other;
-        };
+        return computation instanceof Computation.Value<T> v
+                ? v.value()
+                : other;
     }
 
     @ForceInline
