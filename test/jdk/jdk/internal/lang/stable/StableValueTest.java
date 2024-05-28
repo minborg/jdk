@@ -100,14 +100,12 @@ final class StableValueTest {
         Supplier<Integer> supplier = () -> { throw new UnsupportedOperationException("aaa"); };
         var x = assertThrows(UnsupportedOperationException.class, () -> stable.computeIfUnset(supplier));
         assertTrue(x.getMessage().contains("aaa"));
-        var nsee = assertThrows(NoSuchElementException.class, () -> stable.computeIfUnset(() -> 13));
-        assertFalse(nsee.getMessage().contains("aaa"));
-        assertEquals("StableValue.error[java.lang.UnsupportedOperationException]", stable.toString());
-        assertEquals(13, stable.orElse(13));
+        assertEquals(42, stable.computeIfUnset(() -> 42));
+        assertEquals("StableValue[42]", stable.toString());
+        assertEquals(42, stable.orElse(13));
         assertFalse(stable.trySet(null));
         assertFalse(stable.trySet(1));
         assertThrows(IllegalStateException.class, () -> stable.setOrThrow(1));
-        assertThrows(NoSuchElementException.class, stable::orElseThrow);
     }
 
     @Test

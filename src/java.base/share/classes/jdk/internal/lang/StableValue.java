@@ -90,13 +90,11 @@ public sealed interface StableValue<T>
 
     /**
      * If the stable value is unset (or is set to {@code null}), attempts to compute its
-     * value using the given supplier function and enters it into this stable value
-     * unless {@code null}.
+     * value using the given supplier function and enters it into this stable value.
      *
-     * <p>If the supplier function returns {@code null}, no value is set. If the supplier
-     * function itself throws an (unchecked) exception, the exception is rethrown, and
-     * no value is set. The most common usage is to construct a new object serving as
-     * an initial value or memoized result, as in:
+     * <p>If the supplier function itself throws an (unchecked) exception, the exception
+     * is rethrown, and no value is set. The most common usage is to construct a new
+     * object serving as an initial value or memoized result, as in:
      *
      * <pre> {@code
      * T t = stable.computeIfUnset(T::new);
@@ -114,9 +112,7 @@ public sealed interface StableValue<T>
      *         stable.trySet(newValue);
      * }
      * }</pre>
-     * Except, the method is atomic, thread-safe and guarantees the provided
-     * supplier function is successfully invoked at most once even in
-     * a multi-thread environment.
+     * Except, the method is atomic and thread-safe.
      *
      * @param supplier the mapping supplier to compute a value
      * @return the current (existing or computed) value associated with

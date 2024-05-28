@@ -34,94 +34,90 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import static jdk.internal.lang.stable.StableUtil.UNSAFE;
+import static jdk.internal.lang.stable.StableUtil.*;
 
 public final class StableValueImpl<T> implements StableValue<T> {
 
-    private static final long COMPUTATION_OFFSET =
-            UNSAFE.objectFieldOffset(StableValueImpl.class, "computation");
+    private static final long VALUE_OFFSET =
+            UNSAFE.objectFieldOffset(StableValueImpl.class, "value");
 
     @Stable
-    private final Object mutex = new Object();
+    private T value;
+    // Used to signal a `null` value and for piggybacking
     @Stable
-    private volatile Computation<T> computation;
+    private volatile byte state;
 
     private StableValueImpl() {}
 
     @Override
     public boolean trySet(T value) {
-        if (computation != null) {
+        if (state != UNSET) {
             return false;
         }
-        synchronized (mutex) {
-            return trySet0(Computation.Value.of(value));
-        }
+        return trySet0(value);
     }
 
-    private boolean trySet0(Computation<T> comp) {
-        return UNSAFE.compareAndSetReference(this, COMPUTATION_OFFSET, null, comp);
+    private boolean trySet0(T value) {
+        boolean set = UNSAFE.compareAndSetReference(this, VALUE_OFFSET, null, value);
+        if (set) {
+            state = (value == null) ? NULL : SET;
+        }
+        return set;
     }
 
     @Override
     @ForceInline
     public T orElseThrow() {
-        return switch (computation) {
-            case Computation.Value<T> n -> n.value();
-            case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
-            case null                   -> throw new NoSuchElementException("No value set");
+        return switch (state) {
+            case SET  -> value;
+            case NULL -> null;
+            default   -> throw new NoSuchElementException("No value set");
         };
     }
 
     @Override
     @ForceInline
     public T orElse(T other) {
-        return computation instanceof Computation.Value<T> v
-                ? v.value()
-                : other;
+        return switch (state) {
+            case SET  -> value;
+            case NULL -> null;
+            default   -> other;
+        };
     }
 
     @ForceInline
     @Override
     public T computeIfUnset(Supplier<? extends T> supplier) {
-        return computation instanceof Computation.Value<T> v
-                ? v.value()
-                : computeIfUnset0(supplier);
+        return switch (state) {
+            case SET  -> value;
+            case NULL -> null;
+            default   -> computeIfUnset0(supplier);
+        };
     }
 
     @DontInline
     private T computeIfUnset0(Supplier<? extends T> supplier) {
-        synchronized (mutex) {
-            return switch (computation) {
-                case Computation.Value<T> n -> n.value();
-                case Computation.Error<T> e -> throw new NoSuchElementException(e.throwableClassName());
-                case null -> {
-                    try {
-                        T t = supplier.get();
-                        trySet0(Computation.Value.of(t));
-                        yield t;
-                    } catch (Throwable th) {
-                        trySet0(Computation.Error.of(th));
-                        throw th;
-                    }
-                }
-            };
-        }
+        T t = supplier.get();
+        return trySet0(t) ? t : orElseThrow();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(computation);
+        return Objects.hashCode(orElse(null));
     }
 
     @Override
     public boolean equals(Object obj) {
         return obj instanceof StableValueImpl<?> other &&
-                Objects.equals(computation, other.computation);
+                state == other.state &&
+                Objects.equals(value, other.value);
     }
 
     @Override
     public String toString() {
-        return "StableValue" + StableUtil.render(computation);
+        // Make sure state is read first.
+        byte s = state;
+        return "StableValue" + StableUtil.render(s, value);
     }
 
     // Factory

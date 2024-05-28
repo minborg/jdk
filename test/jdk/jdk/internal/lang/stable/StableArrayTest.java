@@ -116,10 +116,9 @@ final class StableArrayTest {
         IntFunction<Integer> mapper = _ -> { throw new UnsupportedOperationException("aaa"); };
         var x = assertThrows(UnsupportedOperationException.class, () -> array.computeIfUnset(INDEX, mapper));
         assertTrue(x.getMessage().contains("aaa"));
-        var nsee = assertThrows(NoSuchElementException.class, () -> array.computeIfUnset(INDEX, _ -> 13));
-        assertFalse(nsee.getMessage().contains("aaa"));
-        assertEquals("StableArray[.unset, .error[java.lang.UnsupportedOperationException], .unset]", array.toString());
-        assertEquals(13, array.orElse(INDEX, 13));
+        assertEquals(42, array.computeIfUnset(INDEX, _ -> 42));
+        assertEquals("StableArray[.unset, [42], .unset]", array.toString());
+        assertEquals(42, array.orElse(INDEX, 13));
         assertFalse(array.trySet(INDEX, null));
         assertFalse(array.trySet(INDEX, 1));
         assertThrows(IllegalStateException.class, () -> array.setOrThrow(INDEX, 1));

@@ -33,15 +33,23 @@ final class StableUtil {
 
     static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
+    static final byte UNSET = 0;
+    static final byte SET = 1;
+    static final byte NULL = 2;
+    static final Object NULL_SENTINEL = new Object();
+
     static long objectOffset(int index) {
         return Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE;
     }
 
-    static <T> String render(Computation<T> computation) {
-        return switch (computation) {
-            case Computation.Value<T> n -> "[" + n.value() + "]";
-            case Computation.Error<T> e -> ".error[" + e.throwableClassName() + "]";
-            case null                   -> ".unset";
+    static long byteOffset(int index) {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) index * Unsafe.ARRAY_BYTE_INDEX_SCALE;
+    }
+
+    static <T> String render(byte state, T value) {
+        return switch (state) {
+            case SET, NULL -> "[" + value + "]";
+            default        -> ".unset";
         };
     }
 
