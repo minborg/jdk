@@ -31,16 +31,16 @@ public final class SimpleMemoizedSupplier<T>
         // with respect to the update of `value` even if read using plain memory semantics
         // (piggybacking).
         switch (state) {
-            case SET: return value;
-            case NULL: return null;
+            case SET_NONNULL: return value;
+            case SET_NULL: return null;
         }
         T t = original.get();
         final byte newState;
         if (t == null) {
             t = (T) NULL_SENTINEL;
-            newState = NULL;
+            newState = SET_NULL;
         } else {
-            newState = SET;
+            newState = SET_NONNULL;
         }
         T witness = (T) UNSAFE.compareAndExchangeReference(this, VALUE_OFFSET, null, t);
         state = newState;

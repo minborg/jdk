@@ -41,14 +41,19 @@ public final class StableValueImpl<T> implements StableValue<T> {
     private static final long VALUE_OFFSET =
             UNSAFE.objectFieldOffset(StableValueImpl.class, "value");
 
+    // The set value (if non-null)
     @Stable
     private T value;
-    // Used to signal a `null` value and for piggybacking
+
+    // Used to signal UNSET, SET_NONNULL, or SET_NULL; and for piggybacking:
+    // The `state` field must always be read before the `value` field is read
+    // The `value` field must always be written before the `state` field is written
     @Stable
     private volatile byte state;
 
     private StableValueImpl() {}
 
+    @ForceInline
     @Override
     public boolean trySet(T value) {
         if (state != UNSET) {
@@ -60,28 +65,28 @@ public final class StableValueImpl<T> implements StableValue<T> {
     private boolean trySet0(T value) {
         boolean set = UNSAFE.compareAndSetReference(this, VALUE_OFFSET, null, value);
         if (set) {
-            state = (value == null) ? NULL : SET;
+            state = (value == null) ? SET_NULL : SET_NONNULL;
         }
         return set;
     }
 
-    @Override
     @ForceInline
+    @Override
     public T orElseThrow() {
         return switch (state) {
-            case SET  -> value;
-            case NULL -> null;
-            default   -> throw new NoSuchElementException("No value set");
+            case SET_NONNULL -> value;
+            case SET_NULL    -> null;
+            default          -> throw new NoSuchElementException("No value set");
         };
     }
 
-    @Override
     @ForceInline
+    @Override
     public T orElse(T other) {
         return switch (state) {
-            case SET  -> value;
-            case NULL -> null;
-            default   -> other;
+            case SET_NONNULL -> value;
+            case SET_NULL    -> null;
+            default          -> other;
         };
     }
 
@@ -89,9 +94,9 @@ public final class StableValueImpl<T> implements StableValue<T> {
     @Override
     public T computeIfUnset(Supplier<? extends T> supplier) {
         return switch (state) {
-            case SET  -> value;
-            case NULL -> null;
-            default   -> computeIfUnset0(supplier);
+            case SET_NONNULL -> value;
+            case SET_NULL    -> null;
+            default          -> computeIfUnset0(supplier);
         };
     }
 

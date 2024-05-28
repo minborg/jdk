@@ -34,8 +34,8 @@ final class StableUtil {
     static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     static final byte UNSET = 0;
-    static final byte SET = 1;
-    static final byte NULL = 2;
+    static final byte SET_NONNULL = 1;
+    static final byte SET_NULL = 2;
     static final Object NULL_SENTINEL = new Object();
 
     static long objectOffset(int index) {
@@ -48,7 +48,7 @@ final class StableUtil {
 
     static <T> String render(byte state, T value) {
         return switch (state) {
-            case SET, NULL -> "[" + value + "]";
+            case SET_NONNULL, SET_NULL -> "[" + value + "]";
             default        -> ".unset";
         };
     }

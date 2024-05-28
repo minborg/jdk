@@ -34,18 +34,21 @@ import jdk.internal.vm.annotation.Stable;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.IntFunction;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static jdk.internal.lang.stable.StableUtil.*;
 
 @ValueBased
 public final class StableArrayImpl<T> implements StableArray<T> {
 
+    // The set values (if non-null)
     @Stable
     private final T[] values;
+
+    // Used to signal UNSET, SET_NONNULL, or SET_NULL; and for piggybacking:
+    // A `state` element must always be read before the corresponding `value` element is read
+    // A `value` element must always be written before the corresponding `state` element is written
     @Stable
     private final byte[] states;
 
@@ -65,41 +68,44 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     private boolean trySet0(int index, T value) {
         boolean set = UNSAFE.compareAndSetReference(values, objectOffset(index), null, value);
         if (set) {
-            stateUnchecked(index, (value == null) ? NULL : SET);
+            stateUnchecked(index, (value == null) ? SET_NULL : SET_NONNULL);
         }
         return set;
     }
 
-    @Override
     @ForceInline
+    @Override
     public T orElseThrow(int index) {
         return switch (state(index)) {
-            case SET  -> values[index];
-            case NULL -> null;
-            default   -> throw new NoSuchElementException("No value set for index " + index);
+            case SET_NONNULL -> values[index];
+            case SET_NULL    -> null;
+            default          -> throw new NoSuchElementException("No value set for index " + index);
         };
     }
 
+    @ForceInline
     @Override
     public T orElse(int index, T other) {
         return switch (state(index)) {
-            case SET  -> values[index];
-            case NULL -> null;
-            default   -> other;
+            case SET_NONNULL -> values[index];
+            case SET_NULL    -> null;
+            default          -> other;
         };
     }
 
+    @ForceInline
     @Override
     public int length() {
         return values.length;
     }
 
+    @ForceInline
     @Override
     public T computeIfUnset(int index, IntFunction<? extends T> mapper) {
         return switch (state(index)) {
-            case SET  -> values[index];
-            case NULL -> null;
-            default   -> computeIfUnset0(index, mapper);
+            case SET_NONNULL -> values[index];
+            case SET_NULL    -> null;
+            default          -> computeIfUnset0(index, mapper);
         };
     }
 
