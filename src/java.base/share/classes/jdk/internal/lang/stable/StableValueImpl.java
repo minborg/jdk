@@ -43,7 +43,6 @@ public final class StableValueImpl<T> implements StableValue<T> {
 
     @Stable
     private final Object mutex = new Object();
-    // The `computation` field is reflectively accessed using Unsafe
     @Stable
     private volatile Computation<T> computation;
 
