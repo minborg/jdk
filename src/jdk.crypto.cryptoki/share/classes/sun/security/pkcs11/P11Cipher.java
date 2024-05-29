@@ -58,7 +58,7 @@ import static sun.security.pkcs11.wrapper.PKCS11Exception.RV.*;
  */
 final class P11Cipher extends CipherSpi {
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     // mode constant for ECB mode
     private static final int MODE_ECB = 3;

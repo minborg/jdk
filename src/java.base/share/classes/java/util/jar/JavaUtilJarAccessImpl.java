@@ -29,7 +29,7 @@ import java.io.IOException;
 
 import jdk.internal.access.JavaUtilJarAccess;
 
-class JavaUtilJarAccessImpl implements JavaUtilJarAccess {
+final class JavaUtilJarAccessImpl implements JavaUtilJarAccess {
     public boolean jarFileHasClassPathAttribute(JarFile jar) throws IOException {
         return jar.hasClassPathAttribute();
     }

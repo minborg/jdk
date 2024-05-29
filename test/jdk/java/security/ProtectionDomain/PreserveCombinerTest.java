@@ -26,6 +26,8 @@ import java.security.AccessController;
 import java.security.DomainCombiner;
 import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
+
+import jdk.internal.access.JavaSecurityAccess;
 import jdk.internal.access.SharedSecrets;
 
 /*
@@ -53,7 +55,7 @@ public class PreserveCombinerTest {
 
         // Now try to run JavaSecurityAccess.doIntersectionPrivilege() and assert
         // whether the DomainCombiner from the stack ACC is preserved
-        boolean ret = SharedSecrets.getJavaSecurityAccess().doIntersectionPrivilege(new PrivilegedAction<Boolean>() {
+        boolean ret = SharedSecrets.get(JavaSecurityAccess.class).doIntersectionPrivilege(new PrivilegedAction<Boolean>() {
             @Override
             public Boolean run() {
                 return dc == AccessController.getContext().getDomainCombiner();

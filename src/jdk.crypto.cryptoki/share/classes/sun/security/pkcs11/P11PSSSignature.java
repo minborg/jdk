@@ -68,7 +68,7 @@ import static sun.security.pkcs11.wrapper.PKCS11Exception.RV.*;
  */
 final class P11PSSSignature extends SignatureSpi {
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     private static final boolean DEBUG = false;
 

@@ -33,16 +33,16 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public interface JavaUtilZipFileAccess {
-    public boolean startsWithLocHeader(ZipFile zip);
-    public List<String> getManifestAndSignatureRelatedFiles(JarFile zip);
-    public String getManifestName(JarFile zip, boolean onlyIfSignatureRelatedFiles);
-    public int getManifestNum(JarFile zip);
-    public int[] getMetaInfVersions(JarFile zip);
-    public Enumeration<JarEntry> entries(ZipFile zip);
-    public Stream<JarEntry> stream(ZipFile zip);
-    public Stream<String> entryNameStream(ZipFile zip);
-    public void setExtraAttributes(ZipEntry ze, int extraAttrs);
-    public int getExtraAttributes(ZipEntry ze);
+public non-sealed interface JavaUtilZipFileAccess extends SharedSecrets.Access {
+    boolean startsWithLocHeader(ZipFile zip);
+    List<String> getManifestAndSignatureRelatedFiles(JarFile zip);
+    String getManifestName(JarFile zip, boolean onlyIfSignatureRelatedFiles);
+    int getManifestNum(JarFile zip);
+    int[] getMetaInfVersions(JarFile zip);
+    Enumeration<JarEntry> entries(ZipFile zip);
+    Stream<JarEntry> stream(ZipFile zip);
+    Stream<String> entryNameStream(ZipFile zip);
+    void setExtraAttributes(ZipEntry ze, int extraAttrs);
+    int getExtraAttributes(ZipEntry ze);
 }
 

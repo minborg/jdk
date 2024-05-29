@@ -387,15 +387,9 @@ public final class ThreadLocalRandom extends Random {
                          RandomSupport.mixMurmur64(System.nanoTime()));
 
     // used by ScopedValue
-    private static class Access {
-        static {
-            SharedSecrets.setJavaUtilConcurrentTLRAccess(
-                new JavaUtilConcurrentTLRAccess() {
-                    public int nextSecondaryThreadLocalRandomSeed() {
-                        return nextSecondarySeed();
-                    }
-                }
-            );
+    private static class JavaUtilConcurrentTLRAccessImpl implements JavaUtilConcurrentTLRAccess {
+        public int nextSecondaryThreadLocalRandomSeed() {
+            return nextSecondarySeed();
         }
     }
 

@@ -985,18 +985,14 @@ public final class HttpCookie implements Cloneable {
         }
     }
 
-    static {
-        SharedSecrets.setJavaNetHttpCookieAccess(
-            new JavaNetHttpCookieAccess() {
-                public List<HttpCookie> parse(String header) {
-                    return HttpCookie.parse(header, true);
-                }
+    static final class JavaNetHttpCookieAccessImpl implements JavaNetHttpCookieAccess {
+        public List<HttpCookie> parse(String header) {
+            return HttpCookie.parse(header, true);
+        }
 
-                public String header(HttpCookie cookie) {
-                    return cookie.header;
-                }
-            }
-        );
+        public String header(HttpCookie cookie) {
+            return cookie.header;
+        }
     }
 
     /*

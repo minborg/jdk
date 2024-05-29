@@ -50,6 +50,7 @@ import java.util.jar.Attributes.Name;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
+import jdk.internal.access.JavaUtilJarAccess;
 import jdk.internal.loader.Resource;
 import jdk.internal.loader.URLClassPath;
 import jdk.internal.access.SharedSecrets;
@@ -546,7 +547,7 @@ public class URLClassLoader extends SecureClassLoader implements Closeable {
         String sealed = null;
         URL sealBase = null;
 
-        Attributes attr = SharedSecrets.javaUtilJarAccess()
+        Attributes attr = SharedSecrets.get(JavaUtilJarAccess.class)
                 .getTrustedAttributes(man, name.replace('.', '/').concat("/"));
         if (attr != null) {
             specTitle   = attr.getValue(Name.SPECIFICATION_TITLE);
@@ -595,7 +596,7 @@ public class URLClassLoader extends SecureClassLoader implements Closeable {
      * @throws SecurityException if the package name is untrusted in the manifest
      */
     private boolean isSealed(String name, Manifest man) {
-        Attributes attr = SharedSecrets.javaUtilJarAccess()
+        Attributes attr = SharedSecrets.get(JavaUtilJarAccess.class)
                 .getTrustedAttributes(man, name.replace('.', '/').concat("/"));
         String sealed = null;
         if (attr != null) {

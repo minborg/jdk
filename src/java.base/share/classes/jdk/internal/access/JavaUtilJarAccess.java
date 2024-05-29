@@ -31,10 +31,10 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-public interface JavaUtilJarAccess {
-    public boolean jarFileHasClassPathAttribute(JarFile jar) throws IOException;
-    public Attributes getTrustedAttributes(Manifest man, String name);
-    public void ensureInitialization(JarFile jar);
-    public boolean isInitializing();
-    public JarEntry entryFor(JarFile file, String name);
+public non-sealed interface JavaUtilJarAccess extends SharedSecrets.Access {
+    boolean jarFileHasClassPathAttribute(JarFile jar) throws IOException;
+    Attributes getTrustedAttributes(Manifest man, String name);
+    void ensureInitialization(JarFile jar);
+    boolean isInitializing();
+    JarEntry entryFor(JarFile file, String name);
 }

@@ -45,6 +45,7 @@ import java.security.PrivilegedAction;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 
+import jdk.internal.access.JavaSecurityAccess;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -373,7 +374,7 @@ public final class DocumentHandler extends DefaultHandler {
             throw new SecurityException("AccessControlContext is not set");
         }
         AccessControlContext stack = AccessController.getContext();
-        SharedSecrets.getJavaSecurityAccess().doIntersectionPrivilege(new PrivilegedAction<Void>() {
+        SharedSecrets.get(JavaSecurityAccess.class).doIntersectionPrivilege(new PrivilegedAction<Void>() {
             public Void run() {
                 try {
                     SAXParserFactory.newInstance().newSAXParser().parse(input, DocumentHandler.this);

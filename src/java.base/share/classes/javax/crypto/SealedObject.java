@@ -25,6 +25,7 @@
 
 package javax.crypto;
 
+import jdk.internal.access.JavaxCryptoSealedObjectAccess;
 import jdk.internal.access.SharedSecrets;
 
 import java.io.*;
@@ -446,9 +447,13 @@ public class SealedObject implements Serializable {
         return new extObjectInputStream(b);
     }
 
-    static {
-        SharedSecrets.setJavaxCryptoSealedObjectAccess(SealedObject::getExtObjectInputStream);
+    static final class JavaxCryptoSealedObjectAccessImpl implements JavaxCryptoSealedObjectAccess {
+        @Override
+        public ObjectInputStream getExtObjectInputStream(SealedObject sealed, Cipher cipher) throws BadPaddingException, IllegalBlockSizeException, IOException {
+            return sealed.getExtObjectInputStream(cipher);
+        }
     }
+
 }
 
 final class extObjectInputStream extends ObjectInputStream {

@@ -2225,7 +2225,7 @@ public class PolicyFile extends java.security.Policy {
 
             pdMapping = new ProtectionDomainCache[numCaches];
             JavaSecurityAccess jspda
-                = SharedSecrets.getJavaSecurityAccess();
+                = SharedSecrets.get(JavaSecurityAccess.class);
             for (int i = 0; i < numCaches; i++) {
                 pdMapping[i] = jspda.getProtectionDomainCache();
             }

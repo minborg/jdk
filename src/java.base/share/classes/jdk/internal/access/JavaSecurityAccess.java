@@ -30,7 +30,7 @@ import java.security.PermissionCollection;
 import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
 
-public interface JavaSecurityAccess {
+public non-sealed interface JavaSecurityAccess extends SharedSecrets.Access {
 
     <T> T doIntersectionPrivilege(PrivilegedAction<T> action,
                                   @SuppressWarnings("removal") AccessControlContext stack,

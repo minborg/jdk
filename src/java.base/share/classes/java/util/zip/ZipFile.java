@@ -1131,58 +1131,53 @@ public class ZipFile implements ZipConstants, Closeable {
         return result;
     }
 
-    static {
-        SharedSecrets.setJavaUtilZipFileAccess(
-            new JavaUtilZipFileAccess() {
-                @Override
-                public boolean startsWithLocHeader(ZipFile zip) {
-                    return zip.res.zsrc.startsWithLoc;
-                }
-                @Override
-                public List<String> getManifestAndSignatureRelatedFiles(JarFile jar) {
-                    return ((ZipFile)jar).getManifestAndSignatureRelatedFiles();
-                }
-                @Override
-                public int getManifestNum(JarFile jar) {
-                    return ((ZipFile)jar).getManifestNum();
-                }
-                @Override
-                public String getManifestName(JarFile jar, boolean onlyIfHasSignatureRelatedFiles) {
-                    return ((ZipFile)jar).getManifestName(onlyIfHasSignatureRelatedFiles);
-                }
-                @Override
-                public int[] getMetaInfVersions(JarFile jar) {
-                    return ((ZipFile)jar).getMetaInfVersions();
-                }
-                @Override
-                public Enumeration<JarEntry> entries(ZipFile zip) {
-                    return zip.jarEntries();
-                }
-                @Override
-                public Stream<JarEntry> stream(ZipFile zip) {
-                    return zip.jarStream();
-                }
-                @Override
-                public Stream<String> entryNameStream(ZipFile zip) {
-                    return zip.entryNameStream();
-                }
-                @Override
-                public int getExtraAttributes(ZipEntry ze) {
-                    return ze.extraAttributes;
-                }
-                @Override
-                public void setExtraAttributes(ZipEntry ze, int extraAttrs) {
-                    ze.extraAttributes = extraAttrs;
-                }
-
-             }
-        );
+    static final class JavaUtilZipFileAccessImpl implements JavaUtilZipFileAccess {
+        @Override
+        public boolean startsWithLocHeader(ZipFile zip) {
+            return zip.res.zsrc.startsWithLoc;
+        }
+        @Override
+        public List<String> getManifestAndSignatureRelatedFiles(JarFile jar) {
+            return ((ZipFile)jar).getManifestAndSignatureRelatedFiles();
+        }
+        @Override
+        public int getManifestNum(JarFile jar) {
+            return ((ZipFile)jar).getManifestNum();
+        }
+        @Override
+        public String getManifestName(JarFile jar, boolean onlyIfHasSignatureRelatedFiles) {
+            return ((ZipFile)jar).getManifestName(onlyIfHasSignatureRelatedFiles);
+        }
+        @Override
+        public int[] getMetaInfVersions(JarFile jar) {
+            return ((ZipFile)jar).getMetaInfVersions();
+        }
+        @Override
+        public Enumeration<JarEntry> entries(ZipFile zip) {
+            return zip.jarEntries();
+        }
+        @Override
+        public Stream<JarEntry> stream(ZipFile zip) {
+            return zip.jarStream();
+        }
+        @Override
+        public Stream<String> entryNameStream(ZipFile zip) {
+            return zip.entryNameStream();
+        }
+        @Override
+        public int getExtraAttributes(ZipEntry ze) {
+            return ze.extraAttributes;
+        }
+        @Override
+        public void setExtraAttributes(ZipEntry ze, int extraAttrs) {
+            ze.extraAttributes = extraAttrs;
+        }
     }
 
     private static class Source {
         // While this is only used from ZipFile, defining it there would cause
         // a bootstrap cycle that would leave this initialized as null
-        private static final JavaUtilJarAccess JUJA = SharedSecrets.javaUtilJarAccess();
+        private static final JavaUtilJarAccess JUJA = SharedSecrets.get(JavaUtilJarAccess.class);
         // "META-INF/".length()
         private static final int META_INF_LEN = 9;
         private static final int[] EMPTY_META_VERSIONS = new int[0];

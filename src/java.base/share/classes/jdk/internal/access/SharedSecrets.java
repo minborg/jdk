@@ -27,26 +27,16 @@ package jdk.internal.access;
 
 import jdk.internal.lang.StableValues;
 
-import javax.crypto.SealedObject;
-import javax.crypto.spec.SecretKeySpec;
-import java.io.ObjectInputFilter;
 import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Constructor;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.security.Security;
-import java.security.spec.EncodedKeySpec;
 import java.util.AbstractMap;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
-import java.util.jar.JarFile;
-import java.security.ProtectionDomain;
-import java.security.Signature;
-import javax.security.auth.x500.X500Principal;
 
 /** A repository of "shared secrets", which are a mechanism for
     calling implementation-private methods in another package without
@@ -66,9 +56,12 @@ public final class SharedSecrets {
     // Concrete classes rather than anonymous classes
     // SharedSecrets becomes simpler and scalable
     // Lookups can be constant-folded so cached references can be removed (but consider warmup)
-    // Most classes do _not_ hold a private field with Access component(s)
+    // Most component types are not always cached in a private field with an Access component(s)
     // More granular control of class loading. (some classes can load later)
     // Less code in SharedSecrets
+    // Some implementations used to be lambdas. Now they are concrete classes
+    // No static initializers needed in classes holding an Access implementation
+    // ServiceLoader-like pluggability of Access components
 
     // Cons:
     // Streams cannot be used as they require Access components
@@ -76,18 +69,19 @@ public final class SharedSecrets {
     // Hard to support imperative setting of a component via tests etc.
 
     // Notes:
+    // Due to type-safety, sealed classes and internal checks, SharedSecret::get is guaranteed to always return an Access component
     // Make it possible to run Class:getPermittedSubclasses
     // Maybe consolidate access under ::get even though listeners might call back and report.
 
     /**
-     * Marker interface for all access types.
+     * Marker interface for all Access types.
      */
-    public sealed interface Access permits JavaAWTFontAccess, JavaBeansAccess, JavaIOAccess, JavaIOFileDescriptorAccess, JavaIOFilePermissionAccess, JavaIOPrintStreamAccess, JavaIOPrintWriterAccess, JavaIORandomAccessFileAccess, JavaObjectInputStreamAccess, JavaObjectInputStreamReadString, JavaUtilCollectionAccess {}
+    public sealed interface Access permits JavaAWTFontAccess, JavaBeansAccess, JavaIOAccess, JavaIOFileDescriptorAccess, JavaIOFilePermissionAccess, JavaIOPrintStreamAccess, JavaIOPrintWriterAccess, JavaIORandomAccessFileAccess, JavaNetHttpCookieAccess, JavaNetInetAddressAccess, JavaNetURLAccess, JavaNetUriAccess, JavaNioAccess, JavaObjectInputFilterAccess, JavaObjectInputStreamAccess, JavaObjectInputStreamReadString, JavaSecurityAccess, JavaSecurityPropertiesAccess, JavaSecuritySignatureAccess, JavaSecuritySpecAccess, JavaUtilCollectionAccess, JavaUtilConcurrentFJPAccess, JavaUtilConcurrentTLRAccess, JavaUtilJarAccess, JavaUtilResourceBundleAccess, JavaUtilZipFileAccess, JavaxCryptoSealedObjectAccess, JavaxCryptoSpecAccess, JavaxSecurityAccess {}
 
-    @SuppressWarnings("unchecked")
     public static <T extends Access> T get(Class<T> type) {
         try {
-            return (T) REPOSITORY.apply(type);
+            return type.cast(
+                    REPOSITORY.apply(type));
         } catch (Throwable t) {
             if (System.err != null) {
                 // Todo: Remove this debug "feature"
@@ -98,18 +92,37 @@ public final class SharedSecrets {
         }
     }
 
+    // Mappings from an Access component to its associated implementation
     private static final Map<Class<? extends Access>, String> LOOKUPS = Map.ofEntries(
             entry(JavaAWTFontAccess.class, "java.awt.font.JavaAWTFontAccessImpl"),
             entry(JavaBeansAccess.class, "java.beans.Introspector$JavaBeansAccessImpl"),
+            entry(JavaNetInetAddressAccess.class, "java.net.InetAddress$JavaNetInetAddressAccessImpl"),
+            entry(JavaNetHttpCookieAccess.class, "java.net.HttpCookie$JavaNetHttpCookieAccessImpl"),
+            entry(JavaNetUriAccess.class, "java.net.URI$JavaNetUriAccessImpl"),
+            entry(JavaNetURLAccess.class, "java.net.URL$JavaNetURLAccessImpl"),
             entry(JavaIOAccess.class, "java.io.Console$JavaIOAccessImpl"),
             entry(JavaIOFileDescriptorAccess.class, "java.io.FileDescriptor$JavaIOFileDescriptorAccessImpl"),
             entry(JavaIOFilePermissionAccess.class, "java.io.FilePermission$JavaIOFilePermissionAccessImpl"),
             entry(JavaIOPrintStreamAccess.class, "java.io.PrintStream$JavaIOPrintStreamAccessImpl"),
             entry(JavaIOPrintWriterAccess.class, "java.io.PrintWriter$JavaIOPrintWriterAccessImpl"),
             entry(JavaIORandomAccessFileAccess.class, "java.io.RandomAccessFile$JavaIORandomAccessFileAccessImpl"),
+            entry(JavaNioAccess.class, "java.nio.Buffer$JavaNioAccessImpl"),
+            entry(JavaObjectInputFilterAccess.class, "java.io.ObjectInputFilter$JavaObjectInputFilterAccessImpl"),
             entry(JavaObjectInputStreamReadString.class, "java.io.ObjectInputStream$JavaObjectInputStreamReadStringImpl"),
             entry(JavaObjectInputStreamAccess.class, "java.io.ObjectInputStream$JavaObjectInputStreamAccessImpl"),
-            entry(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$JavaUtilCollectionAccessImpl")
+            entry(JavaSecurityAccess.class , "java.security.ProtectionDomain$JavaSecurityAccessImpl"),
+            entry(JavaSecurityPropertiesAccess.class, "java.security.Security$JavaSecurityPropertiesAccessImpl"),
+            entry(JavaSecuritySignatureAccess.class, "java.security.Signature$JavaSecuritySignatureAccessImpl"),
+            entry(JavaSecuritySpecAccess.class, "java.security.spec.EncodedKeySpec$JavaSecuritySpecAccessImpl"),
+            entry(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$JavaUtilCollectionAccessImpl"),
+            entry(JavaUtilConcurrentFJPAccess.class, "java.util.concurrent.ForkJoinPool$JavaUtilConcurrentFJPAccessImpl"),
+            entry(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$JavaUtilConcurrentTLRAccessImpl"),
+            entry(JavaUtilJarAccess.class, "java.util.jar.JavaUtilJarAccessImpl"), // Outer class
+            entry(JavaUtilResourceBundleAccess.class, "java.util.ResourceBundle$JavaUtilResourceBundleAccessImpl"),
+            entry(JavaUtilZipFileAccess.class, "java.util.zip.ZipFile$JavaUtilZipFileAccessImpl"),
+            entry(JavaxCryptoSealedObjectAccess.class, "javax.crypto.SealedObject$JavaxCryptoSealedObjectAccessImpl"),
+            entry(JavaxCryptoSpecAccess.class, "javax.crypto.spec.SecretKeySpec$JavaxCryptoSpecAccessImpl"),
+            entry(JavaxSecurityAccess.class, "javax.security.auth.x500.X500Principal$JavaxSecurityAccessImpl")
     );
 
     @SuppressWarnings("unchecked")
@@ -117,12 +130,15 @@ public final class SharedSecrets {
             (Set<Class<? extends Access>>) (Set<?>) Set.of(Access.class.getPermittedSubclasses());
 
     static {
-        assert LOOKUPS.keySet().equals(ACCESS_CLASSES) :
-                "Mapping mismatch: " + LOOKUPS.keySet() + " vs " + ACCESS_CLASSES;
+        if (!LOOKUPS.keySet().equals(ACCESS_CLASSES)) {
+            Set<Object> diff = new HashSet<>(ACCESS_CLASSES);
+            diff.removeAll(LOOKUPS.keySet());
+            throw new AssertionError("Missing mappings for " + diff);
+        }
     }
 
-    private static final Function<Class<? extends Access>, Access> REPOSITORY = StableValues.memoizedFunction(
-            ACCESS_CLASSES,
+    private static final Function<Class<? extends Access>, Access> REPOSITORY =
+            StableValues.memoizedFunction(ACCESS_CLASSES,
             new Function<Class<? extends Access>, Access>() {
                 @Override
                 public Access apply(Class<? extends Access> type) {
@@ -140,6 +156,7 @@ public final class SharedSecrets {
                         @SuppressWarnings("removal")
                         var _ = AccessController.doPrivileged(action);
 
+                        // Make sure we use an instance of the correct type
                         return type.cast(constructor.newInstance());
                     } catch (Exception e) {
                         throw new RuntimeException(e);
@@ -158,69 +175,6 @@ public final class SharedSecrets {
     private static JavaLangModuleAccess javaLangModuleAccess;
     private static JavaLangRefAccess javaLangRefAccess;
     private static JavaLangReflectAccess javaLangReflectAccess;
-
-
-    private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
-    private static JavaNetInetAddressAccess javaNetInetAddressAccess;
-    private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
-    private static JavaNetUriAccess javaNetUriAccess;
-    private static JavaNetURLAccess javaNetURLAccess;
-    private static JavaNioAccess javaNioAccess;
-    private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
-    private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
-    private static JavaUtilJarAccess javaUtilJarAccess;
-    private static JavaUtilZipFileAccess javaUtilZipFileAccess;
-    private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
-    private static JavaSecurityAccess javaSecurityAccess;
-    private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
-    private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
-    private static JavaSecuritySpecAccess javaSecuritySpecAccess;
-    private static JavaxCryptoSealedObjectAccess javaxCryptoSealedObjectAccess;
-    private static JavaxCryptoSpecAccess javaxCryptoSpecAccess;
-    private static JavaxSecurityAccess javaxSecurityAccess;
-
-    public static void setJavaUtilConcurrentTLRAccess(JavaUtilConcurrentTLRAccess access) {
-        javaUtilConcurrentTLRAccess = access;
-    }
-
-    public static JavaUtilConcurrentTLRAccess getJavaUtilConcurrentTLRAccess() {
-        var access = javaUtilConcurrentTLRAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.util.concurrent.ThreadLocalRandom$Access", true, null);
-                access = javaUtilConcurrentTLRAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-    public static void setJavaUtilConcurrentFJPAccess(JavaUtilConcurrentFJPAccess access) {
-        javaUtilConcurrentFJPAccess = access;
-    }
-
-    public static JavaUtilConcurrentFJPAccess getJavaUtilConcurrentFJPAccess() {
-        var access = javaUtilConcurrentFJPAccess;
-        if (access == null) {
-            ensureClassInitialized(ForkJoinPool.class);
-            access = javaUtilConcurrentFJPAccess;
-        }
-        return access;
-    }
-
-    public static JavaUtilJarAccess javaUtilJarAccess() {
-        var access = javaUtilJarAccess;
-        if (access == null) {
-            // Ensure JarFile is initialized; we know that this class
-            // provides the shared secret
-            ensureClassInitialized(JarFile.class);
-            access = javaUtilJarAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
-        javaUtilJarAccess = access;
-    }
 
     public static void setJavaLangAccess(JavaLangAccess jla) {
         javaLangAccess = jla;
@@ -274,112 +228,6 @@ public final class SharedSecrets {
         return javaLangReflectAccess;
     }
 
-    public static void setJavaNetUriAccess(JavaNetUriAccess jnua) {
-        javaNetUriAccess = jnua;
-    }
-
-    public static JavaNetUriAccess getJavaNetUriAccess() {
-        var access = javaNetUriAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.URI.class);
-            access = javaNetUriAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetURLAccess(JavaNetURLAccess jnua) {
-        javaNetURLAccess = jnua;
-    }
-
-    public static JavaNetURLAccess getJavaNetURLAccess() {
-        var access = javaNetURLAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.URL.class);
-            access = javaNetURLAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetInetAddressAccess(JavaNetInetAddressAccess jna) {
-        javaNetInetAddressAccess = jna;
-    }
-
-    public static JavaNetInetAddressAccess getJavaNetInetAddressAccess() {
-        var access = javaNetInetAddressAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.InetAddress.class);
-            access = javaNetInetAddressAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetHttpCookieAccess(JavaNetHttpCookieAccess a) {
-        javaNetHttpCookieAccess = a;
-    }
-
-    public static JavaNetHttpCookieAccess getJavaNetHttpCookieAccess() {
-        var access = javaNetHttpCookieAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.HttpCookie.class);
-            access = javaNetHttpCookieAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNioAccess(JavaNioAccess jna) {
-        javaNioAccess = jna;
-    }
-
-    public static JavaNioAccess getJavaNioAccess() {
-        var access = javaNioAccess;
-        if (access == null) {
-            // Ensure java.nio.Buffer is initialized, which provides the
-            // shared secret.
-            ensureClassInitialized(java.nio.Buffer.class);
-            access = javaNioAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaSecurityAccess(JavaSecurityAccess jsa) {
-        javaSecurityAccess = jsa;
-    }
-
-    public static JavaSecurityAccess getJavaSecurityAccess() {
-        var access = javaSecurityAccess;
-        if (access == null) {
-            ensureClassInitialized(ProtectionDomain.class);
-            access = javaSecurityAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaSecurityPropertiesAccess(JavaSecurityPropertiesAccess jspa) {
-        javaSecurityPropertiesAccess = jspa;
-    }
-
-    public static JavaSecurityPropertiesAccess getJavaSecurityPropertiesAccess() {
-        var access = javaSecurityPropertiesAccess;
-        if (access == null) {
-            ensureClassInitialized(Security.class);
-            access = javaSecurityPropertiesAccess;
-        }
-        return access;
-    }
-
-    public static JavaUtilZipFileAccess getJavaUtilZipFileAccess() {
-        var access = javaUtilZipFileAccess;
-        if (access == null) {
-            ensureClassInitialized(java.util.zip.ZipFile.class);
-            access = javaUtilZipFileAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaUtilZipFileAccess(JavaUtilZipFileAccess access) {
-        javaUtilZipFileAccess = access;
-    }
-
     public static void setJavaAWTAccess(JavaAWTAccess jaa) {
         javaAWTAccess = jaa;
     }
@@ -388,97 +236,6 @@ public final class SharedSecrets {
         // this may return null in which case calling code needs to
         // provision for.
         return javaAWTAccess;
-    }
-
-    public static JavaUtilResourceBundleAccess getJavaUtilResourceBundleAccess() {
-        var access = javaUtilResourceBundleAccess;
-        if (access == null) {
-            ensureClassInitialized(ResourceBundle.class);
-            access = javaUtilResourceBundleAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
-        javaUtilResourceBundleAccess = access;
-    }
-
-    public static JavaObjectInputFilterAccess getJavaObjectInputFilterAccess() {
-        var access = javaObjectInputFilterAccess;
-        if (access == null) {
-            ensureClassInitialized(ObjectInputFilter.Config.class);
-            access = javaObjectInputFilterAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaObjectInputFilterAccess(JavaObjectInputFilterAccess access) {
-        javaObjectInputFilterAccess = access;
-    }
-
-    public static void setJavaSecuritySignatureAccess(JavaSecuritySignatureAccess jssa) {
-        javaSecuritySignatureAccess = jssa;
-    }
-
-    public static JavaSecuritySignatureAccess getJavaSecuritySignatureAccess() {
-        var access = javaSecuritySignatureAccess;
-        if (access == null) {
-            ensureClassInitialized(Signature.class);
-            access = javaSecuritySignatureAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaSecuritySpecAccess(JavaSecuritySpecAccess jssa) {
-        javaSecuritySpecAccess = jssa;
-    }
-
-    public static JavaSecuritySpecAccess getJavaSecuritySpecAccess() {
-        var access = javaSecuritySpecAccess;
-        if (access == null) {
-            ensureClassInitialized(EncodedKeySpec.class);
-            access = javaSecuritySpecAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaxCryptoSpecAccess(JavaxCryptoSpecAccess jcsa) {
-        javaxCryptoSpecAccess = jcsa;
-    }
-
-    public static JavaxCryptoSpecAccess getJavaxCryptoSpecAccess() {
-        var access = javaxCryptoSpecAccess;
-        if (access == null) {
-            ensureClassInitialized(SecretKeySpec.class);
-            access = javaxCryptoSpecAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaxCryptoSealedObjectAccess(JavaxCryptoSealedObjectAccess jcsoa) {
-        javaxCryptoSealedObjectAccess = jcsoa;
-    }
-
-    public static JavaxCryptoSealedObjectAccess getJavaxCryptoSealedObjectAccess() {
-        var access = javaxCryptoSealedObjectAccess;
-        if (access == null) {
-            ensureClassInitialized(SealedObject.class);
-            access = javaxCryptoSealedObjectAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaxSecurityAccess(JavaxSecurityAccess jsa) {
-        javaxSecurityAccess = jsa;
-    }
-
-    public static JavaxSecurityAccess getJavaxSecurityAccess() {
-        var access = javaxSecurityAccess;
-        if (access == null) {
-            ensureClassInitialized(X500Principal.class);
-            access = javaxSecurityAccess;
-        }
-        return access;
     }
 
     private static void ensureClassInitialized(Class<?> c) {

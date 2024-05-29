@@ -25,6 +25,7 @@
 
 package com.sun.crypto.provider;
 
+import jdk.internal.access.JavaxCryptoSealedObjectAccess;
 import jdk.internal.access.SharedSecrets;
 
 import java.io.*;
@@ -78,7 +79,7 @@ final class SealedObjectForKeyProtector extends SealedObject {
             throws IOException, ClassNotFoundException, IllegalBlockSizeException,
             BadPaddingException {
 
-        try (ObjectInputStream ois = SharedSecrets.getJavaxCryptoSealedObjectAccess()
+        try (ObjectInputStream ois = SharedSecrets.get(JavaxCryptoSealedObjectAccess.class)
                 .getExtObjectInputStream(this, c)) {
             AccessController.doPrivileged(
                     (PrivilegedAction<Void>) () -> {

@@ -1024,7 +1024,7 @@ public final class ObjectStreamClass implements Serializable {
                 if (domains == null || domains.length == 0) {
                     return cons.newInstance();
                 } else {
-                    JavaSecurityAccess jsa = SharedSecrets.getJavaSecurityAccess();
+                    JavaSecurityAccess jsa = SharedSecrets.get(JavaSecurityAccess.class);
                     PrivilegedAction<?> pea = () -> {
                         try {
                             return cons.newInstance();

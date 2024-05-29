@@ -803,123 +803,119 @@ public abstract sealed class Buffer
         }
     }
 
-    static {
-        // setup access to this package in SharedSecrets
-        SharedSecrets.setJavaNioAccess(
-            new JavaNioAccess() {
+    static final class JavaNioAccessImpl implements JavaNioAccess {
+        @Override
+        public BufferPool getDirectBufferPool() {
+            return Bits.BUFFER_POOL;
+        }
 
-                @Override
-                public BufferPool getDirectBufferPool() {
-                    return Bits.BUFFER_POOL;
-                }
+        @Override
+        public ByteBuffer newDirectByteBuffer(long addr, int cap, Object obj, MemorySegment segment) {
+            return new DirectByteBuffer(addr, cap, obj, segment);
+        }
 
-                @Override
-                public ByteBuffer newDirectByteBuffer(long addr, int cap, Object obj, MemorySegment segment) {
-                    return new DirectByteBuffer(addr, cap, obj, segment);
-                }
+        @Override
+        public ByteBuffer newMappedByteBuffer(UnmapperProxy unmapperProxy, long address, int cap, Object obj, MemorySegment segment) {
+            return unmapperProxy == null
+                    ? new DirectByteBuffer(address, cap, obj, segment)
+                    : new DirectByteBuffer(address, cap, obj, unmapperProxy.fileDescriptor(), unmapperProxy.isSync(), segment);
+        }
 
-                @Override
-                public ByteBuffer newMappedByteBuffer(UnmapperProxy unmapperProxy, long address, int cap, Object obj, MemorySegment segment) {
-                    return unmapperProxy == null
-                            ? new DirectByteBuffer(address, cap, obj, segment)
-                            : new DirectByteBuffer(address, cap, obj, unmapperProxy.fileDescriptor(), unmapperProxy.isSync(), segment);
-                }
+        @Override
+        public ByteBuffer newHeapByteBuffer(byte[] hb, int offset, int capacity, MemorySegment segment) {
+            return new HeapByteBuffer(hb, -1, 0, capacity, capacity, offset, segment);
+        }
 
-                @Override
-                public ByteBuffer newHeapByteBuffer(byte[] hb, int offset, int capacity, MemorySegment segment) {
-                    return new HeapByteBuffer(hb, -1, 0, capacity, capacity, offset, segment);
-                }
+        @Override
+        public Object getBufferBase(Buffer buffer) {
+            return buffer.base();
+        }
 
-                @Override
-                public Object getBufferBase(Buffer buffer) {
-                    return buffer.base();
-                }
+        @Override
+        public long getBufferAddress(Buffer buffer) {
+            return buffer.address;
+        }
 
-                @Override
-                public long getBufferAddress(Buffer buffer) {
-                    return buffer.address;
-                }
+        @Override
+        public UnmapperProxy unmapper(Buffer buffer) {
+            if (buffer instanceof MappedByteBuffer mbb) {
+                return mbb.unmapper();
+            } else {
+                return null;
+            }
+        }
 
-                @Override
-                public UnmapperProxy unmapper(Buffer buffer) {
-                    if (buffer instanceof MappedByteBuffer mbb) {
-                        return mbb.unmapper();
-                    } else {
-                        return null;
-                    }
-                }
+        @Override
+        public MemorySegment bufferSegment(Buffer buffer) {
+            return buffer.segment;
+        }
 
-                @Override
-                public MemorySegment bufferSegment(Buffer buffer) {
-                    return buffer.segment;
-                }
+        @Override
+        public void acquireSession(Buffer buffer) {
+            var scope = buffer.session();
+            if (scope != null) {
+                scope.acquire0();
+            }
+        }
 
-                @Override
-                public void acquireSession(Buffer buffer) {
-                    var scope = buffer.session();
-                    if (scope != null) {
-                        scope.acquire0();
-                    }
+        @Override
+        public void releaseSession(Buffer buffer) {
+            try {
+                var scope = buffer.session();
+                if (scope != null) {
+                    scope.release0();
                 }
+            } finally {
+                Reference.reachabilityFence(buffer);
+            }
+        }
 
-                @Override
-                public void releaseSession(Buffer buffer) {
-                    try {
-                        var scope = buffer.session();
-                        if (scope != null) {
-                            scope.release0();
-                        }
-                    } finally {
-                        Reference.reachabilityFence(buffer);
-                    }
-                }
+        @Override
+        public boolean isThreadConfined(Buffer buffer) {
+            var scope = buffer.session();
+            return scope != null && scope.ownerThread() != null;
+        }
 
-                @Override
-                public boolean isThreadConfined(Buffer buffer) {
-                    var scope = buffer.session();
-                    return scope != null && scope.ownerThread() != null;
-                }
+        @Override
+        public boolean hasSession(Buffer buffer) {
+            return buffer.session() != null;
+        }
 
-                @Override
-                public boolean hasSession(Buffer buffer) {
-                    return buffer.session() != null;
-                }
+        @Override
+        public void force(FileDescriptor fd, long address, boolean isSync, long offset, long size) {
+            MappedMemoryUtils.force(fd, address, isSync, offset, size);
+        }
 
-                @Override
-                public void force(FileDescriptor fd, long address, boolean isSync, long offset, long size) {
-                    MappedMemoryUtils.force(fd, address, isSync, offset, size);
-                }
+        @Override
+        public void load(long address, boolean isSync, long size) {
+            MappedMemoryUtils.load(address, isSync, size);
+        }
 
-                @Override
-                public void load(long address, boolean isSync, long size) {
-                    MappedMemoryUtils.load(address, isSync, size);
-                }
+        @Override
+        public void unload(long address, boolean isSync, long size) {
+            MappedMemoryUtils.unload(address, isSync, size);
+        }
 
-                @Override
-                public void unload(long address, boolean isSync, long size) {
-                    MappedMemoryUtils.unload(address, isSync, size);
-                }
+        @Override
+        public boolean isLoaded(long address, boolean isSync, long size) {
+            return MappedMemoryUtils.isLoaded(address, isSync, size);
+        }
 
-                @Override
-                public boolean isLoaded(long address, boolean isSync, long size) {
-                    return MappedMemoryUtils.isLoaded(address, isSync, size);
-                }
+        @Override
+        public void reserveMemory(long size, long cap) {
+            Bits.reserveMemory(size, cap);
+        }
 
-                @Override
-                public void reserveMemory(long size, long cap) {
-                    Bits.reserveMemory(size, cap);
-                }
+        @Override
+        public void unreserveMemory(long size, long cap) {
+            Bits.unreserveMemory(size, cap);
+        }
 
-                @Override
-                public void unreserveMemory(long size, long cap) {
-                    Bits.unreserveMemory(size, cap);
-                }
-
-                @Override
-                public int pageSize() {
-                    return Bits.pageSize();
-                }
-            });
+        @Override
+        public int pageSize() {
+            return Bits.pageSize();
+        }
     }
+
 
 }

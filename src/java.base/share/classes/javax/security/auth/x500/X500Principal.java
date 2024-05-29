@@ -88,19 +88,15 @@ public final class X500Principal implements Principal, java.io.Serializable {
      */
     private transient X500Name thisX500Name;
 
-    static {
-        // Set up JavaxSecurityAccess in SharedSecrets
-        SharedSecrets.setJavaxSecurityAccess(
-            new JavaxSecurityAccess() {
-                @Override
-                public X500Name asX500Name(X500Principal principal) {
-                    return principal.thisX500Name;
-                }
-                @Override
-                public X500Principal asX500Principal(X500Name name) {
-                    return new X500Principal(name);
-                }
-        });
+    static final class JavaxSecurityAccessImpl implements JavaxSecurityAccess {
+        @Override
+        public X500Name asX500Name(X500Principal principal) {
+            return principal.thisX500Name;
+        }
+        @Override
+        public X500Principal asX500Principal(X500Name name) {
+            return new X500Principal(name);
+        }
     }
 
     /**

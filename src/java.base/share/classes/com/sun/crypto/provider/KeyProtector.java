@@ -46,6 +46,7 @@ import javax.crypto.SealedObject;
 import javax.crypto.spec.*;
 import javax.security.auth.DestroyFailedException;
 
+import jdk.internal.access.JavaSecuritySpecAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.x509.AlgorithmId;
 import sun.security.util.ObjectIdentifier;
@@ -215,7 +216,7 @@ final class KeyProtector {
                 return kFac.generatePrivate(spec);
             } finally {
                 privateKeyInfo.clear();
-                SharedSecrets.getJavaSecuritySpecAccess().clearEncodedKeySpec(spec);
+                SharedSecrets.get(JavaSecuritySpecAccess.class).clearEncodedKeySpec(spec);
             }
         } catch (NoSuchAlgorithmException ex) {
             // Note: this catch needed to be here because of the

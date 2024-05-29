@@ -189,7 +189,7 @@ public class RepaintManager
     private final ProcessingRunnable processingRunnable;
 
     private static final JavaSecurityAccess javaSecurityAccess =
-            SharedSecrets.getJavaSecurityAccess();
+            SharedSecrets.get(JavaSecurityAccess.class);
 
     /**
      * Listener installed to detect display changes. When display changes,

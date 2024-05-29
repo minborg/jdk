@@ -43,7 +43,7 @@ import java.util.stream.LongStream;
 
 public final class EventHelper {
 
-    private static final JavaUtilJarAccess JUJA = SharedSecrets.javaUtilJarAccess();
+    private static final JavaUtilJarAccess JUJA = SharedSecrets.get(JavaUtilJarAccess.class);
     private static volatile boolean loggingSecurity;
     private static volatile System.Logger securityLogger;
     private static final VarHandle LOGGER_HANDLE;

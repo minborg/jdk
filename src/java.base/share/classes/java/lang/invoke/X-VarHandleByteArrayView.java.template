@@ -46,7 +46,7 @@ import static java.lang.invoke.MethodHandleStatics.UNSAFE;
 
 final class VarHandleByteArrayAs$Type$s extends VarHandleByteArrayBase {
 
-    static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     static final int ALIGN = $BoxType$.BYTES - 1;
 

@@ -73,7 +73,7 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
-    static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     final long length;
     final boolean readOnly;

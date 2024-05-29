@@ -140,7 +140,7 @@ public class RequiredModelMBean
     private boolean registered = false;
     private transient MBeanServer server = null;
 
-    private static final JavaSecurityAccess javaSecurityAccess = SharedSecrets.getJavaSecurityAccess();
+    private static final JavaSecurityAccess javaSecurityAccess = SharedSecrets.get(JavaSecurityAccess.class);
     @SuppressWarnings("removal")
     private final AccessControlContext acc = AccessController.getContext();
 

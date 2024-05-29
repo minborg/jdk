@@ -64,7 +64,7 @@ import java.util.zip.ZipOutputStream;
 
 public class IgnoreUnrelatedSignatureFiles {
 
-    private static final JavaUtilZipFileAccess JUZA = SharedSecrets.getJavaUtilZipFileAccess();
+    private static final JavaUtilZipFileAccess JUZA = SharedSecrets.get(JavaUtilZipFileAccess.class);
 
     // This path resides in a subdirectory of META-INF, so it should not be considered signature related
     public static final String SUBDIR_SF_PATH = "META-INF/subdirectory/META-INF/SIGNER.SF";

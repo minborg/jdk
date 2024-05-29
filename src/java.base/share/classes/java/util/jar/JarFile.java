@@ -163,10 +163,8 @@ public class JarFile extends ZipFile {
     private static final JavaUtilZipFileAccess JUZFA;
 
     static {
-        // Set up JavaUtilJarAccess in SharedSecrets
-        SharedSecrets.setJavaUtilJarAccess(new JavaUtilJarAccessImpl());
         // Get JavaUtilZipFileAccess from SharedSecrets
-        JUZFA = SharedSecrets.getJavaUtilZipFileAccess();
+        JUZFA = SharedSecrets.get(JavaUtilZipFileAccess.class);
         // multi-release jar file versions >= 9
         BASE_VERSION = Runtime.Version.parse(Integer.toString(8));
         BASE_VERSION_FEATURE = BASE_VERSION.feature();

@@ -84,13 +84,13 @@ public final class Security {
             initialize();
             return null;
         });
-        // Set up JavaSecurityPropertiesAccess in SharedSecrets
-        SharedSecrets.setJavaSecurityPropertiesAccess(new JavaSecurityPropertiesAccess() {
-            @Override
-            public Properties getInitialProperties() {
-                return initialSecurityProperties;
-            }
-        });
+    }
+
+    static final class JavaSecurityPropertiesAccessImpl implements JavaSecurityPropertiesAccess {
+        @Override
+        public Properties getInitialProperties() {
+            return initialSecurityProperties;
+        }
     }
 
     private static void initialize() {

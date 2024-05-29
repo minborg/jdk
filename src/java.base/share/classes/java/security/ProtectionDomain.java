@@ -69,7 +69,7 @@ public class ProtectionDomain {
             "true".equals(GetPropertyAction.privilegedGetProperty(
                 "jdk.security.filePermCompat"));
 
-    private static class JavaSecurityAccessImpl implements JavaSecurityAccess {
+    private static final class JavaSecurityAccessImpl implements JavaSecurityAccess {
 
         private JavaSecurityAccessImpl() {
         }
@@ -127,11 +127,6 @@ public class ProtectionDomain {
                 }
             };
         }
-    }
-
-    static {
-        // Set up JavaSecurityAccess in SharedSecrets
-        SharedSecrets.setJavaSecurityAccess(new JavaSecurityAccessImpl());
     }
 
     /* CodeSource */

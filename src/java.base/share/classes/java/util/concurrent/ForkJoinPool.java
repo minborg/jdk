@@ -4055,17 +4055,17 @@ public class ForkJoinPool extends AbstractExecutorService {
             AccessController.doPrivileged(new PrivilegedAction<>() {
                     public ForkJoinPool run() {
                         return new ForkJoinPool((byte)0); }});
-        // allow access to non-public methods
-        SharedSecrets.setJavaUtilConcurrentFJPAccess(
-            new JavaUtilConcurrentFJPAccess() {
-                @Override
-                public long beginCompensatedBlock(ForkJoinPool pool) {
-                    return pool.beginCompensatedBlock();
-                }
-                public void endCompensatedBlock(ForkJoinPool pool, long post) {
-                    pool.endCompensatedBlock(post);
-                }
-            });
         Class<?> dep = LockSupport.class; // ensure loaded
     }
+
+    static final class JavaUtilConcurrentFJPAccessImpl implements JavaUtilConcurrentFJPAccess {
+        @Override
+        public long beginCompensatedBlock(ForkJoinPool pool) {
+            return pool.beginCompensatedBlock();
+        }
+        public void endCompensatedBlock(ForkJoinPool pool, long post) {
+            pool.endCompensatedBlock(post);
+        }
+    }
+
 }

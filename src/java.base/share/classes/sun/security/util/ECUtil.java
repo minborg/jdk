@@ -25,6 +25,7 @@
 
 package sun.security.util;
 
+import jdk.internal.access.JavaSecuritySpecAccess;
 import jdk.internal.access.SharedSecrets;
 
 import java.io.IOException;
@@ -128,7 +129,7 @@ public final class ECUtil {
         try {
             return (ECPrivateKey) keyFactory.generatePrivate(keySpec);
         } finally {
-            SharedSecrets.getJavaSecuritySpecAccess().clearEncodedKeySpec(keySpec);
+            SharedSecrets.get(JavaSecuritySpecAccess.class).clearEncodedKeySpec(keySpec);
         }
     }
 

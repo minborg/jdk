@@ -33,7 +33,7 @@ import java.io.FileDescriptor;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
-public interface JavaNioAccess {
+public non-sealed interface JavaNioAccess extends SharedSecrets.Access {
 
     /**
      * Used by {@code jdk.internal.misc.VM}.

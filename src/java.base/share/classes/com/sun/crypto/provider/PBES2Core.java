@@ -31,6 +31,7 @@ import java.util.Arrays;
 import javax.crypto.*;
 import javax.crypto.spec.*;
 
+import jdk.internal.access.JavaxCryptoSpecAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.util.PBEUtil;
 
@@ -173,7 +174,7 @@ abstract class PBES2Core extends CipherSpi {
             cipher.init(opmode, cipherKey, pbes2Params.getIvSpec(), random);
         } finally {
             if (cipherKey != null) {
-                SharedSecrets.getJavaxCryptoSpecAccess()
+                SharedSecrets.get(JavaxCryptoSpecAccess.class)
                         .clearSecretKeySpec(cipherKey);
             }
             Arrays.fill(derivedKey, (byte) 0);

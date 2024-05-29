@@ -31,8 +31,7 @@ import javax.crypto.SealedObject;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 
-public interface JavaxCryptoSealedObjectAccess {
-    ObjectInputStream getExtObjectInputStream(
-            SealedObject sealed, Cipher cipher)
+public non-sealed interface JavaxCryptoSealedObjectAccess extends SharedSecrets.Access {
+    ObjectInputStream getExtObjectInputStream(SealedObject sealed, Cipher cipher)
             throws BadPaddingException, IllegalBlockSizeException, IOException;
 }

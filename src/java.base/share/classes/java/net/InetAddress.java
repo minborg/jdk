@@ -374,22 +374,21 @@ public sealed class InetAddress implements Serializable permits Inet4Address, In
         HOSTS_FILE_NAME =
                 GetPropertyAction.privilegedGetProperty("jdk.net.hosts.file");
         jdk.internal.loader.BootLoader.loadLibrary("net");
-        SharedSecrets.setJavaNetInetAddressAccess(
-                new JavaNetInetAddressAccess() {
-                    public String getOriginalHostName(InetAddress ia) {
-                        return ia.holder.getOriginalHostName();
-                    }
-
-                    public int addressValue(Inet4Address inet4Address) {
-                        return inet4Address.addressValue();
-                    }
-
-                    public byte[] addressBytes(Inet6Address inet6Address) {
-                        return inet6Address.addressBytes();
-                    }
-                }
-        );
         init();
+    }
+
+    static final class JavaNetInetAddressAccessImpl implements JavaNetInetAddressAccess {
+        public String getOriginalHostName(InetAddress ia) {
+            return ia.holder.getOriginalHostName();
+        }
+
+        public int addressValue(Inet4Address inet4Address) {
+            return inet4Address.addressValue();
+        }
+
+        public byte[] addressBytes(Inet6Address inet6Address) {
+            return inet6Address.addressBytes();
+        }
     }
 
     /**

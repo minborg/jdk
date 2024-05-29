@@ -263,7 +263,7 @@ public class Logger {
     // can be too early if the VM has not finished booting yet.
     private static final class RbAccess {
         static final JavaUtilResourceBundleAccess RB_ACCESS =
-            SharedSecrets.getJavaUtilResourceBundleAccess();
+            SharedSecrets.get(JavaUtilResourceBundleAccess.class);
     }
 
     // A value class that holds the logger configuration data.

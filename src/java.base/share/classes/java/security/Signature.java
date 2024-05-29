@@ -121,32 +121,29 @@ import sun.security.util.KnownOIDs;
 
 public abstract class Signature extends SignatureSpi {
 
-    static {
-        SharedSecrets.setJavaSecuritySignatureAccess(
-            new JavaSecuritySignatureAccess() {
-                @Override
-                public void initVerify(Signature s, PublicKey publicKey,
-                        AlgorithmParameterSpec params)
-                        throws InvalidKeyException,
-                        InvalidAlgorithmParameterException {
-                    s.initVerify(publicKey, params);
-                }
-                @Override
-                public void initVerify(Signature s,
-                        java.security.cert.Certificate certificate,
-                        AlgorithmParameterSpec params)
-                        throws InvalidKeyException,
-                        InvalidAlgorithmParameterException {
-                    s.initVerify(certificate, params);
-                }
-                @Override
-                public void initSign(Signature s, PrivateKey privateKey,
-                        AlgorithmParameterSpec params, SecureRandom random)
-                        throws InvalidKeyException,
-                        InvalidAlgorithmParameterException {
-                    s.initSign(privateKey, params, random);
-                }
-        });
+    static final class JavaSecuritySignatureAccessImpl implements JavaSecuritySignatureAccess {
+        @Override
+        public void initVerify(Signature s, PublicKey publicKey,
+                               AlgorithmParameterSpec params)
+                throws InvalidKeyException,
+                InvalidAlgorithmParameterException {
+            s.initVerify(publicKey, params);
+        }
+        @Override
+        public void initVerify(Signature s,
+                               java.security.cert.Certificate certificate,
+                               AlgorithmParameterSpec params)
+                throws InvalidKeyException,
+                InvalidAlgorithmParameterException {
+            s.initVerify(certificate, params);
+        }
+        @Override
+        public void initSign(Signature s, PrivateKey privateKey,
+                             AlgorithmParameterSpec params, SecureRandom random)
+                throws InvalidKeyException,
+                InvalidAlgorithmParameterException {
+            s.initSign(privateKey, params, random);
+        }
     }
 
     private static final Debug debug =

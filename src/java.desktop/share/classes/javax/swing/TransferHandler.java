@@ -1702,7 +1702,7 @@ public class TransferHandler implements Serializable {
         }
 
         private static final JavaSecurityAccess javaSecurityAccess =
-            SharedSecrets.getJavaSecurityAccess();
+            SharedSecrets.get(JavaSecurityAccess.class);
 
         public void actionPerformed(final ActionEvent e) {
             final Object src = e.getSource();

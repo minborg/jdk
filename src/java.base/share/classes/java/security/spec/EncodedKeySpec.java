@@ -25,6 +25,7 @@
 
 package java.security.spec;
 
+import jdk.internal.access.JavaSecuritySpecAccess;
 import jdk.internal.access.SharedSecrets;
 
 import java.util.Arrays;
@@ -49,9 +50,11 @@ public abstract class EncodedKeySpec implements KeySpec {
     private final byte[] encodedKey;
     private String algorithmName;
 
-    static {
-        SharedSecrets.setJavaSecuritySpecAccess(
-                EncodedKeySpec::clear);
+    static final class JavaSecuritySpecAccessImpl implements JavaSecuritySpecAccess {
+        @Override
+        public void clearEncodedKeySpec(EncodedKeySpec keySpec) {
+            keySpec.clear();
+        }
     }
 
     /**

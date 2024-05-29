@@ -475,7 +475,7 @@ public final class IOUtil {
         }
     }
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     static void acquireScope(ByteBuffer bb, boolean async) {
         if (async && NIO_ACCESS.isThreadConfined(bb)) {

@@ -669,7 +669,7 @@ public class EventQueue {
     }
 
     private static final JavaSecurityAccess javaSecurityAccess =
-        SharedSecrets.getJavaSecurityAccess();
+        SharedSecrets.get(JavaSecurityAccess.class);
 
     /**
      * Dispatches an event. The manner in which the event is

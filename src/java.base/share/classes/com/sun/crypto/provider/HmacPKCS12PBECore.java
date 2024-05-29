@@ -31,6 +31,7 @@ import java.security.*;
 import java.security.spec.*;
 import java.util.Arrays;
 
+import jdk.internal.access.JavaxCryptoSpecAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.util.PBEUtil;
 
@@ -123,7 +124,7 @@ abstract class HmacPKCS12PBECore extends HmacCore {
             super.engineInit(cipherKey, null);
         } finally {
             if (cipherKey != null) {
-                SharedSecrets.getJavaxCryptoSpecAccess()
+                SharedSecrets.get(JavaxCryptoSpecAccess.class)
                         .clearSecretKeySpec(cipherKey);
             }
             if (derivedKey != null) {

@@ -1878,16 +1878,13 @@ public final class URL implements java.io.Serializable {
         this.hashCode = hc;
     }
 
-    static {
-        SharedSecrets.setJavaNetURLAccess(
-                new JavaNetURLAccess() {
-                    @Override
-                    public URLStreamHandler getHandler(URL u) {
-                        return u.handler;
-                    }
-                }
-        );
+    static final class JavaNetURLAccessImpl implements JavaNetURLAccess {
+        @Override
+        public URLStreamHandler getHandler(URL u) {
+            return u.handler;
+        }
     }
+
 }
 
 final class UrlDeserializedState {
