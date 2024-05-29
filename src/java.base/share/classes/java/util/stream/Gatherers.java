@@ -24,6 +24,7 @@
  */
 package java.util.stream;
 
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.vm.annotation.ForceInline;
@@ -107,7 +108,7 @@ public final class Gatherers {
                     window = new Object[windowSize];
                     at = 0;
                     return downstream.push(
-                        SharedSecrets.getJavaUtilCollectionAccess()
+                        SharedSecrets.get(JavaUtilCollectionAccess.class)
                                      .listFromTrustedArrayNullsAllowed(oldWindow)
                     );
                 }
@@ -120,7 +121,7 @@ public final class Gatherers {
                     window = null;
                     at = 0;
                     downstream.push(
-                        SharedSecrets.getJavaUtilCollectionAccess()
+                        SharedSecrets.get(JavaUtilCollectionAccess.class)
                                      .listFromTrustedArrayNullsAllowed(lastWindow)
                     );
                 }
@@ -201,7 +202,7 @@ public final class Gatherers {
                     at -= 1;
                     firstWindow = false;
                     return downstream.push(
-                        SharedSecrets.getJavaUtilCollectionAccess()
+                        SharedSecrets.get(JavaUtilCollectionAccess.class)
                                      .listFromTrustedArrayNullsAllowed(oldWindow)
                     );
                 }
@@ -214,7 +215,7 @@ public final class Gatherers {
                     window = null;
                     at = 0;
                     downstream.push(
-                        SharedSecrets.getJavaUtilCollectionAccess()
+                        SharedSecrets.get(JavaUtilCollectionAccess.class)
                                      .listFromTrustedArrayNullsAllowed(lastWindow)
                     );
                 }

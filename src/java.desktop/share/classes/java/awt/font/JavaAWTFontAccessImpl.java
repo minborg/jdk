@@ -27,7 +27,7 @@ package java.awt.font;
 
 import jdk.internal.access.JavaAWTFontAccess;
 
-class JavaAWTFontAccessImpl implements JavaAWTFontAccess {
+final class JavaAWTFontAccessImpl implements JavaAWTFontAccess {
 
     // java.awt.font.TextAttribute constants
     public Object getTextAttributeConstant(String name) {

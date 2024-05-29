@@ -143,13 +143,6 @@ import jdk.internal.access.SharedSecrets;
  */
 public final class NumericShaper implements java.io.Serializable {
 
-    // For access from java.text.Bidi
-    static {
-        if (SharedSecrets.getJavaAWTFontAccess() == null) {
-            SharedSecrets.setJavaAWTFontAccess(new JavaAWTFontAccessImpl());
-        }
-    }
-
     /**
      * A {@code NumericShaper.Range} represents a Unicode range of a
      * script having its own decimal digits. For example, the {@link

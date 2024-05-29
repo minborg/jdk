@@ -27,6 +27,6 @@ package jdk.internal.access;
 
 import java.io.Console;
 
-public interface JavaIOAccess {
+public non-sealed interface JavaIOAccess extends SharedSecrets.Access {
     Console console();
 }

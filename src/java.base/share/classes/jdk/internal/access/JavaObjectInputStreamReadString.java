@@ -32,7 +32,7 @@ import java.io.ObjectInputStream;
  * Interface to specify methods for accessing {@code ObjectInputStream}.
  */
 @FunctionalInterface
-public interface JavaObjectInputStreamReadString {
+public non-sealed interface JavaObjectInputStreamReadString extends SharedSecrets.Access {
     String readString(ObjectInputStream ois) throws IOException;
 }
 

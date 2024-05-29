@@ -41,6 +41,8 @@ import java.lang.classfile.constantpool.ModuleEntry;
 import java.lang.classfile.constantpool.NameAndTypeEntry;
 import java.lang.classfile.constantpool.PackageEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
+
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 
 import static java.lang.classfile.Attributes.*;
@@ -124,7 +126,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         for (int i = 0; p < end; i++, p += 2) {
             entries[i] = classReader.readEntry(p);
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(entries);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(entries);
     }
 
     public static List<Attribute<?>> readAttributes(AttributedElement enclosing, ClassReader reader, int pos,

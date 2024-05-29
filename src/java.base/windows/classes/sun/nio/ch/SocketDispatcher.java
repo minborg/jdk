@@ -38,7 +38,7 @@ import jdk.internal.access.SharedSecrets;
 
 class SocketDispatcher extends NativeDispatcher {
     private static final JavaIOFileDescriptorAccess fdAccess =
-            SharedSecrets.getJavaIOFileDescriptorAccess();
+            SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     SocketDispatcher() { }
 

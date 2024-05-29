@@ -1287,5 +1287,5 @@ public final class NioSocketImpl extends SocketImpl implements PlatformSocketImp
         return JIOFDA.get(fd);
     }
 
-    private static final JavaIOFileDescriptorAccess JIOFDA = SharedSecrets.getJavaIOFileDescriptorAccess();
+    private static final JavaIOFileDescriptorAccess JIOFDA = SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 }

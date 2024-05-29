@@ -37,6 +37,8 @@ import static java.lang.classfile.TypeAnnotation.TargetInfo.*;
 import java.util.List;
 import java.lang.classfile.Label;
 import java.lang.classfile.constantpool.Utf8Entry;
+
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 
 class AnnotationReader {
@@ -51,7 +53,7 @@ class AnnotationReader {
             annos[i] = readAnnotation(classReader, pos);
             pos = skipAnnotation(classReader, pos);
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(annos);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(annos);
     }
 
     public static AnnotationValue readElementValue(ClassReader classReader, int p) {
@@ -78,7 +80,7 @@ class AnnotationReader {
                     values[i] = readElementValue(classReader, p);
                     p = skipElementValue(classReader, p);
                 }
-                yield new AnnotationImpl.OfArrayImpl(SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(values));
+                yield new AnnotationImpl.OfArrayImpl(SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(values));
             }
             default -> throw new IllegalArgumentException(
                     "Unexpected tag '%s' in AnnotationValue, pos = %d".formatted(tag, p - 1));
@@ -93,7 +95,7 @@ class AnnotationReader {
             annotations[i] = readTypeAnnotation(classReader, p, lc);
             p = skipTypeAnnotation(classReader, p);
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(annotations);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(annotations);
     }
 
     public static List<List<Annotation>> readParameterAnnotations(ClassReader classReader, int p) {
@@ -103,7 +105,7 @@ class AnnotationReader {
             pas[i] = readAnnotations(classReader, p);
             p = skipAnnotations(classReader, p);
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(pas);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(pas);
     }
 
     private static int skipElementValue(ClassReader classReader, int p) {
@@ -156,7 +158,7 @@ class AnnotationReader {
             annotationElements[i] = new AnnotationImpl.AnnotationElementImpl(elementName, value);
             p = skipElementValue(classReader, p);
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(annotationElements);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(annotationElements);
     }
 
     private static int skipElementValuePairs(ClassReader classReader, int p) {
@@ -257,7 +259,7 @@ class AnnotationReader {
                     classReader.readU2(p + 4));
             p += 6;
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(entries);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(entries);
     }
 
     private static int skipTypeAnnotation(ClassReader classReader, int p) {

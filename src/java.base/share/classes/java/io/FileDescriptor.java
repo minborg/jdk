@@ -65,54 +65,50 @@ public final class FileDescriptor {
         initIDs();
     }
 
-    // Set up JavaIOFileDescriptorAccess in SharedSecrets
-    static {
-        SharedSecrets.setJavaIOFileDescriptorAccess(
-                new JavaIOFileDescriptorAccess() {
-                    public void set(FileDescriptor fdo, int fd) {
-                        fdo.set(fd);
-                    }
+    static final class JavaIOFileDescriptorAccessImpl implements JavaIOFileDescriptorAccess {
 
-                    public int get(FileDescriptor fdo) {
-                        return fdo.fd;
-                    }
+        public void set(FileDescriptor fdo, int fd) {
+            fdo.set(fd);
+        }
 
-                    public void setAppend(FileDescriptor fdo, boolean append) {
-                        fdo.append = append;
-                    }
+        public int get(FileDescriptor fdo) {
+            return fdo.fd;
+        }
 
-                    public boolean getAppend(FileDescriptor fdo) {
-                        return fdo.append;
-                    }
+        public void setAppend(FileDescriptor fdo, boolean append) {
+            fdo.append = append;
+        }
 
-                    public void close(FileDescriptor fdo) throws IOException {
-                        fdo.close();
-                    }
+        public boolean getAppend(FileDescriptor fdo) {
+            return fdo.append;
+        }
 
-                    /* Register for a normal FileCleanable fd/handle cleanup. */
-                    public void registerCleanup(FileDescriptor fdo) {
-                        FileCleanable.register(fdo);
-                    }
+        public void close(FileDescriptor fdo) throws IOException {
+            fdo.close();
+        }
 
-                    /* Register a custom PhantomCleanup. */
-                    public void registerCleanup(FileDescriptor fdo,
-                                                PhantomCleanable<FileDescriptor> cleanup) {
-                        fdo.registerCleanup(cleanup);
-                    }
+        /* Register for a normal FileCleanable fd/handle cleanup. */
+        public void registerCleanup(FileDescriptor fdo) {
+            FileCleanable.register(fdo);
+        }
 
-                    public void unregisterCleanup(FileDescriptor fdo) {
-                        fdo.unregisterCleanup();
-                    }
+        /* Register a custom PhantomCleanup. */
+        public void registerCleanup(FileDescriptor fdo,
+                                    PhantomCleanable<FileDescriptor> cleanup) {
+            fdo.registerCleanup(cleanup);
+        }
 
-                    public void setHandle(FileDescriptor fdo, long handle) {
-                        fdo.setHandle(handle);
-                    }
+        public void unregisterCleanup(FileDescriptor fdo) {
+            fdo.unregisterCleanup();
+        }
 
-                    public long getHandle(FileDescriptor fdo) {
-                        return fdo.handle;
-                    }
-                }
-        );
+        public void setHandle(FileDescriptor fdo, long handle) {
+            fdo.setHandle(handle);
+        }
+
+        public long getHandle(FileDescriptor fdo) {
+            return fdo.handle;
+        }
     }
 
     /**

@@ -31,6 +31,8 @@ import java.lang.reflect.Array;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -1327,7 +1329,7 @@ public class IdentityHashMap<K,V>
             throw new java.io.StreamCorruptedException
                 ("Illegal mappings count: " + size);
         int cap = capacity(size);
-        SharedSecrets.getJavaObjectInputStreamAccess().checkArray(s, Object[].class, cap*2);
+        SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(s, Object[].class, cap*2);
         this.size = size;
         init(cap);
 

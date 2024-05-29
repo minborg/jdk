@@ -1200,17 +1200,15 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
     private static native void initIDs();
 
+    static final class JavaIORandomAccessFileAccessImpl implements JavaIORandomAccessFileAccess {
+        // This is for j.u.z.ZipFile.OPEN_DELETE. The O_TEMPORARY flag
+        // is only implemented/supported on Windows.
+        public RandomAccessFile openAndDelete(File file, String mode) throws IOException {
+            return new RandomAccessFile(file, mode, true);
+        }
+    }
+
     static {
         initIDs();
-        SharedSecrets.setJavaIORandomAccessFileAccess(new JavaIORandomAccessFileAccess()
-        {
-            // This is for j.u.z.ZipFile.OPEN_DELETE. The O_TEMPORARY flag
-            // is only implemented/supported on Windows.
-            public RandomAccessFile openAndDelete(File file, String mode)
-                throws IOException
-            {
-                return new RandomAccessFile(file, mode, true);
-            }
-        });
     }
 }

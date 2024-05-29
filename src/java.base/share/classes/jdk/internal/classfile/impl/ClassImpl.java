@@ -54,6 +54,8 @@ import java.lang.classfile.attribute.RuntimeInvisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.SourceDebugExtensionAttribute;
 import java.lang.classfile.attribute.SourceFileAttribute;
+
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 
 public final class ClassImpl
@@ -142,7 +144,7 @@ public final class ClassImpl
                 arr[i] = reader.readClassEntry(pos);
                 pos += 2;
             }
-            this.interfaces = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
+            this.interfaces = SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(arr);
         }
         return interfaces;
     }

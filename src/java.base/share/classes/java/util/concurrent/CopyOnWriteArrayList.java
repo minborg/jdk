@@ -56,6 +56,8 @@ import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.ArraysSupport;
 
@@ -1021,7 +1023,7 @@ public class CopyOnWriteArrayList<E>
 
         // Read in array length and allocate array
         int len = s.readInt();
-        SharedSecrets.getJavaObjectInputStreamAccess().checkArray(s, Object[].class, len);
+        SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(s, Object[].class, len);
         Object[] es = new Object[len];
 
         // Read in all elements in the proper order.

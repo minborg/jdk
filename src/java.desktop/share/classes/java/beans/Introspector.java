@@ -141,29 +141,27 @@ public class Introspector {
     static final String SET_PREFIX = "set";
     static final String IS_PREFIX = "is";
 
-    // register with SharedSecrets for JMX usage
-    static {
-        SharedSecrets.setJavaBeansAccess(new JavaBeansAccess() {
-            @Override
-            public Method getReadMethod(Class<?> clazz, String property) throws Exception {
-                BeanInfo bi = Introspector.getBeanInfo(clazz);
-                PropertyDescriptor[] pds = bi.getPropertyDescriptors();
-                for (PropertyDescriptor pd: pds) {
-                    if (pd.getName().equals(property)) {
-                        return pd.getReadMethod();
-                    }
+    static final class JavaBeansAccessImpl implements JavaBeansAccess {
+        @Override
+        public Method getReadMethod(Class<?> clazz, String property) throws Exception {
+            BeanInfo bi = Introspector.getBeanInfo(clazz);
+            PropertyDescriptor[] pds = bi.getPropertyDescriptors();
+            for (PropertyDescriptor pd: pds) {
+                if (pd.getName().equals(property)) {
+                    return pd.getReadMethod();
                 }
-                return null;
             }
+            return null;
+        }
 
-            @Override
-            public String[] getConstructorPropertiesValue(Constructor<?> ctr) {
-                ConstructorProperties cp = ctr.getAnnotation(ConstructorProperties.class);
-                String [] ret = cp != null ? cp.value() : null;
-                return ret;
-            }
-        });
+        @Override
+        public String[] getConstructorPropertiesValue(Constructor<?> ctr) {
+            ConstructorProperties cp = ctr.getAnnotation(ConstructorProperties.class);
+            String [] ret = cp != null ? cp.value() : null;
+            return ret;
+        }
     }
+
 
     //======================================================================
     //                          Public methods

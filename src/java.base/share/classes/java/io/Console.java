@@ -30,7 +30,6 @@ import java.security.PrivilegedAction;
 import java.util.*;
 import java.nio.charset.Charset;
 import jdk.internal.access.JavaIOAccess;
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.io.JdkConsoleImpl;
 import jdk.internal.io.JdkConsoleProvider;
 import jdk.internal.javac.PreviewFeature;
@@ -637,13 +636,13 @@ public sealed class Console implements Flushable permits ProxyingConsole {
         CHARSET = cs;
 
         cons = instantiateConsole(istty);
+    }
 
-        // Set up JavaIOAccess in SharedSecrets
-        SharedSecrets.setJavaIOAccess(new JavaIOAccess() {
-            public Console console() {
-                return cons;
-            }
-        });
+    static final class JavaIOAccessImpl implements JavaIOAccess {
+        @Override
+        public Console console() {
+            return cons;
+        }
     }
 
     @SuppressWarnings("removal")

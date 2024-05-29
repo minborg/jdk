@@ -46,7 +46,7 @@ import jdk.internal.vm.Continuation;
  * code in that Class. This is used to avoid printing the same stack trace many times.
  */
 class PinnedThreadPrinter {
-    private static final JavaIOPrintStreamAccess JIOPSA = SharedSecrets.getJavaIOPrintStreamAccess();
+    private static final JavaIOPrintStreamAccess JIOPSA = SharedSecrets.get(JavaIOPrintStreamAccess.class);
     private static final StackWalker STACK_WALKER;
     static {
         var options = Set.of(SHOW_REFLECT_FRAMES, RETAIN_CLASS_REFERENCE);

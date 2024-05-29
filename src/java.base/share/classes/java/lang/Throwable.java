@@ -27,6 +27,9 @@ package java.lang;
 
 import java.io.*;
 import java.util.*;
+
+import jdk.internal.access.JavaIOPrintStreamAccess;
+import jdk.internal.access.JavaIOPrintWriterAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.event.ThrowableTracer;
 import jdk.internal.misc.InternalLock;
@@ -805,7 +808,7 @@ public class Throwable implements Serializable {
         }
 
         Object lock() {
-            return SharedSecrets.getJavaIOPrintStreamAccess().lock(printStream);
+            return SharedSecrets.get(JavaIOPrintStreamAccess.class).lock(printStream);
         }
 
         void println(Object o) {
@@ -821,7 +824,7 @@ public class Throwable implements Serializable {
         }
 
         Object lock() {
-            return SharedSecrets.getJavaIOPrintWriterAccess().lock(printWriter);
+            return SharedSecrets.get(JavaIOPrintWriterAccess.class).lock(printWriter);
         }
 
         void println(Object o) {

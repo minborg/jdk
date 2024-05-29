@@ -44,6 +44,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.JavaObjectInputStreamAccess;
+import jdk.internal.access.JavaObjectInputStreamReadString;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.event.DeserializationEvent;
 import jdk.internal.misc.Unsafe;
@@ -4196,9 +4198,18 @@ public class ObjectInputStream
         }
     }
 
-    static {
-        SharedSecrets.setJavaObjectInputStreamAccess(ObjectInputStream::checkArray);
-        SharedSecrets.setJavaObjectInputStreamReadString(ObjectInputStream::readString);
+    static final class JavaObjectInputStreamReadStringImpl implements JavaObjectInputStreamReadString {
+        @Override
+        public String readString(ObjectInputStream ois) throws IOException {
+            return ois.readString();
+        }
+    }
+
+    static final class JavaObjectInputStreamAccessImpl implements JavaObjectInputStreamAccess {
+        @Override
+        public void checkArray(ObjectInputStream ois, Class<?> arrayType, int arrayLength) throws ObjectStreamException {
+            ois.checkArray(arrayType, arrayLength);
+        }
     }
 
 }

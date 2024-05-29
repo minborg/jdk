@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-public interface JavaIORandomAccessFileAccess {
-    public RandomAccessFile openAndDelete(File file, String mode)
-        throws IOException;
+public non-sealed interface JavaIORandomAccessFileAccess extends SharedSecrets.Access {
+    RandomAccessFile openAndDelete(File file, String mode) throws IOException;
 }

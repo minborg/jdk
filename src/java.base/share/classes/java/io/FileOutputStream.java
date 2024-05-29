@@ -66,7 +66,7 @@ public class FileOutputStream extends OutputStream
      * Access to FileDescriptor internals.
      */
     private static final JavaIOFileDescriptorAccess FD_ACCESS =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
+        SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     /**
      * The system dependent file descriptor.

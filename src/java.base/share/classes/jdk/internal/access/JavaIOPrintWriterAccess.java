@@ -26,6 +26,6 @@ package jdk.internal.access;
 
 import java.io.PrintWriter;
 
-public interface JavaIOPrintWriterAccess {
+public non-sealed interface JavaIOPrintWriterAccess extends SharedSecrets.Access {
     Object lock(PrintWriter pw);
 }

@@ -1375,11 +1375,11 @@ public class PrintWriter extends Writer {
         return this;
     }
 
-    static {
-        SharedSecrets.setJavaIOCPrintWriterAccess(new JavaIOPrintWriterAccess() {
-            public Object lock(PrintWriter pw) {
-                return pw.lock;
-            }
-        });
+    static final class JavaIOPrintWriterAccessImpl implements JavaIOPrintWriterAccess {
+        @Override
+        public Object lock(PrintWriter pw) {
+            return pw.lock;
+        }
     }
+
 }

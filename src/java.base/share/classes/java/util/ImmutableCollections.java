@@ -36,6 +36,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.CDS;
@@ -117,16 +119,12 @@ class ImmutableCollections {
         }
     }
 
-    static class Access {
-        static {
-            SharedSecrets.setJavaUtilCollectionAccess(new JavaUtilCollectionAccess() {
-                public <E> List<E> listFromTrustedArray(Object[] array) {
-                    return ImmutableCollections.listFromTrustedArray(array);
-                }
-                public <E> List<E> listFromTrustedArrayNullsAllowed(Object[] array) {
-                    return ImmutableCollections.listFromTrustedArrayNullsAllowed(array);
-                }
-            });
+    static final class JavaUtilCollectionAccessImpl implements JavaUtilCollectionAccess {
+        public <E> List<E> listFromTrustedArray(Object[] array) {
+            return ImmutableCollections.listFromTrustedArray(array);
+        }
+        public <E> List<E> listFromTrustedArrayNullsAllowed(Object[] array) {
+            return ImmutableCollections.listFromTrustedArrayNullsAllowed(array);
         }
     }
 
@@ -1445,7 +1443,7 @@ final class CollSer implements Serializable {
             throw new InvalidObjectException("negative length " + len);
         }
 
-        SharedSecrets.getJavaObjectInputStreamAccess().checkArray(ois, Object[].class, len);
+        SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(ois, Object[].class, len);
         Object[] a = new Object[len];
         for (int i = 0; i < len; i++) {
             a[i] = ois.readObject();

@@ -26,7 +26,7 @@ package jdk.internal.access;
 
 import java.io.FilePermission;
 
-public interface JavaIOFilePermissionAccess {
+public non-sealed interface JavaIOFilePermissionAccess extends SharedSecrets.Access {
 
     /**
      * Returns a new FilePermission plus an alternative path.

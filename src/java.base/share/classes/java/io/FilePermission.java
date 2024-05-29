@@ -256,49 +256,40 @@ public final class FilePermission extends Permission implements Serializable {
         }
     }
 
-    static {
-        SharedSecrets.setJavaIOFilePermissionAccess(
-            /**
-             * Creates FilePermission objects with special internals.
-             * See {@link FilePermCompat#newPermPlusAltPath(Permission)} and
-             * {@link FilePermCompat#newPermUsingAltPath(Permission)}.
-             */
-            new JavaIOFilePermissionAccess() {
-                public FilePermission newPermPlusAltPath(FilePermission input) {
-                    if (!input.invalid && input.npath2 == null && !input.allFiles) {
-                        Path npath2 = altPath(input.npath);
-                        if (npath2 != null) {
-                            // Please note the name of the new permission is
-                            // different than the original so that when one is
-                            // added to a FilePermissionCollection it will not
-                            // be merged with the original one.
-                            return new FilePermission(input.getName() + "#plus",
-                                    input,
-                                    input.npath,
-                                    npath2,
-                                    input.mask,
-                                    input.actions);
-                        }
-                    }
-                    return input;
-                }
-                public FilePermission newPermUsingAltPath(FilePermission input) {
-                    if (!input.invalid && !input.allFiles) {
-                        Path npath2 = altPath(input.npath);
-                        if (npath2 != null) {
-                            // New name, see above.
-                            return new FilePermission(input.getName() + "#using",
-                                    input,
-                                    npath2,
-                                    null,
-                                    input.mask,
-                                    input.actions);
-                        }
-                    }
-                    return null;
+    static final class JavaIOFilePermissionAccessImpl implements JavaIOFilePermissionAccess {
+        public FilePermission newPermPlusAltPath(FilePermission input) {
+            if (!input.invalid && input.npath2 == null && !input.allFiles) {
+                Path npath2 = altPath(input.npath);
+                if (npath2 != null) {
+                    // Please note the name of the new permission is
+                    // different from the original so that when one is
+                    // added to a FilePermissionCollection it will not
+                    // be merged with the original one.
+                    return new FilePermission(input.getName() + "#plus",
+                            input,
+                            input.npath,
+                            npath2,
+                            input.mask,
+                            input.actions);
                 }
             }
-        );
+            return input;
+        }
+        public FilePermission newPermUsingAltPath(FilePermission input) {
+            if (!input.invalid && !input.allFiles) {
+                Path npath2 = altPath(input.npath);
+                if (npath2 != null) {
+                    // New name, see above.
+                    return new FilePermission(input.getName() + "#using",
+                            input,
+                            npath2,
+                            null,
+                            input.mask,
+                            input.actions);
+                }
+            }
+            return null;
+        }
     }
 
     /**

@@ -246,13 +246,6 @@ public final class TextAttribute extends Attribute {
     private static final Map<String, TextAttribute>
             instanceMap = new HashMap<String, TextAttribute>(29);
 
-    // For access from java.text.Bidi
-    static {
-        if (SharedSecrets.getJavaAWTFontAccess() == null) {
-            SharedSecrets.setJavaAWTFontAccess(new JavaAWTFontAccessImpl());
-        }
-    }
-
     /**
      * Constructs a {@code TextAttribute} with the specified name.
      * @param name the attribute name to assign to this

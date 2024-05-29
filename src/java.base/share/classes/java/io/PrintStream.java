@@ -1542,12 +1542,12 @@ public class PrintStream extends FilterOutputStream
         return charset;
     }
 
-    static {
-        SharedSecrets.setJavaIOCPrintStreamAccess(new JavaIOPrintStreamAccess() {
-            public Object lock(PrintStream ps) {
-                Object lock = ps.lock;
-                return (lock != null) ? lock : ps;
-            }
-        });
+    static final class JavaIOPrintStreamAccessImpl implements JavaIOPrintStreamAccess {
+        @Override
+        public Object lock(PrintStream ps) {
+            Object lock = ps.lock;
+            return (lock != null) ? lock : ps;
+        }
     }
+
 }
