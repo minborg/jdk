@@ -46,11 +46,17 @@ public record MemoizedFunction<T, R>(Function<? super T, ? extends R> original,
         if (i < 0) {
             throw new NoSuchElementException(t.toString());
         }
-        return wrapped.apply(i);
+        try {
+            return wrapped.apply(i);
+        } catch (NoSuchKeyException e) {
+            // Provide better guidance
+            // Todo: for large `keys`, this will overflow String
+            throw new NoSuchElementException("Input value " + t + " (at index " + i + ")" + " is not present in " + keys, e);
+        }
     }
 
     public static <T, R> Function<T, R> of(Set<T> inputs,
-                                           Function<T, R> original) {
+                                           Function<? super T, ? extends R> original) {
             if (inputs.isEmpty()) {
                 return EmptyMemoizedFunction.instance();
             }
@@ -72,10 +78,22 @@ public record MemoizedFunction<T, R>(Function<? super T, ? extends R> original,
             return new MemoizedFunction<>(
                     original,
                     keys,
-                    new MemoizedIntFunction<>(i -> original.apply(keys.orElseThrow(i)), StableArray.of(len))
+                    new MemoizedIntFunction<>(new IntFunction<R>() {
+                        @Override
+                        public R apply(int i) {
+                            final T input;
+                            try {
+                                input = keys.orElseThrow(i);
+                            } catch (NoSuchElementException e) {
+                                throw new NoSuchKeyException();
+                            }
+                            return original.apply(input);
+                        }
+                    }, StableArray.of(len))
             );
 
     }
+
 
     private static <T> int probe(StableArray<T> keys, Object pk) {
         int idx = Math.floorMod(pk.hashCode(), keys.length());
@@ -103,3 +121,10 @@ public record MemoizedFunction<T, R>(Function<? super T, ? extends R> original,
 
 
 }
+
+// Local Signalling Exception
+final class NoSuchKeyException extends RuntimeException {
+    @java.io.Serial
+    static final long serialVersionUID = -825193162824296762L;
+}
+

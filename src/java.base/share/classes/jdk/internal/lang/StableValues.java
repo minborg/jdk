@@ -72,7 +72,7 @@ public final class StableValues {
      * @param original supplier
      * @param <T> the type of results supplied by the returned supplier
      */
-    static <T> Supplier<T> memoizedSupplier(Supplier<? extends T> original) {
+    public static <T> Supplier<T> memoizedSupplier(Supplier<? extends T> original) {
         Objects.requireNonNull(original);
         return new SimpleMemoizedSupplier<>(original);
     }
@@ -101,8 +101,8 @@ public final class StableValues {
      * @param original the original IntFunction to convert to a memoized IntFunction
      * @param <R>      the return type of the IntFunction
      */
-    static <R> IntFunction<R> memoizedIntFunction(int length,
-                                                  IntFunction<? extends R> original) {
+    public static <R> IntFunction<R> memoizedIntFunction(int length,
+                                                         IntFunction<? extends R> original) {
         if (length < 0) {
             throw new IllegalArgumentException();
         }
@@ -136,8 +136,8 @@ public final class StableValues {
      * @param <T>      the type of input values
      * @param <R>      the return type of the function
      */
-    static <T, R> Function<T, R> memoizedFunction(Set<T> inputs,
-                                                  Function<T, R> original) {
+    public static <T, R> Function<T, R> memoizedFunction(Set<T> inputs,
+                                                         Function<? super T, ? extends R> original) {
         Objects.requireNonNull(inputs);
         Objects.requireNonNull(original);
         return MemoizedFunction.of(inputs, original);
