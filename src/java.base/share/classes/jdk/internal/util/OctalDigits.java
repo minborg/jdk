@@ -35,7 +35,7 @@ import jdk.internal.vm.annotation.Stable;
  * @since 21
  */
 public final class OctalDigits {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     @Stable
     private static final short[] DIGITS;

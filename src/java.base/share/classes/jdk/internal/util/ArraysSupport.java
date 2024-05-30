@@ -251,14 +251,16 @@ public class ArraysSupport {
         return result;
     }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
     /*
      * fromIndex and length must be scaled to char indexes.
      */
     public static int utf16hashCode(int result, byte[] value, int fromIndex, int length) {
+        final class Holder {
+            static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
+        }
         int end = fromIndex + length;
         for (int i = fromIndex; i < end; i++) {
-            result = 31 * result + JLA.getUTF16Char(value, i);
+            result = 31 * result + Holder.JLA.getUTF16Char(value, i);
         }
         return result;
     }

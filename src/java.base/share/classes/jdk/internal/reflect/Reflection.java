@@ -32,6 +32,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
 import jdk.internal.module.ModuleBootstrap;
@@ -117,7 +118,7 @@ public class Reflection {
                 currentClass.getModule() :
                 ClassLoader.getSystemClassLoader().getUnnamedModule();
         class Holder {
-            static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+            static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
         }
         Holder.JLA.ensureNativeAccess(module, owner, methodName, currentClass);
     }
@@ -358,7 +359,7 @@ public class Reflection {
      * modified reflectively regardless of the value of its accessible flag.
      */
     public static boolean isTrustedFinalField(Field field) {
-        return SharedSecrets.getJavaLangReflectAccess().isTrustedFinalField(field);
+        return SharedSecrets.get(JavaLangReflectAccess.class).isTrustedFinalField(field);
     }
 
     /**

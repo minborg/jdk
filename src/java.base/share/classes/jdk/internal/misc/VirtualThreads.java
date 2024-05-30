@@ -36,7 +36,7 @@ import jdk.internal.access.SharedSecrets;
 public final class VirtualThreads {
     private static final JavaLangAccess JLA;
     static {
-        JLA = SharedSecrets.getJavaLangAccess();
+        JLA = SharedSecrets.get(JavaLangAccess.class);
         if (JLA == null) {
             throw new InternalError("JavaLangAccess not setup");
         }

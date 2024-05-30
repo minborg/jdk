@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /** A repository of "shared secrets", which are a mechanism for
     calling implementation-private methods in another package without
@@ -76,7 +77,7 @@ public final class SharedSecrets {
     /**
      * Marker interface for all Access types.
      */
-    public sealed interface Access permits JavaAWTFontAccess, JavaBeansAccess, JavaIOAccess, JavaIOFileDescriptorAccess, JavaIOFilePermissionAccess, JavaIOPrintStreamAccess, JavaIOPrintWriterAccess, JavaIORandomAccessFileAccess, JavaNetHttpCookieAccess, JavaNetInetAddressAccess, JavaNetURLAccess, JavaNetUriAccess, JavaNioAccess, JavaObjectInputFilterAccess, JavaObjectInputStreamAccess, JavaObjectInputStreamReadString, JavaSecurityAccess, JavaSecurityPropertiesAccess, JavaSecuritySignatureAccess, JavaSecuritySpecAccess, JavaUtilCollectionAccess, JavaUtilConcurrentFJPAccess, JavaUtilConcurrentTLRAccess, JavaUtilJarAccess, JavaUtilResourceBundleAccess, JavaUtilZipFileAccess, JavaxCryptoSealedObjectAccess, JavaxCryptoSpecAccess, JavaxSecurityAccess {}
+    public sealed interface Access permits JavaAWTFontAccess, JavaBeansAccess, JavaIOAccess, JavaIOFileDescriptorAccess, JavaIOFilePermissionAccess, JavaIOPrintStreamAccess, JavaIOPrintWriterAccess, JavaIORandomAccessFileAccess, JavaLangAccess, JavaLangReflectAccess, JavaNetHttpCookieAccess, JavaNetInetAddressAccess, JavaNetURLAccess, JavaNetUriAccess, JavaNioAccess, JavaObjectInputFilterAccess, JavaObjectInputStreamAccess, JavaObjectInputStreamReadString, JavaSecurityAccess, JavaSecurityPropertiesAccess, JavaSecuritySignatureAccess, JavaSecuritySpecAccess, JavaUtilCollectionAccess, JavaUtilConcurrentFJPAccess, JavaUtilConcurrentTLRAccess, JavaUtilJarAccess, JavaUtilResourceBundleAccess, JavaUtilZipFileAccess, JavaxCryptoSealedObjectAccess, JavaxCryptoSpecAccess, JavaxSecurityAccess {}
 
     public static <T extends Access> T get(Class<T> type) {
         try {
@@ -92,37 +93,84 @@ public final class SharedSecrets {
         }
     }
 
+    sealed interface Provider {
+        <R extends Access> R apply(Class<R> t);
+
+        record ByName(String name) implements Provider {
+            @Override
+            public <R extends Access> R apply(Class<R> type) {
+                try {
+                    Class<?> c = classForName(name);
+                    Constructor<?> constructor = c.getDeclaredConstructor();
+                    PrivilegedAction<Void> action = new PrivilegedAction<>() {
+                        @Override
+                        public Void run() {
+                            constructor.setAccessible(true);
+                            return null;
+                        }
+                    };
+                    @SuppressWarnings("removal")
+                    var _ = AccessController.doPrivileged(action);
+
+                    // Make sure we use an instance of the correct type
+                    return type.cast(constructor.newInstance());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+
+        record ByField<T extends Access>(String holder, Supplier<T> supplier) implements Provider {
+            @Override
+            public <R extends Access> R apply(Class<R> type) {
+                if (holder != null) {
+                    var _ = classForName(holder);
+                }
+                return type.cast(
+                        supplier.get()
+                );
+            }
+        }
+
+    }
+
     // Mappings from an Access component to its associated implementation
-    private static final Map<Class<? extends Access>, String> LOOKUPS = Map.ofEntries(
-            entry(JavaAWTFontAccess.class, "java.awt.font.JavaAWTFontAccessImpl"),
-            entry(JavaBeansAccess.class, "java.beans.Introspector$JavaBeansAccessImpl"),
-            entry(JavaNetInetAddressAccess.class, "java.net.InetAddress$JavaNetInetAddressAccessImpl"),
-            entry(JavaNetHttpCookieAccess.class, "java.net.HttpCookie$JavaNetHttpCookieAccessImpl"),
-            entry(JavaNetUriAccess.class, "java.net.URI$JavaNetUriAccessImpl"),
-            entry(JavaNetURLAccess.class, "java.net.URL$JavaNetURLAccessImpl"),
-            entry(JavaIOAccess.class, "java.io.Console$JavaIOAccessImpl"),
-            entry(JavaIOFileDescriptorAccess.class, "java.io.FileDescriptor$JavaIOFileDescriptorAccessImpl"),
-            entry(JavaIOFilePermissionAccess.class, "java.io.FilePermission$JavaIOFilePermissionAccessImpl"),
-            entry(JavaIOPrintStreamAccess.class, "java.io.PrintStream$JavaIOPrintStreamAccessImpl"),
-            entry(JavaIOPrintWriterAccess.class, "java.io.PrintWriter$JavaIOPrintWriterAccessImpl"),
-            entry(JavaIORandomAccessFileAccess.class, "java.io.RandomAccessFile$JavaIORandomAccessFileAccessImpl"),
-            entry(JavaNioAccess.class, "java.nio.Buffer$JavaNioAccessImpl"),
-            entry(JavaObjectInputFilterAccess.class, "java.io.ObjectInputFilter$JavaObjectInputFilterAccessImpl"),
-            entry(JavaObjectInputStreamReadString.class, "java.io.ObjectInputStream$JavaObjectInputStreamReadStringImpl"),
-            entry(JavaObjectInputStreamAccess.class, "java.io.ObjectInputStream$JavaObjectInputStreamAccessImpl"),
-            entry(JavaSecurityAccess.class , "java.security.ProtectionDomain$JavaSecurityAccessImpl"),
-            entry(JavaSecurityPropertiesAccess.class, "java.security.Security$JavaSecurityPropertiesAccessImpl"),
-            entry(JavaSecuritySignatureAccess.class, "java.security.Signature$JavaSecuritySignatureAccessImpl"),
-            entry(JavaSecuritySpecAccess.class, "java.security.spec.EncodedKeySpec$JavaSecuritySpecAccessImpl"),
-            entry(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$JavaUtilCollectionAccessImpl"),
-            entry(JavaUtilConcurrentFJPAccess.class, "java.util.concurrent.ForkJoinPool$JavaUtilConcurrentFJPAccessImpl"),
-            entry(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$JavaUtilConcurrentTLRAccessImpl"),
-            entry(JavaUtilJarAccess.class, "java.util.jar.JavaUtilJarAccessImpl"), // Outer class
-            entry(JavaUtilResourceBundleAccess.class, "java.util.ResourceBundle$JavaUtilResourceBundleAccessImpl"),
-            entry(JavaUtilZipFileAccess.class, "java.util.zip.ZipFile$JavaUtilZipFileAccessImpl"),
-            entry(JavaxCryptoSealedObjectAccess.class, "javax.crypto.SealedObject$JavaxCryptoSealedObjectAccessImpl"),
-            entry(JavaxCryptoSpecAccess.class, "javax.crypto.spec.SecretKeySpec$JavaxCryptoSpecAccessImpl"),
-            entry(JavaxSecurityAccess.class, "javax.security.auth.x500.X500Principal$JavaxSecurityAccessImpl")
+    private static final Map<Class<? extends Access>, Provider> LOOKUPS = Map.ofEntries(
+            entry(JavaAWTFontAccess.class, new Provider.ByName("java.awt.font.JavaAWTFontAccessImpl")),
+            entry(JavaBeansAccess.class, new Provider.ByName("java.beans.Introspector$JavaBeansAccessImpl")),
+            entry(JavaNetInetAddressAccess.class, new Provider.ByName("java.net.InetAddress$JavaNetInetAddressAccessImpl")),
+            entry(JavaNetHttpCookieAccess.class, new Provider.ByName("java.net.HttpCookie$JavaNetHttpCookieAccessImpl")),
+            entry(JavaNetUriAccess.class, new Provider.ByName("java.net.URI$JavaNetUriAccessImpl")),
+            entry(JavaNetURLAccess.class, new Provider.ByName("java.net.URL$JavaNetURLAccessImpl")),
+            entry(JavaIOAccess.class, new Provider.ByName("java.io.Console$JavaIOAccessImpl")),
+            entry(JavaIOFileDescriptorAccess.class, new Provider.ByName("java.io.FileDescriptor$JavaIOFileDescriptorAccessImpl")),
+            entry(JavaIOFilePermissionAccess.class, new Provider.ByName("java.io.FilePermission$JavaIOFilePermissionAccessImpl")),
+            entry(JavaIOPrintStreamAccess.class, new Provider.ByName("java.io.PrintStream$JavaIOPrintStreamAccessImpl")),
+            entry(JavaIOPrintWriterAccess.class, new Provider.ByName("java.io.PrintWriter$JavaIOPrintWriterAccessImpl")),
+            entry(JavaIORandomAccessFileAccess.class, new Provider.ByName("java.io.RandomAccessFile$JavaIORandomAccessFileAccessImpl")),
+            entry(JavaLangReflectAccess.class, new Provider.ByField<>("java.lang.reflect.AccessibleObject", new Supplier<>() {
+                @Override  public Access get() { return javaLangReflectAccess; }
+            })),
+            entry(JavaNioAccess.class, new Provider.ByName("java.nio.Buffer$JavaNioAccessImpl")),
+            entry(JavaObjectInputFilterAccess.class, new Provider.ByName("java.io.ObjectInputFilter$JavaObjectInputFilterAccessImpl")),
+            entry(JavaObjectInputStreamReadString.class, new Provider.ByName("java.io.ObjectInputStream$JavaObjectInputStreamReadStringImpl")),
+            entry(JavaObjectInputStreamAccess.class, new Provider.ByName("java.io.ObjectInputStream$JavaObjectInputStreamAccessImpl")),
+            entry(JavaLangAccess.class, new Provider.ByField<>(null, new Supplier<>() {
+                @Override  public Access get() { return javaLangAccess; }
+            })),
+            entry(JavaSecurityAccess.class , new Provider.ByName("java.security.ProtectionDomain$JavaSecurityAccessImpl")),
+            entry(JavaSecurityPropertiesAccess.class, new Provider.ByName("java.security.Security$JavaSecurityPropertiesAccessImpl")),
+            entry(JavaSecuritySignatureAccess.class, new Provider.ByName("java.security.Signature$JavaSecuritySignatureAccessImpl")),
+            entry(JavaSecuritySpecAccess.class, new Provider.ByName("java.security.spec.EncodedKeySpec$JavaSecuritySpecAccessImpl")),
+            entry(JavaUtilCollectionAccess.class, new Provider.ByName("java.util.ImmutableCollections$JavaUtilCollectionAccessImpl")),
+            entry(JavaUtilConcurrentFJPAccess.class, new Provider.ByName("java.util.concurrent.ForkJoinPool$JavaUtilConcurrentFJPAccessImpl")),
+            entry(JavaUtilConcurrentTLRAccess.class, new Provider.ByName("java.util.concurrent.ThreadLocalRandom$JavaUtilConcurrentTLRAccessImpl")),
+            entry(JavaUtilJarAccess.class, new Provider.ByName("java.util.jar.JavaUtilJarAccessImpl")), // Outer class
+            entry(JavaUtilResourceBundleAccess.class, new Provider.ByName("java.util.ResourceBundle$JavaUtilResourceBundleAccessImpl")),
+            entry(JavaUtilZipFileAccess.class, new Provider.ByName("java.util.zip.ZipFile$JavaUtilZipFileAccessImpl")),
+            entry(JavaxCryptoSealedObjectAccess.class, new Provider.ByName("javax.crypto.SealedObject$JavaxCryptoSealedObjectAccessImpl")),
+            entry(JavaxCryptoSpecAccess.class, new Provider.ByName("javax.crypto.spec.SecretKeySpec$JavaxCryptoSpecAccessImpl")),
+            entry(JavaxSecurityAccess.class, new Provider.ByName("javax.security.auth.x500.X500Principal$JavaxSecurityAccessImpl"))
     );
 
     @SuppressWarnings("unchecked")
@@ -142,22 +190,10 @@ public final class SharedSecrets {
             new Function<Class<? extends Access>, Access>() {
                 @Override
                 public Access apply(Class<? extends Access> type) {
-                    String lookup = LOOKUPS.get(type);
+                    Provider provider = LOOKUPS.get(type);
                     try {
-                        Class<?> c = Class.forName(lookup, true, null);
-                        Constructor<?> constructor = c.getDeclaredConstructor();
-                        PrivilegedAction<Void> action = new PrivilegedAction<>() {
-                            @Override
-                            public Void run() {
-                                constructor.setAccessible(true);
-                                return null;
-                            }
-                        };
-                        @SuppressWarnings("removal")
-                        var _ = AccessController.doPrivileged(action);
-
                         // Make sure we use an instance of the correct type
-                        return type.cast(constructor.newInstance());
+                        return type.cast(provider.apply(type));
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -169,19 +205,19 @@ public final class SharedSecrets {
         return new AbstractMap.SimpleImmutableEntry<>(key, value);
     }
 
-    private static JavaAWTAccess javaAWTAccess;
+    // Callback fields
     private static JavaLangAccess javaLangAccess;
+    private static JavaLangReflectAccess javaLangReflectAccess;
+
+    // To be consolidated
+    private static JavaAWTAccess javaAWTAccess; // Settable in various tests
+
     private static JavaLangInvokeAccess javaLangInvokeAccess;
     private static JavaLangModuleAccess javaLangModuleAccess;
     private static JavaLangRefAccess javaLangRefAccess;
-    private static JavaLangReflectAccess javaLangReflectAccess;
 
     public static void setJavaLangAccess(JavaLangAccess jla) {
         javaLangAccess = jla;
-    }
-
-    public static JavaLangAccess getJavaLangAccess() {
-        return javaLangAccess;
     }
 
     public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {
@@ -224,9 +260,9 @@ public final class SharedSecrets {
         javaLangReflectAccess = jlra;
     }
 
-    public static JavaLangReflectAccess getJavaLangReflectAccess() {
+/*    public static JavaLangReflectAccess getJavaLangReflectAccess() {
         return javaLangReflectAccess;
-    }
+    }*/
 
     public static void setJavaAWTAccess(JavaAWTAccess jaa) {
         javaAWTAccess = jaa;
@@ -236,6 +272,14 @@ public final class SharedSecrets {
         // this may return null in which case calling code needs to
         // provision for.
         return javaAWTAccess;
+    }
+
+    private static Class<?> classForName(String name) {
+        try {
+            return Class.forName(name, true, null);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
     }
 
     private static void ensureClassInitialized(Class<?> c) {

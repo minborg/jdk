@@ -41,7 +41,7 @@ import static java.lang.foreign.ValueLayout.*;
  */
 public final class StringSupport {
 
-    static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
+    static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.get(JavaLangAccess.class);
 
     private StringSupport() {}
 

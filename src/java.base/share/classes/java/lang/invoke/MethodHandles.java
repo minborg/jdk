@@ -25,6 +25,7 @@
 
 package java.lang.invoke;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
@@ -369,7 +370,7 @@ public class MethodHandles {
      */
     static Object classData(Class<?> c) {
         UNSAFE.ensureClassInitialized(c);
-        return SharedSecrets.getJavaLangAccess().classData(c);
+        return SharedSecrets.get(JavaLangAccess.class).classData(c);
     }
 
     /**
@@ -2488,7 +2489,7 @@ public class MethodHandles {
                 ProtectionDomain pd = (loader != null) ? lookup.lookupClassProtectionDomain() : null;
                 Class<?> c = null;
                 try {
-                    c = SharedSecrets.getJavaLangAccess()
+                    c = SharedSecrets.get(JavaLangAccess.class)
                             .defineClass(loader, lookupClass, name, bytes, pd, initialize, classFlags, classData);
                     assert !isNestmate() || c.getNestHost() == lookupClass.getNestHost();
                     return c;
@@ -2528,7 +2529,7 @@ public class MethodHandles {
         private ProtectionDomain lookupClassProtectionDomain() {
             ProtectionDomain pd = cachedProtectionDomain;
             if (pd == null) {
-                cachedProtectionDomain = pd = SharedSecrets.getJavaLangAccess().protectionDomain(lookupClass);
+                cachedProtectionDomain = pd = SharedSecrets.get(JavaLangAccess.class).protectionDomain(lookupClass);
             }
             return pd;
         }

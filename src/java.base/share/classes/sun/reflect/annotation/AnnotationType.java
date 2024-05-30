@@ -79,7 +79,7 @@ public class AnnotationType {
     public static AnnotationType getInstance(
         Class<? extends Annotation> annotationClass)
     {
-        JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+        JavaLangAccess jla = SharedSecrets.get(JavaLangAccess.class);
         AnnotationType result = jla.getAnnotationType(annotationClass); // volatile read
         if (result == null) {
             result = new AnnotationType(annotationClass);
@@ -141,7 +141,7 @@ public class AnnotationType {
         // of the corresponding annotation types breaks infinite recursion.
         if (annotationClass != Retention.class &&
             annotationClass != Inherited.class) {
-            JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+            JavaLangAccess jla = SharedSecrets.get(JavaLangAccess.class);
             Map<Class<? extends Annotation>, Annotation> metaAnnotations =
                 AnnotationParser.parseSelectAnnotations(
                     jla.getRawClassAnnotations(annotationClass),

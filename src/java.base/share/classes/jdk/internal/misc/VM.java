@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.vm.annotation.Stable;
@@ -503,6 +504,6 @@ public class VM {
      * Return the initial value of System.err that was set during VM initialization.
      */
     public static PrintStream initialErr() {
-        return SharedSecrets.getJavaLangAccess().initialSystemErr();
+        return SharedSecrets.get(JavaLangAccess.class).initialSystemErr();
     }
 }

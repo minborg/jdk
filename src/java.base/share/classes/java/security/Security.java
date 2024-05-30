@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.io.*;
 import java.net.URL;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.JavaSecurityPropertiesAccess;
 import jdk.internal.event.EventHelper;
 import jdk.internal.event.SecurityPropertyModificationEvent;
@@ -782,7 +783,7 @@ public final class Security {
         final boolean pd = key.equals("package.definition");
 
         if (pa || pd) {
-            SharedSecrets.getJavaLangAccess().invalidatePackageAccessCache();
+            SharedSecrets.get(JavaLangAccess.class).invalidatePackageAccessCache();
         }
     }
 

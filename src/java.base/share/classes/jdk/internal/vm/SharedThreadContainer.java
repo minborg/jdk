@@ -37,7 +37,7 @@ import jdk.internal.access.SharedSecrets;
  * and is intended for unstructured uses, e.g. thread pools.
  */
 public class SharedThreadContainer extends ThreadContainer implements AutoCloseable {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     private static final VarHandle CLOSED;
     private static final VarHandle VIRTUAL_THREADS;
     static {

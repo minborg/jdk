@@ -26,6 +26,7 @@ package java.io;
 
 import java.util.*;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -42,7 +43,7 @@ class DeleteOnExitHook {
         // delete-on-exit list and cause the DeleteOnExitHook to be
         // registered during shutdown in progress. So set the
         // registerShutdownInProgress parameter to true.
-        SharedSecrets.getJavaLangAccess()
+        SharedSecrets.get(JavaLangAccess.class)
             .registerShutdownHook(2 /* Shutdown hook invocation order */,
                 true /* register even if shutdown in progress */,
                 new Runnable() {

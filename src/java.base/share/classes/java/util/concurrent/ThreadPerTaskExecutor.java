@@ -46,7 +46,7 @@ import jdk.internal.vm.ThreadContainers;
  * threads is unbounded.
  */
 class ThreadPerTaskExecutor extends ThreadContainer implements ExecutorService {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     private static final Permission MODIFY_THREAD = new RuntimePermission("modifyThread");
     private static final VarHandle STATE;
     static {

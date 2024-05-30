@@ -32,7 +32,7 @@ import jdk.internal.reflect.ConstructorAccessor;
     jdk.internal.access.JavaLangReflectAccess interface, allowing the java.lang
     package to instantiate objects in this package. */
 
-class ReflectAccess implements jdk.internal.access.JavaLangReflectAccess {
+final class ReflectAccess implements jdk.internal.access.JavaLangReflectAccess {
     public <T> Constructor<T> newConstructor(Class<T> declaringClass,
                                              Class<?>[] parameterTypes,
                                              Class<?>[] checkedExceptions,

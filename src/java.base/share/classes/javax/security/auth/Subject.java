@@ -35,6 +35,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionException;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.util.ResourcesMgr;
 
@@ -343,7 +344,7 @@ public final class Subject implements java.io.Serializable {
         Objects.requireNonNull(acc, ResourcesMgr.getString
                 ("invalid.null.AccessControlContext.provided"));
 
-        if (!SharedSecrets.getJavaLangAccess().allowSecurityManager()) {
+        if (!SharedSecrets.get(JavaLangAccess.class).allowSecurityManager()) {
             throw new UnsupportedOperationException(
                     "getSubject is supported only if a security manager is allowed");
         } else {
@@ -390,7 +391,7 @@ public final class Subject implements java.io.Serializable {
      */
     @SuppressWarnings("removal")
     public static Subject current() {
-        if (!SharedSecrets.getJavaLangAccess().allowSecurityManager()) {
+        if (!SharedSecrets.get(JavaLangAccess.class).allowSecurityManager()) {
             return SCOPED_SUBJECT.orElse(null);
         } else {
             return getSubject(AccessController.getContext());
@@ -434,7 +435,7 @@ public final class Subject implements java.io.Serializable {
     public static <T> T callAs(final Subject subject,
             final Callable<T> action) throws CompletionException {
         Objects.requireNonNull(action);
-        if (!SharedSecrets.getJavaLangAccess().allowSecurityManager()) {
+        if (!SharedSecrets.get(JavaLangAccess.class).allowSecurityManager()) {
             try {
                 return ScopedValue.callWhere(SCOPED_SUBJECT, subject, action);
             } catch (Exception e) {
@@ -516,7 +517,7 @@ public final class Subject implements java.io.Serializable {
         Objects.requireNonNull(action,
                 ResourcesMgr.getString("invalid.null.action.provided"));
 
-        if (!SharedSecrets.getJavaLangAccess().allowSecurityManager()) {
+        if (!SharedSecrets.get(JavaLangAccess.class).allowSecurityManager()) {
             try {
                 return callAs(subject, action::run);
             } catch (CompletionException ce) {
@@ -609,7 +610,7 @@ public final class Subject implements java.io.Serializable {
         Objects.requireNonNull(action,
                 ResourcesMgr.getString("invalid.null.action.provided"));
 
-        if (!SharedSecrets.getJavaLangAccess().allowSecurityManager()) {
+        if (!SharedSecrets.get(JavaLangAccess.class).allowSecurityManager()) {
             try {
                 return callAs(subject, action::run);
             } catch (CompletionException ce) {
@@ -697,7 +698,7 @@ public final class Subject implements java.io.Serializable {
         Objects.requireNonNull(action,
                 ResourcesMgr.getString("invalid.null.action.provided"));
 
-        if (!SharedSecrets.getJavaLangAccess().allowSecurityManager()) {
+        if (!SharedSecrets.get(JavaLangAccess.class).allowSecurityManager()) {
             try {
                 return callAs(subject, action::run);
             } catch (CompletionException ce) {
@@ -793,7 +794,7 @@ public final class Subject implements java.io.Serializable {
         Objects.requireNonNull(action,
                 ResourcesMgr.getString("invalid.null.action.provided"));
 
-        if (!SharedSecrets.getJavaLangAccess().allowSecurityManager()) {
+        if (!SharedSecrets.get(JavaLangAccess.class).allowSecurityManager()) {
             try {
                 return callAs(subject, action::run);
             } catch (CompletionException ce) {

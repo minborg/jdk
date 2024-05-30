@@ -254,7 +254,7 @@ public interface SymbolLookup {
         return name -> {
             Objects.requireNonNull(name);
             if (Utils.containsNullChars(name)) return Optional.empty();
-            JavaLangAccess javaLangAccess = SharedSecrets.getJavaLangAccess();
+            JavaLangAccess javaLangAccess = SharedSecrets.get(JavaLangAccess.class);
             // note: ClassLoader::findNative supports a null loader
             long addr = javaLangAccess.findNative(loader, name);
             return addr == 0L ?

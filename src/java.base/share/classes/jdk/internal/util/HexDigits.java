@@ -36,7 +36,7 @@ import jdk.internal.vm.annotation.Stable;
  * @since 21
  */
 public final class HexDigits {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /**
      * Each element of the array represents the ascii encoded

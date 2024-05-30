@@ -25,6 +25,7 @@
 
 package java.lang.reflect;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.reflect.annotation.AnnotationParser;
 import sun.reflect.annotation.TypeAnnotation;
@@ -152,7 +153,7 @@ public final class RecordComponent implements AnnotatedElement {
      */
     public AnnotatedType getAnnotatedType() {
         return TypeAnnotationParser.buildAnnotatedType(typeAnnotations,
-                SharedSecrets.getJavaLangAccess().
+                SharedSecrets.get(JavaLangAccess.class).
                         getConstantPool(getDeclaringRecord()),
                 this,
                 getDeclaringRecord(),
@@ -196,7 +197,7 @@ public final class RecordComponent implements AnnotatedElement {
                     } else {
                         declAnnos = AnnotationParser.parseAnnotations(
                                 annotations,
-                                SharedSecrets.getJavaLangAccess()
+                                SharedSecrets.get(JavaLangAccess.class)
                                         .getConstantPool(getDeclaringRecord()),
                                 getDeclaringRecord());
                     }

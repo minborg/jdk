@@ -29,7 +29,7 @@ import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 
 class EmptyClassHelper {
-    static final JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+    static final JavaLangAccess jla = SharedSecrets.get(JavaLangAccess.class);
     static final String USE_APP = "useAppLoader";
     public static void main(String[] args) throws Exception {
         Class cls = null;

@@ -47,6 +47,8 @@ import java.util.LinkedList;
 import java.util.ArrayList;
 import java.util.Vector;
 import java.util.ListIterator;
+
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.ConstantPool;
@@ -92,7 +94,7 @@ public class TestDeadDataLoopIGVN {
     // Adaptation from CTW to compile and deoptimize the same methods
     private static void compileClass(Class<?> aClass) throws Exception {
         aClass = Class.forName(aClass.getCanonicalName(), true, aClass.getClassLoader());
-        ConstantPool constantPool = SharedSecrets.getJavaLangAccess().getConstantPool(aClass);
+        ConstantPool constantPool = SharedSecrets.get(JavaLangAccess.class).getConstantPool(aClass);
         preloadClasses(constantPool);
         UNSAFE.ensureClassInitialized(aClass);
         WB.enqueueInitializerForCompilation(aClass, 4); // Level 4 for C2

@@ -76,7 +76,7 @@ class CESU_8 extends Unicode
         dst.position(dp - dst.arrayOffset());
     }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     private static class Decoder extends CharsetDecoder
                                  implements ArrayDecoder {

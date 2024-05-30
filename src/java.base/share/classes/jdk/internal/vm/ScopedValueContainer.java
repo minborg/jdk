@@ -38,7 +38,7 @@ import jdk.internal.misc.Unsafe;
  * and a method to return a snapshot of the scoped value bindings.
  */
 public class ScopedValueContainer extends StackableScope {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     static {
         Unsafe.getUnsafe().ensureClassInitialized(StructureViolationException.class);
     }

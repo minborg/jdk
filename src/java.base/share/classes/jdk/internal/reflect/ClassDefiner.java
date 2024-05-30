@@ -39,7 +39,7 @@ import jdk.internal.access.SharedSecrets;
  */
 
 class ClassDefiner {
-    static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /** <P> We define generated code into a new class loader which
       delegates to the defining loader of the target class. It is

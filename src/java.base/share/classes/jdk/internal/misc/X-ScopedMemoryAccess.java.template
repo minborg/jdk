@@ -251,7 +251,7 @@ public class ScopedMemoryAccess {
             if (session != null) {
                 session.checkValidStateRaw();
             }
-            return SharedSecrets.getJavaNioAccess().isLoaded(address, isSync, size);
+            return SharedSecrets.get(JavaNioAccess.class).isLoaded(address, isSync, size);
         } finally {
             Reference.reachabilityFence(session);
         }
@@ -272,7 +272,7 @@ public class ScopedMemoryAccess {
             if (session != null) {
                 session.checkValidStateRaw();
             }
-            SharedSecrets.getJavaNioAccess().load(address, isSync, size);
+            SharedSecrets.get(JavaNioAccess.class).load(address, isSync, size);
         } finally {
             Reference.reachabilityFence(session);
         }
@@ -293,7 +293,7 @@ public class ScopedMemoryAccess {
             if (session != null) {
                 session.checkValidStateRaw();
             }
-            SharedSecrets.getJavaNioAccess().unload(address, isSync, size);
+            SharedSecrets.get(JavaNioAccess.class).unload(address, isSync, size);
         } finally {
             Reference.reachabilityFence(session);
         }
@@ -314,7 +314,7 @@ public class ScopedMemoryAccess {
             if (session != null) {
                 session.checkValidStateRaw();
             }
-            SharedSecrets.getJavaNioAccess().force(fd, address, isSync, index, length);
+            SharedSecrets.get(JavaNioAccess.class).force(fd, address, isSync, index, length);
         } finally {
             Reference.reachabilityFence(session);
         }

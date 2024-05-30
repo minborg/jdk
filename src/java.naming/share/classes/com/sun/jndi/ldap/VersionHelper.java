@@ -25,6 +25,7 @@
 
 package com.sun.jndi.ldap;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 
 import java.net.MalformedURLException;
@@ -115,7 +116,7 @@ public final class VersionHelper {
         // 4290486: doPrivileged is needed to create a thread in
         // an environment that restricts "modifyThreadGroup".
         PrivilegedAction<Thread> act =
-                () -> SharedSecrets.getJavaLangAccess().newThreadWithAcc(r, acc);
+                () -> SharedSecrets.get(JavaLangAccess.class).newThreadWithAcc(r, acc);
         return AccessController.doPrivileged(act);
     }
 

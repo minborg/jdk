@@ -49,7 +49,7 @@ public class SingleByte
         return cr;
     }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     public static final class Decoder extends CharsetDecoder
                                       implements ArrayDecoder {
