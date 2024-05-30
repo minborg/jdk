@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jdk.internal.access.JavaLangModuleAccess;
 import jdk.test.lib.util.ModuleUtils;
 
 import jdk.internal.access.SharedSecrets;
@@ -57,7 +58,7 @@ public class BasicLayerTest {
      * test the create ModuleDescriptor objects that do not require java.base.
      */
     private static ModuleDescriptor.Builder newBuilder(String mn) {
-        return SharedSecrets.getJavaLangModuleAccess()
+        return SharedSecrets.get(JavaLangModuleAccess.class)
                 .newModuleBuilder(mn, false, Set.of());
     }
 

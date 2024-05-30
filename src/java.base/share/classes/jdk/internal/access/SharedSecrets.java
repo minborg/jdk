@@ -28,7 +28,6 @@ package jdk.internal.access;
 import jdk.internal.lang.StableValues;
 
 import java.lang.invoke.MethodHandles;
-import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Constructor;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -77,7 +76,7 @@ public final class SharedSecrets {
     /**
      * Marker interface for all Access types.
      */
-    public sealed interface Access permits JavaAWTFontAccess, JavaBeansAccess, JavaIOAccess, JavaIOFileDescriptorAccess, JavaIOFilePermissionAccess, JavaIOPrintStreamAccess, JavaIOPrintWriterAccess, JavaIORandomAccessFileAccess, JavaLangAccess, JavaLangReflectAccess, JavaNetHttpCookieAccess, JavaNetInetAddressAccess, JavaNetURLAccess, JavaNetUriAccess, JavaNioAccess, JavaObjectInputFilterAccess, JavaObjectInputStreamAccess, JavaObjectInputStreamReadString, JavaSecurityAccess, JavaSecurityPropertiesAccess, JavaSecuritySignatureAccess, JavaSecuritySpecAccess, JavaUtilCollectionAccess, JavaUtilConcurrentFJPAccess, JavaUtilConcurrentTLRAccess, JavaUtilJarAccess, JavaUtilResourceBundleAccess, JavaUtilZipFileAccess, JavaxCryptoSealedObjectAccess, JavaxCryptoSpecAccess, JavaxSecurityAccess {}
+    public sealed interface Access permits JavaAWTFontAccess, JavaBeansAccess, JavaIOAccess, JavaIOFileDescriptorAccess, JavaIOFilePermissionAccess, JavaIOPrintStreamAccess, JavaIOPrintWriterAccess, JavaIORandomAccessFileAccess, JavaLangAccess, JavaLangInvokeAccess, JavaLangModuleAccess, JavaLangReflectAccess, JavaNetHttpCookieAccess, JavaNetInetAddressAccess, JavaNetURLAccess, JavaNetUriAccess, JavaNioAccess, JavaObjectInputFilterAccess, JavaObjectInputStreamAccess, JavaObjectInputStreamReadString, JavaSecurityAccess, JavaSecurityPropertiesAccess, JavaSecuritySignatureAccess, JavaSecuritySpecAccess, JavaUtilCollectionAccess, JavaUtilConcurrentFJPAccess, JavaUtilConcurrentTLRAccess, JavaUtilJarAccess, JavaUtilResourceBundleAccess, JavaUtilZipFileAccess, JavaxCryptoSealedObjectAccess, JavaxCryptoSpecAccess, JavaxSecurityAccess {}
 
     public static <T extends Access> T get(Class<T> type) {
         try {
@@ -86,6 +85,7 @@ public final class SharedSecrets {
         } catch (Throwable t) {
             if (System.err != null) {
                 // Todo: Remove this debug "feature"
+                System.err.println("SharedSecrets::get, Unable to get " + type);
                 System.err.println(REPOSITORY);
                 System.err.flush();
             }
@@ -148,8 +148,12 @@ public final class SharedSecrets {
             entry(JavaIOPrintStreamAccess.class, new Provider.ByName("java.io.PrintStream$JavaIOPrintStreamAccessImpl")),
             entry(JavaIOPrintWriterAccess.class, new Provider.ByName("java.io.PrintWriter$JavaIOPrintWriterAccessImpl")),
             entry(JavaIORandomAccessFileAccess.class, new Provider.ByName("java.io.RandomAccessFile$JavaIORandomAccessFileAccessImpl")),
+            entry(JavaLangModuleAccess.class, new Provider.ByName("java.lang.module.ModuleDescriptor$JavaLangModuleAccessImpl")),
             entry(JavaLangReflectAccess.class, new Provider.ByField<>("java.lang.reflect.AccessibleObject", new Supplier<>() {
                 @Override  public Access get() { return javaLangReflectAccess; }
+            })),
+            entry(JavaLangInvokeAccess.class, new Provider.ByField<>("java.lang.invoke.MethodHandleImpl", new Supplier<>() {
+                @Override  public Access get() { return javaLangInvokeAccess; }
             })),
             entry(JavaNioAccess.class, new Provider.ByName("java.nio.Buffer$JavaNioAccessImpl")),
             entry(JavaObjectInputFilterAccess.class, new Provider.ByName("java.io.ObjectInputFilter$JavaObjectInputFilterAccessImpl")),
@@ -205,15 +209,15 @@ public final class SharedSecrets {
         return new AbstractMap.SimpleImmutableEntry<>(key, value);
     }
 
-    // Callback fields
+    // Callback fields that will be delegated to Providers
     private static JavaLangAccess javaLangAccess;
     private static JavaLangReflectAccess javaLangReflectAccess;
-
-    // To be consolidated
-    private static JavaAWTAccess javaAWTAccess; // Settable in various tests
-
     private static JavaLangInvokeAccess javaLangInvokeAccess;
-    private static JavaLangModuleAccess javaLangModuleAccess;
+
+    // Settable in various tests
+    private static JavaAWTAccess javaAWTAccess;
+
+
     private static JavaLangRefAccess javaLangRefAccess;
 
     public static void setJavaLangAccess(JavaLangAccess jla) {
@@ -222,30 +226,6 @@ public final class SharedSecrets {
 
     public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {
         javaLangInvokeAccess = jlia;
-    }
-
-    public static JavaLangInvokeAccess getJavaLangInvokeAccess() {
-        var access = javaLangInvokeAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.lang.invoke.MethodHandleImpl", true, null);
-                access = javaLangInvokeAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-    public static void setJavaLangModuleAccess(JavaLangModuleAccess jlrma) {
-        javaLangModuleAccess = jlrma;
-    }
-
-    public static JavaLangModuleAccess getJavaLangModuleAccess() {
-        var access = javaLangModuleAccess;
-        if (access == null) {
-            ensureClassInitialized(ModuleDescriptor.class);
-            access = javaLangModuleAccess;
-        }
-        return access;
     }
 
     public static void setJavaLangRefAccess(JavaLangRefAccess jlra) {

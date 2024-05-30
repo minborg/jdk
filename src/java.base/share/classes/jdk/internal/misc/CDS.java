@@ -197,7 +197,7 @@ public class CDS {
         Objects.requireNonNull(lines);
         validateInputLines(lines);
         Stream<String> lineStream = Arrays.stream(lines);
-        Map<String, byte[]> result = SharedSecrets.getJavaLangInvokeAccess().generateHolderClasses(lineStream);
+        Map<String, byte[]> result = SharedSecrets.get(JavaLangInvokeAccess.class).generateHolderClasses(lineStream);
         int size = result.size();
         Object[] retArray = new Object[size * 2];
         int index = 0;

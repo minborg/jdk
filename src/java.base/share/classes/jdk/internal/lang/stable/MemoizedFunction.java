@@ -48,10 +48,10 @@ public record MemoizedFunction<T, R>(Function<? super T, ? extends R> original,
         }
         try {
             return wrapped.apply(i);
-        } catch (NoSuchKeyException e) {
+        } catch (NoSuchElementException e) {
             // Provide better guidance
             // Todo: for large `keys`, this will overflow String
-            throw new NoSuchElementException("Input value " + t + " (at index " + i + ")" + " is not present in " + keys, e);
+            throw new NoSuchElementException("Input value " + t + " (at index " + i + ")" + " is not present in " + keys + " (" + keys.length() + ")", e);
         }
     }
 
@@ -82,11 +82,7 @@ public record MemoizedFunction<T, R>(Function<? super T, ? extends R> original,
                         @Override
                         public R apply(int i) {
                             final T input;
-                            try {
-                                input = keys.orElseThrow(i);
-                            } catch (NoSuchElementException e) {
-                                throw new NoSuchKeyException();
-                            }
+                            input = keys.orElseThrow(i);
                             return original.apply(input);
                         }
                     }, StableArray.of(len))
@@ -119,12 +115,4 @@ public record MemoizedFunction<T, R>(Function<? super T, ? extends R> original,
         }
     }
 
-
 }
-
-// Local Signalling Exception
-final class NoSuchKeyException extends RuntimeException {
-    @java.io.Serial
-    static final long serialVersionUID = -825193162824296762L;
-}
-

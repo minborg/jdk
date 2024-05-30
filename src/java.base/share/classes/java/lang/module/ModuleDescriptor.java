@@ -52,6 +52,7 @@ import java.util.stream.Stream;
 import static jdk.internal.module.Checks.*;
 import static java.util.Objects.*;
 
+import jdk.internal.access.JavaLangModuleAccess;
 import jdk.internal.module.Checks;
 import jdk.internal.module.ModuleInfo;
 
@@ -2668,107 +2669,100 @@ public class ModuleDescriptor
         return value;
     }
 
-    static {
-        /**
-         * Setup the shared secret to allow code in other packages access
-         * private package methods in java.lang.module.
-         */
-        jdk.internal.access.SharedSecrets
-            .setJavaLangModuleAccess(new jdk.internal.access.JavaLangModuleAccess() {
-                @Override
-                public Builder newModuleBuilder(String mn,
-                                                boolean strict,
-                                                Set<ModuleDescriptor.Modifier> modifiers) {
-                    return new Builder(mn, strict, modifiers);
-                }
+    static final class JavaLangModuleAccessImpl implements JavaLangModuleAccess {
+        @Override
+        public Builder newModuleBuilder(String mn,
+                                        boolean strict,
+                                        Set<ModuleDescriptor.Modifier> modifiers) {
+            return new Builder(mn, strict, modifiers);
+        }
 
-                @Override
-                public Set<String> packages(ModuleDescriptor.Builder builder) {
-                    return builder.packages();
-                }
+        @Override
+        public Set<String> packages(ModuleDescriptor.Builder builder) {
+            return builder.packages();
+        }
 
-                @Override
-                public void requires(ModuleDescriptor.Builder builder,
-                                     Set<Requires.Modifier> ms,
-                                     String mn,
-                                     String rawCompiledVersion) {
-                    builder.requires(ms, mn, rawCompiledVersion);
-                }
+        @Override
+        public void requires(ModuleDescriptor.Builder builder,
+                             Set<Requires.Modifier> ms,
+                             String mn,
+                             String rawCompiledVersion) {
+            builder.requires(ms, mn, rawCompiledVersion);
+        }
 
-                @Override
-                public Requires newRequires(Set<Requires.Modifier> ms, String mn, Version v) {
-                    return new Requires(ms, mn, v, true);
-                }
+        @Override
+        public Requires newRequires(Set<Requires.Modifier> ms, String mn, Version v) {
+            return new Requires(ms, mn, v, true);
+        }
 
-                @Override
-                public Exports newExports(Set<Exports.Modifier> ms, String source) {
-                    return new Exports(ms, source, Set.of(), true);
-                }
+        @Override
+        public Exports newExports(Set<Exports.Modifier> ms, String source) {
+            return new Exports(ms, source, Set.of(), true);
+        }
 
-                @Override
-                public Exports newExports(Set<Exports.Modifier> ms,
-                                          String source,
-                                          Set<String> targets) {
-                    return new Exports(ms, source, targets, true);
-                }
+        @Override
+        public Exports newExports(Set<Exports.Modifier> ms,
+                                  String source,
+                                  Set<String> targets) {
+            return new Exports(ms, source, targets, true);
+        }
 
-                @Override
-                public Opens newOpens(Set<Opens.Modifier> ms,
-                                      String source,
-                                      Set<String> targets) {
-                    return new Opens(ms, source, targets, true);
-                }
+        @Override
+        public Opens newOpens(Set<Opens.Modifier> ms,
+                              String source,
+                              Set<String> targets) {
+            return new Opens(ms, source, targets, true);
+        }
 
-                @Override
-                public Opens newOpens(Set<Opens.Modifier> ms, String source) {
-                    return new Opens(ms, source, Set.of(), true);
-                }
+        @Override
+        public Opens newOpens(Set<Opens.Modifier> ms, String source) {
+            return new Opens(ms, source, Set.of(), true);
+        }
 
-                @Override
-                public Provides newProvides(String service, List<String> providers) {
-                    return new Provides(service, providers, true);
-                }
+        @Override
+        public Provides newProvides(String service, List<String> providers) {
+            return new Provides(service, providers, true);
+        }
 
-                @Override
-                public ModuleDescriptor newModuleDescriptor(String name,
-                                                            Version version,
-                                                            Set<ModuleDescriptor.Modifier> modifiers,
-                                                            Set<Requires> requires,
-                                                            Set<Exports> exports,
-                                                            Set<Opens> opens,
-                                                            Set<String> uses,
-                                                            Set<Provides> provides,
-                                                            Set<String> packages,
-                                                            String mainClass,
-                                                            int hashCode) {
-                    return new ModuleDescriptor(name,
-                                                version,
-                                                modifiers,
-                                                requires,
-                                                exports,
-                                                opens,
-                                                uses,
-                                                provides,
-                                                packages,
-                                                mainClass,
-                                                hashCode,
-                                                false);
-                }
+        @Override
+        public ModuleDescriptor newModuleDescriptor(String name,
+                                                    Version version,
+                                                    Set<ModuleDescriptor.Modifier> modifiers,
+                                                    Set<Requires> requires,
+                                                    Set<Exports> exports,
+                                                    Set<Opens> opens,
+                                                    Set<String> uses,
+                                                    Set<Provides> provides,
+                                                    Set<String> packages,
+                                                    String mainClass,
+                                                    int hashCode) {
+            return new ModuleDescriptor(name,
+                    version,
+                    modifiers,
+                    requires,
+                    exports,
+                    opens,
+                    uses,
+                    provides,
+                    packages,
+                    mainClass,
+                    hashCode,
+                    false);
+        }
 
-                @Override
-                public Configuration resolveAndBind(ModuleFinder finder,
-                                                    Collection<String> roots,
-                                                    PrintStream traceOutput)
-                {
-                    return Configuration.resolveAndBind(finder, roots, traceOutput);
-                }
+        @Override
+        public Configuration resolveAndBind(ModuleFinder finder,
+                                            Collection<String> roots,
+                                            PrintStream traceOutput)
+        {
+            return Configuration.resolveAndBind(finder, roots, traceOutput);
+        }
 
-                @Override
-                public Configuration newConfiguration(ModuleFinder finder,
-                                                      Map<String, Set<String>> graph) {
-                    return new Configuration(finder, graph);
-                }
-            });
+        @Override
+        public Configuration newConfiguration(ModuleFinder finder,
+                                              Map<String, Set<String>> graph) {
+            return new Configuration(finder, graph);
+        }
     }
 
 }

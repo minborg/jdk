@@ -49,7 +49,7 @@ import jdk.internal.access.SharedSecrets;
  */
 final class Builder {
     private static final JavaLangModuleAccess JLMA =
-        SharedSecrets.getJavaLangModuleAccess();
+        SharedSecrets.get(JavaLangModuleAccess.class);
 
     // Static cache of the most recently seen Version to cheaply deduplicate
     // most Version objects.  JDK modules have the same version.

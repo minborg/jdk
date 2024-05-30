@@ -65,7 +65,7 @@ import sun.net.www.ParseUtil;
 public final class ModulePatcher {
 
     private static final JavaLangModuleAccess JLMA
-        = SharedSecrets.getJavaLangModuleAccess();
+        = SharedSecrets.get(JavaLangModuleAccess.class);
 
     // module name -> sequence of patches (directories or JAR files)
     private final Map<String, List<Path>> map;

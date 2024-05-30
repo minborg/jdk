@@ -314,7 +314,7 @@ class DirectMethodHandleAccessor extends MethodAccessorImpl {
             static final MethodHandle NATIVE_ACCESSOR_INVOKE;
             static {
                 try {
-                    JLIA = SharedSecrets.getJavaLangInvokeAccess();
+                    JLIA = SharedSecrets.get(JavaLangInvokeAccess.class);
                     NATIVE_ACCESSOR_INVOKE = MethodHandles.lookup().findVirtual(NativeAccessor.class, "invoke",
                             genericMethodType(1, true));
                 } catch (NoSuchMethodException|IllegalAccessException e) {

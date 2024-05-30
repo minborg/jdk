@@ -73,7 +73,7 @@ public final class SharedUtils {
     }
 
     private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
-    private static final JavaLangInvokeAccess JLIA = SharedSecrets.getJavaLangInvokeAccess();
+    private static final JavaLangInvokeAccess JLIA = SharedSecrets.get(JavaLangInvokeAccess.class);
 
     private static final MethodHandle MH_ALLOC_BUFFER;
     private static final MethodHandle MH_BUFFER_COPY;

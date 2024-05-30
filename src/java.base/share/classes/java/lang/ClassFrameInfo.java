@@ -38,7 +38,7 @@ import java.lang.StackWalker.StackFrame;
  * @see StackWalker.Option#DROP_METHOD_INFO
  */
 class ClassFrameInfo implements StackFrame {
-    static final JavaLangInvokeAccess JLIA = SharedSecrets.getJavaLangInvokeAccess();
+    static final JavaLangInvokeAccess JLIA = SharedSecrets.get(JavaLangInvokeAccess.class);
 
     Object classOrMemberName;    // Class or ResolvedMemberName initialized by VM
     int flags;                   // updated by VM to set hidden and caller-sensitive bits

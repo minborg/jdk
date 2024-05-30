@@ -122,7 +122,7 @@ public final class Utils {
             baseCarrier = byte.class;
         }
 
-        handle = SharedSecrets.getJavaLangInvokeAccess().memorySegmentViewHandle(baseCarrier,
+        handle = SharedSecrets.get(JavaLangInvokeAccess.class).memorySegmentViewHandle(baseCarrier,
                 layout.byteAlignment() - 1, layout.order());
 
         if (layout.carrier() == boolean.class) {
