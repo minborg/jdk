@@ -71,6 +71,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import jdk.internal.access.JavaIOAccess;
+import jdk.internal.access.JavaLangRefAccess;
 import jdk.internal.logger.LoggerFinderLoader.TemporaryLoggerFinder;
 import jdk.internal.misc.Blocker;
 import jdk.internal.misc.CarrierThreadLocal;
@@ -2212,7 +2213,7 @@ public final class System {
         VM.initializeOSEnvironment();
 
         // start Finalizer and Reference Handler threads
-        SharedSecrets.getJavaLangRefAccess().startThreads();
+        SharedSecrets.get(JavaLangRefAccess.class).startThreads();
 
         // system properties, java.lang and other core classes are now initialized
         VM.initLevel(1);

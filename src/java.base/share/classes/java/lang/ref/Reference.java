@@ -306,36 +306,33 @@ public abstract sealed class Reference<T>
         handler.start();
     }
 
-    static {
-        // provide access in SharedSecrets
-        SharedSecrets.setJavaLangRefAccess(new JavaLangRefAccess() {
-            @Override
-            public void startThreads() {
-                ThreadGroup tg = Thread.currentThread().getThreadGroup();
-                for (ThreadGroup tgn = tg;
-                     tgn != null;
-                     tg = tgn, tgn = tg.getParent());
-                Reference.startReferenceHandlerThread(tg);
-                Finalizer.startFinalizerThread(tg);
-            }
+    static final class JavaLangRefAccessImpl implements JavaLangRefAccess {
+        @Override
+        public void startThreads() {
+            ThreadGroup tg = Thread.currentThread().getThreadGroup();
+            for (ThreadGroup tgn = tg;
+                 tgn != null;
+                 tg = tgn, tgn = tg.getParent());
+            Reference.startReferenceHandlerThread(tg);
+            Finalizer.startFinalizerThread(tg);
+        }
 
-            @Override
-            public boolean waitForReferenceProcessing()
+        @Override
+        public boolean waitForReferenceProcessing()
                 throws InterruptedException
-            {
-                return Reference.waitForReferenceProcessing();
-            }
+        {
+            return Reference.waitForReferenceProcessing();
+        }
 
-            @Override
-            public void runFinalization() {
-                Finalizer.runFinalization();
-            }
+        @Override
+        public void runFinalization() {
+            Finalizer.runFinalization();
+        }
 
-            @Override
-            public <T> ReferenceQueue<T> newNativeReferenceQueue() {
-                return new NativeReferenceQueue<T>();
-            }
-        });
+        @Override
+        public <T> ReferenceQueue<T> newNativeReferenceQueue() {
+            return new NativeReferenceQueue<T>();
+        }
     }
 
     /* -- Referent accessor and setters -- */

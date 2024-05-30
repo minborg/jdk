@@ -63,7 +63,9 @@ public final class StableValueImpl<T> implements StableValue<T> {
     }
 
     private boolean trySet0(T value) {
-        boolean set = UNSAFE.compareAndSetReference(this, VALUE_OFFSET, null, value);
+        // We need to replace the null value with something else or several invokers could set the value to `null`
+        boolean set = UNSAFE.compareAndSetReference(this, VALUE_OFFSET,
+                null, (value == null) ? NULL_SENTINEL : value);
         if (set) {
             state = (value == null) ? SET_NULL : SET_NONNULL;
         }
@@ -103,7 +105,17 @@ public final class StableValueImpl<T> implements StableValue<T> {
     @DontInline
     private T computeIfUnset0(Supplier<? extends T> supplier) {
         T t = supplier.get();
-        return trySet0(t) ? t : orElseThrow();
+        // There could be a race going on here because the two corresponding
+        // fields are not set atomically. We have to be careful:
+        //
+        // 1) Maybe set the value (we are racing other threads)
+        trySet0(t);
+        // 2) Wait until we have a valid value (that some other thread might have written).
+        while (state == UNSET) {
+            Thread.onSpinWait();
+        }
+        // 3) Now we know there is a value present
+        return orElseThrow();
     }
 
     @Override

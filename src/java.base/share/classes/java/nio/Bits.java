@@ -118,7 +118,7 @@ class Bits {                            // package-private
             return;
         }
 
-        final JavaLangRefAccess jlra = SharedSecrets.getJavaLangRefAccess();
+        final JavaLangRefAccess jlra = SharedSecrets.get(JavaLangRefAccess.class);
         boolean interrupted = false;
         try {
 

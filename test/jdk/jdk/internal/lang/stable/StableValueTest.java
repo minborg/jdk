@@ -53,7 +53,7 @@ final class StableValueTest {
         StableValue<Integer> stable = StableValue.of();
         assertNull(stable.orElse(null));
         assertThrows(NoSuchElementException.class, stable::orElseThrow);
-        assertEquals("StableValue.unset",stable.toString());
+        assertEquals("StableValue.unset", stable.toString());
         assertTrue(stable.trySet(42));
         assertFalse(stable.trySet(null));
         assertFalse(stable.trySet(42));
@@ -64,7 +64,7 @@ final class StableValueTest {
     void setNull() {
         StableValue<Integer> stable = StableValue.of();
         assertTrue(stable.trySet(null));
-        assertEquals("StableValue[null]",stable.toString());
+        assertEquals("StableValue[null]", stable.toString());
         assertNull(stable.orElse(13));
         assertFalse(stable.trySet(null));
         assertFalse(stable.trySet(1));
@@ -74,7 +74,7 @@ final class StableValueTest {
     void setNonNull() {
         StableValue<Integer> stable = StableValue.of();
         assertTrue(stable.trySet(42));
-        assertEquals("StableValue[42]",stable.toString());
+        assertEquals("StableValue[42]", stable.toString());
         assertEquals(42, stable.orElse(null));
         assertFalse(stable.trySet(null));
         assertFalse(stable.trySet(1));
@@ -87,7 +87,7 @@ final class StableValueTest {
         StableValue<Integer> stable = StableValue.of();
         assertEquals(42, stable.computeIfUnset(() -> 42));
         assertEquals(42, stable.computeIfUnset(() -> 13));
-        assertEquals("StableValue[42]",stable.toString());
+        assertEquals("StableValue[42]", stable.toString());
         assertEquals(42, stable.orElse(null));
         assertFalse(stable.trySet(null));
         assertFalse(stable.trySet(1));
@@ -97,7 +97,9 @@ final class StableValueTest {
     @Test
     void computeIfUnsetException() {
         StableValue<Integer> stable = StableValue.of();
-        Supplier<Integer> supplier = () -> { throw new UnsupportedOperationException("aaa"); };
+        Supplier<Integer> supplier = () -> {
+            throw new UnsupportedOperationException("aaa");
+        };
         var x = assertThrows(UnsupportedOperationException.class, () -> stable.computeIfUnset(supplier));
         assertTrue(x.getMessage().contains("aaa"));
         assertEquals(42, stable.computeIfUnset(() -> 42));

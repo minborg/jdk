@@ -48,8 +48,9 @@ final class StableUtil {
 
     static <T> String render(byte state, T value) {
         return switch (state) {
-            case SET_NONNULL, SET_NULL -> "[" + value + "]";
-            default        -> ".unset";
+            case SET_NONNULL -> "[" + value + "]";
+            case SET_NULL    -> "[null]";
+            default          -> ".unset";
         };
     }
 

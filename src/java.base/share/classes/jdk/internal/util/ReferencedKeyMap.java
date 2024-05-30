@@ -41,6 +41,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.internal.access.JavaLangRefAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -162,7 +163,7 @@ public final class ReferencedKeyMap<K, V> implements Map<K, V> {
     public static <K, V> ReferencedKeyMap<K, V>
     create(boolean isSoft, boolean useNativeQueue, Supplier<Map<ReferenceKey<K>, V>> supplier) {
         return new ReferencedKeyMap<K, V>(isSoft, supplier.get(),
-                useNativeQueue ? SharedSecrets.getJavaLangRefAccess().newNativeReferenceQueue()
+                useNativeQueue ? SharedSecrets.get(JavaLangRefAccess.class).newNativeReferenceQueue()
                                : new ReferenceQueue<>()
                 );
     }

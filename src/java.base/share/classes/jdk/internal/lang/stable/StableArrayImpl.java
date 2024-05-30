@@ -33,6 +33,7 @@ import jdk.internal.vm.annotation.Stable;
 
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -54,7 +55,7 @@ public final class StableArrayImpl<T> implements StableArray<T> {
 
     @SuppressWarnings("unchecked")
     private StableArrayImpl(int length) {
-        values = (T[])new Object[length];
+        values = (T[]) new Object[length];
         states = new byte[length];
     }
 
@@ -66,7 +67,9 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     }
 
     private boolean trySet0(int index, T value) {
-        boolean set = UNSAFE.compareAndSetReference(values, objectOffset(index), null, value);
+        // We need to replace the null value with something else or several invokers could set the value to `null`
+        boolean set = UNSAFE.compareAndSetReference(values, objectOffset(index),
+                null, (value == null) ? NULL_SENTINEL : value);
         if (set) {
             stateUnchecked(index, (value == null) ? SET_NULL : SET_NONNULL);
         }
@@ -77,7 +80,7 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     @Override
     public T orElseThrow(int index) {
         return switch (state(index)) {
-            case SET_NONNULL -> values[index];
+            case SET_NONNULL -> valueUnchecked(index);
             case SET_NULL    -> null;
             default          -> throw new NoSuchElementException("No value set for index " + index);
         };
@@ -87,7 +90,7 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     @Override
     public T orElse(int index, T other) {
         return switch (state(index)) {
-            case SET_NONNULL -> values[index];
+            case SET_NONNULL -> valueUnchecked(index);
             case SET_NULL    -> null;
             default          -> other;
         };
@@ -103,7 +106,7 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     @Override
     public T computeIfUnset(int index, IntFunction<? extends T> mapper) {
         return switch (state(index)) {
-            case SET_NONNULL -> values[index];
+            case SET_NONNULL -> valueUnchecked(index);
             case SET_NULL    -> null;
             default          -> computeIfUnset0(index, mapper);
         };
@@ -112,11 +115,22 @@ public final class StableArrayImpl<T> implements StableArray<T> {
     @DontInline
     private T computeIfUnset0(int index, IntFunction<? extends T> mapper) {
         T t = mapper.apply(index);
-        return trySet0(index, t) ? t : orElseThrow(index);
+        // There could be a race going on here because the two corresponding
+        // array components are not set atomically. We have to be careful:
+        //
+        // 1) Maybe set the value (we are racing other threads)
+        trySet0(index, t);
+        // 2) Wait until we have a valid value (that some other thread might have written).
+        while (stateUnchecked(index) == UNSET) {
+            Thread.onSpinWait();
+        }
+        // 3) Now we know there is a value present
+        return orElseThrow(index);
     }
 
     @Override
     public int hashCode() {
+        // Todo: remove the use of streams
         return IntStream.range(0, length())
                 .mapToObj(i -> this.orElse(i, null))
                 .mapToInt(Objects::hashCode)
@@ -125,20 +139,35 @@ public final class StableArrayImpl<T> implements StableArray<T> {
 
     @Override
     public boolean equals(Object obj) {
+        // Todo: remove the use of streams
         return obj instanceof StableArrayImpl<?> other &&
                 length() == other.length() &&
                 IntStream.range(0, length())
                         .allMatch(i -> stateUnchecked(i) == other.stateUnchecked(i) &&
-                                Objects.equals(values[i], other.values[i]));
+                                Objects.equals(valueUnchecked(i), other.valueUnchecked(i)));
     }
 
     @Override
     public String toString() {
-        return "StableArray[" +
-                IntStream.range(0, length())
-                        .mapToObj(i -> StableUtil.render(stateUnchecked(i), values[i]))
-                        .collect(Collectors.joining(", ")) +
-                ']';
+        // Refrain from using Streams and StringJoiner as they cannot
+        // be used early in the boot sequence
+        StringBuilder sb = new StringBuilder("StableArray[");
+        for (int i = 0; i < length(); i++) {
+            if (i != 0) {
+                sb.append(',').append(' ');
+            }
+            // Make sure state is read first.
+            byte state = stateUnchecked(i);
+            sb.append(StableUtil.render(state, valueUnchecked(i)));
+        }
+        return sb.append(']').toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    @ForceInline
+    private T valueUnchecked(int index) {
+        // return values[index]; This should work with piggybacking
+        return (T) UNSAFE.getReferenceVolatile(values, objectOffset(index));
     }
 
     @ForceInline

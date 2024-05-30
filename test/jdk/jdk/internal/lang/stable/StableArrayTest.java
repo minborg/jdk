@@ -60,7 +60,7 @@ final class StableArrayTest {
         assertThrows(IndexOutOfBoundsException.class, () -> array.orElseThrow(0));
         assertThrows(IndexOutOfBoundsException.class, () -> array.trySet(0, 0));
         assertThrows(IndexOutOfBoundsException.class, () -> array.setOrThrow(0, 0));
-        assertEquals("StableArray[]",array.toString());
+        assertEquals("StableArray[]", array.toString());
     }
 
     @Test
@@ -69,7 +69,7 @@ final class StableArrayTest {
         assertEquals(LENGTH, array.length());
         assertNull(array.orElse(INDEX, null));
         assertThrows(NoSuchElementException.class, () -> array.orElseThrow(INDEX));
-        assertEquals("StableArray[.unset, .unset, .unset]",array.toString());
+        assertEquals("StableArray[.unset, .unset, .unset]", array.toString());
         assertTrue(array.trySet(INDEX, null));
         assertFalse(array.trySet(INDEX, null));
         assertFalse(array.trySet(INDEX, INDEX));
@@ -90,7 +90,7 @@ final class StableArrayTest {
     @Test
     void setNonNull() {
         StableArray<Integer> array = StableArray.of(LENGTH);
-        assertTrue(array.trySet(INDEX,42));
+        assertTrue(array.trySet(INDEX, 42));
         assertEquals("StableArray[.unset, [42], .unset]", array.toString());
         assertEquals(42, array.orElse(INDEX, null));
         assertFalse(array.trySet(INDEX, null));
@@ -113,7 +113,9 @@ final class StableArrayTest {
     @Test
     void computeIfUnsetException() {
         StableArray<Integer> array = StableArray.of(LENGTH);
-        IntFunction<Integer> mapper = _ -> { throw new UnsupportedOperationException("aaa"); };
+        IntFunction<Integer> mapper = _ -> {
+            throw new UnsupportedOperationException("aaa");
+        };
         var x = assertThrows(UnsupportedOperationException.class, () -> array.computeIfUnset(INDEX, mapper));
         assertTrue(x.getMessage().contains("aaa"));
         assertEquals(42, array.computeIfUnset(INDEX, _ -> 42));
