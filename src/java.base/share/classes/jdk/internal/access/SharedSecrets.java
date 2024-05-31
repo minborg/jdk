@@ -39,6 +39,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static jdk.internal.access.SharedSecrets.Provider.*;
+
 /** A repository of "shared secrets", which are a mechanism for
     calling implementation-private methods in another package without
     using reflection. A package-private class implements a public
@@ -174,50 +176,50 @@ public final class SharedSecrets {
 
     // Mappings from an Access component to its associated implementation Provider
     private static final Map<Class<? extends Access>, Provider<?>> LOOKUPS = Map.ofEntries(
-            entryFrom(Provider.byName(JavaAWTFontAccess.class, "java.awt.font.JavaAWTFontAccessImpl")),
-            entryFrom(Provider.byName(JavaBeansAccess.class, "java.beans.Introspector$JavaBeansAccessImpl")),
-            entryFrom(Provider.byName(JavaNetInetAddressAccess.class, "java.net.InetAddress$JavaNetInetAddressAccessImpl")),
-            entryFrom(Provider.byName(JavaNetHttpCookieAccess.class,"java.net.HttpCookie$JavaNetHttpCookieAccessImpl")),
-            entryFrom(Provider.byName(JavaNetUriAccess.class,"java.net.URI$JavaNetUriAccessImpl")),
-            entryFrom(Provider.byName(JavaNetURLAccess.class, "java.net.URL$JavaNetURLAccessImpl")),
-            entryFrom(Provider.byName(JavaIOAccess.class, "java.io.Console$JavaIOAccessImpl")),
-            entryFrom(Provider.byName(JavaIOFileDescriptorAccess.class, "java.io.FileDescriptor$JavaIOFileDescriptorAccessImpl")),
-            entryFrom(Provider.byName(JavaIOFilePermissionAccess.class,"java.io.FilePermission$JavaIOFilePermissionAccessImpl")),
-            entryFrom(Provider.byName(JavaIOPrintStreamAccess.class,"java.io.PrintStream$JavaIOPrintStreamAccessImpl")),
-            entryFrom(Provider.byName(JavaIOPrintWriterAccess.class, "java.io.PrintWriter$JavaIOPrintWriterAccessImpl")),
-            entryFrom(Provider.byName(JavaIORandomAccessFileAccess.class, "java.io.RandomAccessFile$JavaIORandomAccessFileAccessImpl")),
-            entryFrom(Provider.byName(JavaLangModuleAccess.class, "java.lang.module.ModuleDescriptor$JavaLangModuleAccessImpl")),
-            entryFrom(Provider.bySupplier(JavaLangReflectAccess.class, "java.lang.reflect.AccessibleObject", new Supplier<>() {
+            entryFrom(byName(JavaAWTFontAccess.class, "java.awt.font.JavaAWTFontAccessImpl")),
+            entryFrom(byName(JavaBeansAccess.class, "java.beans.Introspector$JavaBeansAccessImpl")),
+            entryFrom(byName(JavaNetInetAddressAccess.class, "java.net.InetAddress$JavaNetInetAddressAccessImpl")),
+            entryFrom(byName(JavaNetHttpCookieAccess.class,"java.net.HttpCookie$JavaNetHttpCookieAccessImpl")),
+            entryFrom(byName(JavaNetUriAccess.class,"java.net.URI$JavaNetUriAccessImpl")),
+            entryFrom(byName(JavaNetURLAccess.class, "java.net.URL$JavaNetURLAccessImpl")),
+            entryFrom(byName(JavaIOAccess.class, "java.io.Console$JavaIOAccessImpl")),
+            entryFrom(byName(JavaIOFileDescriptorAccess.class, "java.io.FileDescriptor$JavaIOFileDescriptorAccessImpl")),
+            entryFrom(byName(JavaIOFilePermissionAccess.class,"java.io.FilePermission$JavaIOFilePermissionAccessImpl")),
+            entryFrom(byName(JavaIOPrintStreamAccess.class,"java.io.PrintStream$JavaIOPrintStreamAccessImpl")),
+            entryFrom(byName(JavaIOPrintWriterAccess.class, "java.io.PrintWriter$JavaIOPrintWriterAccessImpl")),
+            entryFrom(byName(JavaIORandomAccessFileAccess.class, "java.io.RandomAccessFile$JavaIORandomAccessFileAccessImpl")),
+            entryFrom(byName(JavaLangModuleAccess.class, "java.lang.module.ModuleDescriptor$JavaLangModuleAccessImpl")),
+            entryFrom(bySupplier(JavaLangReflectAccess.class, "java.lang.reflect.AccessibleObject", new Supplier<>() {
                 @Override  public JavaLangReflectAccess get() { return javaLangReflectAccess; }
             })),
-            entryFrom(Provider.byName(JavaLangRefAccess.class, "java.lang.ref.Reference$JavaLangRefAccessImpl")),
-            entryFrom(Provider.bySupplier(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl", new Supplier<>() {
+            entryFrom(byName(JavaLangRefAccess.class, "java.lang.ref.Reference$JavaLangRefAccessImpl")),
+            entryFrom(bySupplier(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl", new Supplier<>() {
                 @Override  public JavaLangInvokeAccess get() { return javaLangInvokeAccess; }
             })),
-            entryFrom(Provider.byName(JavaNioAccess.class, "java.nio.Buffer$JavaNioAccessImpl")),
-            entryFrom(Provider.byName(JavaObjectInputFilterAccess.class, "java.io.ObjectInputFilter$Config$JavaObjectInputFilterAccessImpl")),
-            entryFrom(Provider.byName(JavaObjectInputStreamReadString.class, "java.io.ObjectInputStream$JavaObjectInputStreamReadStringImpl")),
-            entryFrom(Provider.byName(JavaObjectInputStreamAccess.class, "java.io.ObjectInputStream$JavaObjectInputStreamAccessImpl")),
-            entryFrom(Provider.bySupplier(JavaLangAccess.class,null, new Supplier<>() {
+            entryFrom(byName(JavaNioAccess.class, "java.nio.Buffer$JavaNioAccessImpl")),
+            entryFrom(byName(JavaObjectInputFilterAccess.class, "java.io.ObjectInputFilter$Config$JavaObjectInputFilterAccessImpl")),
+            entryFrom(byName(JavaObjectInputStreamReadString.class, "java.io.ObjectInputStream$JavaObjectInputStreamReadStringImpl")),
+            entryFrom(byName(JavaObjectInputStreamAccess.class, "java.io.ObjectInputStream$JavaObjectInputStreamAccessImpl")),
+            entryFrom(bySupplier(JavaLangAccess.class,null, new Supplier<>() {
                 @Override  public JavaLangAccess get() { return javaLangAccess; }
             })),
-            entryFrom(Provider.byName(JavaSecurityAccess.class ,"java.security.ProtectionDomain$JavaSecurityAccessImpl")),
-            entryFrom(Provider.byName(JavaSecurityPropertiesAccess.class, "java.security.Security$JavaSecurityPropertiesAccessImpl")),
-            entryFrom(Provider.byName(JavaSecuritySignatureAccess.class, "java.security.Signature$JavaSecuritySignatureAccessImpl")),
-            entryFrom(Provider.byName(JavaSecuritySpecAccess.class,"java.security.spec.EncodedKeySpec$JavaSecuritySpecAccessImpl")),
-            entryFrom(Provider.byName(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$JavaUtilCollectionAccessImpl")),
-            entryFrom(Provider.byName(JavaUtilConcurrentFJPAccess.class,"java.util.concurrent.ForkJoinPool$JavaUtilConcurrentFJPAccessImpl")),
-            entryFrom(Provider.byName(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$JavaUtilConcurrentTLRAccessImpl")),
-            entryFrom(Provider.byName(JavaUtilJarAccess.class, "java.util.jar.JavaUtilJarAccessImpl")), // Outer class
-            entryFrom(Provider.byName(JavaUtilResourceBundleAccess.class, "java.util.ResourceBundle$JavaUtilResourceBundleAccessImpl")),
-            entryFrom(Provider.byName(JavaUtilZipFileAccess.class,"java.util.zip.ZipFile$JavaUtilZipFileAccessImpl")),
+            entryFrom(byName(JavaSecurityAccess.class ,"java.security.ProtectionDomain$JavaSecurityAccessImpl")),
+            entryFrom(byName(JavaSecurityPropertiesAccess.class, "java.security.Security$JavaSecurityPropertiesAccessImpl")),
+            entryFrom(byName(JavaSecuritySignatureAccess.class, "java.security.Signature$JavaSecuritySignatureAccessImpl")),
+            entryFrom(byName(JavaSecuritySpecAccess.class,"java.security.spec.EncodedKeySpec$JavaSecuritySpecAccessImpl")),
+            entryFrom(byName(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$JavaUtilCollectionAccessImpl")),
+            entryFrom(byName(JavaUtilConcurrentFJPAccess.class,"java.util.concurrent.ForkJoinPool$JavaUtilConcurrentFJPAccessImpl")),
+            entryFrom(byName(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$JavaUtilConcurrentTLRAccessImpl")),
+            entryFrom(byName(JavaUtilJarAccess.class, "java.util.jar.JavaUtilJarAccessImpl")), // Outer class
+            entryFrom(byName(JavaUtilResourceBundleAccess.class, "java.util.ResourceBundle$JavaUtilResourceBundleAccessImpl")),
+            entryFrom(byName(JavaUtilZipFileAccess.class,"java.util.zip.ZipFile$JavaUtilZipFileAccessImpl")),
             // The JavaxCryptoSealedObjectAccess will take a snapshot of the current value and intern the current value
-            entryFrom(Provider.bySupplier(JavaxCryptoSealedObjectAccess.class, null, new Supplier<>() {
+            entryFrom(bySupplier(JavaxCryptoSealedObjectAccess.class, null, new Supplier<>() {
                 @Override  public JavaxCryptoSealedObjectAccess get() { return javaxCryptoSealedObjectAccess; }
             })),
             //entry(JavaxCryptoSealedObjectAccess.class, new Provider.ByName("javax.crypto.SealedObject$JavaxCryptoSealedObjectAccessImpl")),
-            entryFrom(Provider.byName(JavaxCryptoSpecAccess.class,"javax.crypto.spec.SecretKeySpec$JavaxCryptoSpecAccessImpl")),
-            entryFrom(Provider.byName(JavaxSecurityAccess.class, "javax.security.auth.x500.X500Principal$JavaxSecurityAccessImpl"))
+            entryFrom(byName(JavaxCryptoSpecAccess.class,"javax.crypto.spec.SecretKeySpec$JavaxCryptoSpecAccessImpl")),
+            entryFrom(byName(JavaxSecurityAccess.class, "javax.security.auth.x500.X500Principal$JavaxSecurityAccessImpl"))
     );
 
     @SuppressWarnings("unchecked")
