@@ -131,7 +131,8 @@ public sealed interface StableValue<T>
      */
     default void setOrThrow(T value) {
         if (!trySet(value)) {
-            throw new IllegalStateException("Value already set: " + this);
+            throw new IllegalStateException("Cannot set value to " + value +
+                    " because a value is alredy set: " + this);
         }
     }
 

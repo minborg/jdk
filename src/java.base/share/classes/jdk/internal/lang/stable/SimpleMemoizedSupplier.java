@@ -15,10 +15,7 @@ public final class SimpleMemoizedSupplier<T>
     @Stable
     private final Supplier<? extends T> original;
     @Stable
-    private T value;
-    // Used to signal a `null` value and for piggybacking
-    @Stable
-    private volatile byte state;
+    private volatile T value;
 
     public SimpleMemoizedSupplier(Supplier<? extends T> original) {
         this.original = original;
@@ -27,23 +24,16 @@ public final class SimpleMemoizedSupplier<T>
     @SuppressWarnings("unchecked")
     @Override
     public T get() {
-        // Reading `state` using volatile semantics established a happens-before relation
-        // with respect to the update of `value` even if read using plain memory semantics
-        // (piggybacking).
-        switch (state) {
-            case SET_NONNULL: return value;
-            case SET_NULL: return null;
+        T t = value;
+        if (t != null) {
+            return t == nullSentinel() ? null : t;
         }
-        T t = original.get();
-        final byte newState;
+        t = original.get();
         if (t == null) {
-            t = (T) NULL_SENTINEL;
-            newState = SET_NULL;
-        } else {
-            newState = SET_NONNULL;
+            t = nullSentinel();
         }
         T witness = (T) UNSAFE.compareAndExchangeReference(this, VALUE_OFFSET, null, t);
-        state = newState;
-        return witness == null ? t : witness;
+        t = (witness == null ? t : witness);
+        return t == nullSentinel() ? null : t;
     }
 }

@@ -41,80 +41,55 @@ public final class StableValueImpl<T> implements StableValue<T> {
     private static final long VALUE_OFFSET =
             UNSAFE.objectFieldOffset(StableValueImpl.class, "value");
 
-    // The set value (if non-null)
+    // Unset:         null
+    // Set(non-null): The set value
+    // Set(null):     nullSentinel()
     @Stable
-    private T value;
-
-    // Used to signal UNSET, SET_NONNULL, or SET_NULL; and for piggybacking:
-    // The `state` field must always be read before the `value` field is read
-    // The `value` field must always be written before the `state` field is written
-    @Stable
-    private volatile byte state;
+    private volatile T value;
 
     private StableValueImpl() {}
 
     @ForceInline
     @Override
     public boolean trySet(T value) {
-        if (state != UNSET) {
-            return false;
-        }
-        return trySet0(value);
-    }
-
-    private boolean trySet0(T value) {
-        // We need to replace the null value with something else or several invokers could set the value to `null`
-        boolean set = UNSAFE.compareAndSetReference(this, VALUE_OFFSET,
-                null, (value == null) ? NULL_SENTINEL : value);
-        if (set) {
-            state = (value == null) ? SET_NULL : SET_NONNULL;
-        }
-        return set;
+        return UNSAFE.compareAndSetReference(this, VALUE_OFFSET,
+                null, (value == null) ? nullSentinel() : value);
     }
 
     @ForceInline
     @Override
     public T orElseThrow() {
-        return switch (state) {
-            case SET_NONNULL -> value;
-            case SET_NULL    -> null;
-            default          -> throw new NoSuchElementException("No value set");
-        };
+        final T t = value;
+        if (t != null) {
+            return t == nullSentinel() ? null : t;
+        }
+        throw new NoSuchElementException("No value set");
     }
 
     @ForceInline
     @Override
     public T orElse(T other) {
-        return switch (state) {
-            case SET_NONNULL -> value;
-            case SET_NULL    -> null;
-            default          -> other;
-        };
+        final T t = value;
+        if (t != null) {
+            return t == nullSentinel() ? null : t;
+        }
+        return other;
     }
 
     @ForceInline
     @Override
     public T computeIfUnset(Supplier<? extends T> supplier) {
-        return switch (state) {
-            case SET_NONNULL -> value;
-            case SET_NULL    -> null;
-            default          -> computeIfUnset0(supplier);
-        };
+        final T t = value;
+        if (t != null) {
+            return t == nullSentinel() ? null : t;
+        }
+        return compute(supplier);
     }
 
     @DontInline
-    private T computeIfUnset0(Supplier<? extends T> supplier) {
-        T t = supplier.get();
-        // There could be a race going on here because the two corresponding
-        // fields are not set atomically. We have to be careful:
-        //
-        // 1) Maybe set the value (we are racing other threads)
-        trySet0(t);
-        // 2) Wait until we have a valid value (that some other thread might have written).
-        while (state == UNSET) {
-            Thread.onSpinWait();
-        }
-        // 3) Now we know there is a value present
+    private T compute(Supplier<? extends T> supplier) {
+        final T t = supplier.get();
+        trySet(t);
         return orElseThrow();
     }
 
@@ -126,15 +101,12 @@ public final class StableValueImpl<T> implements StableValue<T> {
     @Override
     public boolean equals(Object obj) {
         return obj instanceof StableValueImpl<?> other &&
-                state == other.state &&
                 Objects.equals(value, other.value);
     }
 
     @Override
     public String toString() {
-        // Make sure state is read first.
-        byte s = state;
-        return "StableValue" + StableUtil.render(s, value);
+        return "StableValue" + render(value);
     }
 
     // Factory

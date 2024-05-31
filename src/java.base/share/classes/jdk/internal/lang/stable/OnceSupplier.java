@@ -30,30 +30,21 @@ import jdk.internal.vm.annotation.ForceInline;
 
 import java.util.function.Supplier;
 
+import static jdk.internal.lang.stable.StableUtil.nullSentinel;
+
 public record OnceSupplier<T>(Supplier<? extends T> original,
                               StableValue<T> value) implements Supplier<T> {
 
     @ForceInline
     @Override
     public T get() {
-        T t = valueOrElseSentinel();
-        if (t != StableUtil.NULL_SENTINEL) {
-            return t;
-        }
         synchronized (value) {
-            t = valueOrElseSentinel();
-            if (t != StableUtil.NULL_SENTINEL) {
+            final T t = value.orElse(nullSentinel());
+            if (t != nullSentinel()) {
                 return t;
             }
-            t = original.get();
-            return t;
+            return original.get();
         }
-    }
-
-    private T valueOrElseSentinel() {
-        @SuppressWarnings("unchecked")
-        T t = value.orElse((T) StableUtil.NULL_SENTINEL);
-        return t;
     }
 
     public static <T> Supplier<T> of(Supplier<? extends T> original) {

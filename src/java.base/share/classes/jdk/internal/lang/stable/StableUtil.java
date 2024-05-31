@@ -33,25 +33,22 @@ final class StableUtil {
 
     static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    static final byte UNSET = 0;
-    static final byte SET_NONNULL = 1;
-    static final byte SET_NULL = 2;
-    static final Object NULL_SENTINEL = new Object();
+    private static final Object NULL_SENTINEL = new Object();
+
+    @SuppressWarnings("unchecked")
+    static <T> T nullSentinel() {
+        return (T) NULL_SENTINEL;
+    }
 
     static long objectOffset(int index) {
         return Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE;
     }
 
-    static long byteOffset(int index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) index * Unsafe.ARRAY_BYTE_INDEX_SCALE;
-    }
-
-    static <T> String render(byte state, T value) {
-        return switch (state) {
-            case SET_NONNULL -> "[" + value + "]";
-            case SET_NULL    -> "[null]";
-            default          -> ".unset";
-        };
+    static <T> String render(T t) {
+        if (t != null) {
+            return t == nullSentinel() ? "[null]" : "[" + t + "]";
+        }
+        return ".unset";
     }
 
 }

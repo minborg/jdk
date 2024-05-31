@@ -151,7 +151,8 @@ public sealed interface StableArray<T>
      */
     default void setOrThrow(int index, T value) {
         if (!trySet(index, value)) {
-            throw new IllegalStateException("Value already set: " + this);
+            throw new IllegalStateException("Cannot set value at index " + index +
+                    " to " + value + " because a value is alredy set: " + this);
         }
     }
 
