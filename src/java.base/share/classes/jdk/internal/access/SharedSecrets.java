@@ -27,7 +27,6 @@ package jdk.internal.access;
 
 import jdk.internal.lang.StableValues;
 
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -80,8 +79,9 @@ public final class SharedSecrets {
      * Marker interface for all the Access component types.
      */
     public sealed interface Access permits
-            JavaAWTFontAccess, JavaBeansAccess, JavaIOAccess, JavaIOFileDescriptorAccess,
-            JavaIOFilePermissionAccess, JavaIOPrintStreamAccess, JavaIOPrintWriterAccess,
+            JavaAWTAccess , JavaAWTFontAccess, JavaBeansAccess, JavaIOAccess,
+            JavaIOFileDescriptorAccess, JavaIOFilePermissionAccess,
+            JavaIOPrintStreamAccess, JavaIOPrintWriterAccess,
             JavaIORandomAccessFileAccess, JavaLangAccess, JavaLangInvokeAccess,
             JavaLangModuleAccess, JavaLangRefAccess, JavaLangReflectAccess,
             JavaNetHttpCookieAccess, JavaNetInetAddressAccess, JavaNetURLAccess,
@@ -200,6 +200,9 @@ public final class SharedSecrets {
 
     // Mappings from an Access component to its associated implementation Provider
     private static final Map<Class<? extends Access>, Provider<?>> LOOKUPS = Map.ofEntries(
+            entryFrom(bySupplier(JavaAWTAccess.class, null, new Supplier<>() {
+                @Override  public JavaAWTAccess get() { return javaAWTAccess; }
+            })),
             entryFrom(byName(JavaAWTFontAccess.class, "java.awt.font.JavaAWTFontAccessImpl")),
             entryFrom(byName(JavaBeansAccess.class, "java.beans.Introspector$JavaBeansAccessImpl")),
             entryFrom(byName(JavaNetInetAddressAccess.class, "java.net.InetAddress$JavaNetInetAddressAccessImpl")),
@@ -237,11 +240,9 @@ public final class SharedSecrets {
             entryFrom(byName(JavaUtilJarAccess.class, "java.util.jar.JavaUtilJarAccessImpl")), // Outer class
             entryFrom(byName(JavaUtilResourceBundleAccess.class, "java.util.ResourceBundle$JavaUtilResourceBundleAccessImpl")),
             entryFrom(byName(JavaUtilZipFileAccess.class,"java.util.zip.ZipFile$JavaUtilZipFileAccessImpl")),
-            // The JavaxCryptoSealedObjectAccess will take a snapshot of the current value and intern the current value
             entryFrom(bySupplier(JavaxCryptoSealedObjectAccess.class, null, new Supplier<>() {
                 @Override  public JavaxCryptoSealedObjectAccess get() { return javaxCryptoSealedObjectAccess; }
             })),
-            //entry(JavaxCryptoSealedObjectAccess.class, new Provider.ByName("javax.crypto.SealedObject$JavaxCryptoSealedObjectAccessImpl")),
             entryFrom(byName(JavaxCryptoSpecAccess.class,"javax.crypto.spec.SecretKeySpec$JavaxCryptoSpecAccessImpl")),
             entryFrom(byName(JavaxSecurityAccess.class, "javax.security.auth.x500.X500Principal$JavaxSecurityAccessImpl"))
     );
@@ -305,15 +306,8 @@ public final class SharedSecrets {
         javaLangInvokeAccess = jlia;
     }
 
-
     public static void setJavaAWTAccess(JavaAWTAccess jaa) {
         javaAWTAccess = jaa;
-    }
-
-    public static JavaAWTAccess getJavaAWTAccess() {
-        // this may return null in which case calling code needs to
-        // provision for.
-        return javaAWTAccess;
     }
 
     // Set by some tests
@@ -331,5 +325,7 @@ public final class SharedSecrets {
 
     // Compatibility methods that can be removed once the `closed` repo is updated
     public static JavaUtilZipFileAccess getJavaUtilZipFileAccess() { return get(JavaUtilZipFileAccess.class); }
+    // Just here for a benchmark
+    public static JavaLangAccess getJavaLangAccess() { return javaLangAccess; }
 
 }

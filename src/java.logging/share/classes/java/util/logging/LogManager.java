@@ -464,7 +464,7 @@ public class LogManager {
 
         @SuppressWarnings("removal")
         SecurityManager sm = System.getSecurityManager();
-        JavaAWTAccess javaAwtAccess = SharedSecrets.getJavaAWTAccess();
+        JavaAWTAccess javaAwtAccess = SharedSecrets.get(JavaAWTAccess.class);
         if (sm != null && javaAwtAccess != null) {
             // for each applet, it has its own LoggerContext isolated from others
             final Object ecx = javaAwtAccess.getAppletContext();

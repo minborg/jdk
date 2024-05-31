@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,41 @@
  * questions.
  */
 
-package jdk.internal.access;
+package jdk.internal.lang.stable;
 
-public non-sealed interface JavaAWTAccess extends SharedSecrets.Access {
+import jdk.internal.lang.StableValue;
+import jdk.internal.vm.annotation.ForceInline;
 
-    // Returns the AppContext used for applet logging isolation, or null if
-    // no isolation is required.
-    // If there's no applet, or if the caller is a stand alone application,
-    // or running in the main app context, returns null.
-    // Otherwise, returns the AppContext of the calling applet.
-    Object getAppletContext();
+import java.util.function.Supplier;
+
+public record OnceSupplier<T>(Supplier<? extends T> original,
+                              StableValue<T> value) implements Supplier<T> {
+
+    @ForceInline
+    @Override
+    public T get() {
+        T t = valueOrElseSentinel();
+        if (t != StableUtil.NULL_SENTINEL) {
+            return t;
+        }
+        synchronized (value) {
+            t = valueOrElseSentinel();
+            if (t != StableUtil.NULL_SENTINEL) {
+                return t;
+            }
+            t = original.get();
+            return t;
+        }
+    }
+
+    private T valueOrElseSentinel() {
+        @SuppressWarnings("unchecked")
+        T t = value.orElse((T) StableUtil.NULL_SENTINEL);
+        return t;
+    }
+
+    public static <T> Supplier<T> of(Supplier<? extends T> original) {
+        return new OnceSupplier<>(original, StableValue.of());
+    }
+
 }

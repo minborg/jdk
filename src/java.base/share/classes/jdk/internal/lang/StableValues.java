@@ -27,6 +27,7 @@ package jdk.internal.lang;
 
 import jdk.internal.lang.stable.MemoizedFunction;
 import jdk.internal.lang.stable.MemoizedIntFunction;
+import jdk.internal.lang.stable.OnceSupplier;
 import jdk.internal.lang.stable.SimpleMemoizedSupplier;
 
 import java.util.NoSuchElementException;
@@ -142,5 +143,28 @@ public final class StableValues {
         Objects.requireNonNull(original);
         return MemoizedFunction.of(inputs, original);
     }
+
+    /**
+     * {@return a new atomic, thread-safe, stable, blocking, lazily computed
+     * {@linkplain Supplier supplier} that records the value of the provided
+     * {@code original} supplier upon being first accessed via {@linkplain Supplier#get()}
+     * and guarantees that the given {@code original} Supplier is invoked at most once
+     * if successful.
+     * <p>
+     * If the {@code original} Supplier invokes the returned Supplier recursively,
+     * a StackOverflowError will be thrown when the returned
+     * Supplier's {@linkplain Function#apply(Object)}} method is invoked.
+     * <p>
+     * If the provided {@code original} supplier throws an exception, it is relayed
+     * to the initial {@linkplain Supplier#get()} caller and no value is memoized.
+     *
+     * @param original supplier
+     * @param <T> the type of results supplied by the returned supplier
+     */
+    public static <T> Supplier<T> onceSupplier(Supplier<? extends T> original) {
+        Objects.requireNonNull(original);
+        return OnceSupplier.of(original);
+    }
+
 
 }
