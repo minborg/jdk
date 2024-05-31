@@ -94,7 +94,7 @@ public final class SharedSecrets {
             JavaxSecurityAccess {}
 
     /**
-     * {@return an implementation for the provided {@code accessComponent}}
+     * {@return the implementation for the provided {@code accessComponent}}
      * <p>
      * The backing write-once-per-key repository can be constant folded by the VM.
      *
@@ -106,20 +106,33 @@ public final class SharedSecrets {
             return accessComponent.cast(
                     REPOSITORY.apply(accessComponent));
         } catch (Throwable t) {
-            if (System.err != null) {
-                // Todo: Remove this debug "feature"
-                System.err.println("SharedSecrets::get, Unable to get " + accessComponent);
-                System.err.println(REPOSITORY);
-                System.err.flush();
-            }
             throw new NoSuchElementException("Unable to get " + accessComponent + " from " + REPOSITORY, t);
         }
     }
 
+    /**
+     * A Provider can produce an implementation of an Access component.
+     *
+     * @param <R> Access component type
+     */
     sealed interface Provider<R extends Access> {
+        /**
+         * {@return an implementation of the Access component of type {@code R}}
+         */
         R get();
+
+        /**
+         * {@return the type {@code Class<R>} of the Access component}
+         */
         Class<R> type();
 
+        /**
+         * Can provide an Access component by means of a class name.
+         *
+         * @param type Access class literal
+         * @param name Name of the implementing Access component
+         * @param <R>  Access component type
+         */
         record ByName<R extends Access>(@Override Class<R> type,
                                         String name) implements Provider<R> {
 
@@ -148,6 +161,15 @@ public final class SharedSecrets {
             }
         }
 
+        /**
+         * Can provide an Access component by means of a provided {@code supplier}.
+         *
+         * @param type     Access class literal
+         * @param holder   class name of a class that needs to be loaded before the
+         *                 provided {@code supplier is run}
+         * @param supplier Name of the implementing Access component
+         * @param <R>      Access component type
+         */
         record BySupplier<R extends Access>(@Override Class<R> type,
                                             String holder,
                                             Supplier<? extends R> supplier) implements Provider<R> {
@@ -161,6 +183,8 @@ public final class SharedSecrets {
                 );
             }
         }
+
+        // Factories
 
         static <R extends Access> Provider<R> byName(Class<R> type, String name) {
             return new ByName<>(type,name);
@@ -303,12 +327,6 @@ public final class SharedSecrets {
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
-    }
-
-    private static void ensureClassInitialized(Class<?> c) {
-        try {
-            MethodHandles.lookup().ensureInitialized(c);
-        } catch (IllegalAccessException e) {}
     }
 
     // Compatibility methods that can be removed once the `closed` repo is updated
