@@ -71,6 +71,7 @@ import java.util.concurrent.ExecutorService;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
+import jdk.internal.lang.StableValue;
 import sun.nio.ch.FileChannelImpl;
 
 /**
@@ -111,11 +112,10 @@ import sun.nio.ch.FileChannelImpl;
  */
 
 public abstract class FileSystemProvider {
-    // lock using when loading providers
-    private static final Object lock = new Object();
 
     // installed providers
-    private static volatile List<FileSystemProvider> installedProviders;
+    private static final StableValue<List<FileSystemProvider>> installedProviders =
+            StableValue.of();
 
     // used to avoid recursive loading of installed providers
     private static boolean loadingProviders  = false;
@@ -188,34 +188,32 @@ public abstract class FileSystemProvider {
      *          When an error occurs while loading a service provider
      */
     public static List<FileSystemProvider> installedProviders() {
-        if (installedProviders == null) {
-            // ensure default provider is initialized
-            FileSystemProvider defaultProvider = FileSystems.getDefault().provider();
-
-            synchronized (lock) {
-                if (installedProviders == null) {
-                    if (loadingProviders) {
-                        throw new Error("Circular loading of installed providers detected");
-                    }
-                    loadingProviders = true;
-
-                    @SuppressWarnings("removal")
-                    List<FileSystemProvider> list = AccessController
-                        .doPrivileged(new PrivilegedAction<>() {
-                            @Override
-                            public List<FileSystemProvider> run() {
-                                return loadInstalledProviders();
-                        }});
-
-                    // insert the default provider at the start of the list
-                    list.add(0, defaultProvider);
-
-                    installedProviders = Collections.unmodifiableList(list);
-                }
-            }
-        }
-        return installedProviders;
+        return installedProviders.computeIfUnset(FileSystemProvider::instlledProviders0);
     }
+
+    static List<FileSystemProvider> instlledProviders0() {
+        // ensure default provider is initialized
+        FileSystemProvider defaultProvider = FileSystems.getDefault().provider();
+
+        if (loadingProviders) {
+            throw new Error("Circular loading of installed providers detected");
+        }
+        loadingProviders = true;
+
+        @SuppressWarnings("removal")
+        List<FileSystemProvider> list = AccessController
+                .doPrivileged(new PrivilegedAction<>() {
+                    @Override
+                    public List<FileSystemProvider> run() {
+                        return loadInstalledProviders();
+                    }
+                });
+
+        // insert the default provider at the start of the list
+        list.add(0, defaultProvider);
+        return List.copyOf(list);
+    }
+
 
     /**
      * Returns the URI scheme that identifies this provider.

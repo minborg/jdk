@@ -25,6 +25,8 @@
 
 package jdk.internal.access;
 
+import jdk.internal.lang.StableValue;
+
 import javax.crypto.SealedObject;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ObjectInputFilter;
@@ -32,9 +34,9 @@ import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
 import java.security.Security;
 import java.security.spec.EncodedKeySpec;
+import java.util.AbstractMap;
+import java.util.Map;
 import java.util.ResourceBundle;
-import java.util.concurrent.ForkJoinPool;
-import java.util.jar.JarFile;
 import java.io.Console;
 import java.io.FileDescriptor;
 import java.io.FilePermission;
@@ -56,107 +58,104 @@ import javax.security.auth.x500.X500Principal;
     for this purpose, namely the loss of compile-time checking. */
 
 public class SharedSecrets {
-    private static JavaAWTAccess javaAWTAccess;
-    private static JavaAWTFontAccess javaAWTFontAccess;
-    private static JavaBeansAccess javaBeansAccess;
-    private static JavaLangAccess javaLangAccess;
-    private static JavaLangInvokeAccess javaLangInvokeAccess;
-    private static JavaLangModuleAccess javaLangModuleAccess;
-    private static JavaLangRefAccess javaLangRefAccess;
-    private static JavaLangReflectAccess javaLangReflectAccess;
-    private static JavaIOAccess javaIOAccess;
-    private static JavaIOPrintStreamAccess javaIOPrintStreamAccess;
-    private static JavaIOPrintWriterAccess javaIOPrintWriterAccess;
-    private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
-    private static JavaIOFilePermissionAccess javaIOFilePermissionAccess;
-    private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
-    private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
-    private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
-    private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
-    private static JavaNetInetAddressAccess javaNetInetAddressAccess;
-    private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
-    private static JavaNetUriAccess javaNetUriAccess;
-    private static JavaNetURLAccess javaNetURLAccess;
-    private static JavaNioAccess javaNioAccess;
-    private static JavaUtilCollectionAccess javaUtilCollectionAccess;
-    private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
-    private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
-    private static JavaUtilJarAccess javaUtilJarAccess;
-    private static JavaUtilZipFileAccess javaUtilZipFileAccess;
-    private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
-    private static JavaSecurityAccess javaSecurityAccess;
-    private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
-    private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
-    private static JavaSecuritySpecAccess javaSecuritySpecAccess;
-    private static JavaxCryptoSealedObjectAccess javaxCryptoSealedObjectAccess;
-    private static JavaxCryptoSpecAccess javaxCryptoSpecAccess;
-    private static JavaxSecurityAccess javaxSecurityAccess;
+
+    public sealed interface Access permits
+            JavaAWTAccess, JavaAWTFontAccess,
+            JavaBeansAccess, JavaLangAccess,
+            JavaLangInvokeAccess, JavaLangModuleAccess,
+            JavaLangRefAccess, JavaLangReflectAccess,
+            JavaIOAccess, JavaIOPrintStreamAccess,
+            JavaIOPrintWriterAccess, JavaIOFileDescriptorAccess,
+            JavaIOFilePermissionAccess, JavaIORandomAccessFileAccess,
+            JavaObjectInputStreamReadString, JavaObjectInputStreamAccess,
+            JavaObjectInputFilterAccess, JavaNetInetAddressAccess,
+            JavaNetHttpCookieAccess, JavaNetUriAccess,
+            JavaNetURLAccess, JavaNioAccess,
+            JavaUtilCollectionAccess, JavaUtilConcurrentTLRAccess,
+            JavaUtilConcurrentFJPAccess, JavaUtilJarAccess,
+            JavaUtilZipFileAccess, JavaUtilResourceBundleAccess,
+            JavaSecurityAccess, JavaSecurityPropertiesAccess,
+            JavaSecuritySignatureAccess, JavaSecuritySpecAccess,
+            JavaxCryptoSealedObjectAccess, JavaxCryptoSpecAccess,
+            JavaxSecurityAccess {}
+
+    private static final Map<Class<? extends Access>, StableValue<? extends Access>>
+            REPOSITORY = createEmptyRepo();
+
+    public static <T extends Access> T get(Class<T> component) {
+        @SuppressWarnings("unchecked")
+        StableValue<T> stable = (StableValue<T>) REPOSITORY.get(component);
+        if (!stable.isSet()) {
+            String className = INIT_ACTIONS.get(component);
+            if (className != null) {
+                try {
+                    Class.forName(className, true, null);
+                } catch (ClassNotFoundException e) {
+                }
+            }
+        }
+        return component.cast(REPOSITORY.get(component).orElseThrow());
+    }
+
+    public static <T extends Access> void set(Class<T> component, T implementation) {
+        @SuppressWarnings("unchecked")
+        StableValue<T> stable = (StableValue<T>) REPOSITORY.get(component);
+        stable.trySet(implementation);
+    }
+
+    private static final Map<Class<? extends Access>, String> INIT_ACTIONS = Map.ofEntries(
+            Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl"),
+            Map.entry(JavaLangModuleAccess.class, "java.lang.module.ModuleDescriptor"),
+            Map.entry(JavaIOAccess.class, "java.io.Console.class"),
+            Map.entry(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access"),
+            Map.entry(JavaUtilConcurrentFJPAccess.class, "java.util.concurrent.ForkJoinPool"),
+            Map.entry(JavaUtilJarAccess.class, "java.util.jar.JarFile"),
+
+    );
+
+    // Legacy setter wrappers to be removed
 
     public static void setJavaUtilCollectionAccess(JavaUtilCollectionAccess juca) {
-        javaUtilCollectionAccess = juca;
+        set(JavaUtilCollectionAccess.class, juca);
     }
 
     public static JavaUtilCollectionAccess getJavaUtilCollectionAccess() {
-        var access = javaUtilCollectionAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.util.ImmutableCollections$Access", true, null);
-                access = javaUtilCollectionAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
+        return get(JavaUtilCollectionAccess.class);
     }
 
     public static void setJavaUtilConcurrentTLRAccess(JavaUtilConcurrentTLRAccess access) {
-        javaUtilConcurrentTLRAccess = access;
+        set(JavaUtilConcurrentTLRAccess.class, access);
     }
 
     public static JavaUtilConcurrentTLRAccess getJavaUtilConcurrentTLRAccess() {
-        var access = javaUtilConcurrentTLRAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.util.concurrent.ThreadLocalRandom$Access", true, null);
-                access = javaUtilConcurrentTLRAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
+        return get(JavaUtilConcurrentTLRAccess.class);
     }
 
     public static void setJavaUtilConcurrentFJPAccess(JavaUtilConcurrentFJPAccess access) {
-        javaUtilConcurrentFJPAccess = access;
+        set(JavaUtilConcurrentFJPAccess.class, access);
     }
 
     public static JavaUtilConcurrentFJPAccess getJavaUtilConcurrentFJPAccess() {
-        var access = javaUtilConcurrentFJPAccess;
-        if (access == null) {
-            ensureClassInitialized(ForkJoinPool.class);
-            access = javaUtilConcurrentFJPAccess;
-        }
-        return access;
+        return get(JavaUtilConcurrentFJPAccess.class);
     }
 
     public static JavaUtilJarAccess javaUtilJarAccess() {
-        var access = javaUtilJarAccess;
-        if (access == null) {
-            // Ensure JarFile is initialized; we know that this class
-            // provides the shared secret
-            ensureClassInitialized(JarFile.class);
-            access = javaUtilJarAccess;
-        }
-        return access;
+        return get(JavaUtilJarAccess.class);
     }
 
     public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
-        javaUtilJarAccess = access;
+        set(JavaUtilJarAccess.class, access);
     }
 
     public static void setJavaLangAccess(JavaLangAccess jla) {
-        javaLangAccess = jla;
+        set(JavaLangAccess.class, jla);
     }
 
     public static JavaLangAccess getJavaLangAccess() {
-        return javaLangAccess;
+        return get(JavaLangAccess.class);
     }
+
+    // Todo: Fix the rest ...
 
     public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {
         javaLangInvokeAccess = jlia;
@@ -536,4 +535,16 @@ public class SharedSecrets {
             MethodHandles.lookup().ensureInitialized(c);
         } catch (IllegalAccessException e) {}
     }
+
+    @SuppressWarnings("unchecked")
+    private static Map<Class<? extends Access>, StableValue<? extends Access>> createEmptyRepo() {
+        Class<?>[] components = Access.class.getPermittedSubclasses();
+        Map.Entry<Class<?>, StableValue<?>>[] entries = new Map.Entry[components.length];
+        int i = 0;
+        for (Class<?> component:components) {
+            entries[i++] = new AbstractMap.SimpleImmutableEntry<>(component, StableValue.of());
+        }
+        return Map.ofEntries(entries);
+    }
+
 }

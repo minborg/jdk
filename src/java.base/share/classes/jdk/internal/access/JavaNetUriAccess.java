@@ -27,7 +27,7 @@ package jdk.internal.access;
 
 import java.net.URI;
 
-public interface JavaNetUriAccess {
+public non-sealed interface JavaNetUriAccess extends SharedSecrets.Access {
     /**
      * Create a URI of pre-validated scheme and path.
      */

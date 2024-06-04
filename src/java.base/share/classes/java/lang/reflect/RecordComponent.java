@@ -26,6 +26,7 @@
 package java.lang.reflect;
 
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.lang.StableValue;
 import sun.reflect.annotation.AnnotationParser;
 import sun.reflect.annotation.TypeAnnotation;
 import sun.reflect.annotation.TypeAnnotationParser;
@@ -183,28 +184,20 @@ public final class RecordComponent implements AnnotatedElement {
         return annotationClass.cast(declaredAnnotations().get(annotationClass));
     }
 
-    private transient volatile Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
+    private transient final StableValue<Map<Class<? extends Annotation>, Annotation>>
+            declaredAnnotations = StableValue.of();
 
     private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
-        Map<Class<? extends Annotation>, Annotation> declAnnos;
-        if ((declAnnos = declaredAnnotations) == null) {
-            synchronized (this) {
-                if ((declAnnos = declaredAnnotations) == null) {
-                    RecordComponent root = this.root;
-                    if (root != null) {
-                        declAnnos = root.declaredAnnotations();
-                    } else {
-                        declAnnos = AnnotationParser.parseAnnotations(
-                                annotations,
-                                SharedSecrets.getJavaLangAccess()
-                                        .getConstantPool(getDeclaringRecord()),
-                                getDeclaringRecord());
-                    }
-                    declaredAnnotations = declAnnos;
-                }
-            }
-        }
-        return declAnnos;
+        return declaredAnnotations.computeIfUnset(() -> {
+            RecordComponent root = this.root;
+            return (root != null)
+                    ? root.declaredAnnotations()
+                    : AnnotationParser.parseAnnotations(
+                    annotations,
+                    SharedSecrets.getJavaLangAccess()
+                            .getConstantPool(getDeclaringRecord()),
+                    getDeclaringRecord());
+        });
     }
 
     /**

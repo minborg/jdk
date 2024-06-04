@@ -31,7 +31,7 @@ import jdk.internal.reflect.*;
 /** An interface which gives privileged packages Java-level access to
     internals of java.lang.reflect. */
 
-public interface JavaLangReflectAccess {
+public non-sealed interface JavaLangReflectAccess extends SharedSecrets.Access {
     /** Creates a new java.lang.reflect.Constructor. Access checks as
       per java.lang.reflect.AccessibleObject are not overridden. */
     public <T> Constructor<T> newConstructor(Class<T> declaringClass,

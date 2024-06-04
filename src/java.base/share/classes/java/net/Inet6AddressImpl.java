@@ -24,6 +24,8 @@
  */
 package java.net;
 
+import jdk.internal.lang.StableValue;
+
 import java.io.IOException;
 import java.net.spi.InetAddressResolver.LookupPolicy;
 
@@ -98,22 +100,26 @@ final class Inet6AddressImpl implements InetAddressImpl {
         return isReachable0(addr.getAddress(), scope, timeout, ifaddr, ttl, netif_scope);
     }
 
-    public synchronized InetAddress anyLocalAddress() {
-        if (anyLocalAddress == null) {
+    public InetAddress anyLocalAddress() {
+        return anyLocalAddress.computeIfUnset(() -> {
             int flags = PLATFORM_LOOKUP_POLICY.characteristics();
             if (InetAddress.ipv6AddressesFirst(flags) ||
-                InetAddress.systemAddressesOrder(flags)) {
-                anyLocalAddress = new Inet6Address();
-                anyLocalAddress.holder().hostName = "::";
+                    InetAddress.systemAddressesOrder(flags)) {
+                InetAddress any = new Inet6Address();
+                any.holder().hostName = "::";
+                return any;
             } else {
-                anyLocalAddress = (new Inet4AddressImpl()).anyLocalAddress();
+                return (new Inet4AddressImpl()).anyLocalAddress();
             }
-        }
-        return anyLocalAddress;
+        });
     }
 
-    public synchronized InetAddress loopbackAddress() {
-        if (loopbackAddress == null) {
+    public InetAddress loopbackAddress() {
+        return loopbackAddress.computeIfUnset(this::loopbackAddress0);
+    }
+
+    public InetAddress loopbackAddress0() {
+            InetAddress loopbackAddress = null;
             int flags = PLATFORM_LOOKUP_POLICY.characteristics();
             boolean preferIPv6Address = InetAddress.ipv6AddressesFirst(flags) ||
                     InetAddress.systemAddressesOrder(flags);
@@ -142,10 +148,9 @@ final class Inet6AddressImpl implements InetAddressImpl {
                 loopbackAddress = address;
                 break;
             }
-        }
-        return loopbackAddress;
+            return loopbackAddress;
     }
 
-    private InetAddress anyLocalAddress;
-    private InetAddress loopbackAddress;
+    private StableValue<InetAddress> anyLocalAddress;
+    private StableValue<InetAddress> loopbackAddress;
 }

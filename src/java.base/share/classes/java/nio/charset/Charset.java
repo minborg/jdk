@@ -25,6 +25,7 @@
 
 package java.nio.charset;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.misc.ThreadTracker;
 import jdk.internal.misc.VM;
 import jdk.internal.util.StaticProperty;
@@ -650,7 +651,7 @@ public abstract class Charset
             });
     }
 
-    private @Stable static Charset defaultCharset;
+    private static final StableValue<Charset> defaultCharset = StableValue.of();
 
     /**
      * Returns the default charset of this Java virtual machine.
@@ -671,19 +672,16 @@ public abstract class Charset
      * @since 1.5
      */
     public static Charset defaultCharset() {
-        if (defaultCharset == null) {
-            synchronized (Charset.class) {
-                // do not look for providers other than the standard one
-                Charset cs = standardProvider.charsetForName(StaticProperty.fileEncoding());
-                if (cs != null)
-                    defaultCharset = cs;
-                else
-                    defaultCharset = sun.nio.cs.UTF_8.INSTANCE;
-            }
-        }
-        return defaultCharset;
+        return defaultCharset.computeIfUnset(Charset::defaultCharset0);
     }
 
+    private static Charset defaultCharset0() {
+        // do not look for providers other than the standard one
+        Charset cs = standardProvider.charsetForName(StaticProperty.fileEncoding());
+        return (cs != null)
+                ? cs
+                : sun.nio.cs.UTF_8.INSTANCE;
+    }
 
     /* -- Instance fields and methods -- */
 

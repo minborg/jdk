@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
-public interface JavaUtilCollectionAccess {
+public non-sealed interface JavaUtilCollectionAccess extends SharedSecrets.Access {
     <E> List<E> listFromTrustedArray(Object[] array);
     <E> List<E> listFromTrustedArrayNullsAllowed(Object[] array);
     <E> List<E> listFromStable(List<StableValue<E>> delegate, IntFunction<? extends E> mapper);

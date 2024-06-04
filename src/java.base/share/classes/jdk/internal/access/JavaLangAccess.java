@@ -57,7 +57,7 @@ import jdk.internal.vm.ThreadContainer;
 import sun.reflect.annotation.AnnotationType;
 import sun.nio.ch.Interruptible;
 
-public interface JavaLangAccess {
+public non-sealed interface JavaLangAccess extends SharedSecrets.Access {
 
     /**
      * Returns the list of {@code Method} objects for the declared public

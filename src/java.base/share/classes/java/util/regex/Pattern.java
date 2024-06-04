@@ -43,6 +43,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.util.regex.Grapheme;
 
@@ -992,7 +993,7 @@ public final class Pattern
      * Boolean indicating this Pattern is compiled; this is necessary in order
      * to lazily compile deserialized Patterns.
      */
-    private transient volatile boolean compiled;
+    private transient StableValue<Boolean> compiled = StableValue.of();
 
     /**
      * The normalized pattern string.
@@ -1171,12 +1172,10 @@ public final class Pattern
      * as in {@link #compile(String, int)}.
      */
     public Matcher matcher(CharSequence input) {
-        if (!compiled) {
-            synchronized(this) {
-                if (!compiled)
-                    compile();
-            }
-        }
+        compiled.computeIfUnset(() -> {
+            compile();
+            return true;
+        });
         Matcher m = new Matcher(this, input);
         return m;
     }
@@ -1541,7 +1540,7 @@ public final class Pattern
         if (pattern.isEmpty()) {
             root = new Start(lastAccept);
             matchRoot = lastAccept;
-            compiled = true;
+            compiled.trySet(true);
         }
     }
 
@@ -1985,7 +1984,7 @@ loop:   for(int x=0, offset=0; x<nCodePoints; x++, offset+=len) {
         buffer = null;
         groupNodes = null;
         patternLength = 0;
-        compiled = true;
+        compiled.trySet(true);
         topClosureNodes = null;
     }
 

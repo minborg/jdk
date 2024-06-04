@@ -24,10 +24,12 @@
  */
 package java.lang;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.vm.ContinuationScope;
 
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Modifier;
+import java.util.function.Supplier;
 
 /**
  * StackFrameInfo is an implementation of StackFrame that contains the
@@ -39,7 +41,7 @@ class StackFrameInfo extends ClassFrameInfo {
     private Object type;          // String or MethodType
     private int bci;              // set by VM to >= 0
     private ContinuationScope contScope;
-    private volatile StackTraceElement ste;
+    private final StableValue<StackTraceElement> ste = StableValue.of();
 
     /*
      * Construct an empty StackFrameInfo object that will be filled by the VM
@@ -144,15 +146,9 @@ class StackFrameInfo extends ClassFrameInfo {
 
     @Override
     public StackTraceElement toStackTraceElement() {
-        StackTraceElement s = ste;
-        if (s == null) {
-            synchronized (this) {
-                s = ste;
-                if (s == null) {
-                    ste = s = StackTraceElement.of(this);
-                }
-            }
-        }
-        return s;
+        return ste.computeIfUnset(new Supplier<>() {
+            @Override
+            public StackTraceElement get() { return StackTraceElement.of(StackFrameInfo.this); }
+        });
     }
 }

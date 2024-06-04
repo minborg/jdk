@@ -35,6 +35,8 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+
+import jdk.internal.lang.StableValue;
 import jdk.internal.util.StaticProperty;
 
 /**
@@ -2376,7 +2378,7 @@ public class File
 
     // -- Integration with java.nio.file --
 
-    private transient volatile Path filePath;
+    private final transient StableValue<Path> filePath = StableValue.of();
 
     /**
      * Returns a {@link Path java.nio.file.Path} object constructed from
@@ -2405,16 +2407,7 @@ public class File
      * @see Path#toFile
      */
     public Path toPath() {
-        Path result = filePath;
-        if (result == null) {
-            synchronized (this) {
-                result = filePath;
-                if (result == null) {
-                    result = FileSystems.getDefault().getPath(path);
-                    filePath = result;
-                }
-            }
-        }
-        return result;
+        return filePath
+                .computeIfUnset(() -> FileSystems.getDefault().getPath(path));
     }
 }

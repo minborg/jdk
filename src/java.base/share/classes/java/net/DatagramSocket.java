@@ -31,6 +31,8 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.MulticastChannel;
 import java.util.Objects;
 import java.util.Set;
+
+import jdk.internal.lang.StableValue;
 import sun.nio.ch.DefaultSelectorProvider;
 
 /**
@@ -1127,7 +1129,8 @@ public class DatagramSocket implements java.io.Closeable {
     /**
      * User defined factory for all datagram sockets.
      */
-    private static volatile DatagramSocketImplFactory factory;
+    private static final StableValue<DatagramSocketImplFactory> factory =
+            StableValue.of();
 
     /**
      * Sets the datagram socket implementation factory for the
@@ -1166,19 +1169,18 @@ public class DatagramSocket implements java.io.Closeable {
      *    as a parameter.
      */
     @Deprecated(since = "17")
-    public static synchronized void
+    public static void
     setDatagramSocketImplFactory(DatagramSocketImplFactory fac)
             throws IOException
     {
-        if (factory != null) {
-            throw new SocketException("factory already defined");
-        }
         @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkSetFactory();
         }
-        factory = fac;
+        if (!factory.trySet(fac)) {
+            throw new SocketException("factory already defined");
+        }
     }
 
     /**
@@ -1407,7 +1409,7 @@ public class DatagramSocket implements java.io.Closeable {
         DatagramSocket delegate = null;
         boolean initialized = false;
         try {
-            DatagramSocketImplFactory factory = DatagramSocket.factory;
+            DatagramSocketImplFactory factory = DatagramSocket.factory.orElse(null);
             if (factory != null) {
                 // create legacy DatagramSocket delegate
                 DatagramSocketImpl impl = factory.createDatagramSocketImpl();

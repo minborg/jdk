@@ -30,6 +30,8 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.ObjectInputStream;
 import java.time.Instant;
+
+import jdk.internal.lang.StableValue;
 import sun.util.calendar.BaseCalendar;
 import sun.util.calendar.CalendarSystem;
 import sun.util.calendar.CalendarUtils;
@@ -130,7 +132,7 @@ public class Date
 {
     private static final BaseCalendar gcal =
                                 CalendarSystem.getGregorianCalendar();
-    private static BaseCalendar jcal;
+    private static final StableValue<BaseCalendar> jcal = StableValue.of();
 
     private transient long fastTime;
 
@@ -1294,20 +1296,17 @@ public class Date
     }
 
     private static final BaseCalendar getCalendarSystem(BaseCalendar.Date cdate) {
-        if (jcal == null) {
+        if (!jcal.isSet()) {
             return gcal;
         }
         if (cdate.getEra() != null) {
-            return jcal;
+            return jcal.orElseThrow();
         }
         return gcal;
     }
 
-    private static final synchronized BaseCalendar getJulianCalendar() {
-        if (jcal == null) {
-            jcal = (BaseCalendar) CalendarSystem.forName("julian");
-        }
-        return jcal;
+    private static BaseCalendar getJulianCalendar() {
+        return jcal.computeIfUnset(() -> (BaseCalendar) CalendarSystem.forName("julian"));
     }
 
     /**

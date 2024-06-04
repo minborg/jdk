@@ -25,10 +25,14 @@
 
 package sun.security.provider.certpath;
 
+import jdk.internal.lang.StableValue;
+
+import java.security.cert.CertPathHelperImpl;
 import java.util.Date;
 
 import java.security.cert.TrustAnchor;
 import java.security.cert.X509CRLSelector;
+import java.util.function.Supplier;
 
 /**
  * Helper class that allows access to JDK specific known-public methods in the
@@ -45,7 +49,7 @@ public abstract class CertPathHelper {
     /**
      * Object used to tunnel the calls. Initialized by CertPathHelperImpl.
      */
-    protected static CertPathHelper instance;
+    protected static final StableValue<CertPathHelper> instance = StableValue.of();
 
     protected CertPathHelper() {
         // empty
@@ -56,10 +60,10 @@ public abstract class CertPathHelper {
     protected abstract boolean implIsJdkCA(TrustAnchor anchor);
 
     public static void setDateAndTime(X509CRLSelector sel, Date date, long skew) {
-        instance.implSetDateAndTime(sel, date, skew);
+        instance.orElseThrow().implSetDateAndTime(sel, date, skew);
     }
 
     public static boolean isJdkCA(TrustAnchor anchor) {
-        return anchor != null && instance.implIsJdkCA(anchor);
+        return anchor != null && instance.orElseThrow().implIsJdkCA(anchor);
     }
 }

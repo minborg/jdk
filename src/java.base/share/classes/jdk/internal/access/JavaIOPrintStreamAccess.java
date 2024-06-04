@@ -26,6 +26,6 @@ package jdk.internal.access;
 
 import java.io.PrintStream;
 
-public interface JavaIOPrintStreamAccess {
+public non-sealed interface JavaIOPrintStreamAccess extends SharedSecrets.Access {
     Object lock(PrintStream ps);
 }

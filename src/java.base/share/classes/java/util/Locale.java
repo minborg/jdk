@@ -52,6 +52,7 @@ import java.util.function.Function;
 import java.util.spi.LocaleNameProvider;
 import java.util.stream.Stream;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.util.ReferencedKeyMap;
 import jdk.internal.util.StaticProperty;
 import jdk.internal.vm.annotation.Stable;
@@ -1741,11 +1742,7 @@ public final class Locale implements Cloneable, Serializable {
         }
 
         String langTag = buf.toString();
-        synchronized (this) {
-            if (this.languageTag == null) {
-                this.languageTag = langTag;
-            }
-        }
+        languageTag.trySet(langTag);
         return langTag;
     }
 
@@ -2400,7 +2397,7 @@ public final class Locale implements Cloneable, Serializable {
     private static volatile Locale defaultDisplayLocale;
     private static volatile Locale defaultFormatLocale;
 
-    private transient volatile String languageTag;
+    private transient final StableValue<String> languageTag = StableValue.of();
 
     /**
      * Return an array of the display names of the variant.

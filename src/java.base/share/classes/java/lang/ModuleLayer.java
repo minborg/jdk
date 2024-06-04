@@ -46,6 +46,7 @@ import java.util.stream.Stream;
 
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.javac.Restricted;
+import jdk.internal.lang.StableValue;
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.loader.Loader;
 import jdk.internal.loader.LoaderPool;
@@ -977,25 +978,17 @@ public final class ModuleLayer {
      * already created.
      */
     ServicesCatalog getServicesCatalog() {
-        ServicesCatalog servicesCatalog = this.servicesCatalog;
-        if (servicesCatalog != null)
-            return servicesCatalog;
-
-        synchronized (this) {
-            servicesCatalog = this.servicesCatalog;
-            if (servicesCatalog == null) {
-                servicesCatalog = ServicesCatalog.create();
-                for (Module m : nameToModule.values()) {
-                    servicesCatalog.register(m);
-                }
-                this.servicesCatalog = servicesCatalog;
-            }
-        }
-
-        return servicesCatalog;
+        return servicesCatalog
+                .computeIfUnset(() -> {
+                    ServicesCatalog sc = ServicesCatalog.create();
+                    for (Module m : nameToModule.values()) {
+                        sc.register(m);
+                    }
+                    return sc;
+                });
     }
 
-    private volatile ServicesCatalog servicesCatalog;
+    private final StableValue<ServicesCatalog> servicesCatalog = StableValue.of();
 
 
     /**

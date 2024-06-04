@@ -25,7 +25,7 @@
 
 package jdk.internal.access;
 
-public interface JavaAWTAccess {
+public non-sealed interface JavaAWTAccess extends SharedSecrets.Access {
 
     // Returns the AppContext used for applet logging isolation, or null if
     // no isolation is required.

@@ -61,6 +61,7 @@ import java.lang.classfile.attribute.ModuleAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.lang.StableValue;
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.BootLoader;
 import jdk.internal.loader.ClassLoaders;
@@ -1547,29 +1548,22 @@ public final class Module implements AnnotatedElement {
     }
 
     // cached class file with annotations
-    private volatile Class<?> moduleInfoClass;
+    private final StableValue<Class<?>> moduleInfoClass = StableValue.of();
 
     @SuppressWarnings("removal")
     private Class<?> moduleInfoClass() {
-        Class<?> clazz = this.moduleInfoClass;
-        if (clazz != null)
-            return clazz;
-
-        synchronized (this) {
-            clazz = this.moduleInfoClass;
+        return moduleInfoClass.computeIfUnset(() -> {
+            Class<?> clazz = null;
+            if (isNamed()) {
+                PrivilegedAction<Class<?>> pa = this::loadModuleInfoClass;
+                clazz = AccessController.doPrivileged(pa);
+            }
             if (clazz == null) {
-                if (isNamed()) {
-                    PrivilegedAction<Class<?>> pa = this::loadModuleInfoClass;
-                    clazz = AccessController.doPrivileged(pa);
-                }
-                if (clazz == null) {
-                    class DummyModuleInfo { }
-                    clazz = DummyModuleInfo.class;
-                }
-                this.moduleInfoClass = clazz;
+                class DummyModuleInfo { }
+                clazz = DummyModuleInfo.class;
             }
             return clazz;
-        }
+        });
     }
 
     private Class<?> loadModuleInfoClass() {

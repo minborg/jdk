@@ -1275,28 +1275,20 @@ class Field extends AccessibleObject implements Member {
         return AnnotationParser.toArray(declaredAnnotations());
     }
 
-    private transient volatile Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
+    private transient final StableValue<Map<Class<? extends Annotation>, Annotation>>
+            declaredAnnotations = StableValue.of();
 
     private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
-        Map<Class<? extends Annotation>, Annotation> declAnnos;
-        if ((declAnnos = declaredAnnotations) == null) {
-            synchronized (this) {
-                if ((declAnnos = declaredAnnotations) == null) {
-                    Field root = this.root;
-                    if (root != null) {
-                        declAnnos = root.declaredAnnotations();
-                    } else {
-                        declAnnos = AnnotationParser.parseAnnotations(
-                                annotations,
-                                SharedSecrets.getJavaLangAccess()
-                                        .getConstantPool(getDeclaringClass()),
-                                getDeclaringClass());
-                    }
-                    declaredAnnotations = declAnnos;
-                }
-            }
-        }
-        return declAnnos;
+        return declaredAnnotations.computeIfUnset(() -> {
+            Field root = this.root;
+            return (root != null)
+                    ? root.declaredAnnotations()
+                    : AnnotationParser.parseAnnotations(
+                    annotations,
+                    SharedSecrets.getJavaLangAccess()
+                            .getConstantPool(getDeclaringClass()),
+                    getDeclaringClass());
+            });
     }
 
     private native byte[] getTypeAnnotationBytes0();

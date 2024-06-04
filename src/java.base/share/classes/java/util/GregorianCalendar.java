@@ -43,6 +43,8 @@ import java.io.ObjectInputStream;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
+
+import jdk.internal.lang.StableValue;
 import sun.util.calendar.BaseCalendar;
 import sun.util.calendar.CalendarDate;
 import sun.util.calendar.CalendarSystem;
@@ -505,7 +507,7 @@ public class GregorianCalendar extends Calendar {
 
     // Reference to the JulianCalendar instance (singleton), set as needed. See
     // getJulianCalendarSystem().
-    private static JulianCalendar jcal;
+    private static StableValue<JulianCalendar> jcal = StableValue.of();
 
     // JulianCalendar eras. See getJulianCalendarSystem().
     private static Era[] jeras;
@@ -2390,8 +2392,8 @@ public class GregorianCalendar extends Calendar {
         } else {
             // Handle Julian calendar dates.
             calsys = getJulianCalendarSystem();
-            cdate = jcal.newCalendarDate(getZone());
-            jcal.getCalendarDateFromFixedDate(cdate, fixedDate);
+            cdate = jcal.orElseThrow().newCalendarDate(getZone());
+            jcal.orElseThrow().getCalendarDateFromFixedDate(cdate, fixedDate);
             Era e = cdate.getEra();
             if (e == jeras[0]) {
                 era = BCE;
@@ -2500,7 +2502,7 @@ public class GregorianCalendar extends Calendar {
                     int prevYear = getCalendarDate(fixedDec31).getNormalizedYear();
                     if (prevYear == gregorianCutoverYear) {
                         calForJan1 = getCutoverCalendarSystem();
-                        if (calForJan1 == jcal) {
+                        if (calForJan1 == jcal.orElseThrow()) {
                             prevJan1 = calForJan1.getFixedDate(prevYear,
                                                                BaseCalendar.JANUARY,
                                                                1,
@@ -2963,12 +2965,12 @@ public class GregorianCalendar extends Calendar {
      * Returns the Julian calendar system instance (singleton). 'jcal'
      * and 'jeras' are set upon the return.
      */
-    private static synchronized BaseCalendar getJulianCalendarSystem() {
-        if (jcal == null) {
-            jcal = (JulianCalendar) CalendarSystem.forName("julian");
+    private static BaseCalendar getJulianCalendarSystem() {
+        return jcal.computeIfUnset(() -> {
+            JulianCalendar jcal = (JulianCalendar) CalendarSystem.forName("julian");
             jeras = jcal.getEras();
-        }
-        return jcal;
+            return jcal;
+        });
     }
 
     /**
@@ -3093,7 +3095,7 @@ public class GregorianCalendar extends Calendar {
             if (gregorianCutoverYear == gregorianCutoverYearJulian
                 && gCutover.getMonth() == jLastDate.getMonth()) {
                 // The "gap" fits in the same month.
-                fixedDateMonth1 = jcal.getFixedDate(date.getNormalizedYear(),
+                fixedDateMonth1 = jcal.orElseThrow().getFixedDate(date.getNormalizedYear(),
                                                     date.getMonth(),
                                                     1,
                                                     null);

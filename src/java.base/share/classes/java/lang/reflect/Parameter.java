@@ -29,6 +29,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
+
+import jdk.internal.lang.StableValue;
 import sun.reflect.annotation.AnnotationSupport;
 
 /**
@@ -373,15 +375,16 @@ public final class Parameter implements AnnotatedElement {
         return getDeclaredAnnotations();
     }
 
-    private transient Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
+    private transient final StableValue<Map<Class<? extends Annotation>, Annotation>>
+            declaredAnnotations = StableValue.of();
 
     private synchronized Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
-        if(null == declaredAnnotations) {
-            declaredAnnotations = new HashMap<>();
+        return declaredAnnotations.computeIfUnset(() -> {
+            Map<Class<? extends Annotation>, Annotation> map = new HashMap<>();
             for (Annotation a : getDeclaredAnnotations())
-                declaredAnnotations.put(a.annotationType(), a);
-        }
-        return declaredAnnotations;
+                map.put(a.annotationType(), a);
+            return Map.copyOf(map);
+        });
    }
 
 }

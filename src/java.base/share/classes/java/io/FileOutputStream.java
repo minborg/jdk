@@ -28,6 +28,7 @@ package java.io;
 import java.nio.channels.FileChannel;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
+import jdk.internal.lang.StableValue;
 import sun.nio.ch.FileChannelImpl;
 
 
@@ -76,7 +77,7 @@ public class FileOutputStream extends OutputStream
     /**
      * The associated channel, initialized lazily.
      */
-    private volatile FileChannel channel;
+    private final StableValue<FileChannel> channel = StableValue.of();
 
     /**
      * The path of the referenced file
@@ -386,7 +387,7 @@ public class FileOutputStream extends OutputStream
             closed = true;
         }
 
-        FileChannel fc = channel;
+        FileChannel fc = channel.orElse(null);
         if (fc != null) {
             // possible race with getChannel(), benign since
             // FileChannel.close is final and idempotent
@@ -434,26 +435,19 @@ public class FileOutputStream extends OutputStream
      * @since 1.4
      */
     public FileChannel getChannel() {
-        FileChannel fc = this.channel;
-        if (fc == null) {
-            synchronized (this) {
-                fc = this.channel;
-                if (fc == null) {
-                    fc = FileChannelImpl.open(fd, path, false, true, false, false, this);
-                    this.channel = fc;
-                    if (closed) {
-                        try {
-                            // possible race with close(), benign since
-                            // FileChannel.close is final and idempotent
-                            fc.close();
-                        } catch (IOException ioe) {
-                            throw new InternalError(ioe); // should not happen
-                        }
-                    }
+        return channel.computeIfUnset(() -> {
+            FileChannel fc = FileChannelImpl.open(fd, path, false, true, false, false, this);
+            if (closed) {
+                try {
+                    // possible race with close(), benign since
+                    // FileChannel.close is final and idempotent
+                    fc.close();
+                } catch (IOException ioe) {
+                    throw new InternalError(ioe); // should not happen
                 }
             }
-        }
-        return fc;
+            return fc;
+        });
     }
 
     private static native void initIDs();

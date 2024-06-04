@@ -29,6 +29,7 @@ import java.nio.channels.FileChannel;
 
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.lang.StableValue;
 import jdk.internal.misc.Blocker;
 import jdk.internal.util.ByteArray;
 import sun.nio.ch.FileChannelImpl;
@@ -88,8 +89,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      */
     private final byte[] buffer = new byte[Long.BYTES];
 
-    private volatile FileChannel channel;
-    private volatile boolean closed;
+    private final StableValue<FileChannel> channel = StableValue.of();
+    private final StableValue<Boolean> closed = StableValue.of();
 
     /**
      * Creates a random access file stream to read from, and optionally
@@ -308,24 +309,18 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @since 1.4
      */
     public final FileChannel getChannel() {
-        FileChannel fc = this.channel;
-        if (fc == null) {
-            synchronized (this) {
-                fc = this.channel;
-                if (fc == null) {
-                    fc = FileChannelImpl.open(fd, path, true, rw, sync, false, this);
-                    this.channel = fc;
-                    if (closed) {
+        return channel
+                .computeIfUnset(() -> {
+                    FileChannel fc = FileChannelImpl.open(fd, path, true, rw, sync, false, this);
+                    if (closed.orElse(false)) {
                         try {
                             fc.close();
                         } catch (IOException ioe) {
                             throw new InternalError(ioe); // should not happen
                         }
                     }
-                }
-            }
-        }
-        return fc;
+                    return fc;
+                });
     }
 
     /**
@@ -686,17 +681,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     IOException  if an I/O error occurs.
      */
     public void close() throws IOException {
-        if (closed) {
+        boolean wasClosed = closed.trySet(true);
+        if (wasClosed) {
             return;
         }
-        synchronized (closeLock) {
-            if (closed) {
-                return;
-            }
-            closed = true;
-        }
-
-        FileChannel fc = channel;
+        FileChannel fc = channel.orElse(null);
         if (fc != null) {
             // possible race with getChannel(), benign since
             // FileChannel.close is final and idempotent

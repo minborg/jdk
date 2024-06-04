@@ -26,6 +26,7 @@
 package java.io;
 
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.lang.StableValue;
 import jdk.internal.util.StaticProperty;
 
 import java.lang.reflect.InvocationTargetException;
@@ -563,10 +564,6 @@ public interface ObjectInputFilter {
      * @since 9
      */
     final class Config {
-        /**
-         * Lock object for filter and filter factory.
-         */
-        private static final Object serialFilterLock = new Object();
 
         /**
          * The property name for the filter.
@@ -583,7 +580,7 @@ public interface ObjectInputFilter {
         /**
          * Current static filter.
          */
-        private static volatile ObjectInputFilter serialFilter;
+        private static final StableValue<ObjectInputFilter> serialFilter = StableValue.of();
 
         /**
          * Saved message if the jdk.serialFilter property is invalid.
@@ -648,7 +645,7 @@ public interface ObjectInputFilter {
                 configLog.log(DEBUG,
                         "Creating deserialization filter from {0}", filterString);
                 try {
-                    serialFilter = createFilter(filterString);
+                    serialFilter.trySet(createFilter(filterString));
                 } catch (RuntimeException re) {
                     configLog.log(ERROR,
                             "Error configuring filter: {0}", (Object) re);
@@ -721,7 +718,7 @@ public interface ObjectInputFilter {
             if (invalidFilterMessage != null) {
                 throw new IllegalStateException(invalidFilterMessage);
             }
-            return serialFilter;
+            return serialFilter.orElse(null);
         }
 
         /**
@@ -744,12 +741,7 @@ public interface ObjectInputFilter {
             if (invalidFilterMessage != null) {
                 throw new IllegalStateException(invalidFilterMessage);
             }
-            synchronized (serialFilterLock) {
-                if (serialFilter != null) {
-                    throw new IllegalStateException("Serial filter can only be set once");
-                }
-                serialFilter = filter;
-            }
+            serialFilter.setOrThrow(filter);
         }
 
         /**

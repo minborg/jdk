@@ -42,6 +42,8 @@ import java.util.StringJoiner;
 import java.util.StringTokenizer;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+
+import jdk.internal.lang.StableValue;
 import sun.net.util.IPAddressUtil;
 import sun.net.PortConfig;
 import sun.security.action.GetBooleanAction;
@@ -235,8 +237,7 @@ public final class SocketPermission extends Permission
     // true if the sun.net.trustNameService system property is set
     private static final boolean trustNameService = GetBooleanAction.privilegedGetProperty("sun.net.trustNameService");
 
-    private static Debug debug = null;
-    private static boolean debugInit = false;
+    private static final StableValue<Debug> debug = StableValue.of();
 
     // lazy initializer
     private static class EphemeralRange {
@@ -244,12 +245,8 @@ public final class SocketPermission extends Permission
         static final int high = initEphemeralPorts("high");
     }
 
-    private static synchronized Debug getDebug() {
-        if (!debugInit) {
-            debug = Debug.getInstance("access");
-            debugInit = true;
-        }
-        return debug;
+    private static Debug getDebug() {
+        return debug.computeIfUnset(() -> Debug.getInstance("access"));
     }
 
     /**

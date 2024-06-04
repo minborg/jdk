@@ -29,6 +29,7 @@ import java.nio.charset.Charset;
 import java.util.Locale;
 
 import jdk.internal.io.JdkConsole;
+import jdk.internal.lang.StableValue;
 
 /**
  * Console implementation for internal use. Custom Console delegate may be
@@ -38,8 +39,8 @@ final class ProxyingConsole extends Console {
     private final JdkConsole delegate;
     private final Object readLock = new Object();
     private final Object writeLock = new Object();
-    private volatile Reader reader;
-    private volatile PrintWriter printWriter;
+    private final StableValue<Reader> reader = StableValue.of();
+    private final StableValue<PrintWriter> printWriter = StableValue.of();
 
     ProxyingConsole(JdkConsole delegate) {
         this.delegate = delegate;
@@ -50,17 +51,8 @@ final class ProxyingConsole extends Console {
      */
     @Override
     public PrintWriter writer() {
-        PrintWriter printWriter = this.printWriter;
-        if (printWriter == null) {
-            synchronized (this) {
-                printWriter = this.printWriter;
-                if (printWriter == null) {
-                    printWriter = new WrappingWriter(delegate.writer(), writeLock);
-                    this.printWriter = printWriter;
-                }
-            }
-        }
-        return printWriter;
+        return printWriter
+                .computeIfUnset(() -> new WrappingWriter(delegate.writer(), writeLock));
     }
 
     /**
@@ -68,17 +60,8 @@ final class ProxyingConsole extends Console {
      */
     @Override
     public Reader reader() {
-        Reader reader = this.reader;
-        if (reader == null) {
-            synchronized (this) {
-                reader = this.reader;
-                if (reader == null) {
-                    reader = new WrappingReader(delegate.reader(), readLock);
-                    this.reader = reader;
-                }
-            }
-        }
-        return reader;
+        return reader
+                .computeIfUnset(() -> new WrappingReader(delegate.reader(), readLock));
     }
 
     /**

@@ -23,6 +23,8 @@
  * questions.
  */
 package java.net;
+import jdk.internal.lang.StableValue;
+
 import java.io.IOException;
 import java.net.spi.InetAddressResolver.LookupPolicy;
 
@@ -46,20 +48,17 @@ final class Inet4AddressImpl implements InetAddressImpl {
     public native String getHostByAddr(byte[] addr) throws UnknownHostException;
     private native boolean isReachable0(byte[] addr, int timeout, byte[] ifaddr, int ttl) throws IOException;
 
-    public synchronized InetAddress anyLocalAddress() {
-        if (anyLocalAddress == null) {
-            anyLocalAddress = new Inet4Address(); // {0x00,0x00,0x00,0x00}
-            anyLocalAddress.holder().hostName = "0.0.0.0";
-        }
-        return anyLocalAddress;
+    public InetAddress anyLocalAddress() {
+        return anyLocalAddress.computeIfUnset(() -> {
+           InetAddress any = new Inet4Address(); // {0x00,0x00,0x00,0x00}
+           any.holder().hostName =  "0.0.0.0";
+           return any;
+        });
     }
 
-    public synchronized InetAddress loopbackAddress() {
-        if (loopbackAddress == null) {
-            byte[] loopback = {0x7f,0x00,0x00,0x01};
-            loopbackAddress = new Inet4Address("localhost", loopback);
-        }
-        return loopbackAddress;
+    public InetAddress loopbackAddress() {
+        return loopbackAddress.computeIfUnset(() ->
+        new Inet4Address("localhost", new byte[]{0x7f,0x00,0x00,0x01}));
     }
 
   public boolean isReachable(InetAddress addr, int timeout, NetworkInterface netif, int ttl) throws IOException {
@@ -78,6 +77,6 @@ final class Inet4AddressImpl implements InetAddressImpl {
       }
       return isReachable0(addr.getAddress(), timeout, ifaddr, ttl);
   }
-    private InetAddress      anyLocalAddress;
-    private InetAddress      loopbackAddress;
+    private final StableValue<InetAddress> anyLocalAddress = StableValue.of();
+    private final StableValue<InetAddress> loopbackAddress = StableValue.of();
 }

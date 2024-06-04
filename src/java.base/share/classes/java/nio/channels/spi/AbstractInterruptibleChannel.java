@@ -32,6 +32,7 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.InterruptibleChannel;
 
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.lang.StableValue;
 import jdk.internal.misc.Unsafe;
 import sun.nio.ch.Interruptible;
 
@@ -86,8 +87,7 @@ import sun.nio.ch.Interruptible;
 public abstract class AbstractInterruptibleChannel
     implements Channel, InterruptibleChannel
 {
-    private final Object closeLock = new Object();
-    private volatile boolean closed;
+    private final StableValue<Boolean> closed = StableValue.of();
 
     // invoked if a Thread is interrupted when blocked in an I/O op
     private final Interruptible interruptor;
@@ -122,10 +122,7 @@ public abstract class AbstractInterruptibleChannel
      *          If an I/O error occurs
      */
     public final void close() throws IOException {
-        synchronized (closeLock) {
-            if (closed)
-                return;
-            closed = true;
+        if (closed.trySet(true)) {
             implCloseChannel();
         }
     }
@@ -149,7 +146,7 @@ public abstract class AbstractInterruptibleChannel
     protected abstract void implCloseChannel() throws IOException;
 
     public final boolean isOpen() {
-        return !closed;
+        return !closed.isSet();
     }
 
 
@@ -214,7 +211,7 @@ public abstract class AbstractInterruptibleChannel
                 throw new ClosedByInterruptException();
             }
         }
-        if (!completed && closed)
+        if (!completed && closed.isSet())
             throw new AsynchronousCloseException();
     }
 

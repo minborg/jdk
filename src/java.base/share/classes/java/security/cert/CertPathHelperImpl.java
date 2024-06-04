@@ -47,10 +47,8 @@ class CertPathHelperImpl extends CertPathHelper {
      * the methods in this class. This ensures that the helper is initialized
      * prior to a tunneled call from the Sun provider.
      */
-    static synchronized void initialize() {
-        if (CertPathHelper.instance == null) {
-            CertPathHelper.instance = new CertPathHelperImpl();
-        }
+    static void initialize() {
+        instance.computeIfUnset(CertPathHelperImpl::new);
     }
 
     protected void implSetDateAndTime(X509CRLSelector sel, Date date, long skew) {

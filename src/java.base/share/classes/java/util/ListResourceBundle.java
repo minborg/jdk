@@ -40,7 +40,10 @@
 
 package java.util;
 
+import jdk.internal.lang.StableValue;
 import sun.util.ResourceBundleEnumeration;
+
+import java.util.function.Supplier;
 
 /**
  * {@code ListResourceBundle} is an abstract subclass of
@@ -123,14 +126,10 @@ public abstract class ListResourceBundle extends ResourceBundle {
 
     // Implements java.util.ResourceBundle.handleGetObject; inherits javadoc specification.
     public final Object handleGetObject(String key) {
-        // lazily load the lookup hashtable.
-        if (lookup == null) {
-            loadLookup();
-        }
         if (key == null) {
             throw new NullPointerException();
         }
-        return lookup.get(key); // this class ignores locales
+        return lookup.get().get(key); // this class ignores locales
     }
 
     /**
@@ -142,13 +141,8 @@ public abstract class ListResourceBundle extends ResourceBundle {
      * @see #keySet()
      */
     public Enumeration<String> getKeys() {
-        // lazily load the lookup hashtable.
-        if (lookup == null) {
-            loadLookup();
-        }
-
         ResourceBundle parent = this.parent;
-        return new ResourceBundleEnumeration(lookup.keySet(),
+        return new ResourceBundleEnumeration(lookup.get().keySet(),
                 (parent != null) ? parent.getKeys() : null);
     }
 
@@ -162,10 +156,7 @@ public abstract class ListResourceBundle extends ResourceBundle {
      * @see #keySet()
      */
     protected Set<String> handleKeySet() {
-        if (lookup == null) {
-            loadLookup();
-        }
-        return lookup.keySet();
+        return lookup.get().keySet();
     }
 
     /**
@@ -182,14 +173,15 @@ public abstract class ListResourceBundle extends ResourceBundle {
 
     // ==================privates====================
 
+
+    private final Supplier<Map<String,Object>> lookup =
+            StableValue.memoizedSupplier(this::loadLookup0);
+
     /**
      * We lazily load the lookup hashtable.  This function does the
      * loading.
      */
-    private synchronized void loadLookup() {
-        if (lookup != null)
-            return;
-
+    private Map<String,Object> loadLookup0() {
         Object[][] contents = getContents();
         HashMap<String,Object> temp = HashMap.newHashMap(contents.length);
         for (Object[] content : contents) {
@@ -201,8 +193,7 @@ public abstract class ListResourceBundle extends ResourceBundle {
             }
             temp.put(key, value);
         }
-        lookup = temp;
+        return temp;
     }
 
-    private volatile Map<String,Object> lookup;
 }

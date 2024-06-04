@@ -43,6 +43,8 @@ import java.util.Map;
 import java.util.List;
 import java.security.Permission;
 import java.security.AccessController;
+
+import jdk.internal.lang.StableValue;
 import sun.security.util.SecurityConstants;
 import sun.net.www.MessageHeader;
 import sun.security.action.GetPropertyAction;
@@ -1275,7 +1277,8 @@ public abstract class URLConnection {
     /**
      * The ContentHandler factory.
      */
-    private static volatile ContentHandlerFactory factory;
+    private static final StableValue<ContentHandlerFactory> factory =
+            StableValue.of();
 
     /**
      * Sets the {@code ContentHandlerFactory} of an
@@ -1297,16 +1300,15 @@ public abstract class URLConnection {
      * @see        java.net.URLConnection#getContent()
      * @see        SecurityManager#checkSetFactory
      */
-    public static synchronized void setContentHandlerFactory(ContentHandlerFactory fac) {
-        if (factory != null) {
-            throw new Error("factory already defined");
-        }
+    public static void setContentHandlerFactory(ContentHandlerFactory fac) {
         @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkSetFactory();
         }
-        factory = fac;
+        if (!factory.trySet(fac)) {
+            throw new Error("factory already defined");
+        }
     }
 
     private static final Hashtable<String, ContentHandler> handlers = new Hashtable<>();
@@ -1324,8 +1326,9 @@ public abstract class URLConnection {
         if (handler != null)
             return handler;
 
-        if (factory != null) {
-            handler = factory.createContentHandler(contentType);
+        ContentHandlerFactory f = factory.orElse(null);
+        if (f != null) {
+            handler = f.createContentHandler(contentType);
             if (handler != null)
                 return handler;
         }

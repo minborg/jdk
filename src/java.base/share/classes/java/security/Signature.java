@@ -43,6 +43,7 @@ import javax.crypto.NoSuchPaddingException;
 import jdk.internal.access.JavaSecuritySignatureAccess;
 import jdk.internal.access.SharedSecrets;
 
+import jdk.internal.lang.StableValue;
 import sun.security.util.Debug;
 import sun.security.jca.*;
 import sun.security.jca.GetInstance.Instance;
@@ -1102,10 +1103,7 @@ public abstract class Signature extends SignatureSpi {
 
         // The provider implementation (delegate)
         // filled in once the provider is selected
-        private SignatureSpi sigSpi;
-
-        // lock for mutex during provider selection
-        private final Object lock;
+        private final StableValue<SignatureSpi> sigSpi = StableValue.of();
 
         // next service to try in provider selection
         // null once provider is selected
@@ -1127,8 +1125,7 @@ public abstract class Signature extends SignatureSpi {
         // private constructor
         private Delegate(SignatureSpi sigSpi, String algorithm) {
             super(algorithm);
-            this.sigSpi = sigSpi;
-            this.lock = null; // no lock needed
+            this.sigSpi.setOrThrow(sigSpi);
         }
 
         // constructor used with delayed provider selection
@@ -1137,7 +1134,6 @@ public abstract class Signature extends SignatureSpi {
             super(algorithm);
             this.firstService = service;
             this.serviceIterator = iterator;
-            this.lock = new Object();
         }
 
         /**
@@ -1151,11 +1147,11 @@ public abstract class Signature extends SignatureSpi {
         @Override
         public Object clone() throws CloneNotSupportedException {
             chooseFirstProvider();
-            if (sigSpi instanceof Cloneable) {
+            if (sigSpi.orElse(null) instanceof Cloneable) {
                 // Because 'algorithm' is private member of our supertype,
                 // we must perform a cast to access it.
                 Signature that = new CloneableDelegate(
-                   (SignatureSpi)sigSpi.clone(),
+                   (SignatureSpi)sigSpi.orElseThrow().clone(),
                    ((Signature)this).algorithm);
                 that.provider = this.provider;
                 return that;
@@ -1193,117 +1189,126 @@ public abstract class Signature extends SignatureSpi {
          * initVerify() is not the first method called.
          */
         void chooseFirstProvider() {
-            if (sigSpi != null) {
-                return;
-            }
-            synchronized (lock) {
-                if (sigSpi != null) {
-                    return;
-                }
-                if (debug != null) {
-                    int w = --warnCount;
-                    if (w >= 0) {
-                        debug.println("Signature.init() not first method "
+            sigSpi.computeIfUnset(this::chooseFirstProvider0);
+        }
+
+        private SignatureSpi chooseFirstProvider0() {
+            SignatureSpi sigSpi;
+            if (debug != null) {
+                int w = --warnCount;
+                if (w >= 0) {
+                    debug.println("Signature.init() not first method "
                             + "called, disabling delayed provider selection");
-                        if (w == 0) {
-                            debug.println("Further warnings of this type will "
+                    if (w == 0) {
+                        debug.println("Further warnings of this type will "
                                 + "be suppressed");
-                        }
-                        new Exception("Debug call trace").printStackTrace();
                     }
+                    new Exception("Debug call trace").printStackTrace();
                 }
-                Exception lastException = null;
-                while ((firstService != null) || serviceIterator.hasNext()) {
-                    Service s;
-                    if (firstService != null) {
-                        s = firstService;
-                        firstService = null;
-                    } else {
-                        s = serviceIterator.next();
-                    }
-                    if (!isSpi(s)) {
-                        continue;
-                    }
-                    try {
-                        sigSpi = newInstance(s);
-                        provider = s.getProvider();
-                        // not needed any more
-                        firstService = null;
-                        serviceIterator = null;
-                        return;
-                    } catch (NoSuchAlgorithmException e) {
-                        lastException = e;
-                    }
+            }
+            Exception lastException = null;
+            while ((firstService != null) || serviceIterator.hasNext()) {
+                Service s;
+                if (firstService != null) {
+                    s = firstService;
+                    firstService = null;
+                } else {
+                    s = serviceIterator.next();
                 }
-                ProviderException e = new ProviderException
-                        ("Could not construct SignatureSpi instance");
-                if (lastException != null) {
-                    e.initCause(lastException);
+                if (!isSpi(s)) {
+                    continue;
                 }
-                throw e;
+                try {
+                    sigSpi = newInstance(s);
+                    provider = s.getProvider();
+                    // not needed any more
+                    firstService = null;
+                    serviceIterator = null;
+                    return sigSpi;
+                } catch (NoSuchAlgorithmException e) {
+                    lastException = e;
+                }
+            }
+            ProviderException e = new ProviderException
+                    ("Could not construct SignatureSpi instance");
+            if (lastException != null) {
+                e.initCause(lastException);
+            }
+            throw e;
+        }
+
+        private record ChooseParameters(int type, Key key, AlgorithmParameterSpec params,
+                                        SecureRandom random) {
+        }
+
+        private void chooseProvider(int type, Key key,
+                                    AlgorithmParameterSpec params, SecureRandom random)
+                throws InvalidKeyException, InvalidAlgorithmParameterException {
+            try {
+                sigSpi.computeIfUnset(new ChooseParameters(type, key, params, random),
+                        this::chooseProvider0);
+            } catch (RuntimeException re) {
+                switch (re.getCause()) {
+                    case InvalidKeyException ike -> throw ike;
+                    case InvalidAlgorithmParameterException iape -> throw iape;
+                    default -> throw re;
+                }
             }
         }
 
         // Used by engineSetParameter/engineInitSign/engineInitVerify() to
         // find the right provider with the supplied key, parameters, random source
-        private void chooseProvider(int type, Key key,
-                AlgorithmParameterSpec params, SecureRandom random)
-                throws InvalidKeyException, InvalidAlgorithmParameterException {
-            synchronized (lock) {
-                if (sigSpi != null) {
-                    return;
+        private SignatureSpi chooseProvider0(ChooseParameters p) {
+            Exception lastException = null;
+            while ((firstService != null) || serviceIterator.hasNext()) {
+                Service s;
+                if (firstService != null) {
+                    s = firstService;
+                    firstService = null;
+                } else {
+                    s = serviceIterator.next();
                 }
-                Exception lastException = null;
-                while ((firstService != null) || serviceIterator.hasNext()) {
-                    Service s;
-                    if (firstService != null) {
-                        s = firstService;
-                        firstService = null;
-                    } else {
-                        s = serviceIterator.next();
-                    }
-                    // if provider says it does not support this key, ignore it
-                    if (key != null && !s.supportsParameter(key)) {
-                        continue;
-                    }
-                    // if instance is not a SignatureSpi, ignore it
-                    if (!isSpi(s)) {
-                        continue;
-                    }
-                    try {
-                        SignatureSpi spi = newInstance(s);
-                        tryOperation(spi, type, key, params, random);
-                        provider = s.getProvider();
-                        sigSpi = spi;
-                        firstService = null;
-                        serviceIterator = null;
-                        return;
-                    } catch (Exception e) {
-                        // NoSuchAlgorithmException from newInstance()
-                        // InvalidKeyException from init()
-                        // RuntimeException (ProviderException) from init()
-                        if (lastException == null) {
-                            lastException = e;
-                        }
+                // if provider says it does not support this key, ignore it
+                if (p.key != null && !s.supportsParameter(p.key)) {
+                    continue;
+                }
+                // if instance is not a SignatureSpi, ignore it
+                if (!isSpi(s)) {
+                    continue;
+                }
+                try {
+                    SignatureSpi spi = newInstance(s);
+                    tryOperation(spi, p.type, p.key, p.params, p.random);
+                    provider = s.getProvider();
+                    firstService = null;
+                    serviceIterator = null;
+                    return spi;
+                } catch (Exception e) {
+                    // NoSuchAlgorithmException from newInstance()
+                    // InvalidKeyException from init()
+                    // RuntimeException (ProviderException) from init()
+                    if (lastException == null) {
+                        lastException = e;
                     }
                 }
-                // no working provider found, fail
-                if (lastException instanceof InvalidKeyException) {
-                    throw (InvalidKeyException)lastException;
-                }
-                if (lastException instanceof RuntimeException) {
-                    throw (RuntimeException)lastException;
-                }
-                if (lastException instanceof InvalidAlgorithmParameterException) {
-                    throw (InvalidAlgorithmParameterException)lastException;
-                }
-
-                String k = (key != null) ? key.getClass().getName() : "(null)";
-                throw new InvalidKeyException
-                    ("No installed provider supports this key: "
-                    + k, lastException);
             }
+            // no working provider found, fail
+            if (lastException instanceof InvalidKeyException) {
+                throw new RuntimeException((InvalidKeyException) lastException);
+            }
+            if (lastException instanceof RuntimeException) {
+                throw (RuntimeException) lastException;
+            }
+            if (lastException instanceof InvalidAlgorithmParameterException) {
+                throw new RuntimeException((InvalidAlgorithmParameterException) lastException);
+            }
+
+            String k = (p.key != null) ? p.key.getClass().getName() : "(null)";
+            throw new RuntimeException(new InvalidKeyException
+                    ("No installed provider supports this key: "
+                            + k, lastException));
         }
+
 
         private static final int I_PUB           = 1;
         private static final int I_PRIV          = 2;
@@ -1328,8 +1333,10 @@ public abstract class Signature extends SignatureSpi {
 
         protected void engineInitVerify(PublicKey publicKey)
                 throws InvalidKeyException {
-            if (sigSpi != null) {
-                sigSpi.engineInitVerify(publicKey);
+
+            SignatureSpi ss = sigSpi.orElse(null);
+            if (ss != null) {
+                ss.engineInitVerify(publicKey);
             } else {
                 try {
                     chooseProvider(I_PUB, publicKey, null, null);
@@ -1343,8 +1350,9 @@ public abstract class Signature extends SignatureSpi {
         void engineInitVerify(PublicKey publicKey,
                 AlgorithmParameterSpec params)
                 throws InvalidKeyException, InvalidAlgorithmParameterException {
-            if (sigSpi != null) {
-                sigSpi.engineInitVerify(publicKey, params);
+            SignatureSpi ss = sigSpi.orElse(null);
+            if (ss != null) {
+                ss.engineInitVerify(publicKey, params);
             } else {
                 chooseProvider(I_PUB_PARAM, publicKey, params, null);
             }
@@ -1352,8 +1360,9 @@ public abstract class Signature extends SignatureSpi {
 
         protected void engineInitSign(PrivateKey privateKey)
                 throws InvalidKeyException {
-            if (sigSpi != null) {
-                sigSpi.engineInitSign(privateKey);
+            SignatureSpi ss = sigSpi.orElse(null);
+            if (ss != null) {
+                ss.engineInitSign(privateKey);
             } else {
                 try {
                     chooseProvider(I_PRIV, privateKey, null, null);
@@ -1366,8 +1375,9 @@ public abstract class Signature extends SignatureSpi {
 
         protected void engineInitSign(PrivateKey privateKey, SecureRandom sr)
                 throws InvalidKeyException {
-            if (sigSpi != null) {
-                sigSpi.engineInitSign(privateKey, sr);
+            SignatureSpi ss = sigSpi.orElse(null);
+            if (ss != null) {
+                ss.engineInitSign(privateKey, sr);
             } else {
                 try {
                     chooseProvider(I_PRIV_SR, privateKey, null, sr);
@@ -1381,8 +1391,9 @@ public abstract class Signature extends SignatureSpi {
         void engineInitSign(PrivateKey privateKey,
                 AlgorithmParameterSpec params, SecureRandom sr)
                 throws InvalidKeyException, InvalidAlgorithmParameterException {
-            if (sigSpi != null) {
-                sigSpi.engineInitSign(privateKey, params, sr);
+            SignatureSpi ss = sigSpi.orElse(null);
+            if (ss != null) {
+                ss.engineInitSign(privateKey, params, sr);
             } else {
                 chooseProvider(I_PRIV_PARAM_SR, privateKey, params, sr);
             }
@@ -1390,53 +1401,54 @@ public abstract class Signature extends SignatureSpi {
 
         protected void engineUpdate(byte b) throws SignatureException {
             chooseFirstProvider();
-            sigSpi.engineUpdate(b);
+            sigSpi.orElseThrow().engineUpdate(b);
         }
 
         protected void engineUpdate(byte[] b, int off, int len)
                 throws SignatureException {
             chooseFirstProvider();
-            sigSpi.engineUpdate(b, off, len);
+            sigSpi.orElseThrow().engineUpdate(b, off, len);
         }
 
         protected void engineUpdate(ByteBuffer data) {
             chooseFirstProvider();
-            sigSpi.engineUpdate(data);
+            sigSpi.orElseThrow().engineUpdate(data);
         }
 
         protected byte[] engineSign() throws SignatureException {
             chooseFirstProvider();
-            return sigSpi.engineSign();
+            return sigSpi.orElseThrow().engineSign();
         }
 
         protected int engineSign(byte[] outbuf, int offset, int len)
                 throws SignatureException {
             chooseFirstProvider();
-            return sigSpi.engineSign(outbuf, offset, len);
+            return sigSpi.orElseThrow().engineSign(outbuf, offset, len);
         }
 
         protected boolean engineVerify(byte[] sigBytes)
                 throws SignatureException {
             chooseFirstProvider();
-            return sigSpi.engineVerify(sigBytes);
+            return sigSpi.orElseThrow().engineVerify(sigBytes);
         }
 
         protected boolean engineVerify(byte[] sigBytes, int offset, int length)
                 throws SignatureException {
             chooseFirstProvider();
-            return sigSpi.engineVerify(sigBytes, offset, length);
+            return sigSpi.orElseThrow().engineVerify(sigBytes, offset, length);
         }
 
         protected void engineSetParameter(String param, Object value)
                 throws InvalidParameterException {
             chooseFirstProvider();
-            sigSpi.engineSetParameter(param, value);
+            sigSpi.orElseThrow().engineSetParameter(param, value);
         }
 
         protected void engineSetParameter(AlgorithmParameterSpec params)
                 throws InvalidAlgorithmParameterException {
-            if (sigSpi != null) {
-                sigSpi.engineSetParameter(params);
+            SignatureSpi ss = sigSpi.orElse(null);
+            if (ss != null) {
+                ss.engineSetParameter(params);
             } else {
                 try {
                     chooseProvider(S_PARAM, null, params, null);
@@ -1450,12 +1462,12 @@ public abstract class Signature extends SignatureSpi {
         protected Object engineGetParameter(String param)
                 throws InvalidParameterException {
             chooseFirstProvider();
-            return sigSpi.engineGetParameter(param);
+            return sigSpi.orElseThrow().engineGetParameter(param);
         }
 
         protected AlgorithmParameters engineGetParameters() {
             chooseFirstProvider();
-            return sigSpi.engineGetParameters();
+            return sigSpi.orElseThrow().engineGetParameters();
         }
     }
 
