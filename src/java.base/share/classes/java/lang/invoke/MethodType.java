@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.util.ReferencedKeySet;
 import jdk.internal.util.ReferenceKey;
 import jdk.internal.vm.annotation.Stable;
@@ -148,11 +149,11 @@ class MethodType
     private final @Stable Class<?>[] ptypes;
 
     // The remaining fields are caches of various sorts:
-    private @Stable MethodTypeForm form; // erased form, plus cached data about primitives
-    private @Stable Object wrapAlt;  // alternative wrapped/unwrapped version and
+    private final StableValue<MethodTypeForm> form = StableValue.of(); // erased form, plus cached data about primitives
+    private final StableValue<Object> wrapAlt = StableValue.of();  // alternative wrapped/unwrapped version and
                                      // private communication for readObject and readResolve
-    private @Stable Invokers invokers;   // cache of handy higher-order adapters
-    private @Stable String methodDescriptor;  // cache for toMethodDescriptorString
+    private final StableValue<Invokers> invokers = StableValue.of();   // cache of handy higher-order adapters
+    private final StableValue<String> methodDescriptor = StableValue.of();  // cache for toMethodDescriptorString
 
     /**
      * Constructor that performs no copying or validation.
@@ -163,11 +164,11 @@ class MethodType
         this.ptypes = ptypes;
     }
 
-    /*trusted*/ MethodTypeForm form() { return form; }
+    /*trusted*/ MethodTypeForm form() { return form.orElseThrow(); }
     /*trusted*/ Class<?> rtype() { return rtype; }
     /*trusted*/ Class<?>[] ptypes() { return ptypes; }
 
-    void setForm(MethodTypeForm f) { form = f; }
+    void setForm(MethodTypeForm f) { form.trySet(f); }
 
     /** This number, mandated by the JVM spec as 255,
      *  is the maximum number of <em>slots</em>
@@ -413,7 +414,7 @@ class MethodType
             MethodType.checkPtypes(ptypes);
             mt = new MethodType(rtype, ptypes);
         }
-        mt.form = MethodTypeForm.findForm(mt);
+        mt.form.trySet(MethodTypeForm.findForm(mt));
         return internTable.intern(mt);
     }
     private static final @Stable MethodType[] objectOnlyTypes = new MethodType[20];
@@ -710,7 +711,7 @@ class MethodType
      * @return true if any of the types are primitives
      */
     public boolean hasPrimitives() {
-        return form.hasPrimitives();
+        return form.orElseThrow().hasPrimitives();
     }
 
     /**
@@ -731,7 +732,7 @@ class MethodType
      * @return a version of the original type with all reference types replaced
      */
     public MethodType erase() {
-        return form.erasedType();
+        return form.orElseThrow().erasedType();
     }
 
     /**
@@ -742,7 +743,7 @@ class MethodType
      */
     /*non-public*/
     MethodType basicType() {
-        return form.basicType();
+        return form.orElseThrow().basicType();
     }
 
     private static final @Stable Class<?>[] METHOD_HANDLE_ARRAY
@@ -799,27 +800,21 @@ class MethodType
 
     private static MethodType wrapWithPrims(MethodType pt) {
         assert(pt.hasPrimitives());
-        MethodType wt = (MethodType)pt.wrapAlt;
-        if (wt == null) {
-            // fill in lazily
-            wt = MethodTypeForm.canonicalize(pt, MethodTypeForm.WRAP);
+        return (MethodType) pt.wrapAlt.computeIfUnset(pt, p -> {
+            MethodType wt = MethodTypeForm.canonicalize(p, MethodTypeForm.WRAP);
             assert(wt != null);
-            pt.wrapAlt = wt;
-        }
-        return wt;
+            return wt;
+        });
     }
 
     private static MethodType unwrapWithNoPrims(MethodType wt) {
         assert(!wt.hasPrimitives());
-        MethodType uwt = (MethodType)wt.wrapAlt;
-        if (uwt == null) {
-            // fill in lazily
-            uwt = MethodTypeForm.canonicalize(wt, MethodTypeForm.UNWRAP);
-            if (uwt == null)
-                uwt = wt;    // type has no wrappers or prims at all
-            wt.wrapAlt = uwt;
-        }
-        return uwt;
+        return (MethodType) wt.wrapAlt.computeIfUnset(wt, p -> {
+            MethodType uwt = MethodTypeForm.canonicalize(p, MethodTypeForm.UNWRAP);
+            return  (uwt == null)
+                    ? p
+                    : uwt;  // type has no wrappers or prims at all
+        });
     }
 
     /**
@@ -975,7 +970,7 @@ class MethodType
     boolean isViewableAs(MethodType newType, boolean keepInterfaces) {
         if (!VerifyType.isNullConversion(returnType(), newType.returnType(), keepInterfaces))
             return false;
-        if (form == newType.form && form.erasedType == this)
+        if (form == newType.form && form.orElseThrow().erasedType == this)
             return true;  // my reference parameters are all Object
         if (ptypes == newType.ptypes)
             return true;
@@ -1147,15 +1142,12 @@ class MethodType
      */
     /*non-public*/
     int parameterSlotCount() {
-        return form.parameterSlotCount();
+        return form.orElseThrow().parameterSlotCount();
     }
 
     /*non-public*/
     Invokers invokers() {
-        Invokers inv = invokers;
-        if (inv != null)  return inv;
-        invokers = inv = new Invokers(this);
-        return inv;
+        return invokers.computeIfUnset(this, Invokers::new);
     }
 
     /**
@@ -1239,12 +1231,8 @@ class MethodType
      * @see <a href="#descriptor">Nominal Descriptor for {@code MethodType}</a>
      */
     public String toMethodDescriptorString() {
-        String desc = methodDescriptor;
-        if (desc == null) {
-            desc = BytecodeDescriptor.unparseMethod(this.rtype, this.ptypes);
-            methodDescriptor = desc;
-        }
-        return desc;
+        return methodDescriptor.computeIfUnset(this, t ->
+                BytecodeDescriptor.unparseMethod(t.rtype, t.ptypes));
     }
 
     /**
@@ -1363,7 +1351,7 @@ s.writeObject(this.parameterArray());
 
         // Verify all operands, and make sure ptypes is unshared
         // Cache the new MethodType for readResolve
-        wrapAlt = new MethodType[]{MethodType.methodType(returnType, parameterArray)};
+        wrapAlt.trySet(new MethodType[]{MethodType.methodType(returnType, parameterArray)});
     }
 
     // Support for resetting final fields while deserializing. Implement Holder
@@ -1387,8 +1375,8 @@ s.writeObject(this.parameterArray());
         //    return makeImpl(rtype, ptypes, true);
         // Verify all operands, and make sure ptypes is unshared:
         // Return a new validated MethodType for the rtype and ptypes passed from readObject.
-        MethodType mt = ((MethodType[])wrapAlt)[0];
-        wrapAlt = null;
+        MethodType mt = ((MethodType[])wrapAlt.orElseThrow())[0];
+        //wrapAlt = StableValue.of();
         return mt;
     }
 }

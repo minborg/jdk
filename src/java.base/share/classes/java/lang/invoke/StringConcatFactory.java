@@ -27,6 +27,7 @@ package java.lang.invoke;
 
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.lang.StableValue;
 import jdk.internal.misc.VM;
 import jdk.internal.util.ClassFileDumper;
 import jdk.internal.vm.annotation.Stable;
@@ -41,9 +42,13 @@ import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.AccessFlag;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static java.lang.invoke.MethodHandles.Lookup.ClassOption.STRONG;
 import static java.lang.invoke.MethodType.methodType;
@@ -478,7 +483,7 @@ public final class StringConcatFactory {
 
         // Fast-path trivial concatenations
         if (paramCount == 0) {
-            return MethodHandles.insertArguments(newStringifier(), 0, suffix == null ? "" : suffix);
+            return MethodHandles.insertArguments(STRINGIFIERS.get(String.class), 0, suffix == null ? "" : suffix);
         }
         if (paramCount == 1) {
             String prefix = constants[0];
@@ -523,19 +528,19 @@ public final class StringConcatFactory {
                 if (objFilters == null) {
                     objFilters = new MethodHandle[ptypes.length];
                 }
-                objFilters[i] = objectStringifier();
+                objFilters[i] = STRINGIFIERS.get(Object.class);
                 ptypes[i] = String.class;
             } else if (cl == float.class) {
                 if (floatFilters == null) {
                     floatFilters = new MethodHandle[ptypes.length];
                 }
-                floatFilters[i] = floatStringifier();
+                floatFilters[i] = STRINGIFIERS.get(float.class);
                 ptypes[i] = String.class;
             } else if (cl == double.class) {
                 if (doubleFilters == null) {
                     doubleFilters = new MethodHandle[ptypes.length];
                 }
-                doubleFilters[i] = doubleStringifier();
+                doubleFilters[i] = STRINGIFIERS.get(double.class);
                 ptypes[i] = String.class;
             }
         }
@@ -724,24 +729,20 @@ public final class StringConcatFactory {
 
     private static MethodHandle prepender(Class<?> cl) {
         int idx = classIndex(cl);
-        MethodHandle prepend = PREPENDERS[idx];
-        if (prepend == null) {
-            PREPENDERS[idx] = prepend = JLA.stringConcatHelper("prepend",
+        return PREPENDERS.get(idx).computeIfUnset(cl , c ->
+            JLA.stringConcatHelper("prepend",
                     methodType(long.class, long.class, byte[].class,
-                            Wrapper.asPrimitiveType(cl), String.class)).rebind();
-        }
-        return prepend;
+                            Wrapper.asPrimitiveType(c), String.class)).rebind()
+        );
     }
 
     private static MethodHandle noPrefixPrepender(Class<?> cl) {
         int idx = classIndex(cl);
-        MethodHandle prepend = NO_PREFIX_PREPENDERS[idx];
-        if (prepend == null) {
-            NO_PREFIX_PREPENDERS[idx] = prepend = JLA.stringConcatHelper("prepend",
-                    methodType(long.class, long.class, byte[].class,
-                            Wrapper.asPrimitiveType(cl))).rebind();
-        }
-        return prepend;
+        return NO_PREFIX_PREPENDERS.get(idx).computeIfUnset(cl, c ->
+                JLA.stringConcatHelper("prepend",
+                        methodType(long.class, long.class, byte[].class,
+                                Wrapper.asPrimitiveType(c))).rebind()
+                );
     }
 
     private static final int INT_IDX = 0,
@@ -767,26 +768,25 @@ public final class StringConcatFactory {
     private static final int[] PREPEND_FILTER_SECOND_PAIR_ARGS = new int[] { 0, 1, 4, 5 };
 
     // Base MH for complex prepender combinators.
-    private static @Stable MethodHandle PREPEND_BASE;
+    private static final Supplier<MethodHandle> PREPEND_BASE =
+            StableValue.memoizedSupplier(() -> MethodHandles.dropArguments(
+                    MethodHandles.identity(long.class), 1, byte[].class));
     private static MethodHandle prependBase() {
-        MethodHandle base = PREPEND_BASE;
-        if (base == null) {
-            base = PREPEND_BASE = MethodHandles.dropArguments(
-                    MethodHandles.identity(long.class), 1, byte[].class);
-        }
-        return base;
+        return PREPEND_BASE.get();
     }
 
-    private static final @Stable MethodHandle[][] DOUBLE_PREPENDERS = new MethodHandle[TYPE_COUNT][TYPE_COUNT];
+    private static final List<List<StableValue<MethodHandle>>> DOUBLE_PREPENDERS =
+            Stream.generate(() -> Stream.generate(StableValue::<MethodHandle>of)
+                            .limit(TYPE_COUNT)
+                            .toList())
+                    .limit(TYPE_COUNT)
+                    .toList();
 
     private static MethodHandle prepender(String prefix, Class<?> cl, String prefix2, Class<?> cl2) {
         int idx1 = classIndex(cl);
         int idx2 = classIndex(cl2);
-        MethodHandle prepend = DOUBLE_PREPENDERS[idx1][idx2];
-        if (prepend == null) {
-            prepend = DOUBLE_PREPENDERS[idx1][idx2] =
-                    MethodHandles.dropArguments(prependBase(), 2, cl, cl2);
-        }
+        MethodHandle prepend = DOUBLE_PREPENDERS.get(idx1).get(idx2).computeIfUnset(() ->
+                        MethodHandles.dropArguments(prependBase(), 2, cl, cl2));
         prepend = MethodHandles.filterArgumentsWithCombiner(prepend, 0, prepender(prefix, cl),
                 PREPEND_FILTER_FIRST_ARGS);
         return MethodHandles.filterArgumentsWithCombiner(prepend, 0, prepender(prefix2, cl2),
@@ -832,12 +832,9 @@ public final class StringConcatFactory {
     private static final int[] MIX_FILTER_SECOND_PAIR_ARGS = new int[] { 0, 3, 4 };
     private static MethodHandle mixer(Class<?> cl) {
         int index = classIndex(cl);
-        MethodHandle mix = MIXERS[index];
-        if (mix == null) {
-            MIXERS[index] = mix = JLA.stringConcatHelper("mix",
-                    methodType(long.class, long.class, Wrapper.asPrimitiveType(cl))).rebind();
-        }
-        return mix;
+        return MIXERS.get(index).computeIfUnset(cl, c ->
+                JLA.stringConcatHelper("mix",
+                        methodType(long.class, long.class, Wrapper.asPrimitiveType(c))).rebind());
     }
 
     private static final @Stable MethodHandle[][] DOUBLE_MIXERS = new MethodHandle[TYPE_COUNT][TYPE_COUNT];
@@ -916,101 +913,32 @@ public final class StringConcatFactory {
      * form String apply(T obj), and normally delegate to {@code String.valueOf},
      * depending on argument's type.
      */
-    private @Stable static MethodHandle OBJECT_STRINGIFIER;
-    private static MethodHandle objectStringifier() {
-        MethodHandle mh = OBJECT_STRINGIFIER;
-        if (mh == null) {
-            OBJECT_STRINGIFIER = mh = JLA.stringConcatHelper("stringOf",
-                    methodType(String.class, Object.class));
-        }
-        return mh;
-    }
-    private @Stable static MethodHandle FLOAT_STRINGIFIER;
-    private static MethodHandle floatStringifier() {
-        MethodHandle mh = FLOAT_STRINGIFIER;
-        if (mh == null) {
-            FLOAT_STRINGIFIER = mh = stringValueOf(float.class);
-        }
-        return mh;
-    }
-    private @Stable static MethodHandle DOUBLE_STRINGIFIER;
-    private static MethodHandle doubleStringifier() {
-        MethodHandle mh = DOUBLE_STRINGIFIER;
-        if (mh == null) {
-            DOUBLE_STRINGIFIER = mh = stringValueOf(double.class);
-        }
-        return mh;
-    }
-
-    private @Stable static MethodHandle INT_STRINGIFIER;
-    private static MethodHandle intStringifier() {
-        MethodHandle mh = INT_STRINGIFIER;
-        if (mh == null) {
-            INT_STRINGIFIER = mh = stringValueOf(int.class);
-        }
-        return mh;
-    }
-
-    private @Stable static MethodHandle LONG_STRINGIFIER;
-    private static MethodHandle longStringifier() {
-        MethodHandle mh = LONG_STRINGIFIER;
-        if (mh == null) {
-            LONG_STRINGIFIER = mh = stringValueOf(long.class);
-        }
-        return mh;
-    }
-
-    private @Stable static MethodHandle CHAR_STRINGIFIER;
-    private static MethodHandle charStringifier() {
-        MethodHandle mh = CHAR_STRINGIFIER;
-        if (mh == null) {
-            CHAR_STRINGIFIER = mh = stringValueOf(char.class);
-        }
-        return mh;
-    }
-
-    private @Stable static MethodHandle BOOLEAN_STRINGIFIER;
-    private static MethodHandle booleanStringifier() {
-        MethodHandle mh = BOOLEAN_STRINGIFIER;
-        if (mh == null) {
-            BOOLEAN_STRINGIFIER = mh = stringValueOf(boolean.class);
-        }
-        return mh;
-    }
-
-    private @Stable static MethodHandle NEW_STRINGIFIER;
-    private static MethodHandle newStringifier() {
-        MethodHandle mh = NEW_STRINGIFIER;
-        if (mh == null) {
-            NEW_STRINGIFIER = mh = JLA.stringConcatHelper("newStringOf",
-                    methodType(String.class, Object.class));
-        }
-        return mh;
-    }
+    private static final Map<Class<?>, MethodHandle> STRINGIFIERS = StableValue.ofMap(
+            Set.of(Object.class, float.class, double.class, int.class, long.class, char.class, boolean.class, String.class),
+            c -> switch (c) {
+                case Class<?> o when o.equals(Object.class) -> JLA.stringConcatHelper("stringOf", methodType(String.class, Object.class));
+                case Class<?> o when o.equals(String.class) -> JLA.stringConcatHelper("newStringOf", methodType(String.class, Object.class));
+                default -> stringValueOf(c);
+            }
+    );
+    
 
     private static MethodHandle unaryConcat(Class<?> cl) {
         if (!cl.isPrimitive()) {
-            return newStringifier();
+            return STRINGIFIERS.get(String.class);
         } else if (cl == int.class || cl == short.class || cl == byte.class) {
-            return intStringifier();
-        } else if (cl == long.class) {
-            return longStringifier();
-        } else if (cl == char.class) {
-            return charStringifier();
-        } else if (cl == boolean.class) {
-            return booleanStringifier();
-        } else if (cl == float.class) {
-            return floatStringifier();
-        } else if (cl == double.class) {
-            return doubleStringifier();
+            return STRINGIFIERS.get(int.class);
+        } else if (cl == long.class || cl == char.class || cl == boolean.class
+                || cl == float.class || cl == double.class) {
+            return STRINGIFIERS.get(cl);
         } else {
             throw new InternalError("Unhandled type for unary concatenation: " + cl);
         }
     }
 
-    private static final @Stable MethodHandle[] NO_PREFIX_PREPENDERS = new MethodHandle[TYPE_COUNT];
-    private static final @Stable MethodHandle[] PREPENDERS      = new MethodHandle[TYPE_COUNT];
-    private static final @Stable MethodHandle[] MIXERS          = new MethodHandle[TYPE_COUNT];
+    private static final List<StableValue<MethodHandle>> NO_PREFIX_PREPENDERS = Stream.generate(StableValue::<MethodHandle>of).limit(TYPE_COUNT).toList();
+    private static final List<StableValue<MethodHandle>> PREPENDERS      = Stream.generate(StableValue::<MethodHandle>of).limit(TYPE_COUNT).toList();
+    private static final List<StableValue<MethodHandle>> MIXERS          = Stream.generate(StableValue::<MethodHandle>of).limit(TYPE_COUNT).toList();
     private static final long INITIAL_CODER = JLA.stringConcatInitialCoder();
 
     /**
@@ -1030,12 +958,8 @@ public final class StringConcatFactory {
      * @return stringifier; null, if not available
      */
     private static MethodHandle stringifierFor(Class<?> t) {
-        if (t == Object.class) {
-            return objectStringifier();
-        } else if (t == float.class) {
-            return floatStringifier();
-        } else if (t == double.class) {
-            return doubleStringifier();
+        if (t == Object.class || t == float.class || t == double.class) {
+            return STRINGIFIERS.get(t);
         }
         return null;
     }

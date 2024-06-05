@@ -681,8 +681,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     IOException  if an I/O error occurs.
      */
     public void close() throws IOException {
-        boolean wasClosed = closed.trySet(true);
-        if (wasClosed) {
+        if (!closed.trySet(true)) {
             return;
         }
         FileChannel fc = channel.orElse(null);

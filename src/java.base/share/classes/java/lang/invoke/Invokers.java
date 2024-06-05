@@ -25,12 +25,16 @@
 
 package java.lang.invoke;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Hidden;
 import jdk.internal.vm.annotation.Stable;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.lang.invoke.MethodHandleStatics.*;
 import static java.lang.invoke.MethodHandleNatives.Constants.*;
@@ -47,7 +51,9 @@ class Invokers {
     private final MethodType targetType;
 
     // Cached adapter information:
-    private final @Stable MethodHandle[] invokers = new MethodHandle[INV_LIMIT];
+    private final List<StableValue<MethodHandle>> invokers =
+            Stream.generate(StableValue::<MethodHandle>of)
+            .toList();
     // Indexes into invokers:
     static final int
             INV_EXACT          =  0,  // MethodHandles.exactInvoker
@@ -119,14 +125,12 @@ class Invokers {
     }
 
     private MethodHandle cachedInvoker(int idx) {
-        return invokers[idx];
+        return invokers.get(idx).orElse(null);
     }
 
-    private synchronized MethodHandle setCachedInvoker(int idx, final MethodHandle invoker) {
-        // Simulate a CAS, to avoid racy duplication of results.
-        MethodHandle prev = invokers[idx];
-        if (prev != null)  return prev;
-        return invokers[idx] = invoker;
+    private MethodHandle setCachedInvoker(int idx, final MethodHandle invoker) {
+        return invokers.get(idx)
+                .computeIfUnset(invoker, Function.identity());
     }
 
     private MethodHandle cachedVHInvoker(boolean isExact, VarHandle.AccessMode ak) {

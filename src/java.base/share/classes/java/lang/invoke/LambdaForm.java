@@ -25,6 +25,7 @@
 
 package java.lang.invoke;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.perf.PerfCounter;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.Hidden;
@@ -38,6 +39,9 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static java.lang.invoke.LambdaForm.BasicType.*;
 import static java.lang.invoke.MethodHandleNatives.Constants.*;
@@ -822,13 +826,11 @@ class LambdaForm {
         // TO DO: Maybe add invokeGeneric, invokeWithArguments
     }
 
-    private static @Stable PerfCounter LF_FAILED;
+    private static final Supplier<PerfCounter> LF_FAILED = StableValue.memoizedSupplier(
+            () -> PerfCounter.newPerfCounter("java.lang.invoke.failedLambdaFormCompilations"));
 
     private static PerfCounter failedCompilationCounter() {
-        if (LF_FAILED == null) {
-            LF_FAILED = PerfCounter.newPerfCounter("java.lang.invoke.failedLambdaFormCompilations");
-        }
-        return LF_FAILED;
+        return LF_FAILED.get();
     }
 
     /** Generate optimizable bytecode for this form. */
@@ -1089,7 +1091,7 @@ class LambdaForm {
     static class NamedFunction {
         final MemberName member;
         private @Stable MethodHandle resolvedHandle;
-        private @Stable MethodType type;
+        private final StableValue<MethodType> type = StableValue.of();
 
         NamedFunction(MethodHandle resolvedHandle) {
             this(resolvedHandle.internalMemberName(), resolvedHandle);
@@ -1204,11 +1206,7 @@ class LambdaForm {
         }
 
         MethodType methodType() {
-            MethodType type = this.type;
-            if (type == null) {
-                this.type = type = calculateMethodType(member, resolvedHandle);
-            }
-            return type;
+            return type.computeIfUnset(() -> calculateMethodType(member, resolvedHandle));
         }
 
         private static MethodType calculateMethodType(MemberName member, MethodHandle resolvedHandle) {
@@ -1676,48 +1674,48 @@ class LambdaForm {
 
     static LambdaForm identityForm(BasicType type) {
         int ord = type.ordinal();
-        LambdaForm form = LF_identity[ord];
+        LambdaForm form = LF_identity.get(ord).orElse(null);
         if (form != null) {
             return form;
         }
         createFormsFor(type);
-        return LF_identity[ord];
+        return LF_identity.get(ord).orElse(null);
     }
 
     static LambdaForm zeroForm(BasicType type) {
         int ord = type.ordinal();
-        LambdaForm form = LF_zero[ord];
+        LambdaForm form = LF_zero.get(ord).orElse(null);
         if (form != null) {
             return form;
         }
         createFormsFor(type);
-        return LF_zero[ord];
+        return LF_zero.get(ord).orElse(null);
     }
 
     static NamedFunction identity(BasicType type) {
         int ord = type.ordinal();
-        NamedFunction function = NF_identity[ord];
+        NamedFunction function = NF_identity.get(ord).orElse(null);
         if (function != null) {
             return function;
         }
         createFormsFor(type);
-        return NF_identity[ord];
+        return NF_identity.get(ord).orElse(null);
     }
 
     static NamedFunction constantZero(BasicType type) {
         int ord = type.ordinal();
-        NamedFunction function = NF_zero[ord];
+        NamedFunction function = NF_zero.get(ord).orElse(null);
         if (function != null) {
             return function;
         }
         createFormsFor(type);
-        return NF_zero[ord];
+        return NF_zero.get(ord).orElse(null);
     }
 
-    private static final @Stable LambdaForm[] LF_identity = new LambdaForm[TYPE_LIMIT];
-    private static final @Stable LambdaForm[] LF_zero = new LambdaForm[TYPE_LIMIT];
-    private static final @Stable NamedFunction[] NF_identity = new NamedFunction[TYPE_LIMIT];
-    private static final @Stable NamedFunction[] NF_zero = new NamedFunction[TYPE_LIMIT];
+    private static final List<StableValue<LambdaForm>> LF_identity = Stream.generate(StableValue::<LambdaForm>of).limit(TYPE_LIMIT).toList();
+    private static final List<StableValue<LambdaForm>> LF_zero = Stream.generate(StableValue::<LambdaForm>of).limit(TYPE_LIMIT).toList();
+    private static final List<StableValue<NamedFunction>> NF_identity = Stream.generate(StableValue::<NamedFunction>of).limit(TYPE_LIMIT).toList();
+    private static final List<StableValue<NamedFunction>> NF_zero = Stream.generate(StableValue::<NamedFunction>of).limit(TYPE_LIMIT).toList();
 
     private static final Object createFormsLock = new Object();
     private static void createFormsFor(BasicType type) {
@@ -1725,7 +1723,7 @@ class LambdaForm {
         UNSAFE.ensureClassInitialized(BoundMethodHandle.class);
         synchronized (createFormsLock) {
             final int ord = type.ordinal();
-            LambdaForm idForm = LF_identity[ord];
+            LambdaForm idForm = LF_identity.get(ord).orElse(null);
             if (idForm != null) {
                 return;
             }
@@ -1779,10 +1777,10 @@ class LambdaForm {
                         MethodHandleImpl.Intrinsic.ZERO));
             }
 
-            LF_zero[ord] = zeForm;
-            NF_zero[ord] = zeFun;
-            LF_identity[ord] = idForm;
-            NF_identity[ord] = idFun;
+            LF_zero.get(ord).trySet(zeForm);
+            NF_zero.get(ord).trySet(zeFun);
+            LF_identity.get(ord).trySet(idForm);
+            NF_identity.get(ord).trySet(idFun);
 
             assert(idFun.isIdentity());
             assert(zeFun.isConstantZero());

@@ -26,6 +26,7 @@
 
 package java.lang.invoke;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
@@ -46,7 +47,7 @@ final class LazyInitializingVarHandle extends VarHandle {
     // and on getMethodHandle() (for indirect VH invocation, toMethodHandle)
     private final VarHandle target;
     private final Class<?> refc;
-    private @Stable boolean initialized;
+    private StableValue<Boolean> initialized = StableValue.of();
 
     LazyInitializingVarHandle(VarHandle target, Class<?> refc) {
         super(target.vform, target.exact);
@@ -74,18 +75,18 @@ final class LazyInitializingVarHandle extends VarHandle {
 
     @Override
     public VarHandle withInvokeExactBehavior() {
-        if (!initialized && hasInvokeExactBehavior())
+        if (!initialized.isSet() && hasInvokeExactBehavior())
             return this;
         var exactTarget = target.withInvokeExactBehavior();
-        return initialized ? exactTarget : new LazyInitializingVarHandle(exactTarget, refc);
+        return initialized.isSet() ? exactTarget : new LazyInitializingVarHandle(exactTarget, refc);
     }
 
     @Override
     public VarHandle withInvokeBehavior() {
-        if (!initialized && !hasInvokeExactBehavior())
+        if (!initialized.isSet() && !hasInvokeExactBehavior())
             return this;
         var nonExactTarget = target.withInvokeBehavior();
-        return initialized ? nonExactTarget : new LazyInitializingVarHandle(nonExactTarget, refc);
+        return initialized.isSet() ? nonExactTarget : new LazyInitializingVarHandle(nonExactTarget, refc);
     }
 
     @Override
@@ -96,7 +97,7 @@ final class LazyInitializingVarHandle extends VarHandle {
     @Override
     public MethodHandle getMethodHandleUncached(int accessMode) {
         var mh = target.getMethodHandle(accessMode);
-        if (this.initialized)
+        if (this.initialized.isSet())
             return mh;
 
         return MethodHandles.collectArguments(mh, 0, ensureInitializedMh()).bindTo(this);
@@ -104,7 +105,7 @@ final class LazyInitializingVarHandle extends VarHandle {
 
     @ForceInline
     private void ensureInitialized() {
-        if (this.initialized)
+        if (this.initialized.isSet())
             return;
 
         initialize();
@@ -112,7 +113,7 @@ final class LazyInitializingVarHandle extends VarHandle {
 
     private void initialize() {
         UNSAFE.ensureClassInitialized(refc);
-        this.initialized = true;
+        this.initialized.trySet(true);
 
         this.methodHandleTable = target.methodHandleTable;
     }

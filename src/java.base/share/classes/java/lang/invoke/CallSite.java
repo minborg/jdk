@@ -28,6 +28,7 @@ package java.lang.invoke;
 import static java.lang.invoke.MethodHandleStatics.*;
 import static java.lang.invoke.MethodHandles.Lookup.IMPL_LOOKUP;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.vm.annotation.Stable;
 
 /**
@@ -227,34 +228,30 @@ abstract sealed class CallSite permits ConstantCallSite, MutableCallSite, Volati
         return MethodHandles.foldArguments(invoker, getTarget);
     }
 
-    private static @Stable MethodHandle GET_TARGET;
+    private static final StableValue<MethodHandle> GET_TARGET = StableValue.of();
     private static MethodHandle getTargetHandle() {
-        MethodHandle handle = GET_TARGET;
-        if (handle != null) {
-            return handle;
-        }
-        try {
-            return GET_TARGET = IMPL_LOOKUP.
-                    findVirtual(CallSite.class, "getTarget",
+        return GET_TARGET.computeIfUnset(() -> {
+            try {
+                return IMPL_LOOKUP.
+                        findVirtual(CallSite.class, "getTarget",
                                 MethodType.methodType(MethodHandle.class));
-        } catch (ReflectiveOperationException e) {
-            throw newInternalError(e);
-        }
+            } catch (ReflectiveOperationException e) {
+                throw newInternalError(e);
+            }
+        });
     }
 
-    private static @Stable MethodHandle THROW_UCS;
+    private static final StableValue<MethodHandle> THROW_UCS = StableValue.of();
     private static MethodHandle uninitializedCallSiteHandle() {
-        MethodHandle handle = THROW_UCS;
-        if (handle != null) {
-            return handle;
-        }
-        try {
-            return THROW_UCS = IMPL_LOOKUP.
-                findStatic(CallSite.class, "uninitializedCallSite",
-                           MethodType.methodType(Object.class, Object[].class));
-        } catch (ReflectiveOperationException e) {
-            throw newInternalError(e);
-        }
+        return THROW_UCS.computeIfUnset(() -> {
+            try {
+                return IMPL_LOOKUP.
+                        findStatic(CallSite.class, "uninitializedCallSite",
+                                MethodType.methodType(Object.class, Object[].class));
+            } catch (ReflectiveOperationException e) {
+                throw newInternalError(e);
+            }
+        });
     }
 
     /** This guy is rolled into the default target if a MethodType is supplied to the constructor. */

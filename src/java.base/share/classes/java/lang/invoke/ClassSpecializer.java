@@ -25,6 +25,7 @@
 
 package java.lang.invoke;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.loader.BootLoader;
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.FieldVisitor;
@@ -67,7 +68,7 @@ abstract class ClassSpecializer<T,K,S extends ClassSpecializer<T,K,S>.SpeciesDat
     private final S topSpecies;
     private final ConcurrentHashMap<K, Object> cache = new ConcurrentHashMap<>();
     private final Factory factory;
-    private @Stable boolean topClassIsSuper;
+    private StableValue<Boolean> topClassIsSuper = StableValue.of();
 
     /** Return the top type mirror, for type {@code T} */
     public final Class<T> topClass() { return topClass; }
@@ -426,16 +427,16 @@ abstract class ClassSpecializer<T,K,S extends ClassSpecializer<T,K,S>.SpeciesDat
          */
         protected Class<? extends T> deriveSuperClass() {
             final Class<T> topc = topClass();
-            if (!topClassIsSuper) {
+            if (!topClassIsSuper.isSet()) {
                 try {
                     final Constructor<T> con = reflectConstructor(topc, baseConstructorType().ptypes());
                     if (!topc.isInterface() && !Modifier.isPrivate(con.getModifiers())) {
-                        topClassIsSuper = true;
+                        topClassIsSuper.trySet(true);
                     }
                 } catch (Exception|InternalError ex) {
                     // fall through...
                 }
-                if (!topClassIsSuper) {
+                if (!topClassIsSuper.isSet()) {
                     throw newInternalError("must override if the top class cannot serve as a super class");
                 }
             }

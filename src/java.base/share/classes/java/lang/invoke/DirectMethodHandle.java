@@ -25,6 +25,7 @@
 
 package java.lang.invoke;
 
+import jdk.internal.lang.StableValue;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
@@ -35,6 +36,7 @@ import sun.invoke.util.Wrapper;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 
 import static java.lang.invoke.LambdaForm.*;
 import static java.lang.invoke.LambdaForm.Kind.*;
@@ -855,15 +857,11 @@ sealed class DirectMethodHandle extends MethodHandle {
             NF_checkReceiver = 11,
             NF_LIMIT = 12;
 
-    private static final @Stable NamedFunction[] NFS = new NamedFunction[NF_LIMIT];
+    private static final IntFunction<NamedFunction> NFS =
+            StableValue.memoizedIntFunction(NF_LIMIT, i -> createFunction((byte) i));
 
     private static NamedFunction getFunction(byte func) {
-        NamedFunction nf = NFS[func];
-        if (nf != null) {
-            return nf;
-        }
-        // Each nf must be statically invocable or we get tied up in our bootstraps.
-        nf = NFS[func] = createFunction(func);
+        NamedFunction nf = NFS.apply(func);
         assert(InvokerBytecodeGenerator.isStaticallyInvocable(nf));
         return nf;
     }

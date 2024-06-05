@@ -993,7 +993,7 @@ public final class Pattern
      * Boolean indicating this Pattern is compiled; this is necessary in order
      * to lazily compile deserialized Patterns.
      */
-    private transient StableValue<Boolean> compiled = StableValue.of();
+    private transient final StableValue<Boolean> compiled = StableValue.of();
 
     /**
      * The normalized pattern string.

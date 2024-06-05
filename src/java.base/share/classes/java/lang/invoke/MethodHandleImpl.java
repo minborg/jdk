@@ -28,6 +28,7 @@ package java.lang.invoke;
 import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.abi.NativeEntryPoint;
+import jdk.internal.lang.StableValue;
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
@@ -54,6 +55,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 import static java.lang.invoke.LambdaForm.*;
@@ -1435,19 +1437,18 @@ abstract class MethodHandleImpl {
         return new IntrinsicMethodHandle(SimpleMethodHandle.make(type, form), intrinsicName);
     }
 
-    private static final @Stable MethodHandle[] ARRAYS = new MethodHandle[MAX_ARITY + 1];
+    private static final IntFunction<MethodHandle> ARRAYS =
+            StableValue.memoizedIntFunction(MAX_ARITY + 1, n -> {
+                MethodHandle mh = makeCollector(Object[].class, n);
+                assert (assertCorrectArity(mh, n));
+                return mh;
+            });
 
     /** Return a method handle that takes the indicated number of Object
      *  arguments and returns an Object array of them, as if for varargs.
      */
     static MethodHandle varargsArray(int nargs) {
-        MethodHandle mh = ARRAYS[nargs];
-        if (mh != null) {
-            return mh;
-        }
-        mh = makeCollector(Object[].class, nargs);
-        assert(assertCorrectArity(mh, nargs));
-        return ARRAYS[nargs] = mh;
+        return ARRAYS.apply(nargs);
     }
 
     /** Return a method handle that takes the indicated number of

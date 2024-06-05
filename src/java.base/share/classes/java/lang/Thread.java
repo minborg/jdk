@@ -40,6 +40,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.StructureViolationException;
 import java.util.concurrent.locks.LockSupport;
 import jdk.internal.event.ThreadSleepEvent;
+import jdk.internal.lang.StableValue;
 import jdk.internal.misc.TerminatingThreadLocal;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
@@ -2894,13 +2895,12 @@ public class Thread implements Runnable {
     int threadLocalRandomSecondarySeed;
 
     /** The thread container that this thread is in */
-    private @Stable ThreadContainer container;
+    private final StableValue<ThreadContainer> container = StableValue.of();
     ThreadContainer threadContainer() {
-        return container;
+        return container.orElseThrow();
     }
     void setThreadContainer(ThreadContainer container) {
-        // assert this.container == null;
-        this.container = container;
+        this.container.setOrThrow(container);
     }
 
     /** The top of this stack of stackable scopes owned by this thread */

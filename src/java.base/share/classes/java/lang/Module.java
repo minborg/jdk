@@ -115,11 +115,8 @@ public final class Module implements AnnotatedElement {
     // the module descriptor
     private final ModuleDescriptor descriptor;
 
-    // true, if this module allows restricted native access
-    // Accessing this variable is made through Unsafe in order to use the
-    // memory semantics that preserves ordering and visibility across threads.
-    @Stable
-    private boolean enableNativeAccess;
+
+    private final StableValue<Boolean> enableNativeAccess = StableValue.of();
 
     /**
      * Creates a new named Module. The resulting Module will be defined to the
@@ -260,7 +257,7 @@ public final class Module implements AnnotatedElement {
      * Update this module to allow access to restricted methods.
      */
     Module implAddEnableNativeAccess() {
-        EnableNativeAccess.trySetEnableNativeAccess(this);
+        enableNativeAccess.trySet(true);
         return this;
     }
 
@@ -273,30 +270,9 @@ public final class Module implements AnnotatedElement {
      */
     public boolean isNativeAccessEnabled() {
         Module target = moduleForNativeAccess();
-        return EnableNativeAccess.isNativeAccessEnabled(target);
+        return target.enableNativeAccess.isSet();
     }
 
-    /**
-     * This class is used to be able to bootstrap without using Unsafe
-     * in the outer Module class as that would create a circular initializer dependency.
-     */
-    private static final class EnableNativeAccess {
-
-        private EnableNativeAccess() {}
-
-        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-        private static final long FIELD_OFFSET = UNSAFE.objectFieldOffset(Module.class, "enableNativeAccess");
-
-        private static boolean isNativeAccessEnabled(Module target) {
-            return UNSAFE.getBooleanVolatile(target, FIELD_OFFSET);
-        }
-
-        // Atomically sets enableNativeAccess if not already set
-        // returning if the value was updated
-        private static boolean trySetEnableNativeAccess(Module target) {
-            return UNSAFE.compareAndSetBoolean(target, FIELD_OFFSET, false, true);
-        }
-    }
 
     // Returns the Module object that holds the enableNativeAccess
     // flag for this module.
@@ -308,11 +284,11 @@ public final class Module implements AnnotatedElement {
     void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass) {
         // The target module whose enableNativeAccess flag is ensured
         Module target = moduleForNativeAccess();
-        if (!EnableNativeAccess.isNativeAccessEnabled(target)) {
+        if (!enableNativeAccess.isSet()) {
             if (ModuleBootstrap.hasEnableNativeAccessFlag()) {
                 throw new IllegalCallerException("Illegal native access from: " + this);
             }
-            if (EnableNativeAccess.trySetEnableNativeAccess(target)) {
+            if (target.enableNativeAccess.trySet(true)) {
                 // warn and set flag, so that only one warning is reported per module
                 String cls = owner.getName();
                 String mtd = cls + "::" + methodName;
@@ -333,7 +309,7 @@ public final class Module implements AnnotatedElement {
      * Update all unnamed modules to allow access to restricted methods.
      */
     static void implAddEnableNativeAccessToAllUnnamed() {
-        EnableNativeAccess.trySetEnableNativeAccess(ALL_UNNAMED_MODULE);
+        ALL_UNNAMED_MODULE.enableNativeAccess.trySet(true);
     }
 
     // --
