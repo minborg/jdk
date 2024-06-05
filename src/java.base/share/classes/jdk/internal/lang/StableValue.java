@@ -206,7 +206,7 @@ public sealed interface StableValue<T>
      * @param <T> the value type to set
      */
     // 73
-    static <T> StableValue<T> of() {
+    static <T> StableValue<T> of() { // Type parameter   : newInstance
         return StableValueImpl.of();
     }
 
@@ -313,7 +313,11 @@ public sealed interface StableValue<T>
     // 6
     static <R> IntFunction<R> memoizedIntFunction(int size,
                                                   IntFunction<? extends R> original) {
-        return ofList(size, original)::get;
+
+        var list = StableValue.<R>ofStableValueList(size);
+        return i -> list
+                .get(i)
+                .computeIfUnset(i, original::apply);
     }
 
     /**

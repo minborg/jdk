@@ -33,6 +33,7 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.List;
 import java.util.Map;
@@ -798,13 +799,15 @@ class MethodType
         return unwrapWithNoPrims(noprims);
     }
 
+    private static final Function<MethodType, Object> MAPPER = p -> {
+        MethodType wt = MethodTypeForm.canonicalize(p, MethodTypeForm.WRAP);
+        assert(wt != null);
+        return wt;
+    };
+
     private static MethodType wrapWithPrims(MethodType pt) {
         assert(pt.hasPrimitives());
-        return (MethodType) pt.wrapAlt.computeIfUnset(pt, p -> {
-            MethodType wt = MethodTypeForm.canonicalize(p, MethodTypeForm.WRAP);
-            assert(wt != null);
-            return wt;
-        });
+        return (MethodType) pt.wrapAlt.computeIfUnset(pt, MAPPER);
     }
 
     private static MethodType unwrapWithNoPrims(MethodType wt) {
