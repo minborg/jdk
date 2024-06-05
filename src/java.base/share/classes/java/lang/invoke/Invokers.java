@@ -51,9 +51,7 @@ class Invokers {
     private final MethodType targetType;
 
     // Cached adapter information:
-    private final List<StableValue<MethodHandle>> invokers =
-            Stream.generate(StableValue::<MethodHandle>of)
-            .toList();
+    private final List<StableValue<MethodHandle>> invokers = StableValue.ofStableValueList(INV_LIMIT);
     // Indexes into invokers:
     static final int
             INV_EXACT          =  0,  // MethodHandles.exactInvoker

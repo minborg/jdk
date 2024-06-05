@@ -776,9 +776,7 @@ public final class StringConcatFactory {
     }
 
     private static final List<List<StableValue<MethodHandle>>> DOUBLE_PREPENDERS =
-            Stream.generate(() -> Stream.generate(StableValue::<MethodHandle>of)
-                            .limit(TYPE_COUNT)
-                            .toList())
+            Stream.generate(() -> StableValue.<MethodHandle>ofStableValueList(TYPE_COUNT))
                     .limit(TYPE_COUNT)
                     .toList();
 
@@ -936,9 +934,9 @@ public final class StringConcatFactory {
         }
     }
 
-    private static final List<StableValue<MethodHandle>> NO_PREFIX_PREPENDERS = Stream.generate(StableValue::<MethodHandle>of).limit(TYPE_COUNT).toList();
-    private static final List<StableValue<MethodHandle>> PREPENDERS      = Stream.generate(StableValue::<MethodHandle>of).limit(TYPE_COUNT).toList();
-    private static final List<StableValue<MethodHandle>> MIXERS          = Stream.generate(StableValue::<MethodHandle>of).limit(TYPE_COUNT).toList();
+    private static final List<StableValue<MethodHandle>> NO_PREFIX_PREPENDERS = StableValue.ofStableValueList(TYPE_COUNT);
+    private static final List<StableValue<MethodHandle>> PREPENDERS      = StableValue.ofStableValueList(TYPE_COUNT);
+    private static final List<StableValue<MethodHandle>> MIXERS          = StableValue.ofStableValueList(TYPE_COUNT);
     private static final long INITIAL_CODER = JLA.stringConcatInitialCoder();
 
     /**

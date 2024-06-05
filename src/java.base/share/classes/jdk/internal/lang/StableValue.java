@@ -74,12 +74,14 @@ public sealed interface StableValue<T>
      *
      * @param value to set (nullable)
      */
+    // 39
     boolean trySet(T value);
 
     /**
      * {@return the set value (nullable) if set, otherwise return the {@code other} value}
      * @param other to return if the stable value is not set
      */
+    // 29
     T orElse(T other);
 
     /**
@@ -88,11 +90,13 @@ public sealed interface StableValue<T>
      *
      * @throws NoSuchElementException if no value is set
      */
+    // 31
     T orElseThrow();
 
     /**
      * {@return {@code true} if a value is set, {@code false} otherwise}
      */
+    // 14
     boolean isSet();
 
     /**
@@ -101,6 +105,7 @@ public sealed interface StableValue<T>
      *
      * @param action the action to be performed, if a value is set
      */
+    // 0
     void ifSet(Consumer<? super T> action);
 
     /**
@@ -133,6 +138,7 @@ public sealed interface StableValue<T>
      * @return the current (existing or computed) value associated with
      *         the stable value
      */
+    // 35
     T computeIfUnset(Supplier<? extends T> supplier);
 
     /**
@@ -169,6 +175,7 @@ public sealed interface StableValue<T>
      * @return the current (existing or computed) value associated with
      *         the stable value
      */
+    // 12
     <I> T computeIfUnset(I input, Function<? super I, ? extends T> mapper);
 
 
@@ -181,6 +188,7 @@ public sealed interface StableValue<T>
      * @param value to set (nullable)
      * @throws IllegalArgumentException if a non-null value is already set
      */
+    // 12
     default void setOrThrow(T value) {
         if (!trySet(value)) {
             throw new IllegalStateException("Cannot set value to " + value +
@@ -197,6 +205,7 @@ public sealed interface StableValue<T>
      *
      * @param <T> the value type to set
      */
+    // 73
     static <T> StableValue<T> of() {
         return StableValueImpl.of();
     }
@@ -209,6 +218,7 @@ public sealed interface StableValue<T>
      * @param mapper to invoke when an element is to be computed
      * @param <E> the {@code List}'s element type
      */
+    // 1
     static <E> List<E> ofList(int size,
                               IntFunction<? extends E> mapper) {
         if (size < 0) {
@@ -218,12 +228,30 @@ public sealed interface StableValue<T>
             return List.of();
         }
         Objects.requireNonNull(mapper);
-        List<StableValue<E>> backing = Stream.generate(StableValue::<E>of)
-                .limit(size)
-                .toList();
 
         return SharedSecrets.getJavaUtilCollectionAccess()
-                .listFromStable(backing, mapper);
+                .listFromStable(ofStableValueList(size), mapper);
+    };
+
+    /**
+     * {@return a shallowly immutable, stable List of stable values eligible for certain
+     * JVM optimizations}
+     *
+     * @param size the size of the returned list
+     * @param <E>  the {@code StableValue}s' element type
+     */
+    // This has better type inference than Stream.generate(StableValue::<Foo>of)...
+    // 10
+    static <E> List<StableValue<E>> ofStableValueList(int size) {
+        if (size < 0) {
+            throw new IllegalArgumentException();
+        }
+        if (size == 0) {
+            return List.of();
+        }
+        return Stream.generate(StableValue::<E>of)
+                .limit(size)
+                .toList();
     };
 
     /**
@@ -234,6 +262,7 @@ public sealed interface StableValue<T>
      * @param <K> the {@code Map}'s key type
      * @param <V> the {@code Map}'s value type
      */
+    // 2
     static <K, V> Map<K, V> ofMap(Set<K> keys,
                                   Function<? super K, ? extends V> mapper) {
         Objects.requireNonNull(keys);
@@ -266,6 +295,7 @@ public sealed interface StableValue<T>
      * @param original supplier
      * @param <T> the type of results supplied by the returned supplier
      */
+    // 4
     static <T> Supplier<T> memoizedSupplier(Supplier<T> original) {
         Objects.requireNonNull(original);
         final StableValue<T> stable = StableValue.of();
@@ -280,6 +310,7 @@ public sealed interface StableValue<T>
      * @param original to invoke when an element is to be computed
      * @param <R>      the type of the result of the function
      */
+    // 6
     static <R> IntFunction<R> memoizedIntFunction(int size,
                                                   IntFunction<? extends R> original) {
         return ofList(size, original)::get;
@@ -294,6 +325,7 @@ public sealed interface StableValue<T>
      * @param <T> the type of the input to the function
      * @param <R> the type of the result of the function
      */
+    // 4
     static <T, R> Function<T, R> memoizedFunction(Set<T> inputs,
                                                   Function<? super T, ? extends R> original) {
         final Map<T, R> backing = ofMap(inputs, original);

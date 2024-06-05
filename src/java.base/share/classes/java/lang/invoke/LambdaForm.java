@@ -1712,10 +1712,10 @@ class LambdaForm {
         return NF_zero.get(ord).orElse(null);
     }
 
-    private static final List<StableValue<LambdaForm>> LF_identity = Stream.generate(StableValue::<LambdaForm>of).limit(TYPE_LIMIT).toList();
-    private static final List<StableValue<LambdaForm>> LF_zero = Stream.generate(StableValue::<LambdaForm>of).limit(TYPE_LIMIT).toList();
-    private static final List<StableValue<NamedFunction>> NF_identity = Stream.generate(StableValue::<NamedFunction>of).limit(TYPE_LIMIT).toList();
-    private static final List<StableValue<NamedFunction>> NF_zero = Stream.generate(StableValue::<NamedFunction>of).limit(TYPE_LIMIT).toList();
+    private static final List<StableValue<LambdaForm>> LF_identity = StableValue.ofStableValueList(TYPE_LIMIT);
+    private static final List<StableValue<LambdaForm>> LF_zero = StableValue.ofStableValueList(TYPE_LIMIT);
+    private static final List<StableValue<NamedFunction>> NF_identity = StableValue.ofStableValueList(TYPE_LIMIT);
+    private static final List<StableValue<NamedFunction>> NF_zero = StableValue.ofStableValueList(TYPE_LIMIT);
 
     private static final Object createFormsLock = new Object();
     private static void createFormsFor(BasicType type) {
