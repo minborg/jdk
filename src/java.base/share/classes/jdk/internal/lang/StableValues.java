@@ -27,6 +27,7 @@ package jdk.internal.lang;
 
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ThreadFactory;
@@ -77,7 +78,6 @@ public final class StableValues {
      *                 factory is {@code null}, no background thread will be started.
      * @param <T>      the type of results supplied by the returned supplier
      */
-
     public static <T> Supplier<T> memoizedSupplier(Supplier<? extends T> original,
                                                    ThreadFactory factory) {
           Objects.requireNonNull(original);
@@ -91,14 +91,7 @@ public final class StableValues {
               @Override public T get() { return stable.computeIfUnset(original); }
           }
           final Supplier<T> memoized = new MemoizedSupplier<>(stable, original);
-
-          if (factory != null) {
-              final Thread thread = factory.newThread(new Runnable() {
-                  @Override public void run() { memoized.get(); }
-              });
-              thread.start();
-          }
-
+          spinOffThread(memoized, factory);
           return memoized;
       }
 
@@ -150,6 +143,108 @@ public final class StableValues {
             entries[i++] = Map.entry(key, StableValue.newInstance());
         }
         return Map.ofEntries(entries);
+    }
+
+    // Initialization constructs
+
+    /**
+     * Holds a computation of type T which could either be a Value or an Error.
+     * @param <T> computation type
+     */
+    public sealed interface Computation<T> extends Supplier<T> {
+
+        /**
+         * {@return the result of the Computation or throws
+         * {@linkplain NoSuchElementException}}
+         *
+         * @throws NoSuchElementException if an {@linkplain Error} was encountered
+         *         during computation
+         */
+        @Override
+        T get();
+
+        /**
+         * Class indicating a value was successfully computed.
+         * @param get the value that was computed
+         * @param <T> the type of the value
+         */
+        record Value<T>(@Override T get) implements Computation<T>{}
+        /**
+         * Class indicating an error was encountered during computation.
+         * <p>
+         * For security reasons, only the class of the throwable is recorded.
+         *
+         * @param type the class of the throwable
+         * @param <T> the type of the value intended to be computed
+         */
+        record Error<T>(Class<? extends Throwable> type) implements Computation<T>{
+            @Override  public T get() { throw new NoSuchElementException(type.getName()); }
+        }
+    }
+
+    /**
+     * {@return a new thread-safe, stable, lazily computed {@linkplain Supplier supplier}
+     * that records the value or error of the provided {@code original} supplier upon
+     * being first accessed via {@linkplain Supplier#get()}, or via a background thread
+     * created from the provided {@code factory} (if non-null)}
+     * <p>
+     * The provided {@code original} supplier is guaranteed to be invoked
+     * at most once even in a multi-threaded environment. Competing threads invoking the
+     * {@linkplain Supplier#get()} method when a value is already under computation
+     * will block until a value is computed or an exception is thrown by the
+     * computing thread.
+     * <p>
+     * If the {@code original} Supplier invokes the returned Supplier recursively,
+     * a StackOverflowError will be thrown when the returned
+     * Supplier's {@linkplain Supplier#get()} method is invoked.
+     * <p>
+     * If the provided {@code original} supplier throws an exception, the class of the
+     * exception is memoized and the supplier will not be invoked again.
+     *
+     * @param original supplier used to compute a memoized value
+     * @param factory  an optional factory that, if non-null, will be used to create
+     *                 a background thread that will compute the memoized value. If the
+     *                 factory is {@code null}, no background thread will be started.
+     * @param <T>      the type of results supplied by the original supplier
+     */
+    public static <T> Supplier<Computation<T>> initSupplier(Supplier<? extends T> original,
+                                                            ThreadFactory factory) {
+        Objects.requireNonNull(original);
+        // `factory` is nullable
+
+        // The memoized value is backed by a StableValue
+        final StableValue<Computation<T>> stable = StableValue.newInstance();
+        // A record provides better debug capabilities than a lambda
+        record InitSupplier<T>(StableValue<Computation<T>> stable,
+                               Supplier<? extends T> original) implements Supplier<Computation<T>> {
+            @Override
+            public Computation<T> get() {
+                return stable.computeIfUnset(new Supplier<>() {
+                    @Override
+                    public Computation<T> get() {
+                        try {
+                            T value = original.get();
+                            return new Computation.Value<>(value);
+                        } catch (Throwable t) {
+                            return new Computation.Error<>(t.getClass());
+                        }
+                    }
+                });
+            }
+        }
+        final Supplier<Computation<T>> memoized = new InitSupplier<>(stable, original);
+        spinOffThread(memoized, factory);
+        return memoized;
+    }
+
+    private static void spinOffThread(Supplier<?> supplier,
+                                      ThreadFactory factory) {
+        if (factory != null) {
+            final Thread thread = factory.newThread(new Runnable() {
+                @Override public void run() { supplier.get(); }
+            });
+            thread.start();
+        }
     }
 
 }

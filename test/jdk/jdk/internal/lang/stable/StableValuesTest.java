@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -73,6 +74,31 @@ final class StableValuesTest {
             Thread.onSpinWait();
         }
         assertEquals(42, memoizeded.get());
+    }
+
+    @Test
+    void initSupplierValue() {
+        StableTestUtil.CountingSupplier<Integer> cs = new StableTestUtil.CountingSupplier<>(() -> 42);
+        Supplier<StableValues.Computation<Integer>> inited = StableValues.initSupplier(cs, null);
+        assertEquals(42, inited.get().get());
+        assertEquals(1, cs.cnt());
+        assertEquals(42, inited.get().get());
+        assertEquals(1, cs.cnt());
+        assertEquals("InitSupplier[stable=StableValue[Value[get=42]], original=" + cs + "]", inited.toString());
+    }
+
+    @Test
+    void initSupplierError() {
+        StableTestUtil.CountingSupplier<Integer> cs = new StableTestUtil.CountingSupplier<>(() -> {
+            throw new UnsupportedOperationException();
+        });
+        Supplier<StableValues.Computation<Integer>> inited = StableValues.initSupplier(cs, null);
+        assertThrows(NoSuchElementException.class, () -> inited.get().get());
+        assertEquals(1, cs.cnt());
+        assertThrows(NoSuchElementException.class, () -> inited.get().get());
+        assertEquals(1, cs.cnt());
+        assertInstanceOf(StableValues.Computation.Error.class, inited.get());
+        assertEquals("InitSupplier[stable=StableValue[Error[type=class java.lang.UnsupportedOperationException]], original=" + cs + "]", inited.toString());
     }
 
     @Test
