@@ -27,6 +27,8 @@
  * @run junit/othervm --enable-preview JepTest
  */
 
+import com.sun.org.apache.xpath.internal.operations.Or;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandles;
@@ -37,6 +39,7 @@ import java.util.AbstractList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -375,6 +378,311 @@ final class JepTest {
         public int size() {
             return elements.length;
         }
+    }
+
+    static
+    class DevoxxBePresentation {
+
+        static
+        final class Logger {
+            void info(String msg) {}
+            public static Logger create(Class<?> clazz) { return new Logger(); }
+        }
+        static final class User{}
+        static final class Product{}
+        static final class ProductRepository{}
+        static final class UserService{}
+
+        static class A {
+
+            static
+            final class OrderController {
+                private final Logger logger = Logger.create(OrderController.class);
+
+                void submitOrder(User user, List<Product> products) {
+                    logger.info("order started");
+
+                    logger.info("order submitted");
+                }
+            }
+
+            static
+            final class Application {
+                static final OrderController   ORDERS   = new OrderController();
+                static final ProductRepository PRODUCTS = new ProductRepository();
+                static final UserService       USERS    = new UserService();
+            }
+
+        }
+
+        static class B {
+
+            static
+            final class OrderController {
+                private Logger logger;
+
+                Logger getLogger() {
+                    if (logger == null) {
+                        logger = Logger.create(OrderController.class);
+                    }
+                    return logger;
+                }
+
+                void submitOrder(User user, List<Product> products) {
+                    getLogger().info("order started");
+
+                    getLogger().info("order submitted");
+                }
+            }
+
+        }
+
+        static class B2 {
+
+            static
+            final class OrderController {
+
+                public static Logger getLogger() {
+
+                    final class Holder {
+                        private static final Logger LOGGER = Logger.create(OrderController.class);
+                    }
+
+                    return Holder.LOGGER;
+                }
+
+
+                void submitOrder(User user, List<Product> products) {
+                    getLogger().info("order started");
+
+                    getLogger().info("order submitted");
+                }
+            }
+
+        }
+
+        static class C {
+
+            static
+            final class OrderController {
+                private Logger logger;
+
+                synchronized Logger getLogger() {
+                    if (logger == null) {
+                        logger = Logger.create(OrderController.class);
+                    }
+                    return logger;
+                }
+
+                void submitOrder(User user, List<Product> products) {
+                    getLogger().info("order started");
+
+                    getLogger().info("order submitted");
+                }
+            }
+
+        }
+
+        static class C2 {
+
+            static
+            final class OrderController {
+
+                private volatile Logger logger;
+
+                public Logger getLogger() {
+                    Logger v = logger;
+                    if (v == null) {
+                        synchronized (this) {
+                            v = logger;
+                            if (v == null) {
+                                logger = v = Logger.create(OrderController.class);
+                            }
+                        }
+                    }
+                    return v;
+                }
+
+                void submitOrder(User user, List<Product> products) {
+                    getLogger().info("order started");
+
+                    getLogger().info("order submitted");
+                }
+
+            }
+        }
+
+        static class C3 {
+
+            static
+            final class OrderController {
+
+                private static final VarHandle LOGGERS_HANDLE =
+                        MethodHandles.arrayElementVarHandle(Logger[].class);
+
+                private final Object[] mutexes;
+                private final Logger[] loggers;
+
+                public OrderController(int size) {
+                    this.mutexes = Stream.generate(Object::new).limit(size).toArray();
+                    this.loggers = new Logger[size];
+                }
+
+                public Logger getLogger(int index) {
+                    // Volatile semantics is needed here to guarantee we only
+                    // see fully initialized element objects
+                    Logger v = (Logger) LOGGERS_HANDLE.getVolatile(loggers, index);
+                    if (v == null) {
+                        // Use distinct mutex objects for each index
+                        synchronized (mutexes[index]) {
+                            // Plain read semantics suffice here as updates to an element
+                            // always takes place under the same mutex object as for this read
+                            v = loggers[index];
+                            if (v == null) {
+                                // Volatile semantics needed here to establish a
+                                // happens-before relation with future volatile reads
+                                LOGGERS_HANDLE.setVolatile(loggers, index,
+                                        v = Logger.create(OrderController.class));
+                            }
+                        }
+                    }
+                    return v;
+                }
+
+                void submitOrder(User user, List<Product> products) {
+                    getLogger(1).info("order started");
+
+                    getLogger(1).info("order submitted");
+                }
+
+            }
+        }
+
+        static class C4 {
+
+            static
+            final class OrderController {
+
+                private final Map<Class<?>, Logger> logger = new ConcurrentHashMap<>();;
+
+                public Logger getLogger() {
+                    return logger.computeIfAbsent(OrderController.class, Logger::create);
+                }
+
+                void submitOrder(User user, List<Product> products) {
+                    getLogger().info("order started");
+
+                    getLogger().info("order submitted");
+                }
+
+            }
+        }
+
+
+        static class D {
+
+            static
+            final class OrderController {
+                // Old:    private Logger logger;
+                private final StableValue<Logger> logger = StableValue.of();
+
+                Logger getLogger() {
+                    return logger.computeIfUnset( () -> Logger.create(OrderController.class) );
+                }
+
+                void submitOrder(User user, List<Product> products) {
+                    getLogger().info("order started");
+
+                    getLogger().info("order submitted");
+                }
+            }
+
+            static
+            final class Application {
+                // Old:    static final OrderController   ORDERS   = new OrderController();
+                // Old:    static final ProductRepository PRODUCTS = new ProductRepository();
+                // Old:    static final UserService       USERS    = new UserService();
+
+                static final StableValue<OrderController>   ORDERS   = StableValue.of();
+                static final StableValue<ProductRepository> PRODUCTS = StableValue.of();
+                static final StableValue<UserService>       USERS    = StableValue.of();
+
+                public static OrderController   orders()   { return ORDERS.computeIfUnset(OrderController::new); }
+                public static ProductRepository products() { return PRODUCTS.computeIfUnset(ProductRepository::new); }
+                public static UserService       users()    { return USERS.computeIfUnset(UserService::new); }
+            }
+
+        }
+
+        static class E {
+
+            static
+            final class OrderController {
+
+                private final Supplier<Logger> logger =
+                        StableValue.ofSupplier( () -> Logger.create(OrderController.class) );
+
+                void submitOrder(User user, List<Product> products) {
+                    logger.get().info("order started");
+
+                    logger.get().info("order submitted");
+                }
+            }
+
+            static
+            final class Application {
+                static final Supplier<OrderController>   ORDERS   = StableValue.ofSupplier(OrderController::new);
+                static final Supplier<ProductRepository> PRODUCTS = StableValue.ofSupplier(ProductRepository::new);
+                static final Supplier<UserService>       USERS    = StableValue.ofSupplier(UserService::new);
+            }
+
+
+        }
+
+        static class F {
+
+            static
+            final class OrderController {
+
+                private final int id;
+                private final Supplier<Logger> logger =
+                        StableValue.ofSupplier( () -> Logger.create(OrderController.class) );
+
+                public OrderController(int id) { this.id = id; }
+
+                void submitOrder(User user, List<Product> products) {
+                    logger.get().info("order started via " + id);
+
+                    logger.get().info("order submitted via "+id);
+                }
+            }
+
+            static
+            final class Application {
+                private static final int POOL_SIZE = 16;
+
+                static final List<OrderController>       ORDER_POOL = StableValue.ofList(POOL_SIZE, OrderController::new);
+                static final Supplier<ProductRepository> PRODUCTS   = StableValue.ofSupplier(ProductRepository::new);
+                static final Supplier<UserService>       USERS      = StableValue.ofSupplier(UserService::new);
+
+                public static OrderController orders() {
+                    long index = Thread.currentThread().threadId() % POOL_SIZE;
+                    return ORDER_POOL.get((int) index);
+                }
+
+            }
+
+
+
+        }
+
+
+
+
+        // Singleton
+        // Swing
+        //
+
     }
 
 
