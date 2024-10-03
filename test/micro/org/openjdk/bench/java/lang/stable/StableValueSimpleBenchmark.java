@@ -28,16 +28,13 @@ import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
-import org.openjdk.jmh.annotations.OperationsPerInvocation;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
@@ -54,14 +51,18 @@ import java.util.function.Supplier;
 @Threads(Threads.MAX)   // Benchmark under contention
 public class StableValueSimpleBenchmark {
 
-    private static final int VALUE = 42;
-
-    private static final Supplier<Integer> STABLE_SUPPLIER = StableValue.ofSupplier(() -> VALUE);
-    private static final Dcl<Integer> DCL = new Dcl<>(() -> VALUE);
+    private static final int CONSTANT = 42;
+    private static final Dcl<Integer> DCL = new Dcl<>(() -> CONSTANT);
+    private static final Supplier<Integer> STABLE_SUPPLIER = StableValue.ofSupplier(() -> CONSTANT);
 
     @Benchmark
     public int constant() {
-        return VALUE;
+        return CONSTANT;
+    }
+
+    @Benchmark
+    public int doubleCheckedLocking() {
+        return DCL.get();
     }
 
     @Benchmark
@@ -69,10 +70,7 @@ public class StableValueSimpleBenchmark {
         return STABLE_SUPPLIER.get();
     }
 
-    @Benchmark
-    public int doubleCheckedLocking() {
-        return DCL.get();
-    }
+
 
     // Handles null values
     private static class Dcl<V> implements Supplier<V> {
@@ -105,5 +103,12 @@ public class StableValueSimpleBenchmark {
             return v;
         }
     }
+
+/* M1, MacBook Pro
+  Benchmark                                        Mode  Cnt  Score   Error  Units
+  StableValueSimpleBenchmark.constant              avgt   10  0.712 ? 0.084  ns/op
+  StableValueSimpleBenchmark.doubleCheckedLocking  avgt   10  1.591 ? 0.141  ns/op
+  StableValueSimpleBenchmark.stableSupplier        avgt   10  0.687 ? 0.035  ns/op
+ */
 
 }

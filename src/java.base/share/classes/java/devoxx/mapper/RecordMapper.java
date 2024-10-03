@@ -9,7 +9,7 @@ import java.lang.invoke.VarHandle;
 /** RecordMapper
  * @param <T> record type
  * */
-public interface RecordMapper<T> {
+public interface RecordMapper<T extends Record> {
 
     /**
      * {@return a new record of type T}
