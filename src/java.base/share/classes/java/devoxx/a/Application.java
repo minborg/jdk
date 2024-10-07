@@ -13,7 +13,7 @@ import java.devoxx.*;
 */
 
 final class Application {
-        static final OrderController   ORDERS = new OrderController();
+        static final OrderController   ORDERS   = new OrderController();
         static final ProductRepository PRODUCTS = new ProductRepository();
         static final UserService       USERS    = new UserService();
 }

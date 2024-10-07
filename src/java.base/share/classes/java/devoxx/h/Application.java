@@ -14,7 +14,7 @@ public final class Application {
     static final Supplier<ProductRepository> PRODUCTS = StableValue.ofSupplier(ProductRepository::new);
     static final Supplier<UserService>       USERS    = StableValue.ofSupplier(UserService::new);
 
-    /** Ctor */
+    /**...*/
     public Application() {}
 
     /**

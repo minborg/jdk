@@ -2,10 +2,17 @@ package java.devoxx.j;
 
 import java.util.Arrays;
 
-/** Fibonacci series: 0, 1, 1, 2, 3, 5, 8, 13, ... */
+/** Fibonacci series: 0, 1, 1, 2, 3, 5, 8, 13, ...
+ *   _____     ____
+ *  /      \  |  o |
+ * |        |/ ___\|
+ * |_________/
+ * |_|_| |_|_|
+ * */
 public final class Fibonacci {
 
-    /** Ctor */ public Fibonacci() {}
+    /**...*/
+    public Fibonacci() {}
 
     /**
      * {@return Fibonacci element of i}

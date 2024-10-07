@@ -3,12 +3,25 @@ package java.devoxx.j;
 import java.util.Arrays;
 import java.util.List;
 
-/** Fibonacci */
+/** FibonacciStable
+ *
+ *       /\
+ *       ||
+ *       ||
+ *      /||\
+ *     /:||:\
+ *     |:||:|
+ *     |/||\|
+ *       **
+ *       **
+ *
+ * */
 public final class FibonacciStable {
 
-    /** Ctor */ public FibonacciStable() {}
+    /**...*/
+    public FibonacciStable() {}
 
-    private static final int MAX = 46;
+    private static final int MAX = 46; // fib(46) just about fits in an `int`
 
     private static final List<Integer> ELEMENTS =
             StableValue.ofList(MAX, FibonacciStable::fib);

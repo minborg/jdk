@@ -4,11 +4,17 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 /** Singleton */
-public final class Singleton {  /** Ctor */ public Singleton() {}
+public final class Singleton {
+
+    /**...*/
+    public Singleton() {}
 
     /** This is our custom class we want to guard */
     public static class MySingleton{
-        /** Ctor */ public MySingleton() {}
+        /**...*/
+        public MySingleton() {}
+
+        // Logic
     }
 
     private static final Supplier<MySingleton> SINGLETON_SUPPLIER =
@@ -25,7 +31,7 @@ public final class Singleton {  /** Ctor */ public Singleton() {}
             StableValue.ofIntFunction(3, _ -> new MySingleton());
 
     /**
-     * {@return the one of the three}
+     * {@return the one of the three tringletons}
      * @param index for selecting element
      * @throws IllegalArgumentException if index not in [0, 2]
      */

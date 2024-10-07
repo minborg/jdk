@@ -13,7 +13,8 @@ public final class NonEvictingCache {
     private static final Map<Integer, Double> SQRT_MAP =
             StableValue.ofMap(Set.of(1, 2, 4, 8, 16), i -> Math.sqrt(i));
 
-    /** Ctor */ public NonEvictingCache() {}
+    /**...*/
+    public NonEvictingCache() {}
 
     /**
      * Demo app.

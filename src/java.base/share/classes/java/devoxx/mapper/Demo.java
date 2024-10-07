@@ -5,7 +5,10 @@ import java.lang.foreign.ValueLayout;
 import java.util.List;
 
 /** Demo */
-public class Demo { /** Ctor */ public Demo(){};
+public class Demo {
+
+    /**...*/
+    public Demo(){};
 
     /** Point */
     record Point(int x, int y){}

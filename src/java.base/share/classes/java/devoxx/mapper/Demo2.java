@@ -9,8 +9,11 @@ import java.util.List;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 
-/** Demo */
-public class Demo2 { /** Ctor */ public Demo2(){};
+/** Demo2 */
+public class Demo2 {
+
+    /**...*/
+    public Demo2(){};
 
     /** Point */
     record Point(int x, int y){}
