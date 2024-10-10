@@ -18,6 +18,12 @@ import java.util.concurrent.ConcurrentHashMap;
     "       |   /  \  |  \    )
             |   |./'  :__ \.-'
             '--'
+
+  _____     ____
+ /      \  |  o |
+|        |/ ___\|
+|_________/
+|_|_| |_|_|
  */
 
 final class OrderController {
