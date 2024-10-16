@@ -36,7 +36,7 @@ import jdk.internal.foreign.layout.StructLayoutImpl;
  *
  * @since 22
  */
-public sealed interface StructLayout extends GroupLayout permits StructLayoutImpl {
+public sealed interface StructLayout extends GroupLayout permits StructLayout.OfRecord, StructLayoutImpl {
 
     /**
      * {@inheritDoc}
@@ -56,4 +56,46 @@ public sealed interface StructLayout extends GroupLayout permits StructLayoutImp
      */
     @Override
     StructLayout withByteAlignment(long byteAlignment);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    <R extends Record> OfRecord<R> withCarrier(Class<R> carrierType);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    StructLayout withoutCarrier();
+
+    /**
+     * A struct layout whose carrier is {@code T}.
+     *
+     * @since 25
+     */
+    sealed interface OfRecord<T extends Record> extends StructLayout permits StructLayoutImpl.OfRecordImpl {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfRecord<T> withName(String name);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfRecord<T> withoutName();
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfRecord<T> withByteAlignment(long byteAlignment);
+
+        @Override
+        <R extends Record> OfRecord<R> withCarrier(Class<R> carrierType);
+    }
+
 }

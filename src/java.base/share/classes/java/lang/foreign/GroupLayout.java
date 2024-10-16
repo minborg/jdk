@@ -75,4 +75,20 @@ public sealed interface GroupLayout extends MemoryLayout permits StructLayout, U
      */
     @Override
     GroupLayout withByteAlignment(long byteAlignment);
+
+    /**
+     * {@return a new memory layout with the same characteristics as this layout but
+     *          with the provided carrier type}
+     *
+     * @param carrierType to use
+     * @param <R> the record type of the carrier
+     */
+    <R extends Record> GroupLayout withCarrier(Class<R> carrierType);
+
+    /**
+     * {@return a new memory layout with the same characteristics as this layout but
+     *          with no carrier type}
+     */
+    GroupLayout withoutCarrier();
+
 }

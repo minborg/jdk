@@ -28,6 +28,7 @@ package jdk.internal.foreign.layout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.StructLayout;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl> implements StructLayout {
@@ -41,6 +42,17 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
         return new StructLayoutImpl(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name);
     }
 
+    @Override
+    public <R extends Record> OfRecord<R> withCarrier(Class<R> carrierType) {
+        Objects.requireNonNull(carrierType);
+        return new OfRecordImpl<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType);
+    }
+
+    @Override
+    public StructLayout withoutCarrier() {
+        return this;
+    }
+
     public static StructLayout of(List<MemoryLayout> elements) {
         long size = 0;
         long align = 1;
@@ -52,6 +64,35 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
             align = Math.max(align, elem.byteAlignment());
         }
         return new StructLayoutImpl(elements, size, align, align, Optional.empty());
+    }
+
+    public static final class OfRecordImpl<T extends Record>
+            extends AbstractGroupLayout<StructLayoutImpl.OfRecordImpl<T>>
+            implements StructLayout.OfRecord<T> {
+
+        private final Class<T> carrier;
+
+        private OfRecordImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name, Class<T> carrier) {
+            super(Kind.STRUCT, elements, byteSize, byteAlignment, minByteAlignment, name);
+            this.carrier = carrier;
+        }
+
+        @Override
+        StructLayoutImpl.OfRecordImpl<T> dup(long byteAlignment, Optional<String> name) {
+            return new OfRecordImpl<T>(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name, carrier);
+        }
+
+        @Override
+        public <R extends Record> OfRecord<R> withCarrier(Class<R> carrierType) {
+            Objects.requireNonNull(carrierType);
+            return new OfRecordImpl<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType);
+        }
+
+        @Override
+        public StructLayout withoutCarrier() {
+            return new StructLayoutImpl(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name());
+        }
+
     }
 
 }

@@ -26,6 +26,7 @@
 package jdk.internal.foreign.layout;
 
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.StructLayout;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,7 +43,7 @@ import java.util.stream.Collectors;
  */
 abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L> & MemoryLayout>
         extends AbstractLayout<L>
-        permits StructLayoutImpl, UnionLayoutImpl {
+        permits StructLayoutImpl, StructLayoutImpl.OfRecordImpl, UnionLayoutImpl {
 
     private final Kind kind;
     private final List<MemoryLayout> elements;
