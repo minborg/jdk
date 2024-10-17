@@ -568,6 +568,33 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     Spliterator<MemorySegment> spliterator(MemoryLayout elementLayout);
 
     /**
+     * Returns a spliterator for this memory segment. The returned spliterator reports
+     * {@link Spliterator#SIZED}, {@link Spliterator#SUBSIZED}, {@link Spliterator#IMMUTABLE},
+     * {@link Spliterator#NONNULL} and {@link Spliterator#ORDERED} characteristics.
+     * <p>
+     * The returned spliterator splits this segment according to the specified element
+     * layout; that is, if the supplied layout has size N, then calling
+     * {@link Spliterator#trySplit()} will result in a spliterator serving approximately
+     * {@code S/N} elements (depending on whether N is even or not), where {@code S} is
+     * the size of this segment. As such, splitting is possible as long as
+     * {@code S/N >= 2}. The spliterator then maps carrier objects on the split segment.
+     * <p>
+     * The returned spliterator effectively allows to slice this segment into disjoint
+     * {@linkplain #asSlice(long, long) slices}, which can then be processed in parallel
+     * by multiple threads.
+     *
+     * @param elementLayout the layout to be used for splitting
+     * @return the element spliterator for this segment
+     * @throws IllegalArgumentException if {@code elementLayout.byteSize() == 0}
+     * @throws IllegalArgumentException if {@code byteSize() % elementLayout.byteSize() != 0}
+     * @throws IllegalArgumentException if {@code elementLayout.byteSize() % elementLayout.byteAlignment() != 0}
+     * @throws IllegalArgumentException if this segment is
+     *         <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraint</a>
+     *         in the provided layout.
+     */
+    <T> Spliterator<T> spliterator(GroupLayout.OfCarrier<T> elementLayout);
+
+    /**
      * Returns a sequential {@code Stream} over disjoint slices (whose size matches that
      * of the specified layout) in this segment. Calling this method is equivalent to
      * the following code:
