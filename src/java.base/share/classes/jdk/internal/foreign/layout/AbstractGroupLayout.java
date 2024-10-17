@@ -25,11 +25,15 @@
  */
 package jdk.internal.foreign.layout;
 
+import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.StructLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.UnionLayout;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -41,11 +45,11 @@ import java.util.stream.Collectors;
  * @implSpec
  * This class is immutable, thread-safe and <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
  */
-abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L> & MemoryLayout>
+public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L> & MemoryLayout>
         extends AbstractLayout<L>
-        permits StructLayoutImpl, StructLayoutImpl.OfRecordImpl, UnionLayoutImpl {
+        permits AbstractGroupLayout.AbstractOfCarrier, StructLayoutImpl, UnionLayoutImpl {
 
-    private final Kind kind;
+    final Kind kind;
     private final List<MemoryLayout> elements;
     final long minByteAlignment;
 
@@ -130,5 +134,77 @@ abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L> & Mem
         Kind(String delimTag) {
             this.delimTag = delimTag;
         }
+    }
+
+    public abstract static sealed class AbstractOfCarrier<T, L extends AbstractOfCarrier<T, L> & MemoryLayout>
+            extends AbstractGroupLayout<L>
+            implements GroupLayout.OfCarrier<T>
+            permits StructLayoutImpl.OfCarrierImpl, UnionLayoutImpl.OfCarrierImpl {
+
+        private final Class<T> carrier;
+        private final Function<? super MemorySegment, ? extends T> unmarshaller;
+        private final BiConsumer<? super MemorySegment, ? super T> marshaller;
+
+        protected AbstractOfCarrier(Kind kind, List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name,
+                                    Class<T> carrier, Function<? super MemorySegment, ? extends T> unmarshaller, BiConsumer<? super MemorySegment, ? super T> marshaller) {
+            super(kind, elements, byteSize, byteAlignment, minByteAlignment, name);
+            this.carrier = carrier;
+            this.unmarshaller = unmarshaller;
+            this.marshaller = marshaller;
+        }
+
+        public Class<T> carrier() {
+            return carrier;
+        }
+
+        public Function<? super MemorySegment, ? extends T> unmarshaller() {
+            return unmarshaller;
+        }
+
+        public BiConsumer<? super MemorySegment, ? super T> marshaller() {
+            return marshaller;
+        }
+
+        abstract <R, M extends AbstractOfCarrier<R, M>> M dup(Kind kind,
+                                                              List<MemoryLayout> elements,
+                                                              long byteSize,
+                                                              long byteAlignment,
+                                                              long minByteAlignment,
+                                                              Optional<String> name,
+                                                              Class<R> carrier,
+                                                              Function<? super MemorySegment, ? extends R> unmarshaller,
+                                                              BiConsumer<? super MemorySegment, ? super R> marshaller);
+
+/*        @Override
+        public <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType) {
+            Objects.requireNonNull(carrierType);
+            return withCarrier(carrierType, unmarshaller(kind, carrierType), marshaller(kind, carrierType));
+        }*/
+
+/*        @Override
+        public <R> OfCarrier<R> withCarrier(Class<R> carrierType,
+                                            Function<? super MemorySegment, ? extends R> unmarshaller,
+                                            BiConsumer<? super MemorySegment, ? super R> marshaller) {
+            Objects.requireNonNull(carrierType);
+            Objects.requireNonNull(unmarshaller);
+            Objects.requireNonNull(marshaller);
+            return dup(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType, unmarshaller, marshaller);
+        }*/
+
+        @Override
+        L dup(long byteAlignment, Optional<String> name) {
+            return dup(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrier(), unmarshaller, marshaller);
+        }
+
+        // Todo: Implement mapper
+        static <R> Function<MemorySegment, R> unmarshaller(Kind kind, Class<R> carrier) {
+            return null;
+        }
+
+        // Todo: Implement mapper
+        static <R> BiConsumer<MemorySegment, R> marshaller(Kind kind, Class<R> carrier) {
+            return null;
+        }
+
     }
 }

@@ -25,7 +25,11 @@
 
 package java.lang.foreign;
 
+import jdk.internal.foreign.layout.AbstractGroupLayout;
+
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 /**
  * A compound layout that is an aggregation of multiple, heterogeneous
@@ -42,7 +46,7 @@ import java.util.List;
  * @sealedGraph
  * @since 22
  */
-public sealed interface GroupLayout extends MemoryLayout permits StructLayout, UnionLayout {
+public sealed interface GroupLayout extends MemoryLayout permits GroupLayout.OfCarrier, StructLayout, UnionLayout {
 
     /**
      * {@return the member layouts of this group layout}
@@ -87,8 +91,66 @@ public sealed interface GroupLayout extends MemoryLayout permits StructLayout, U
 
     /**
      * {@return a new memory layout with the same characteristics as this layout but
+     *          with the provided carrier type, unmarshaller and marshaller}
+     *
+     * @param carrierType  to use
+     * @param marshaller   used to extract carriers from a MemorySegment
+     * @param unmarshaller used to write carriers to a MemorySegment
+     * @param <R>          the type of the carrier
+     */
+    <R> GroupLayout withCarrier(Class<R> carrierType,
+                                Function<? super MemorySegment, ? extends R> unmarshaller,
+                                BiConsumer<? super MemorySegment, ? super R> marshaller);
+
+    /**
+     * {@return a new memory layout with the same characteristics as this layout but
      *          with no carrier type}
      */
     GroupLayout withoutCarrier();
+
+    /**
+     * A group layout whose carrier is {@code T}.
+     *
+     * @param <T> record carrier type
+     *
+     * @sealedGraph
+     * @since 25
+     */
+    sealed interface OfCarrier<T>
+            extends GroupLayout
+            permits StructLayout.OfCarrier, UnionLayout.OfCarrier, AbstractGroupLayout.AbstractOfCarrier {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        GroupLayout.OfCarrier<T> withName(String name);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        GroupLayout.OfCarrier<T> withoutName();
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        GroupLayout.OfCarrier<T> withByteAlignment(long byteAlignment);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        <R extends Record> GroupLayout.OfCarrier<R> withCarrier(Class<R> carrierType);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        <R> GroupLayout.OfCarrier<R> withCarrier(Class<R> carrierType,
+                                                 Function<? super MemorySegment, ? extends R> unmarshaller,
+                                                 BiConsumer<? super MemorySegment, ? super R> marshaller);
+    }
 
 }

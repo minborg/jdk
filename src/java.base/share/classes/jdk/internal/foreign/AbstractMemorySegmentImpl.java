@@ -51,13 +51,10 @@ import jdk.internal.access.foreign.UnmapperProxy;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
-import jdk.internal.util.Architecture;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.util.Preconditions;
 import jdk.internal.vm.annotation.ForceInline;
 import sun.nio.ch.DirectBuffer;
-
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 /**
  * This abstract class provides an immutable implementation for the {@code MemorySegment} interface. This class contains information
@@ -185,6 +182,11 @@ public abstract sealed class AbstractMemorySegmentImpl
     @Override
     public Stream<MemorySegment> elements(MemoryLayout elementLayout) {
         return StreamSupport.stream(spliterator(elementLayout), false);
+    }
+
+    @Override
+    public <T extends Record> Stream<T> elements(GroupLayout.OfCarrier<T> elementLayout) {
+        throw new UnsupportedOperationException();
     }
 
     @ForceInline
@@ -318,6 +320,13 @@ public abstract sealed class AbstractMemorySegmentImpl
     @Override
     public final double[] toArray(ValueLayout.OfDouble elementLayout) {
         return toArray(double[].class, elementLayout, double[]::new, MemorySegment::ofArray);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Record> T[] toArray(GroupLayout.OfCarrier<T> elementLayout) {
+        Objects.requireNonNull(elementLayout);
+        return (T[]) elements(elementLayout).toArray();
     }
 
     private <Z> Z toArray(Class<Z> arrayClass, ValueLayout elemLayout, IntFunction<Z> arrayFactory, Function<Z, MemorySegment> segmentFactory) {
@@ -771,6 +780,26 @@ public abstract sealed class AbstractMemorySegmentImpl
     @Override
     public MemorySegment get(AddressLayout layout, long offset) {
         return (MemorySegment) layout.varHandle().get((MemorySegment)this, offset);
+    }
+
+    @Override
+    public <T extends Record> void set(GroupLayout.OfCarrier<T> layout, long offset, T value) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <T extends Record> T get(GroupLayout.OfCarrier<T> layout, long offset) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <T extends Record> void setAtIndex(GroupLayout.OfCarrier<T> layout, long index, T value) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <T extends Record> T getAtIndex(GroupLayout.OfCarrier<T> layout, long index) {
+        throw new UnsupportedOperationException();
     }
 
     @ForceInline

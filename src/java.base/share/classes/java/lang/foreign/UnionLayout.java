@@ -27,6 +27,9 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.layout.UnionLayoutImpl;
 
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+
 /**
  * A group layout whose member layouts are laid out at the same starting offset.
  *
@@ -36,7 +39,7 @@ import jdk.internal.foreign.layout.UnionLayoutImpl;
  *
  * @since 22
  */
-public sealed interface UnionLayout extends GroupLayout permits UnionLayoutImpl {
+public sealed interface UnionLayout extends GroupLayout permits UnionLayout.OfCarrier, UnionLayoutImpl {
 
     /**
      * {@inheritDoc}
@@ -56,4 +59,69 @@ public sealed interface UnionLayout extends GroupLayout permits UnionLayoutImpl 
      */
     @Override
     UnionLayout withByteAlignment(long byteAlignment);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    <R> OfCarrier<R> withCarrier(Class<R> carrierType,
+                                 Function<? super MemorySegment, ? extends R> unmarshaller,
+                                 BiConsumer<? super MemorySegment, ? super R> marshaller);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    UnionLayout withoutCarrier();
+
+    /**
+     * A struct layout whose carrier is {@code T}.
+     *
+     * @param <T> record carrier type
+     *
+     * @since 25
+     */
+    sealed interface OfCarrier<T>
+            extends UnionLayout, GroupLayout.OfCarrier<T>
+            permits UnionLayoutImpl.OfCarrierImpl {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        UnionLayout.OfCarrier<T> withName(String name);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        UnionLayout.OfCarrier<T> withoutName();
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        UnionLayout.OfCarrier<T> withByteAlignment(long byteAlignment);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        <R extends Record> UnionLayout.OfCarrier<R> withCarrier(Class<R> carrierType);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        <R> UnionLayout.OfCarrier<R> withCarrier(Class<R> carrierType,
+                                                 Function<? super MemorySegment, ? extends R> unmarshaller,
+                                                 BiConsumer<? super MemorySegment, ? super R> marshaller);
+    }
+
 }

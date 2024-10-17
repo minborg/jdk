@@ -27,6 +27,9 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.layout.StructLayoutImpl;
 
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+
 /**
  * A group layout whose member layouts are laid out one after the other.
  *
@@ -36,7 +39,7 @@ import jdk.internal.foreign.layout.StructLayoutImpl;
  *
  * @since 22
  */
-public sealed interface StructLayout extends GroupLayout permits StructLayout.OfRecord, StructLayoutImpl {
+public sealed interface StructLayout extends GroupLayout permits StructLayout.OfCarrier, StructLayoutImpl {
 
     /**
      * {@inheritDoc}
@@ -61,7 +64,16 @@ public sealed interface StructLayout extends GroupLayout permits StructLayout.Of
      * {@inheritDoc}
      */
     @Override
-    <R extends Record> OfRecord<R> withCarrier(Class<R> carrierType);
+    <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    <R> OfCarrier<R> withCarrier(Class<R> carrierType,
+                                 Function<? super MemorySegment, ? extends R> unmarshaller,
+                                 BiConsumer<? super MemorySegment, ? super R> marshaller);
+
 
     /**
      * {@inheritDoc}
@@ -72,30 +84,45 @@ public sealed interface StructLayout extends GroupLayout permits StructLayout.Of
     /**
      * A struct layout whose carrier is {@code T}.
      *
+     * @param <T> record carrier type
+     *
      * @since 25
      */
-    sealed interface OfRecord<T extends Record> extends StructLayout permits StructLayoutImpl.OfRecordImpl {
+    sealed interface OfCarrier<T>
+            extends StructLayout, GroupLayout.OfCarrier<T>
+            permits StructLayoutImpl.OfCarrierImpl {
 
         /**
          * {@inheritDoc}
          */
         @Override
-        OfRecord<T> withName(String name);
+        StructLayout.OfCarrier<T> withName(String name);
 
         /**
          * {@inheritDoc}
          */
         @Override
-        OfRecord<T> withoutName();
+        StructLayout.OfCarrier<T> withoutName();
 
         /**
          * {@inheritDoc}
          */
         @Override
-        OfRecord<T> withByteAlignment(long byteAlignment);
+        StructLayout.OfCarrier<T> withByteAlignment(long byteAlignment);
 
+        /**
+         * {@inheritDoc}
+         */
         @Override
-        <R extends Record> OfRecord<R> withCarrier(Class<R> carrierType);
+        <R extends Record> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        <R> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType,
+                                                  Function<? super MemorySegment, ? extends R> unmarshaller,
+                                                  BiConsumer<? super MemorySegment, ? super R> marshaller);
     }
 
 }

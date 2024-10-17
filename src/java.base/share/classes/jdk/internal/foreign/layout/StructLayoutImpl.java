@@ -25,11 +25,15 @@
  */
 package jdk.internal.foreign.layout;
 
+import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.StructLayout;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl> implements StructLayout {
 
@@ -43,9 +47,19 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
     }
 
     @Override
-    public <R extends Record> OfRecord<R> withCarrier(Class<R> carrierType) {
+    public <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType) {
         Objects.requireNonNull(carrierType);
-        return new OfRecordImpl<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType);
+        return new OfCarrierImpl<>(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType, null, null);
+    }
+
+    @Override
+    public <R> OfCarrier<R> withCarrier(Class<R> carrierType,
+                                        Function<? super MemorySegment, ? extends R> unmarshaller,
+                                        BiConsumer<? super MemorySegment, ? super R> marshaller) {
+        Objects.requireNonNull(carrierType);
+        Objects.requireNonNull(unmarshaller);
+        Objects.requireNonNull(marshaller);
+        return new OfCarrierImpl<>(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType, unmarshaller, marshaller);
     }
 
     @Override
@@ -66,31 +80,41 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
         return new StructLayoutImpl(elements, size, align, align, Optional.empty());
     }
 
-    public static final class OfRecordImpl<T extends Record>
-            extends AbstractGroupLayout<StructLayoutImpl.OfRecordImpl<T>>
-            implements StructLayout.OfRecord<T> {
+    public static final class OfCarrierImpl<T>
+            extends AbstractGroupLayout.AbstractOfCarrier<T, StructLayoutImpl.OfCarrierImpl<T>>
+            implements OfCarrier<T> {
 
-        private final Class<T> carrier;
-
-        private OfRecordImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name, Class<T> carrier) {
-            super(Kind.STRUCT, elements, byteSize, byteAlignment, minByteAlignment, name);
-            this.carrier = carrier;
-        }
-
-        @Override
-        StructLayoutImpl.OfRecordImpl<T> dup(long byteAlignment, Optional<String> name) {
-            return new OfRecordImpl<T>(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name, carrier);
-        }
-
-        @Override
-        public <R extends Record> OfRecord<R> withCarrier(Class<R> carrierType) {
-            Objects.requireNonNull(carrierType);
-            return new OfRecordImpl<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType);
+        OfCarrierImpl(Kind kind, List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name, Class<T> carrier, Function<? super MemorySegment, ? extends T> unmarshaller, BiConsumer<? super MemorySegment, ? super T> marshaller) {
+            super(kind, elements, byteSize, byteAlignment, minByteAlignment, name, carrier, unmarshaller, marshaller);
         }
 
         @Override
         public StructLayout withoutCarrier() {
             return new StructLayoutImpl(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name());
+        }
+
+        @Override
+        public <R> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType, Function<? super MemorySegment, ? extends R> unmarshaller, BiConsumer<? super MemorySegment, ? super R> marshaller) {
+            return dup(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType, unmarshaller, marshaller);
+        }
+
+        @Override
+        public <R extends Record> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType) {
+            return withCarrier(carrierType, AbstractGroupLayout.AbstractOfCarrier.unmarshaller(kind, carrierType), AbstractGroupLayout.AbstractOfCarrier.marshaller(kind, carrierType));
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        <R, M extends AbstractOfCarrier<R, M>> M dup(Kind kind,
+                                                     List<MemoryLayout> elements,
+                                                     long byteSize,
+                                                     long byteAlignment,
+                                                     long minByteAlignment,
+                                                     Optional<String> name,
+                                                     Class<R> carrier,
+                                                     Function<? super MemorySegment, ? extends R> unmarshaller,
+                                                     BiConsumer<? super MemorySegment, ? super R> marshaller) {
+            return (M) new OfCarrierImpl<>(kind, elements, byteSize, byteAlignment, minByteAlignment, name, carrier, unmarshaller, marshaller);
         }
 
     }
