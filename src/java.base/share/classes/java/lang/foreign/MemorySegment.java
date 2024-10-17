@@ -587,10 +587,10 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     Stream<MemorySegment> elements(MemoryLayout elementLayout);
 
     /**
-     * {@return a sequential {@code Stream} of carrier records extracted from this segment}
+     * {@return a sequential {@code Stream} of carrier objects extracted from this segment}
      *
      * @param elementLayout the layout to be used for splitting and creating carrier objects
-     * @param <T> record type
+     * @param <T> object type
      * @throws IllegalArgumentException if {@code elementLayout.byteSize() == 0}
      * @throws IllegalArgumentException if {@code byteSize() % elementLayout.byteSize() != 0}
      * @throws IllegalArgumentException if {@code elementLayout.byteSize() % elementLayout.byteAlignment() != 0}
@@ -598,7 +598,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraint</a>
      *         in the provided layout
      */
-    <T extends Record> Stream<T> elements(GroupLayout.OfCarrier<T> elementLayout);
+    <T> Stream<T> elements(GroupLayout.OfCarrier<T> elementLayout);
 
     /**
      * {@return the scope associated with this memory segment}
@@ -1265,10 +1265,10 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     double[] toArray(ValueLayout.OfDouble elementLayout);
 
     /**
-     * Copy the contents of this memory segment into a new record array.
+     * Copy the contents of this memory segment into a new object array.
      *
      * @param elementLayout the source element carrier layout.
-     * @param <T> record type
+     * @param <T> object type
      * @return a new {@code T} array whose contents are copied from this memory segment
      * @throws IllegalStateException if the {@linkplain #scope() scope} associated with
      *         this segment is not {@linkplain Scope#isAlive() alive}
@@ -1278,7 +1278,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         {@code double[]} instance, e.g. because {@code byteSize() % 8 != 0}, or
      *         {@code byteSize() / 8 > Integer.MAX_VALUE}
      */
-    <T extends Record> T[] toArray(GroupLayout.OfCarrier<T> elementLayout);
+    <T> T[] toArray(GroupLayout.OfCarrier<T> elementLayout);
 
     /**
      * Reads a null-terminated string from this segment at the given offset, using the
@@ -2056,13 +2056,13 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     void set(AddressLayout layout, long offset, MemorySegment value);
 
     /**
-     * Reads a record from this segment at the given offset, with the given layout.
+     * Reads an object from this segment at the given offset, with the given layout.
      *
      * @param layout the layout of the region of memory to be read
      * @param offset the offset in bytes (relative to this segment address) at which
-     *                this access operation will occur
-     * @param <T>    record type
-     * @return a record value read from this segment
+     *               this access operation will occur
+     * @param <T>    object type
+     * @return an object value read from this segment
      * @throws IllegalStateException if the {@linkplain #scope() scope} associated with
      *         this segment is not {@linkplain Scope#isAlive() alive}
      * @throws WrongThreadException if this method is called from a thread {@code T},
@@ -2073,16 +2073,16 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IndexOutOfBoundsException if {@code offset > byteSize() - layout.byteSize()}
      *         or {@code offset < 0}
      */
-    <T extends Record> T get(GroupLayout.OfCarrier<T> layout, long offset);
+    <T> T get(GroupLayout.OfCarrier<T> layout, long offset);
 
     /**
-     * Writes a record into this segment at the given offset, with the given layout.
+     * Writes an object into this segment at the given offset, with the given layout.
      *
      * @param layout the layout of the region of memory to be written
      * @param offset the offset in bytes (relative to this segment address) at which
      *               this access operation will occur
-     * @param value the record value to be written
-     * @param <T>    record type
+     * @param value  the object value to be written
+     * @param <T>    object type
      * @throws IllegalStateException if the {@linkplain #scope() scope} associated with
      *         this segment is not {@linkplain Scope#isAlive() alive}
      * @throws WrongThreadException if this method is called from a thread {@code T},
@@ -2095,7 +2095,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IllegalArgumentException if this segment is
      *         {@linkplain #isReadOnly() read-only}
      */
-    <T extends Record> void set(GroupLayout.OfCarrier<T> layout, long offset, T value);
+    <T> void set(GroupLayout.OfCarrier<T> layout, long offset, T value);
 
     /**
      * Reads a byte from this segment at the given index, scaled by the given
@@ -2531,15 +2531,15 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     void setAtIndex(AddressLayout layout, long index, MemorySegment value);
 
     /**
-     * Reads a record from this segment at the given index, scaled by the given
+     * Reads an object from this segment at the given index, scaled by the given
      * layout size.
      *
      * @param layout the layout of the region of memory to be read
      * @param index a logical index. The offset in bytes (relative to this
      *              segment address) at which the access operation will occur can be
      *              expressed as {@code (index * layout.byteSize())}.
-     * @param <T>   record type
-     * @return a record value read from this segment
+     * @param <T>   object type
+     * @return an object value read from this segment
      * @throws IllegalStateException if the {@linkplain #scope() scope} associated with
      *         this segment is not {@linkplain Scope#isAlive() alive}
      * @throws WrongThreadException if this method is called from a thread {@code T},
@@ -2552,18 +2552,18 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IndexOutOfBoundsException if {@code index * layout.byteSize() > byteSize() - layout.byteSize()}
      *         or {@code index < 0}
      */
-    <T extends Record> T getAtIndex(GroupLayout.OfCarrier<T> layout, long index);
+    <T> T getAtIndex(GroupLayout.OfCarrier<T> layout, long index);
 
     /**
-     * Writes a record into this segment at the given index, scaled by the given
+     * Writes an object into this segment at the given index, scaled by the given
      * layout size.
      *
      * @param layout the layout of the region of memory to be written
-     * @param index a logical index. The offset in bytes (relative to this
-     *              segment address) at which the access operation will occur can be
-     *              expressed as {@code (index * layout.byteSize())}.
-     * @param value the record value to be written
-     * @param <T>   record type
+     * @param index  a logical index. The offset in bytes (relative to this
+     *               segment address) at which the access operation will occur can be
+     *               expressed as {@code (index * layout.byteSize())}.
+     * @param value  the record value to be written
+     * @param <T>    object type
      * @throws IllegalStateException if the {@linkplain #scope() scope} associated with
      *         this segment is not {@linkplain Scope#isAlive() alive}
      * @throws WrongThreadException if this method is called from a thread {@code T},
@@ -2577,7 +2577,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         or {@code index < 0}
      * @throws IllegalArgumentException if this segment is {@linkplain #isReadOnly() read-only}
      */
-    <T extends Record> void setAtIndex(GroupLayout.OfCarrier<T> layout, long index, T value);
+    <T> void setAtIndex(GroupLayout.OfCarrier<T> layout, long index, T value);
 
     /**
      * Compares the specified object with this memory segment for equality. Returns

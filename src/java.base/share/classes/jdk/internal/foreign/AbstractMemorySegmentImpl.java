@@ -48,6 +48,7 @@ import java.util.stream.StreamSupport;
 import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.foreign.UnmapperProxy;
+import jdk.internal.foreign.layout.AbstractGroupLayout;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
@@ -185,7 +186,7 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @Override
-    public <T extends Record> Stream<T> elements(GroupLayout.OfCarrier<T> elementLayout) {
+    public <T> Stream<T> elements(GroupLayout.OfCarrier<T> elementLayout) {
         throw new UnsupportedOperationException();
     }
 
@@ -324,7 +325,7 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T extends Record> T[] toArray(GroupLayout.OfCarrier<T> elementLayout) {
+    public <T> T[] toArray(GroupLayout.OfCarrier<T> elementLayout) {
         Objects.requireNonNull(elementLayout);
         return (T[]) elements(elementLayout).toArray();
     }
@@ -783,23 +784,13 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @Override
-    public <T extends Record> void set(GroupLayout.OfCarrier<T> layout, long offset, T value) {
-        throw new UnsupportedOperationException();
+    public <T> T get(GroupLayout.OfCarrier<T> layout, long offset) {
+        return ((AbstractGroupLayout.AbstractOfCarrier<T, ?>) layout).unmarshaller().apply(((MemorySegment) this).asSlice(offset));
     }
 
     @Override
-    public <T extends Record> T get(GroupLayout.OfCarrier<T> layout, long offset) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T extends Record> void setAtIndex(GroupLayout.OfCarrier<T> layout, long index, T value) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T extends Record> T getAtIndex(GroupLayout.OfCarrier<T> layout, long index) {
-        throw new UnsupportedOperationException();
+    public <T> void set(GroupLayout.OfCarrier<T> layout, long offset, T value) {
+        ((AbstractGroupLayout.AbstractOfCarrier<T, ?>)layout).marshaller().accept(((MemorySegment) this).asSlice(offset), value);
     }
 
     @ForceInline
@@ -934,6 +925,19 @@ public abstract sealed class AbstractMemorySegmentImpl
         Objects.requireNonNull(value);
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
         layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+    }
+
+    @Override
+    public <T> T getAtIndex(GroupLayout.OfCarrier<T> layout, long index) {
+        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
+        return get(layout, index * layout.byteSize());
+    }
+
+    @Override
+    public <T> void setAtIndex(GroupLayout.OfCarrier<T> layout, long index, T value) {
+        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
+        Objects.requireNonNull(value);
+        set(layout, index * layout.byteSize(), value);
     }
 
     @Override
