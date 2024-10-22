@@ -195,7 +195,8 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @Override
     public <T> Stream<T> elements(GroupLayout.OfCarrier<T> elementLayout) {
-        throw new UnsupportedOperationException();
+        return elements((MemoryLayout) elementLayout)
+                .map(s -> s.get(elementLayout, 0));
     }
 
     @ForceInline
@@ -335,7 +336,7 @@ public abstract sealed class AbstractMemorySegmentImpl
     @Override
     public <T> T[] toArray(GroupLayout.OfCarrier<T> elementLayout) {
         Objects.requireNonNull(elementLayout);
-        return (T[]) elements(elementLayout).toArray();
+        return elements(elementLayout).toArray(i -> (T[]) Array.newInstance(elementLayout.carrier(), i));
     }
 
     private <Z> Z toArray(Class<Z> arrayClass, ValueLayout elemLayout, IntFunction<Z> arrayFactory, Function<Z, MemorySegment> segmentFactory) {

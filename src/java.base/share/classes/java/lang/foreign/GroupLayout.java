@@ -151,6 +151,11 @@ public sealed interface GroupLayout extends MemoryLayout permits GroupLayout.OfC
         <R> GroupLayout.OfCarrier<R> withCarrier(Class<R> carrierType,
                                                  Function<? super MemorySegment, ? extends R> unmarshaller,
                                                  BiConsumer<? super MemorySegment, ? super R> marshaller);
+
+        /**
+         * {@return the carrier type}
+         */
+        Class<T> carrier();
     }
 
 }

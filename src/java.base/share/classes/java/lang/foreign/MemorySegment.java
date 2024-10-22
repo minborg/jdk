@@ -584,6 +584,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * by multiple threads.
      *
      * @param elementLayout the layout to be used for splitting
+     * @param <T>           the carrier type
      * @return the element spliterator for this segment
      * @throws IllegalArgumentException if {@code elementLayout.byteSize() == 0}
      * @throws IllegalArgumentException if {@code byteSize() % elementLayout.byteSize() != 0}

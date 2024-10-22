@@ -29,7 +29,6 @@
  */
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Assertions;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
@@ -37,13 +36,14 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.StructLayout;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestStructCarrierLayout {
 
-    record Point(int x, int y){}
+    public record Point(int x, int y){}
 
     private static final StructLayout POINT = MemoryLayout.structLayout(
         JAVA_INT,
@@ -55,20 +55,83 @@ public class TestStructCarrierLayout {
 
     private static final BiConsumer<MemorySegment, Point> MARSHALLER = (s, p) -> {
         s.set(JAVA_INT, 0, p.x());
-        s.set(JAVA_INT, 0, p.y());
+        s.set(JAVA_INT, 4, p.y());
     };
 
     private static final StructLayout.OfCarrier<Point> POINT_CARRIER =
             POINT.withCarrier(Point.class, UNMARSHALLER, MARSHALLER);
 
+    private static final Point P0 = new Point(3, 4);
+    private static final Point P1 = new Point(6, 8);
+    private static final int[] PO_P1_INT_ARRAY = new int[]{3, 4, 6, 8};
+
     @Test
-    public void basicTest() {
+    public void set() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocate(POINT_CARRIER, 2);
-            segment.set(POINT_CARRIER, 0, new Point(3, 4));
-            segment.setAtIndex(POINT_CARRIER, 1, new Point(6, 8));
-            assertArrayEquals(new int[]{3, 4, 6, 8}, segment.toArray(JAVA_INT));
+            segment.set(POINT_CARRIER, 0, P0);
+            segment.set(POINT_CARRIER, 8, P1);
+            assertArrayEquals(PO_P1_INT_ARRAY, segment.toArray(JAVA_INT));
         }
     }
+
+    @Test
+    public void setAt() {
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocate(POINT_CARRIER, 2);
+            segment.setAtIndex(POINT_CARRIER, 0, P0);
+            segment.setAtIndex(POINT_CARRIER, 1, P1);
+            assertArrayEquals(PO_P1_INT_ARRAY, segment.toArray(JAVA_INT));
+        }
+    }
+
+    @Test
+    public void get() {
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocateFrom(JAVA_INT, PO_P1_INT_ARRAY);
+            Point p0 = segment.get(POINT_CARRIER, 0);
+            Point p1 = segment.get(POINT_CARRIER, 8);
+            assertEquals(P0, p0);
+            assertEquals(P1, p1);
+        }
+    }
+
+    @Test
+    public void getAtIndex() {
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocateFrom(JAVA_INT, PO_P1_INT_ARRAY);
+            Point p0 = segment.getAtIndex(POINT_CARRIER, 0);
+            Point p1 = segment.getAtIndex(POINT_CARRIER, 1);
+            assertEquals(P0, p0);
+            assertEquals(P1, p1);
+        }
+    }
+
+    @Test
+    public void allocateFrom() {
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
+            assertArrayEquals(PO_P1_INT_ARRAY, segment.toArray(JAVA_INT));
+        }
+    }
+
+    @Test
+    public void toArray() {
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
+            Point[] points = segment.toArray(POINT_CARRIER);
+            assertArrayEquals(new Point[]{P0, P1}, points);
+        }
+    }
+
+    @Test
+    public void stream() {
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
+            Stream<Point> stream = segment.elements(POINT_CARRIER);
+            assertArrayEquals(new Point[]{P0, P1}, stream.toArray());
+        }
+    }
+
 
 }

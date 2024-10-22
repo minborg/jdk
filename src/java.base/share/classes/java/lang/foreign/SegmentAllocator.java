@@ -363,6 +363,33 @@ public interface SegmentAllocator {
     }
 
     /**
+     * {@return a new memory segment initialized with the provided value of type {@code T}}
+     * <p>
+     * The size of the allocated memory segment is the
+     * {@linkplain MemoryLayout#byteSize() size} of the given layout. The given value is
+     * written into the segment according to the byte order and alignment constraint of
+     * the given layout.
+     *
+     * @implSpec The default implementation is equivalent to:
+     * {@snippet lang=java :
+     *  MemorySegment seg = allocate(Objects.requireNonNull(layout));
+     *  seg.set(layout, 0, value);
+     *  return seg;
+     * }
+     *
+     * @param layout the layout of the block of memory to be allocated
+     * @param <T>    the carrier type
+     * @param value  the value to be set in the newly allocated memory segment
+     */
+    default <T> MemorySegment allocateFrom(GroupLayout.OfCarrier<T> layout, T value) {
+        Objects.requireNonNull(value);
+        Objects.requireNonNull(layout);
+        MemorySegment segment = allocateNoInit(layout);
+        segment.set(layout, 0, value);
+        return segment;
+    }
+
+    /**
      * {@return a new memory segment initialized with the contents of the provided segment}
      * <p>
      * The size of the allocated memory segment is the
@@ -597,6 +624,43 @@ public interface SegmentAllocator {
     default MemorySegment allocateFrom(ValueLayout.OfDouble elementLayout, double... elements) {
         return allocateFrom(elementLayout, MemorySegment.ofArray(elements),
                 ValueLayout.JAVA_DOUBLE, 0, elements.length);
+    }
+
+    /**
+     * {@return a new memory segment initialized with the elements in the provided
+     *          array with components of type {@code T}}
+     * <p>
+     * The size of the allocated memory segment is
+     * {@code elementLayout.byteSize() * elements.length}. The contents of
+     * the source array is copied into the result segment element by element, according
+     * to the byte order and alignment constraint of the given element layout.
+     *
+     * @implSpec The default implementation for this method is equivalent to the
+     *           following code:
+     * {@snippet lang = java:
+     * MemorySegment seg = allocate(elementLayout, elements.length);
+     * for (int i = 0; i < elements.length; i++) {
+     *     seg.setAtIndex(elementLayout, i, elements[i]);
+     * }
+     * return seg;
+     *}
+     * @param elementLayout the element layout of the array to be allocated
+     * @param elements      the double elements to be copied to the newly allocated
+     *                      memory block
+     * @param <T>           carrier type
+     * @throws IllegalArgumentException if
+     *         {@code elementLayout.byteAlignment() > elementLayout.byteSize()}
+     */
+    @ForceInline
+    @SuppressWarnings("unchecked")
+    default <T> MemorySegment allocateFrom(GroupLayout.OfCarrier<T> elementLayout, T... elements) {
+        Objects.requireNonNull(elementLayout);
+        Objects.requireNonNull(elements);
+        MemorySegment seg = allocateNoInit(elementLayout, elements.length);
+        for (int i = 0; i < elements.length; i++) {
+            seg.setAtIndex(elementLayout, i, elements[i]);
+        }
+        return seg;
     }
 
     /**

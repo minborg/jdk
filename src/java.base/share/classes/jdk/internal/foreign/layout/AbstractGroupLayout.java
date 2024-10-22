@@ -153,6 +153,7 @@ public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L
             this.marshaller = marshaller;
         }
 
+        @Override
         public Class<T> carrier() {
             return carrier;
         }
