@@ -184,7 +184,7 @@ public abstract sealed class AbstractMemorySegmentImpl
     public <T> Spliterator<T> spliterator(GroupLayout.OfCarrier<T> elementLayout) {
         Objects.requireNonNull(elementLayout);
         SegmentSplitter delegate = (SegmentSplitter) spliterator((MemoryLayout) elementLayout);
-        Function<? super MemorySegment, ? extends T> unmarshaller = ((AbstractGroupLayout.AbstractOfCarrier<T, ?>)elementLayout).unmarshaller();
+        Function<MemorySegment, T> unmarshaller = ((AbstractGroupLayout.AbstractOfCarrier<T, ?>)elementLayout).unmarshaller();
         return new ObjectSplitter<>(delegate, unmarshaller);
     }
 

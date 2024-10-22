@@ -29,6 +29,9 @@ import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.UnionLayout;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -141,9 +144,13 @@ public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L
             implements GroupLayout.OfCarrier<T>
             permits StructLayoutImpl.OfCarrierImpl, UnionLayoutImpl.OfCarrierImpl {
 
+        private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+
         private final Class<T> carrier;
         private final Function<? super MemorySegment, ? extends T> unmarshaller;
         private final BiConsumer<? super MemorySegment, ? super T> marshaller;
+        private final MethodHandle getter;
+        private final MethodHandle setter;
 
         protected AbstractOfCarrier(Kind kind, List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name,
                                     Class<T> carrier, Function<? super MemorySegment, ? extends T> unmarshaller, BiConsumer<? super MemorySegment, ? super T> marshaller) {
@@ -151,6 +158,20 @@ public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L
             this.carrier = carrier;
             this.unmarshaller = unmarshaller;
             this.marshaller = marshaller;
+            try {
+                MethodHandle getter = LOOKUP.findStatic(AbstractOfCarrier.class, "get",
+                        MethodType.methodType(Object.class, Function.class, MemorySegment.class, long.class));
+                getter = getter.bindTo(unmarshaller);
+                getter = getter.asType(getter.type().changeReturnType(carrier));
+                this.getter = getter;
+                MethodHandle setter = LOOKUP.findStatic(AbstractOfCarrier.class, "set",
+                        MethodType.methodType(void.class, BiConsumer.class, MemorySegment.class, long.class, Object.class));
+                setter = setter.bindTo(marshaller);
+                setter = setter.asType(setter.type().changeParameterType(2, carrier));
+                this.setter = setter;
+            } catch (ReflectiveOperationException re) {
+                throw new InternalError(re);
+            }
         }
 
         @Override
@@ -158,12 +179,41 @@ public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L
             return carrier;
         }
 
-        public Function<? super MemorySegment, ? extends T> unmarshaller() {
-            return unmarshaller;
+        @SuppressWarnings("unchecked")
+        public Function<MemorySegment, T> unmarshaller() {
+            return (Function<MemorySegment, T>) unmarshaller;
         }
 
-        public BiConsumer<? super MemorySegment, ? super T> marshaller() {
-            return marshaller;
+        @SuppressWarnings("unchecked")
+        public BiConsumer<MemorySegment, T> marshaller() {
+            return (BiConsumer<MemorySegment, T>) marshaller;
+        }
+
+        @Override
+        public MethodHandle getter() {
+            return getter;
+        }
+
+        @Override
+        public MethodHandle setter() {
+            return setter;
+        }
+
+        private static <T> T get(Function<? super MemorySegment, ? extends T> unmarshaller,
+                                 MemorySegment segment,
+                                 long offset) {
+            return unmarshaller.apply(segment.asSlice(offset));
+        }
+
+        private static <T> void set(BiConsumer<? super MemorySegment, ? super T> marshaller,
+                                    MemorySegment segment,
+                                    long offset,
+                                    T value) {
+            marshaller.accept(segment.asSlice(offset), value);
+        }
+
+        private T get(MemorySegment segment, int offset) {
+            return unmarshaller.apply(segment.asSlice(offset));
         }
 
         abstract <R, M extends AbstractOfCarrier<R, M>> M dup(Kind kind,

@@ -27,6 +27,8 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.layout.AbstractGroupLayout;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -156,6 +158,46 @@ public sealed interface GroupLayout extends MemoryLayout permits GroupLayout.OfC
          * {@return the carrier type}
          */
         Class<T> carrier();
+
+        /**
+         * {@return a method handle which can be used to read values described by this
+         * carrier layout, from a given memory segment at a given offset}
+         * <p>
+         * The returned method handle's return {@linkplain MethodHandle#type() type} is
+         * the {@linkplain ValueLayout#carrier() carrier type} of this carrier layout, and
+         * the list of coordinate types is {@code (MemorySegment, long)}, where the
+         * memory segment coordinate corresponds to the memory segment to be accessed, and
+         * the {@code long} coordinate corresponds to the byte offset into the accessed
+         * memory segment at which the access occurs.
+         * <p>
+         * The returned method handle checks that accesses are aligned according to
+         * this carrier layout's {@linkplain MemoryLayout#byteAlignment() alignment constraint}.
+         * <p>
+         * The returned {@code getter} method handle can be adapted to a more convenient
+         * one suitable for casting (i.e. {@code (T)getter.invokeExact(segment, offset)})
+         * as shown in this example:
+         * {@snippet lang = java:
+         *     getter = getter.asType(MethodType.methodType(Object.class))
+         *}
+         */
+        MethodHandle getter();
+
+        /**
+         * {@return a method handle which can be used to write values described by this
+         * carrier layout, to a given memory segment at a given offset}
+         * <p>
+         * The returned method handle's return {@linkplain MethodHandle#type() type} is
+         * {@code void}, and the list of coordinate types is
+         * {@code (MemorySegment, long, T)}, where the memory segment coordinate
+         * corresponds to the memory segment to be accessed, the {@code long} coordinate
+         * corresponds to the byte offset into the accessed memory segment at which the
+         * access occurs, and the {@code T} coordinate corresponds to the value to write.
+         * <p>
+         * The returned method handle checks that accesses are aligned according to
+         * this carrier layout's {@linkplain MemoryLayout#byteAlignment() alignment constraint}.
+         */
+        MethodHandle setter();
+
     }
 
 }

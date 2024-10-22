@@ -34,6 +34,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.StructLayout;
+import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -166,6 +167,47 @@ public class TestStructCarrierLayout {
         }
     }
 
+    @Test
+    public void getter() {
+        MethodHandle getter = POINT_CARRIER.getter();
+        assertEquals(Point.class, getter.type().returnType());
+        assertEquals(MemorySegment.class, getter.type().parameterType(0));
+        assertEquals(long.class, getter.type().parameterType(1));
+        assertEquals(2, getter.type().parameterCount());
 
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocateFrom(JAVA_INT, PO_P1_INT_ARRAY);
+            try {
+                Point o0 = (Point) getter.invokeExact(segment, 0L);
+                assertEquals(P0, o0);
+                Point o1 = (Point) getter.invokeExact(segment, 8L);
+                assertEquals(P1, o1);
+            } catch (Throwable t) {
+                throw new AssertionError(t);
+            }
+        }
+
+    }
+
+    @Test
+    public void setter() {
+        MethodHandle setter = POINT_CARRIER.setter();
+        assertEquals(void.class, setter.type().returnType());
+        assertEquals(MemorySegment.class, setter.type().parameterType(0));
+        assertEquals(long.class, setter.type().parameterType(1));
+        assertEquals(Point.class, setter.type().parameterType(2));
+        assertEquals(3, setter.type().parameterCount());
+
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocate(POINT_CARRIER, 2);
+            try {
+                setter.invokeExact(segment, 0L, P0);
+                setter.invokeExact(segment, 8L, P1);
+                assertArrayEquals(PO_P1_INT_ARRAY, segment.toArray(JAVA_INT));
+            } catch (Throwable t) {
+                throw new AssertionError(t);
+            }
+        }
+    }
 
 }
