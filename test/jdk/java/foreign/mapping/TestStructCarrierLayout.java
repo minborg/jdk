@@ -34,6 +34,10 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.StructLayout;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.Spliterator;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -110,10 +114,19 @@ public class TestStructCarrierLayout {
     @Test
     public void allocateFrom() {
         try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocateFrom(POINT_CARRIER, P0);
+            assertArrayEquals(new int[]{P0.x(), P0.y()}, segment.toArray(JAVA_INT));
+        }
+    }
+
+    @Test
+    public void allocateFromArray() {
+        try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
             assertArrayEquals(PO_P1_INT_ARRAY, segment.toArray(JAVA_INT));
         }
     }
+
 
     @Test
     public void toArray() {
@@ -132,6 +145,27 @@ public class TestStructCarrierLayout {
             assertArrayEquals(new Point[]{P0, P1}, stream.toArray());
         }
     }
+
+    // Todo: Improve this test
+    @Test
+    public void spliterator() {
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
+            Spliterator<Point> spliterator = segment.spliterator(POINT_CARRIER);
+            Set<Integer> characteristics = Set.of(Spliterator.SIZED, Spliterator.SUBSIZED, Spliterator.IMMUTABLE, Spliterator.NONNULL, Spliterator.ORDERED);
+            assertEquals(characteristics.stream().mapToInt(i -> i).sum(), spliterator.characteristics());
+            assertEquals(2, spliterator.estimateSize());
+            assertEquals(2, spliterator.getExactSizeIfKnown());
+            assertThrows(IllegalStateException.class, spliterator::getComparator);
+            for (int characteristic: characteristics) {
+                assertTrue(spliterator.hasCharacteristics(characteristic));
+            }
+            List<Point> points = new ArrayList<>();
+            spliterator.forEachRemaining(points::add);
+            assertEquals(List.of(P0, P1), points);;
+        }
+    }
+
 
 
 }
