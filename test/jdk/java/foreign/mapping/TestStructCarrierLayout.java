@@ -38,11 +38,6 @@ import java.lang.foreign.StructLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.Spliterator;
-import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static org.junit.jupiter.api.Assertions.*;
@@ -153,36 +148,6 @@ final class TestStructCarrierLayout {
             var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
             Point[] points = segment.toArray(POINT_CARRIER);
             assertArrayEquals(new Point[]{P0, P1}, points);
-        }
-    }
-
-    @Test
-    void stream() {
-        try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
-            Stream<Point> stream = segment.elements(POINT_CARRIER);
-            assertArrayEquals(new Point[]{P0, P1}, stream.toArray());
-        }
-    }
-
-    // Todo: Improve this test
-    // Todo: Remove spliterator()!
-    @Test
-    void spliterator() {
-        try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
-            Spliterator<Point> spliterator = segment.spliterator(POINT_CARRIER);
-            Set<Integer> characteristics = Set.of(Spliterator.SIZED, Spliterator.SUBSIZED, Spliterator.IMMUTABLE, Spliterator.NONNULL, Spliterator.ORDERED);
-            assertEquals(characteristics.stream().mapToInt(i -> i).sum(), spliterator.characteristics());
-            assertEquals(2, spliterator.estimateSize());
-            assertEquals(2, spliterator.getExactSizeIfKnown());
-            assertThrows(IllegalStateException.class, spliterator::getComparator);
-            for (int characteristic: characteristics) {
-                assertTrue(spliterator.hasCharacteristics(characteristic));
-            }
-            List<Point> points = new ArrayList<>();
-            spliterator.forEachRemaining(points::add);
-            assertEquals(List.of(P0, P1), points);;
         }
     }
 

@@ -182,15 +182,6 @@ final class TestSequenceCarrierLayout {
     }
 
     @Test
-    void stream() {
-        try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(POINTS_CARRIER, POINT_ARRAY, POINT_ARRAY);
-            Stream<Point[]> stream = segment.elements(POINTS_CARRIER);
-            assertArrayEquals(new Point[][]{{P0, P1}, {P0, P1}}, stream.toArray());
-        }
-    }
-
-    @Test
     void getter() {
         MethodHandle getter = POINTS_CARRIER.getter();
         assertEquals(Point[].class, getter.type().returnType());

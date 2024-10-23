@@ -182,26 +182,9 @@ public abstract sealed class AbstractMemorySegmentImpl
                 this);
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public <T> Spliterator<T> spliterator(CompositeLayout.OfClass<T> elementLayout) {
-        Objects.requireNonNull(elementLayout);
-        SegmentSplitter delegate = (SegmentSplitter) spliterator((MemoryLayout) elementLayout);
-        final InternalCompositeLayoutOfClass<T> elementLayoutImpl = (InternalCompositeLayoutOfClass<T>) elementLayout;
-        Function<MemorySegment, T> unmarshaller = s -> elementLayoutImpl.get(s, 0);
-        return new ObjectSplitter<>(delegate, unmarshaller);
-    }
-
     @Override
     public Stream<MemorySegment> elements(MemoryLayout elementLayout) {
         return StreamSupport.stream(spliterator(elementLayout), false);
-    }
-
-    @Override
-    public <T> Stream<T> elements(CompositeLayout.OfClass<T> elementLayout) {
-        Objects.requireNonNull(elementLayout);
-        return elements((MemoryLayout) elementLayout)
-                .map(s -> s.get(elementLayout, 0));
     }
 
     @ForceInline
@@ -341,7 +324,9 @@ public abstract sealed class AbstractMemorySegmentImpl
     @Override
     public <T> T[] toArray(CompositeLayout.OfClass<T> elementLayout) {
         Objects.requireNonNull(elementLayout);
-        return elements(elementLayout).toArray(i -> (T[]) Array.newInstance(elementLayout.carrier(), i));
+        return elements(elementLayout)
+                .map(s -> s.get(elementLayout, 0))
+                .toArray(i -> (T[]) Array.newInstance(elementLayout.carrier(), i));
     }
 
     private <Z> Z toArray(Class<Z> arrayClass, ValueLayout elemLayout, IntFunction<Z> arrayFactory, Function<Z, MemorySegment> segmentFactory) {
@@ -519,59 +504,6 @@ public abstract sealed class AbstractMemorySegmentImpl
             return NONNULL | SUBSIZED | SIZED | IMMUTABLE | ORDERED;
         }
     }
-
-    record ObjectSplitter<T>(SegmentSplitter delegate,
-                             Function<? super MemorySegment, ? extends T> unmarshaller) implements Spliterator<T> {
-
-        @Override
-        public ObjectSplitter<T> trySplit() {
-            SegmentSplitter split = delegate.trySplit();
-            return split == null ? null : new ObjectSplitter<>(split, unmarshaller);
-        }
-
-        @Override
-        public boolean tryAdvance(Consumer<? super T> action) {
-            Objects.requireNonNull(action);
-            return delegate.tryAdvance(delegatedConsumer(action));
-        }
-
-        @Override
-        public void forEachRemaining(Consumer<? super T> action) {
-            Objects.requireNonNull(action);
-            delegate.forEachRemaining(delegatedConsumer(action));
-        }
-
-        @Override
-        public long getExactSizeIfKnown() {
-            return delegate.getExactSizeIfKnown();
-        }
-
-        @Override
-        public boolean hasCharacteristics(int characteristics) {
-            return delegate.hasCharacteristics(characteristics);
-        }
-
-        @Override
-        public long estimateSize() {
-            return delegate.elemCount;
-        }
-
-        @Override
-        public int characteristics() {
-            return delegate.characteristics();
-        }
-
-        private Consumer<MemorySegment> delegatedConsumer(Consumer<? super T> action) {
-            return new Consumer<MemorySegment>() {
-                @Override
-                public void accept(MemorySegment segment) {
-                    action.accept(unmarshaller.apply(segment));
-                }
-            };
-        }
-
-    }
-
 
     // Object methods
 

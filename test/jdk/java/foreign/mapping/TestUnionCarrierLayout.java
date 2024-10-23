@@ -38,11 +38,6 @@ import java.lang.foreign.UnionLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.Spliterator;
-import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static org.junit.jupiter.api.Assertions.*;
@@ -153,36 +148,5 @@ final class TestUnionCarrierLayout {
             assertArrayEquals(new Coordinate[]{C0, C1}, points);
         }
     }
-
-    @Test
-    void stream() {
-        try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(COORDINATE_CARRIER, C0, C1);
-            Stream<Coordinate> stream = segment.elements(COORDINATE_CARRIER);
-            assertArrayEquals(new Coordinate[]{C0, C1}, stream.toArray());
-        }
-    }
-
-    // Todo: Improve this test
-    @Test
-    void spliterator() {
-        try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(COORDINATE_CARRIER, C0, C1);
-            Spliterator<Coordinate> spliterator = segment.spliterator(COORDINATE_CARRIER);
-            Set<Integer> characteristics = Set.of(Spliterator.SIZED, Spliterator.SUBSIZED, Spliterator.IMMUTABLE, Spliterator.NONNULL, Spliterator.ORDERED);
-            assertEquals(characteristics.stream().mapToInt(i -> i).sum(), spliterator.characteristics());
-            assertEquals(2, spliterator.estimateSize());
-            assertEquals(2, spliterator.getExactSizeIfKnown());
-            assertThrows(IllegalStateException.class, spliterator::getComparator);
-            for (int characteristic: characteristics) {
-                assertTrue(spliterator.hasCharacteristics(characteristic));
-            }
-            List<Coordinate> points = new ArrayList<>();
-            spliterator.forEachRemaining(points::add);
-            assertEquals(List.of(C0, C1), points);;
-        }
-    }
-
-
 
 }
