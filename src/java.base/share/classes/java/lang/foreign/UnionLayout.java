@@ -41,7 +41,7 @@ import java.util.function.Function;
  */
 public sealed interface UnionLayout
         extends GroupLayout, CompositeLayout
-        permits UnionLayoutImpl {
+        permits UnionLayoutImpl, UnionLayoutImpl.OfClassImpl {
 
     /**
      * {@inheritDoc}

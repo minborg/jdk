@@ -133,8 +133,8 @@ public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L
         }
     }
 
-    public abstract static sealed class AbstractOfClass<T>
-            extends AbstractGroupLayout<AbstractOfClass<T>>
+    public abstract static sealed class AbstractOfClass<T, L extends AbstractGroupLayout<L> & MemoryLayout>
+            extends AbstractGroupLayout<L>
             implements CompositeLayout.OfClass<T>, InternalCompositeLayoutOfClass<T>
             permits StructLayoutImpl.OfClassImpl, UnionLayoutImpl.OfClassImpl {
 

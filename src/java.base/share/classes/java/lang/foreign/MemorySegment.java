@@ -1271,8 +1271,9 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IllegalStateException if this segment's contents cannot be copied into a
      *         {@code double[]} instance, e.g. because {@code byteSize() % 8 != 0}, or
      *         {@code byteSize() / 8 > Integer.MAX_VALUE}
+     *
+     * @since 25
      */
-    // Todo: remove
     <T> T[] toArray(CompositeLayout.OfClass<T> elementLayout);
 
     /**
@@ -2067,6 +2068,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         in the provided layout
      * @throws IndexOutOfBoundsException if {@code offset > byteSize() - layout.byteSize()}
      *         or {@code offset < 0}
+     *
+     * @since 25
      */
     <T> T get(CompositeLayout.OfClass<T> layout, long offset);
 
@@ -2089,6 +2092,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         or {@code offset < 0}
      * @throws IllegalArgumentException if this segment is
      *         {@linkplain #isReadOnly() read-only}
+     *
+     * @since 25
      */
     <T> void set(CompositeLayout.OfClass<T> layout, long offset, T value);
 
@@ -2546,6 +2551,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IndexOutOfBoundsException if {@code index * layout.byteSize()} overflows
      * @throws IndexOutOfBoundsException if {@code index * layout.byteSize() > byteSize() - layout.byteSize()}
      *         or {@code index < 0}
+     *
+     * @since 25
      */
     <T> T getAtIndex(CompositeLayout.OfClass<T> layout, long index);
 
@@ -2571,6 +2578,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IndexOutOfBoundsException if {@code index * layout.byteSize() > byteSize() - layout.byteSize()}
      *         or {@code index < 0}
      * @throws IllegalArgumentException if this segment is {@linkplain #isReadOnly() read-only}
+     *
+     * @since 25
      */
     <T> void setAtIndex(CompositeLayout.OfClass<T> layout, long index, T value);
 

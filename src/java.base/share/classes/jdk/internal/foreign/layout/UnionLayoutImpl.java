@@ -71,8 +71,8 @@ public final class UnionLayoutImpl
     }
 
     public static final class OfClassImpl<T>
-            extends AbstractGroupLayout.AbstractOfClass<T>
-            implements CompositeLayout.OfClass<T> {
+            extends AbstractGroupLayout.AbstractOfClass<T, OfClassImpl<T>>
+            implements CompositeLayout.OfClass<T>, UnionLayout {
 
         OfClassImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name, Class<T> carrier, MethodHandle getter, MethodHandle setter) {
             super(Kind.UNION, elements, byteSize, byteAlignment, minByteAlignment, name, carrier, getter, setter);
@@ -92,7 +92,7 @@ public final class UnionLayoutImpl
         }
 
         @Override
-        AbstractOfClass<T> dup(long byteAlignment, Optional<String> name) {
+        OfClassImpl<T> dup(long byteAlignment, Optional<String> name) {
             return new OfClassImpl<>(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name, carrier(), getter(), setter());
         }
     }

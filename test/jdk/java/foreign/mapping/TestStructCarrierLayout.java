@@ -34,10 +34,13 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.PaddingLayout;
 import java.lang.foreign.StructLayout;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.nio.ByteOrder;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static org.junit.jupiter.api.Assertions.*;
@@ -192,6 +195,38 @@ final class TestStructCarrierLayout {
                 throw new AssertionError(t);
             }
         }
+    }
+
+    @Test
+    void map() {
+        CompositeLayout cl = map(POINT);
+        assertInstanceOf(CompositeLayout.class, cl);
+        assertFalse(cl instanceof CompositeLayout.OfClass);
+
+        CompositeLayout clOc = map(POINT_CARRIER);
+        assertInstanceOf(CompositeLayout.OfClass.class, clOc);
+        assertInstanceOf(CompositeLayout.class, clOc);
+    }
+
+    private static CompositeLayout map(CompositeLayout layout) {
+        MemoryLayout l = layout.mapConstituentLayouts(TestStructCarrierLayout::swapOrder);
+        assertInstanceOf(StructLayout.class, l);
+        StructLayout sl = (StructLayout) l;
+        for (MemoryLayout e : sl.memberLayouts()) {
+            assertNotSame(((ValueLayout) e).order(), ByteOrder.nativeOrder());
+        }
+        return sl;
+    }
+
+    static MemoryLayout swapOrder(MemoryLayout layout) {
+        return switch (layout) {
+            case ValueLayout vl     -> vl.withOrder(swapOrder(vl.order()));
+            case CompositeLayout cl -> cl.mapConstituentLayouts(TestSequenceCarrierLayout::swapOrder);
+            case PaddingLayout pl   -> pl;
+        };
+    }
+    static ByteOrder swapOrder(ByteOrder order) {
+        return order == ByteOrder.BIG_ENDIAN ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
     }
 
 }

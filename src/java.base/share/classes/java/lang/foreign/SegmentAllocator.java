@@ -380,6 +380,8 @@ public interface SegmentAllocator {
      * @param layout the layout of the block of memory to be allocated
      * @param <T>    the carrier type
      * @param value  the value to be set in the newly allocated memory segment
+     *
+     * @since 25
      */
     default <T> MemorySegment allocateFrom(GroupLayout.OfClass<T> layout, T value) {
         Objects.requireNonNull(value);
@@ -650,10 +652,11 @@ public interface SegmentAllocator {
      * @param <T>           carrier type
      * @throws IllegalArgumentException if
      *         {@code elementLayout.byteAlignment() > elementLayout.byteSize()}
+     *
+     * @since 25
      */
     @ForceInline
     @SuppressWarnings("unchecked")
-    // Todo: remove this
     default <T> MemorySegment allocateFrom(GroupLayout.OfClass<T> elementLayout, T... elements) {
         Objects.requireNonNull(elementLayout);
         Objects.requireNonNull(elements);

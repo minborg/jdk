@@ -27,6 +27,7 @@ package jdk.internal.foreign.layout;
 
 import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.StructLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.List;
@@ -71,8 +72,8 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
     }
 
     public static final class OfClassImpl<T>
-            extends AbstractGroupLayout.AbstractOfClass<T>
-            implements CompositeLayout.OfClass<T> {
+            extends AbstractGroupLayout.AbstractOfClass<T, OfClassImpl<T>>
+            implements CompositeLayout.OfClass<T>, StructLayout {
 
         OfClassImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name, Class<T> carrier, MethodHandle getter, MethodHandle setter) {
             super(Kind.STRUCT, elements, byteSize, byteAlignment, minByteAlignment, name, carrier, getter, setter);
@@ -92,9 +93,10 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
         }
 
         @Override
-        AbstractOfClass<T> dup(long byteAlignment, Optional<String> name) {
+        OfClassImpl<T> dup(long byteAlignment, Optional<String> name) {
             return new OfClassImpl<>(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name, carrier(), getter(), setter());
         }
+
     }
 
 }

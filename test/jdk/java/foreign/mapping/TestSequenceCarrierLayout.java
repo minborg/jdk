@@ -34,17 +34,15 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.PaddingLayout;
 import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.StructLayout;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.ArrayList;
+import java.nio.ByteOrder;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.Spliterator;
-import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static org.junit.jupiter.api.Assertions.*;
@@ -224,6 +222,39 @@ final class TestSequenceCarrierLayout {
                 throw new AssertionError(t);
             }
         }
+    }
+
+    @Test
+    void map() {
+        CompositeLayout cl = map(POINTS);
+        assertInstanceOf(CompositeLayout.class, cl);
+        assertFalse(cl instanceof CompositeLayout.OfClass);
+
+        CompositeLayout clOc = map(POINTS_CARRIER);
+        assertInstanceOf(CompositeLayout.OfClass.class, clOc);
+        assertInstanceOf(CompositeLayout.class, clOc);
+    }
+
+    private static CompositeLayout map(CompositeLayout layout) {
+        MemoryLayout l = layout.mapConstituentLayouts(TestSequenceCarrierLayout::swapOrder);
+        assertInstanceOf(SequenceLayout.class, l);
+        SequenceLayout sl = (SequenceLayout) l;
+        for (MemoryLayout e : ((StructLayout) sl.elementLayout()).memberLayouts()) {
+            assertNotSame(((ValueLayout) e).order(), ByteOrder.nativeOrder());
+        }
+        return sl;
+    }
+
+    static MemoryLayout swapOrder(MemoryLayout layout) {
+        return switch (layout) {
+            case ValueLayout vl     -> vl.withOrder(swapOrder(vl.order()));
+            case CompositeLayout cl -> cl.mapConstituentLayouts(TestSequenceCarrierLayout::swapOrder);
+            case PaddingLayout pl   -> pl;
+        };
+    }
+
+    static ByteOrder swapOrder(ByteOrder order) {
+        return order == ByteOrder.BIG_ENDIAN ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
     }
 
 }

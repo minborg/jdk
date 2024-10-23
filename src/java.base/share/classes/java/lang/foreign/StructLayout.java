@@ -39,7 +39,7 @@ import java.util.function.Function;
  *
  * @since 22
  */
-public sealed interface StructLayout extends GroupLayout permits StructLayoutImpl {
+public sealed interface StructLayout extends GroupLayout permits StructLayoutImpl, StructLayoutImpl.OfClassImpl {
 
     /**
      * {@inheritDoc}
