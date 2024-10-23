@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,69 +61,5 @@ public sealed interface UnionLayout
      */
     @Override
     UnionLayout withByteAlignment(long byteAlignment);
-
-//    /**
-//     * {@inheritDoc}
-//     */
-//    @Override
-//    <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType);
-//
-//    /**
-//     * {@inheritDoc}
-//     */
-//    @Override
-//    <R> OfCarrier<R> withCarrier(Class<R> carrierType,
-//                                 Function<? super MemorySegment, ? extends R> unmarshaller,
-//                                 BiConsumer<? super MemorySegment, ? super R> marshaller);
-//
-//    /**
-//     * {@inheritDoc}
-//     */
-//    @Override
-//    UnionLayout withoutCarrier();
-//
-//    /**
-//     * A struct layout whose carrier is {@code T}.
-//     *
-//     * @param <T> record carrier type
-//     *
-//     * @since 25
-//     */
-//    sealed interface OfCarrier<T>
-//            extends UnionLayout, GroupLayout.OfCarrier<T>
-//            permits UnionLayoutImpl.OfCarrierImpl {
-//
-//        /**
-//         * {@inheritDoc}
-//         */
-//        @Override
-//        UnionLayout.OfCarrier<T> withName(String name);
-//
-//        /**
-//         * {@inheritDoc}
-//         */
-//        @Override
-//        UnionLayout.OfCarrier<T> withoutName();
-//
-//        /**
-//         * {@inheritDoc}
-//         */
-//        @Override
-//        UnionLayout.OfCarrier<T> withByteAlignment(long byteAlignment);
-//
-//        /**
-//         * {@inheritDoc}
-//         */
-//        @Override
-//        <R extends Record> UnionLayout.OfCarrier<R> withCarrier(Class<R> carrierType);
-//
-//        /**
-//         * {@inheritDoc}
-//         */
-//        @Override
-//        <R> UnionLayout.OfCarrier<R> withCarrier(Class<R> carrierType,
-//                                                 Function<? super MemorySegment, ? extends R> unmarshaller,
-//                                                 BiConsumer<? super MemorySegment, ? super R> marshaller);
-//    }
 
 }

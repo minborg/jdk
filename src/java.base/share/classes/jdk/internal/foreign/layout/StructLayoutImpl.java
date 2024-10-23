@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,7 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
     public <R> CompositeLayout.OfClass<R> bind(Class<R> carrier, MethodHandle getter, MethodHandle setter) {
         Objects.requireNonNull(carrier);
         MemoryLayoutUtil.assertRecord(carrier);
-        return new StructLayoutImpl.OfClass<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrier, getter, setter);
+        return new OfClassImpl<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrier, getter, setter);
     }
 
     @Override
@@ -70,30 +70,30 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
         return new StructLayoutImpl(elements, size, align, align, Optional.empty());
     }
 
-    public static final class OfClass<T>
+    public static final class OfClassImpl<T>
             extends AbstractGroupLayout.AbstractOfClass<T>
             implements CompositeLayout.OfClass<T> {
 
-        OfClass(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name, Class<T> carrier, MethodHandle getter, MethodHandle setter) {
+        OfClassImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name, Class<T> carrier, MethodHandle getter, MethodHandle setter) {
             super(Kind.STRUCT, elements, byteSize, byteAlignment, minByteAlignment, name, carrier, getter, setter);
         }
 
         @Override
         public <R> OfClass<R> bind(Class<R> carrier, MethodHandle getter, MethodHandle setter) {
             Objects.requireNonNull(carrier);
-            return new StructLayoutImpl.OfClass<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrier, getter, setter);
+            return new OfClassImpl<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrier, getter, setter);
         }
 
         @Override
         public CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper) {
             Objects.requireNonNull(mapper);
             // Remapping the constituent layout will result in new method handles being created
-            return new StructLayoutImpl.OfClass<>(MemoryLayoutUtil.transform(memberLayouts(), mapper), byteSize(), byteAlignment(), minByteAlignment, name(), carrier(), getter(), setter());
+            return new OfClassImpl<>(MemoryLayoutUtil.transform(memberLayouts(), mapper), byteSize(), byteAlignment(), minByteAlignment, name(), carrier(), getter(), setter());
         }
 
         @Override
         AbstractOfClass<T> dup(long byteAlignment, Optional<String> name) {
-            return new StructLayoutImpl.OfClass<>(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name, carrier(), getter(), setter());
+            return new OfClassImpl<>(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name, carrier(), getter(), setter());
         }
     }
 

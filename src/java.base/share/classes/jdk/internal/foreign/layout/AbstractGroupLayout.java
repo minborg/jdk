@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,7 @@ package jdk.internal.foreign.layout;
 
 import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -138,7 +136,7 @@ public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L
     public abstract static sealed class AbstractOfClass<T>
             extends AbstractGroupLayout<AbstractOfClass<T>>
             implements CompositeLayout.OfClass<T>, InternalCompositeLayoutOfClass<T>
-            permits StructLayoutImpl.OfClass, UnionLayoutImpl.OfClass {
+            permits StructLayoutImpl.OfClassImpl, UnionLayoutImpl.OfClassImpl {
 
         private final Class<T> carrier;
         private final MethodHandle getter;
@@ -187,42 +185,6 @@ public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L
         public MethodHandle adaptedSetter() {
             return adaptedSetter;
         }
-/*
-        @SuppressWarnings("unchecked")
-        @ForceInline
-        public T get(MemorySegment segment, long offset) {
-            try {
-                return (T) adaptedGetter.invokeExact(segment, offset);
-            } catch (NullPointerException |
-                     IndexOutOfBoundsException |
-                     WrongThreadException |
-                     IllegalStateException |
-                     IllegalArgumentException rethrow) {
-                throw rethrow;
-            } catch (Throwable e) {
-                throw new RuntimeException("Unable to invoke getter() with " +
-                        "segment="  + segment +
-                        ", offset=" + offset, e);
-            }
-        }
-
-        public void set(MemorySegment segment, long offset, T t) {
-            try {
-                adaptedSetter.invokeExact(segment, offset, (Object) t);
-            } catch (IndexOutOfBoundsException |
-                     WrongThreadException |
-                     IllegalStateException |
-                     IllegalArgumentException |
-                     UnsupportedOperationException |
-                     NullPointerException rethrow) {
-                throw rethrow;
-            } catch (Throwable e) {
-                throw new RuntimeException("Unable to invoke setter() with " +
-                        "segment=" + segment +
-                        ", offset=" + offset +
-                        ", t=" + t, e);
-            }
-        }*/
 
     }
 

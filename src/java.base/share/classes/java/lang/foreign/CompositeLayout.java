@@ -26,7 +26,6 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.layout.AbstractGroupLayout;
-import jdk.internal.foreign.layout.InternalCompositeLayoutOfClass;
 import jdk.internal.foreign.layout.SequenceLayoutImpl;
 import jdk.internal.foreign.layout.StructLayoutImpl;
 import jdk.internal.foreign.layout.UnionLayoutImpl;
@@ -90,7 +89,7 @@ public sealed interface CompositeLayout
      */
     sealed interface OfClass<T>
             extends CompositeLayout
-            permits AbstractGroupLayout.AbstractOfClass, SequenceLayoutImpl.OfClass, StructLayoutImpl.OfClass, UnionLayoutImpl.OfClass {
+            permits AbstractGroupLayout.AbstractOfClass, SequenceLayoutImpl.OfClassImpl, StructLayoutImpl.OfClassImpl, UnionLayoutImpl.OfClassImpl {
 
         /**
          * {@return the carrier type}

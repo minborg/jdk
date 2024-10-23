@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.SequenceLayout;
 import java.lang.invoke.MethodHandle;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
@@ -185,14 +184,15 @@ public sealed class SequenceLayoutImpl
 
     @Override
     public CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper) {
-        return null;
+        Objects.requireNonNull(mapper);
+        return new SequenceLayoutImpl(elemCount, mapper.apply(elementLayout), byteAlignment(), name());
     }
 
     @Override
-    public <T> OfClass<T> bind(Class<T> carrier, MethodHandle getter, MethodHandle setter) {
+    public <T> OfClassImpl<T> bind(Class<T> carrier, MethodHandle getter, MethodHandle setter) {
         Objects.requireNonNull(carrier);
         MemoryLayoutUtil.assertRecordArray(carrier);
-        throw new UnsupportedOperationException();
+        return new OfClassImpl<>(elemCount, elementLayout, byteAlignment(), name(), carrier, getter, setter);
     }
 
     @Override
@@ -238,7 +238,7 @@ public sealed class SequenceLayoutImpl
         return new SequenceLayoutImpl(elementCount, elementLayout);
     }
 
-    public static final class OfClass<T>
+    public static final class OfClassImpl<T>
             extends SequenceLayoutImpl
             implements CompositeLayout.OfClass<T>, InternalCompositeLayoutOfClass<T> {
 
@@ -248,7 +248,7 @@ public sealed class SequenceLayoutImpl
         private final MethodHandle adaptedGetter;
         private final MethodHandle adaptedSetter;
 
-        public OfClass(long elemCount, MemoryLayout elementLayout, long byteAlignment, Optional<String> name, Class<T> carrier, MethodHandle getter, MethodHandle setter) {
+        public OfClassImpl(long elemCount, MemoryLayout elementLayout, long byteAlignment, Optional<String> name, Class<T> carrier, MethodHandle getter, MethodHandle setter) {
             super(elemCount, elementLayout, byteAlignment, name);
             this.carrier = carrier;
             this.getter = getter;
@@ -261,7 +261,7 @@ public sealed class SequenceLayoutImpl
         public CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper) {
             Objects.requireNonNull(mapper);
             // Remapping the constituent layout will result in new method handles being created
-            return null;
+            return new OfClassImpl<>(elementCount(), mapper.apply(elementLayout()), byteAlignment(), name(), carrier, getter, setter);
         }
 
         @Override

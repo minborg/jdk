@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
  * @test
  * @library ../
  * @modules java.base/jdk.internal.foreign
- * @run junit/othervm --enable-native-access=ALL-UNNAMED TestStructCarrierLayout
+ * @run junit/othervm --enable-native-access=ALL-UNNAMED TestUnionCarrierLayout
  */
 
 import org.junit.jupiter.api.Test;
@@ -111,7 +111,7 @@ final class TestUnionCarrierLayout {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(JAVA_INT, C0_C1_INT_ARRAY);
             Coordinate p0 = segment.get(COORDINATE_CARRIER, 0);
-            Coordinate p1 = segment.get(COORDINATE_CARRIER, 8);
+            Coordinate p1 = segment.get(COORDINATE_CARRIER, 4);
             assertEquals(C0, p0);
             assertEquals(C1, p1);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
  * @test
  * @library ../
  * @modules java.base/jdk.internal.foreign
- * @run junit/othervm --enable-native-access=ALL-UNNAMED TestStructCarrierLayout
+ * @run junit/othervm --enable-native-access=ALL-UNNAMED TestSequenceCarrierLayout
  */
 
 import org.junit.jupiter.api.Test;
@@ -40,6 +40,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.Spliterator;
@@ -141,8 +142,12 @@ final class TestSequenceCarrierLayout {
     void getAtIndex() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocate(POINTS_CARRIER, 2);
-            MemorySegment.copy(P0_P1_INT_ARRAY, 0, segment, JAVA_INT, POINTS_CARRIER.byteSize(), 1);
+            for (int i = 0; i < P0_P1_INT_ARRAY.length; i++) {
+                segment.setAtIndex(JAVA_INT, i, P0_P1_INT_ARRAY[i]);
+                segment.setAtIndex(JAVA_INT, i + P0_P1_INT_ARRAY.length, P0_P1_INT_ARRAY[i]);
+            }
             Point[] points = segment.getAtIndex(POINTS_CARRIER, 1);
+            System.out.println("Arrays.toString(points) = " + Arrays.toString(points));
             assertEquals(P0, points[0]);
             assertEquals(P1, points[1]);
         }
@@ -220,7 +225,7 @@ final class TestSequenceCarrierLayout {
             var segment = arena.allocate(POINTS_CARRIER, 2);
             try {
                 setter.invokeExact(segment, 0L, POINT_ARRAY);
-                setter.invokeExact(segment, POINTS_CARRIER.byteSize(), POINTS_CARRIER);
+                setter.invokeExact(segment, POINTS_CARRIER.byteSize(), POINT_ARRAY);
                 assertArrayEquals(new int[]{
                         P0.x(), P0.y(), P1.x(), P1.y(),
                         P0.x(), P0.y(), P1.x(), P1.y()}, segment.toArray(JAVA_INT));

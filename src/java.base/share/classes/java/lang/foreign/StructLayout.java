@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,70 +59,5 @@ public sealed interface StructLayout extends GroupLayout permits StructLayoutImp
      */
     @Override
     StructLayout withByteAlignment(long byteAlignment);
-
-//   *//**
-//  * {@inheritDoc}
-//  *//*
-// @Override
-// <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType);
-
-// *//**
-//  * {@inheritDoc}
-//  *//*
-// @Override
-// <R> OfCarrier<R> withCarrier(Class<R> carrierType,
-//                              Function<? super MemorySegment, ? extends R> unmarshaller,
-//                              BiConsumer<? super MemorySegment, ? super R> marshaller);*/
-
-
-//   *//**
-//  * {@inheritDoc}
-//  *//*
-// @Override
-// StructLayout withoutCarrier();*/
-
-//   *//**
-//  * A struct layout whose carrier is {@code T}.
-//  *
-//  * @param <T> record carrier type
-//  *
-//  * @since 25
-//  *//*
-// sealed interface OfCarrier<T>
-//         extends StructLayout, GroupLayout.OfCarrier<T>
-//         permits StructLayoutImpl.OfCarrierImpl {
-
-//     *//**
-//      * {@inheritDoc}
-//      *//*
-//     @Override
-//     StructLayout.OfCarrier<T> withName(String name);
-
-//     *//**
-//      * {@inheritDoc}
-//      *//*
-//     @Override
-//     StructLayout.OfCarrier<T> withoutName();
-
-//     *//**
-//      * {@inheritDoc}
-//      *//*
-//     @Override
-//     StructLayout.OfCarrier<T> withByteAlignment(long byteAlignment);
-
-//     *//**
-//      * {@inheritDoc}
-//      *//*
-//     @Override
-//     <R extends Record> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType);
-
-//     *//**
-//      * {@inheritDoc}
-//      *//*
-//     @Override
-//     <R> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType,
-//                                               Function<? super MemorySegment, ? extends R> unmarshaller,
-//                                               BiConsumer<? super MemorySegment, ? super R> marshaller);
-// }*/
 
 }
