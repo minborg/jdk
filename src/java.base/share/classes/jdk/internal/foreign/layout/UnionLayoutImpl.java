@@ -25,18 +25,18 @@
  */
 package jdk.internal.foreign.layout;
 
-import java.lang.foreign.GroupLayout;
+import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.StructLayout;
 import java.lang.foreign.UnionLayout;
+import java.lang.invoke.MethodHandle;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
-public final class UnionLayoutImpl extends AbstractGroupLayout<UnionLayoutImpl> implements UnionLayout {
+public final class UnionLayoutImpl
+        extends AbstractGroupLayout<UnionLayoutImpl>
+        implements UnionLayout {
 
     private UnionLayoutImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name) {
         super(Kind.UNION, elements, byteSize, byteAlignment, minByteAlignment, name);
@@ -48,24 +48,16 @@ public final class UnionLayoutImpl extends AbstractGroupLayout<UnionLayoutImpl> 
     }
 
     @Override
-    public <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType) {
-        Objects.requireNonNull(carrierType);
-        return new OfCarrierImpl<>(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType, null, null);
+    public <R> CompositeLayout.OfClass<R> bind(Class<R> carrier, MethodHandle getter, MethodHandle setter) {
+        Objects.requireNonNull(carrier);
+        MemoryLayoutUtil.assertRecord(carrier);
+        return new UnionLayoutImpl.OfClass<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrier, getter, setter);
     }
 
     @Override
-    public <R> OfCarrier<R> withCarrier(Class<R> carrierType,
-                                        Function<? super MemorySegment, ? extends R> unmarshaller,
-                                        BiConsumer<? super MemorySegment, ? super R> marshaller) {
-        Objects.requireNonNull(carrierType);
-        Objects.requireNonNull(unmarshaller);
-        Objects.requireNonNull(marshaller);
-        return new OfCarrierImpl<>(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType, unmarshaller, marshaller);
-    }
-
-    @Override
-    public UnionLayout withoutCarrier() {
-        return this;
+    public CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper) {
+        Objects.requireNonNull(mapper);
+        return new UnionLayoutImpl(MemoryLayoutUtil.transform(memberLayouts(), mapper), byteSize(), byteAlignment(), minByteAlignment, name());
     }
 
     public static UnionLayout of(List<MemoryLayout> elements) {
@@ -78,43 +70,31 @@ public final class UnionLayoutImpl extends AbstractGroupLayout<UnionLayoutImpl> 
         return new UnionLayoutImpl(elements, size, align, align, Optional.empty());
     }
 
-    public static final class OfCarrierImpl<T>
-            extends AbstractGroupLayout.AbstractOfCarrier<T, UnionLayoutImpl.OfCarrierImpl<T>>
-            implements UnionLayout.OfCarrier<T> {
+    public static final class OfClass<T>
+            extends AbstractGroupLayout.AbstractOfClass<T>
+            implements CompositeLayout.OfClass<T> {
 
-        OfCarrierImpl(Kind kind, List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name, Class<T> carrier, Function<? super MemorySegment, ? extends T> unmarshaller, BiConsumer<? super MemorySegment, ? super T> marshaller) {
-            super(kind, elements, byteSize, byteAlignment, minByteAlignment, name, carrier, unmarshaller, marshaller);
+        OfClass(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name, Class<T> carrier, MethodHandle getter, MethodHandle setter) {
+            super(Kind.UNION, elements, byteSize, byteAlignment, minByteAlignment, name, carrier, getter, setter);
         }
 
         @Override
-        public UnionLayout withoutCarrier() {
-            return new UnionLayoutImpl(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name());
+        public <R> OfClass<R> bind(Class<R> carrier, MethodHandle getter, MethodHandle setter) {
+            Objects.requireNonNull(carrier);
+            MemoryLayoutUtil.assertRecord(carrier);
+            return new UnionLayoutImpl.OfClass<>(memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrier, getter, setter);
         }
 
         @Override
-        public <R> UnionLayout.OfCarrier<R> withCarrier(Class<R> carrierType, Function<? super MemorySegment, ? extends R> unmarshaller, BiConsumer<? super MemorySegment, ? super R> marshaller) {
-            return dup(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType, unmarshaller, marshaller);
+        public CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper) {
+            // Remapping the constituent layout will result in new method handles being created
+            return new UnionLayoutImpl.OfClass<>(MemoryLayoutUtil.transform(memberLayouts(), mapper), byteSize(), byteAlignment(), minByteAlignment, name(), carrier(), getter(), setter());
         }
 
         @Override
-        public <R extends Record> UnionLayout.OfCarrier<R> withCarrier(Class<R> carrierType) {
-            return withCarrier(carrierType, AbstractGroupLayout.AbstractOfCarrier.unmarshaller(kind, carrierType), AbstractGroupLayout.AbstractOfCarrier.marshaller(kind, carrierType));
+        AbstractOfClass<T> dup(long byteAlignment, Optional<String> name) {
+            return new UnionLayoutImpl.OfClass<>(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name, carrier(), getter(), setter());
         }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        <R, M extends AbstractOfCarrier<R, M>> M dup(Kind kind,
-                                                     List<MemoryLayout> elements,
-                                                     long byteSize,
-                                                     long byteAlignment,
-                                                     long minByteAlignment,
-                                                     Optional<String> name,
-                                                     Class<R> carrier,
-                                                     Function<? super MemorySegment, ? extends R> unmarshaller,
-                                                     BiConsumer<? super MemorySegment, ? super R> marshaller) {
-            return (M) new StructLayoutImpl.OfCarrierImpl<>(kind, elements, byteSize, byteAlignment, minByteAlignment, name, carrier, unmarshaller, marshaller);
-        }
-
     }
 
 }

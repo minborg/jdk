@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Spliterator;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
@@ -593,7 +594,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraint</a>
      *         in the provided layout.
      */
-    <T> Spliterator<T> spliterator(GroupLayout.OfCarrier<T> elementLayout);
+    <T> Spliterator<T> spliterator(CompositeLayout.OfClass<T> elementLayout);
 
     /**
      * Returns a sequential {@code Stream} over disjoint slices (whose size matches that
@@ -626,7 +627,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraint</a>
      *         in the provided layout
      */
-    <T> Stream<T> elements(GroupLayout.OfCarrier<T> elementLayout);
+    // Todo: Add in javadoc instead. Is there a way to convert to specialized stream types? mapElements()?
+    <T> Stream<T> elements(CompositeLayout.OfClass<T> elementLayout);
 
     /**
      * {@return the scope associated with this memory segment}
@@ -1306,7 +1308,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         {@code double[]} instance, e.g. because {@code byteSize() % 8 != 0}, or
      *         {@code byteSize() / 8 > Integer.MAX_VALUE}
      */
-    <T> T[] toArray(GroupLayout.OfCarrier<T> elementLayout);
+    // Todo: remove
+    <T> T[] toArray(CompositeLayout.OfClass<T> elementLayout);
 
     /**
      * Reads a null-terminated string from this segment at the given offset, using the
@@ -2101,7 +2104,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IndexOutOfBoundsException if {@code offset > byteSize() - layout.byteSize()}
      *         or {@code offset < 0}
      */
-    <T> T get(GroupLayout.OfCarrier<T> layout, long offset);
+    <T> T get(CompositeLayout.OfClass<T> layout, long offset);
 
     /**
      * Writes an object into this segment at the given offset, with the given layout.
@@ -2123,7 +2126,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IllegalArgumentException if this segment is
      *         {@linkplain #isReadOnly() read-only}
      */
-    <T> void set(GroupLayout.OfCarrier<T> layout, long offset, T value);
+    <T> void set(CompositeLayout.OfClass<T> layout, long offset, T value);
 
     /**
      * Reads a byte from this segment at the given index, scaled by the given
@@ -2580,7 +2583,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IndexOutOfBoundsException if {@code index * layout.byteSize() > byteSize() - layout.byteSize()}
      *         or {@code index < 0}
      */
-    <T> T getAtIndex(GroupLayout.OfCarrier<T> layout, long index);
+    <T> T getAtIndex(CompositeLayout.OfClass<T> layout, long index);
 
     /**
      * Writes an object into this segment at the given index, scaled by the given
@@ -2605,7 +2608,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         or {@code index < 0}
      * @throws IllegalArgumentException if this segment is {@linkplain #isReadOnly() read-only}
      */
-    <T> void setAtIndex(GroupLayout.OfCarrier<T> layout, long index, T value);
+    <T> void setAtIndex(CompositeLayout.OfClass<T> layout, long index, T value);
 
     /**
      * Compares the specified object with this memory segment for equality. Returns

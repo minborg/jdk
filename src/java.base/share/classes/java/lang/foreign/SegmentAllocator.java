@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -381,7 +381,7 @@ public interface SegmentAllocator {
      * @param <T>    the carrier type
      * @param value  the value to be set in the newly allocated memory segment
      */
-    default <T> MemorySegment allocateFrom(GroupLayout.OfCarrier<T> layout, T value) {
+    default <T> MemorySegment allocateFrom(GroupLayout.OfClass<T> layout, T value) {
         Objects.requireNonNull(value);
         Objects.requireNonNull(layout);
         MemorySegment segment = allocateNoInit(layout);
@@ -653,7 +653,8 @@ public interface SegmentAllocator {
      */
     @ForceInline
     @SuppressWarnings("unchecked")
-    default <T> MemorySegment allocateFrom(GroupLayout.OfCarrier<T> elementLayout, T... elements) {
+    // Todo: remove this
+    default <T> MemorySegment allocateFrom(GroupLayout.OfClass<T> elementLayout, T... elements) {
         Objects.requireNonNull(elementLayout);
         Objects.requireNonNull(elements);
         MemorySegment seg = allocateNoInit(elementLayout, elements.length);

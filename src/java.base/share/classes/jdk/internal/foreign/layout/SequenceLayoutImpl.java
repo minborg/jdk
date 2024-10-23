@@ -27,12 +27,18 @@ package jdk.internal.foreign.layout;
 
 import jdk.internal.foreign.Utils;
 
+import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.SequenceLayout;
+import java.lang.invoke.MethodHandle;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
-public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl> implements SequenceLayout {
+public sealed class SequenceLayoutImpl
+        extends AbstractLayout<SequenceLayoutImpl>
+        implements SequenceLayout {
 
     private final long elemCount;
     private final MemoryLayout elementLayout;
@@ -178,6 +184,18 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
     }
 
     @Override
+    public CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper) {
+        return null;
+    }
+
+    @Override
+    public <T> OfClass<T> bind(Class<T> carrier, MethodHandle getter, MethodHandle setter) {
+        Objects.requireNonNull(carrier);
+        MemoryLayoutUtil.assertRecordArray(carrier);
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public String toString() {
         boolean max = (Long.MAX_VALUE / Math.max(1, elementLayout.byteSize())) == elemCount;
         return decorateLayoutString(String.format("[%s:%s]",
@@ -218,6 +236,58 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
 
     public static SequenceLayout of(long elementCount, MemoryLayout elementLayout) {
         return new SequenceLayoutImpl(elementCount, elementLayout);
+    }
+
+    public static final class OfClass<T>
+            extends SequenceLayoutImpl
+            implements CompositeLayout.OfClass<T>, InternalCompositeLayoutOfClass<T> {
+
+        private final Class<T> carrier;
+        private final MethodHandle getter;
+        private final MethodHandle setter;
+        private final MethodHandle adaptedGetter;
+        private final MethodHandle adaptedSetter;
+
+        public OfClass(long elemCount, MemoryLayout elementLayout, long byteAlignment, Optional<String> name, Class<T> carrier, MethodHandle getter, MethodHandle setter) {
+            super(elemCount, elementLayout, byteAlignment, name);
+            this.carrier = carrier;
+            this.getter = getter;
+            this.setter = setter;
+            this.adaptedGetter = InternalCompositeLayoutOfClass.adaptGetter(getter);
+            this.adaptedSetter = InternalCompositeLayoutOfClass.adaptSetter(setter);
+        }
+
+        @Override
+        public CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper) {
+            Objects.requireNonNull(mapper);
+            // Remapping the constituent layout will result in new method handles being created
+            return null;
+        }
+
+        @Override
+        public Class<T> carrier() {
+            return carrier;
+        }
+
+        @Override
+        public MethodHandle getter() {
+            return getter;
+        }
+
+        @Override
+        public MethodHandle setter() {
+            return setter;
+        }
+
+        @Override
+        public MethodHandle adaptedGetter() {
+            return adaptedGetter;
+        }
+
+        @Override
+        public MethodHandle adaptedSetter() {
+            return adaptedSetter;
+        }
     }
 
 }

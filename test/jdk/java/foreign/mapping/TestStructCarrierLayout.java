@@ -31,22 +31,23 @@
 import org.junit.jupiter.api.Test;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.StructLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.Spliterator;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestStructCarrierLayout {
+final class TestStructCarrierLayout {
 
     public record Point(int x, int y){}
 
@@ -55,45 +56,63 @@ public class TestStructCarrierLayout {
         JAVA_INT
     );
 
-    private static final Function<MemorySegment, Point> UNMARSHALLER =
-            s -> new Point(s.get(JAVA_INT, 0), s.get(JAVA_INT, 4));
+    // We only allow records in the first iteration.
 
-    private static final BiConsumer<MemorySegment, Point> MARSHALLER = (s, p) -> {
-        s.set(JAVA_INT, 0, p.x());
-        s.set(JAVA_INT, 4, p.y());
-    };
+    private static Point unmarshal(MemorySegment s, long o) {
+        return new Point(s.get(JAVA_INT, o), s.get(JAVA_INT, o+4));
+    }
 
-    private static final StructLayout.OfCarrier<Point> POINT_CARRIER =
-            POINT.withCarrier(Point.class, UNMARSHALLER, MARSHALLER);
+    private static void marshal(MemorySegment s, long o, Point v) {
+        s.set(JAVA_INT, o, v.x());
+        s.set(JAVA_INT, o + 4, v.y());
+    }
+
+    private static MethodHandle getter;
+    private static MethodHandle setter;
+
+    static {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        try {
+            getter = lookup.findStatic(TestStructCarrierLayout.class, "unmarshal",
+                    MethodType.methodType(Point.class, MemorySegment.class, long.class));
+            setter = lookup.findStatic(TestStructCarrierLayout.class, "marshal",
+                    MethodType.methodType(void.class, MemorySegment.class, long.class, Point.class));
+        } catch (ReflectiveOperationException e) {
+            fail(e);
+        }
+    }
+
+    private static final CompositeLayout.OfClass<Point> POINT_CARRIER =
+            POINT.bind(Point.class, getter, setter);
 
     private static final Point P0 = new Point(3, 4);
     private static final Point P1 = new Point(6, 8);
-    private static final int[] PO_P1_INT_ARRAY = new int[]{3, 4, 6, 8};
+    private static final int[] P0_P1_INT_ARRAY = new int[]{3, 4, 6, 8};
 
     @Test
-    public void set() {
+    void set() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocate(POINT_CARRIER, 2);
             segment.set(POINT_CARRIER, 0, P0);
             segment.set(POINT_CARRIER, 8, P1);
-            assertArrayEquals(PO_P1_INT_ARRAY, segment.toArray(JAVA_INT));
+            assertArrayEquals(P0_P1_INT_ARRAY, segment.toArray(JAVA_INT));
         }
     }
 
     @Test
-    public void setAt() {
+    void setAt() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocate(POINT_CARRIER, 2);
             segment.setAtIndex(POINT_CARRIER, 0, P0);
             segment.setAtIndex(POINT_CARRIER, 1, P1);
-            assertArrayEquals(PO_P1_INT_ARRAY, segment.toArray(JAVA_INT));
+            assertArrayEquals(P0_P1_INT_ARRAY, segment.toArray(JAVA_INT));
         }
     }
 
     @Test
-    public void get() {
+    void get() {
         try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(JAVA_INT, PO_P1_INT_ARRAY);
+            var segment = arena.allocateFrom(JAVA_INT, P0_P1_INT_ARRAY);
             Point p0 = segment.get(POINT_CARRIER, 0);
             Point p1 = segment.get(POINT_CARRIER, 8);
             assertEquals(P0, p0);
@@ -102,9 +121,9 @@ public class TestStructCarrierLayout {
     }
 
     @Test
-    public void getAtIndex() {
+    void getAtIndex() {
         try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(JAVA_INT, PO_P1_INT_ARRAY);
+            var segment = arena.allocateFrom(JAVA_INT, P0_P1_INT_ARRAY);
             Point p0 = segment.getAtIndex(POINT_CARRIER, 0);
             Point p1 = segment.getAtIndex(POINT_CARRIER, 1);
             assertEquals(P0, p0);
@@ -113,7 +132,7 @@ public class TestStructCarrierLayout {
     }
 
     @Test
-    public void allocateFrom() {
+    void allocateFrom() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(POINT_CARRIER, P0);
             assertArrayEquals(new int[]{P0.x(), P0.y()}, segment.toArray(JAVA_INT));
@@ -121,16 +140,15 @@ public class TestStructCarrierLayout {
     }
 
     @Test
-    public void allocateFromArray() {
+    void allocateFromArray() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
-            assertArrayEquals(PO_P1_INT_ARRAY, segment.toArray(JAVA_INT));
+            assertArrayEquals(P0_P1_INT_ARRAY, segment.toArray(JAVA_INT));
         }
     }
 
-
     @Test
-    public void toArray() {
+    void toArray() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
             Point[] points = segment.toArray(POINT_CARRIER);
@@ -139,7 +157,7 @@ public class TestStructCarrierLayout {
     }
 
     @Test
-    public void stream() {
+    void stream() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
             Stream<Point> stream = segment.elements(POINT_CARRIER);
@@ -148,8 +166,9 @@ public class TestStructCarrierLayout {
     }
 
     // Todo: Improve this test
+    // Todo: Remove spliterator()!
     @Test
-    public void spliterator() {
+    void spliterator() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(POINT_CARRIER, P0, P1);
             Spliterator<Point> spliterator = segment.spliterator(POINT_CARRIER);
@@ -168,7 +187,7 @@ public class TestStructCarrierLayout {
     }
 
     @Test
-    public void getter() {
+    void getter() {
         MethodHandle getter = POINT_CARRIER.getter();
         assertEquals(Point.class, getter.type().returnType());
         assertEquals(MemorySegment.class, getter.type().parameterType(0));
@@ -176,7 +195,7 @@ public class TestStructCarrierLayout {
         assertEquals(2, getter.type().parameterCount());
 
         try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(JAVA_INT, PO_P1_INT_ARRAY);
+            var segment = arena.allocateFrom(JAVA_INT, P0_P1_INT_ARRAY);
             try {
                 Point o0 = (Point) getter.invokeExact(segment, 0L);
                 assertEquals(P0, o0);
@@ -190,7 +209,7 @@ public class TestStructCarrierLayout {
     }
 
     @Test
-    public void setter() {
+    void setter() {
         MethodHandle setter = POINT_CARRIER.setter();
         assertEquals(void.class, setter.type().returnType());
         assertEquals(MemorySegment.class, setter.type().parameterType(0));
@@ -203,7 +222,7 @@ public class TestStructCarrierLayout {
             try {
                 setter.invokeExact(segment, 0L, P0);
                 setter.invokeExact(segment, 8L, P1);
-                assertArrayEquals(PO_P1_INT_ARRAY, segment.toArray(JAVA_INT));
+                assertArrayEquals(P0_P1_INT_ARRAY, segment.toArray(JAVA_INT));
             } catch (Throwable t) {
                 throw new AssertionError(t);
             }

@@ -31,21 +31,23 @@
 import org.junit.jupiter.api.Test;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.UnionLayout;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.Spliterator;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestUnionCarrierLayout {
+final class TestUnionCarrierLayout {
 
     public record Coordinate(int c){}
 
@@ -54,42 +56,60 @@ public class TestUnionCarrierLayout {
         JAVA_INT
     );
 
-    private static final Function<MemorySegment, Coordinate> UNMARSHALLER =
-            s -> new Coordinate(s.get(JAVA_INT, 0));
+    private static Coordinate unmarshal(MemorySegment s, long o) {
+        return new Coordinate(s.get(JAVA_INT, o));
+    }
 
-    private static final BiConsumer<MemorySegment, Coordinate> MARSHALLER = (s, p) -> s.set(JAVA_INT, 0, p.c());
+    private static void marshal(MemorySegment s, long o, Coordinate v) {
+        s.set(JAVA_INT, o, v.c());
+    }
 
-    private static final UnionLayout.OfCarrier<Coordinate> COORDINATE_CARRIER =
-            POINT.withCarrier(Coordinate.class, UNMARSHALLER, MARSHALLER);
+    private static MethodHandle getter;
+    private static MethodHandle setter;
+
+    static {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        try {
+            getter = lookup.findStatic(TestUnionCarrierLayout.class, "unmarshal",
+                    MethodType.methodType(Coordinate.class, MemorySegment.class, long.class));
+            setter = lookup.findStatic(TestUnionCarrierLayout.class, "marshal",
+                    MethodType.methodType(void.class, MemorySegment.class, long.class, Coordinate.class));
+        } catch (ReflectiveOperationException e) {
+            fail(e);
+        }
+    }
+
+    private static final CompositeLayout.OfClass<Coordinate> COORDINATE_CARRIER =
+            POINT.bind(Coordinate.class, getter, setter);
 
     private static final Coordinate C0 = new Coordinate(3);
     private static final Coordinate C1 = new Coordinate(6);
-    private static final int[] CO_C1_INT_ARRAY = new int[]{3, 6};
+    private static final int[] C0_C1_INT_ARRAY = new int[]{3, 6};
 
     @Test
-    public void set() {
+    void set() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocate(COORDINATE_CARRIER, 2);
             segment.set(COORDINATE_CARRIER, 0, C0);
             segment.set(COORDINATE_CARRIER, 4, C1);
-            assertArrayEquals(CO_C1_INT_ARRAY, segment.toArray(JAVA_INT));
+            assertArrayEquals(C0_C1_INT_ARRAY, segment.toArray(JAVA_INT));
         }
     }
 
     @Test
-    public void setAt() {
+    void setAt() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocate(COORDINATE_CARRIER, 2);
             segment.setAtIndex(COORDINATE_CARRIER, 0, C0);
             segment.setAtIndex(COORDINATE_CARRIER, 1, C1);
-            assertArrayEquals(CO_C1_INT_ARRAY, segment.toArray(JAVA_INT));
+            assertArrayEquals(C0_C1_INT_ARRAY, segment.toArray(JAVA_INT));
         }
     }
 
     @Test
-    public void get() {
+    void get() {
         try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(JAVA_INT, CO_C1_INT_ARRAY);
+            var segment = arena.allocateFrom(JAVA_INT, C0_C1_INT_ARRAY);
             Coordinate p0 = segment.get(COORDINATE_CARRIER, 0);
             Coordinate p1 = segment.get(COORDINATE_CARRIER, 8);
             assertEquals(C0, p0);
@@ -98,9 +118,9 @@ public class TestUnionCarrierLayout {
     }
 
     @Test
-    public void getAtIndex() {
+    void getAtIndex() {
         try (var arena = Arena.ofConfined()) {
-            var segment = arena.allocateFrom(JAVA_INT, CO_C1_INT_ARRAY);
+            var segment = arena.allocateFrom(JAVA_INT, C0_C1_INT_ARRAY);
             Coordinate p0 = segment.getAtIndex(COORDINATE_CARRIER, 0);
             Coordinate p1 = segment.getAtIndex(COORDINATE_CARRIER, 1);
             assertEquals(C0, p0);
@@ -109,7 +129,7 @@ public class TestUnionCarrierLayout {
     }
 
     @Test
-    public void allocateFrom() {
+    void allocateFrom() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(COORDINATE_CARRIER, C0);
             assertArrayEquals(new int[]{C0.c()}, segment.toArray(JAVA_INT));
@@ -117,16 +137,16 @@ public class TestUnionCarrierLayout {
     }
 
     @Test
-    public void allocateFromArray() {
+    void allocateFromArray() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(COORDINATE_CARRIER, C0, C1);
-            assertArrayEquals(CO_C1_INT_ARRAY, segment.toArray(JAVA_INT));
+            assertArrayEquals(C0_C1_INT_ARRAY, segment.toArray(JAVA_INT));
         }
     }
 
 
     @Test
-    public void toArray() {
+    void toArray() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(COORDINATE_CARRIER, C0, C1);
             Coordinate[] points = segment.toArray(COORDINATE_CARRIER);
@@ -135,7 +155,7 @@ public class TestUnionCarrierLayout {
     }
 
     @Test
-    public void stream() {
+    void stream() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(COORDINATE_CARRIER, C0, C1);
             Stream<Coordinate> stream = segment.elements(COORDINATE_CARRIER);
@@ -145,7 +165,7 @@ public class TestUnionCarrierLayout {
 
     // Todo: Improve this test
     @Test
-    public void spliterator() {
+    void spliterator() {
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocateFrom(COORDINATE_CARRIER, C0, C1);
             Spliterator<Coordinate> spliterator = segment.spliterator(COORDINATE_CARRIER);

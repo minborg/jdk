@@ -449,7 +449,7 @@ import jdk.internal.foreign.layout.UnionLayoutImpl;
  * @since 22
  */
 public sealed interface MemoryLayout
-        permits SequenceLayout, GroupLayout, PaddingLayout, ValueLayout {
+        permits CompositeLayout, GroupLayout, PaddingLayout, SequenceLayout, ValueLayout {
 
     /**
      * {@return the layout size, in bytes}

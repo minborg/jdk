@@ -25,13 +25,7 @@
 
 package java.lang.foreign;
 
-import jdk.internal.foreign.layout.AbstractGroupLayout;
-
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.VarHandle;
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 /**
  * A compound layout that is an aggregation of multiple, heterogeneous
@@ -48,7 +42,9 @@ import java.util.function.Function;
  * @sealedGraph
  * @since 22
  */
-public sealed interface GroupLayout extends MemoryLayout permits GroupLayout.OfCarrier, StructLayout, UnionLayout {
+public sealed interface GroupLayout
+        extends MemoryLayout, CompositeLayout
+        permits StructLayout, UnionLayout {
 
     /**
      * {@return the member layouts of this group layout}
@@ -81,123 +77,5 @@ public sealed interface GroupLayout extends MemoryLayout permits GroupLayout.OfC
      */
     @Override
     GroupLayout withByteAlignment(long byteAlignment);
-
-    /**
-     * {@return a new memory layout with the same characteristics as this layout but
-     *          with the provided carrier type}
-     *
-     * @param carrierType to use
-     * @param <R> the record type of the carrier
-     */
-    <R extends Record> GroupLayout withCarrier(Class<R> carrierType);
-
-    /**
-     * {@return a new memory layout with the same characteristics as this layout but
-     *          with the provided carrier type, unmarshaller and marshaller}
-     *
-     * @param carrierType  to use
-     * @param marshaller   used to extract carriers from a MemorySegment
-     * @param unmarshaller used to write carriers to a MemorySegment
-     * @param <R>          the type of the carrier
-     */
-    <R> GroupLayout withCarrier(Class<R> carrierType,
-                                Function<? super MemorySegment, ? extends R> unmarshaller,
-                                BiConsumer<? super MemorySegment, ? super R> marshaller);
-
-    /**
-     * {@return a new memory layout with the same characteristics as this layout but
-     *          with no carrier type}
-     */
-    GroupLayout withoutCarrier();
-
-    /**
-     * A group layout whose carrier is {@code T}.
-     *
-     * @param <T> record carrier type
-     *
-     * @sealedGraph
-     * @since 25
-     */
-    sealed interface OfCarrier<T>
-            extends GroupLayout
-            permits StructLayout.OfCarrier, UnionLayout.OfCarrier, AbstractGroupLayout.AbstractOfCarrier {
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        GroupLayout.OfCarrier<T> withName(String name);
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        GroupLayout.OfCarrier<T> withoutName();
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        GroupLayout.OfCarrier<T> withByteAlignment(long byteAlignment);
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        <R extends Record> GroupLayout.OfCarrier<R> withCarrier(Class<R> carrierType);
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        <R> GroupLayout.OfCarrier<R> withCarrier(Class<R> carrierType,
-                                                 Function<? super MemorySegment, ? extends R> unmarshaller,
-                                                 BiConsumer<? super MemorySegment, ? super R> marshaller);
-
-        /**
-         * {@return the carrier type}
-         */
-        Class<T> carrier();
-
-        /**
-         * {@return a method handle which can be used to read values described by this
-         * carrier layout, from a given memory segment at a given offset}
-         * <p>
-         * The returned method handle's return {@linkplain MethodHandle#type() type} is
-         * the {@linkplain ValueLayout#carrier() carrier type} of this carrier layout, and
-         * the list of coordinate types is {@code (MemorySegment, long)}, where the
-         * memory segment coordinate corresponds to the memory segment to be accessed, and
-         * the {@code long} coordinate corresponds to the byte offset into the accessed
-         * memory segment at which the access occurs.
-         * <p>
-         * The returned method handle checks that accesses are aligned according to
-         * this carrier layout's {@linkplain MemoryLayout#byteAlignment() alignment constraint}.
-         * <p>
-         * The returned {@code getter} method handle can be adapted to a more convenient
-         * one suitable for casting (i.e. {@code (T)getter.invokeExact(segment, offset)})
-         * as shown in this example:
-         * {@snippet lang = java:
-         *     getter = getter.asType(MethodType.methodType(Object.class))
-         *}
-         */
-        MethodHandle getter();
-
-        /**
-         * {@return a method handle which can be used to write values described by this
-         * carrier layout, to a given memory segment at a given offset}
-         * <p>
-         * The returned method handle's return {@linkplain MethodHandle#type() type} is
-         * {@code void}, and the list of coordinate types is
-         * {@code (MemorySegment, long, T)}, where the memory segment coordinate
-         * corresponds to the memory segment to be accessed, the {@code long} coordinate
-         * corresponds to the byte offset into the accessed memory segment at which the
-         * access occurs, and the {@code T} coordinate corresponds to the value to write.
-         * <p>
-         * The returned method handle checks that accesses are aligned according to
-         * this carrier layout's {@linkplain MemoryLayout#byteAlignment() alignment constraint}.
-         */
-        MethodHandle setter();
-
-    }
 
 }

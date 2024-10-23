@@ -25,18 +25,14 @@
  */
 package jdk.internal.foreign.layout;
 
-import java.lang.foreign.GroupLayout;
+import java.lang.foreign.CompositeLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.UnionLayout;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -50,7 +46,7 @@ import java.util.stream.Collectors;
  */
 public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L> & MemoryLayout>
         extends AbstractLayout<L>
-        permits AbstractGroupLayout.AbstractOfCarrier, StructLayoutImpl, UnionLayoutImpl {
+        permits AbstractGroupLayout.AbstractOfClass, StructLayoutImpl, UnionLayoutImpl {
 
     final Kind kind;
     private final List<MemoryLayout> elements;
@@ -139,54 +135,37 @@ public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L
         }
     }
 
-    public abstract static sealed class AbstractOfCarrier<T, L extends AbstractOfCarrier<T, L> & MemoryLayout>
-            extends AbstractGroupLayout<L>
-            implements GroupLayout.OfCarrier<T>
-            permits StructLayoutImpl.OfCarrierImpl, UnionLayoutImpl.OfCarrierImpl {
-
-        private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+    public abstract static sealed class AbstractOfClass<T>
+            extends AbstractGroupLayout<AbstractOfClass<T>>
+            implements CompositeLayout.OfClass<T>, InternalCompositeLayoutOfClass<T>
+            permits StructLayoutImpl.OfClass, UnionLayoutImpl.OfClass {
 
         private final Class<T> carrier;
-        private final Function<? super MemorySegment, ? extends T> unmarshaller;
-        private final BiConsumer<? super MemorySegment, ? super T> marshaller;
         private final MethodHandle getter;
         private final MethodHandle setter;
+        private final MethodHandle adaptedGetter;
+        private final MethodHandle adaptedSetter;
 
-        protected AbstractOfCarrier(Kind kind, List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name,
-                                    Class<T> carrier, Function<? super MemorySegment, ? extends T> unmarshaller, BiConsumer<? super MemorySegment, ? super T> marshaller) {
+        protected AbstractOfClass(Kind kind,
+                                  List<MemoryLayout> elements,
+                                  long byteSize,
+                                  long byteAlignment,
+                                  long minByteAlignment,
+                                  Optional<String> name,
+                                  Class<T> carrier,
+                                  MethodHandle getter,
+                                  MethodHandle setter) {
             super(kind, elements, byteSize, byteAlignment, minByteAlignment, name);
             this.carrier = carrier;
-            this.unmarshaller = unmarshaller;
-            this.marshaller = marshaller;
-            try {
-                MethodHandle getter = LOOKUP.findStatic(AbstractOfCarrier.class, "get",
-                        MethodType.methodType(Object.class, Function.class, MemorySegment.class, long.class));
-                getter = getter.bindTo(unmarshaller);
-                getter = getter.asType(getter.type().changeReturnType(carrier));
-                this.getter = getter;
-                MethodHandle setter = LOOKUP.findStatic(AbstractOfCarrier.class, "set",
-                        MethodType.methodType(void.class, BiConsumer.class, MemorySegment.class, long.class, Object.class));
-                setter = setter.bindTo(marshaller);
-                setter = setter.asType(setter.type().changeParameterType(2, carrier));
-                this.setter = setter;
-            } catch (ReflectiveOperationException re) {
-                throw new InternalError(re);
-            }
+            this.getter = getter;
+            this.setter = setter;
+            this.adaptedGetter = InternalCompositeLayoutOfClass.adaptGetter(getter);
+            this.adaptedSetter = InternalCompositeLayoutOfClass.adaptSetter(setter);
         }
 
         @Override
         public Class<T> carrier() {
             return carrier;
-        }
-
-        @SuppressWarnings("unchecked")
-        public Function<MemorySegment, T> unmarshaller() {
-            return (Function<MemorySegment, T>) unmarshaller;
-        }
-
-        @SuppressWarnings("unchecked")
-        public BiConsumer<MemorySegment, T> marshaller() {
-            return (BiConsumer<MemorySegment, T>) marshaller;
         }
 
         @Override
@@ -199,63 +178,52 @@ public abstract sealed class AbstractGroupLayout<L extends AbstractGroupLayout<L
             return setter;
         }
 
-        private static <T> T get(Function<? super MemorySegment, ? extends T> unmarshaller,
-                                 MemorySegment segment,
-                                 long offset) {
-            return unmarshaller.apply(segment.asSlice(offset));
+        @Override
+        public MethodHandle adaptedGetter() {
+            return adaptedGetter;
         }
-
-        private static <T> void set(BiConsumer<? super MemorySegment, ? super T> marshaller,
-                                    MemorySegment segment,
-                                    long offset,
-                                    T value) {
-            marshaller.accept(segment.asSlice(offset), value);
-        }
-
-        private T get(MemorySegment segment, int offset) {
-            return unmarshaller.apply(segment.asSlice(offset));
-        }
-
-        abstract <R, M extends AbstractOfCarrier<R, M>> M dup(Kind kind,
-                                                              List<MemoryLayout> elements,
-                                                              long byteSize,
-                                                              long byteAlignment,
-                                                              long minByteAlignment,
-                                                              Optional<String> name,
-                                                              Class<R> carrier,
-                                                              Function<? super MemorySegment, ? extends R> unmarshaller,
-                                                              BiConsumer<? super MemorySegment, ? super R> marshaller);
-
-/*        @Override
-        public <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType) {
-            Objects.requireNonNull(carrierType);
-            return withCarrier(carrierType, unmarshaller(kind, carrierType), marshaller(kind, carrierType));
-        }*/
-
-/*        @Override
-        public <R> OfCarrier<R> withCarrier(Class<R> carrierType,
-                                            Function<? super MemorySegment, ? extends R> unmarshaller,
-                                            BiConsumer<? super MemorySegment, ? super R> marshaller) {
-            Objects.requireNonNull(carrierType);
-            Objects.requireNonNull(unmarshaller);
-            Objects.requireNonNull(marshaller);
-            return dup(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrierType, unmarshaller, marshaller);
-        }*/
 
         @Override
-        L dup(long byteAlignment, Optional<String> name) {
-            return dup(kind, memberLayouts(), byteSize(), byteAlignment(), minByteAlignment, name(), carrier(), unmarshaller, marshaller);
+        public MethodHandle adaptedSetter() {
+            return adaptedSetter;
+        }
+/*
+        @SuppressWarnings("unchecked")
+        @ForceInline
+        public T get(MemorySegment segment, long offset) {
+            try {
+                return (T) adaptedGetter.invokeExact(segment, offset);
+            } catch (NullPointerException |
+                     IndexOutOfBoundsException |
+                     WrongThreadException |
+                     IllegalStateException |
+                     IllegalArgumentException rethrow) {
+                throw rethrow;
+            } catch (Throwable e) {
+                throw new RuntimeException("Unable to invoke getter() with " +
+                        "segment="  + segment +
+                        ", offset=" + offset, e);
+            }
         }
 
-        // Todo: Implement mapper
-        static <R> Function<MemorySegment, R> unmarshaller(Kind kind, Class<R> carrier) {
-            return null;
-        }
-
-        // Todo: Implement mapper
-        static <R> BiConsumer<MemorySegment, R> marshaller(Kind kind, Class<R> carrier) {
-            return null;
-        }
+        public void set(MemorySegment segment, long offset, T t) {
+            try {
+                adaptedSetter.invokeExact(segment, offset, (Object) t);
+            } catch (IndexOutOfBoundsException |
+                     WrongThreadException |
+                     IllegalStateException |
+                     IllegalArgumentException |
+                     UnsupportedOperationException |
+                     NullPointerException rethrow) {
+                throw rethrow;
+            } catch (Throwable e) {
+                throw new RuntimeException("Unable to invoke setter() with " +
+                        "segment=" + segment +
+                        ", offset=" + offset +
+                        ", t=" + t, e);
+            }
+        }*/
 
     }
+
 }

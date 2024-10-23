@@ -39,7 +39,7 @@ import java.util.function.Function;
  *
  * @since 22
  */
-public sealed interface StructLayout extends GroupLayout permits StructLayout.OfCarrier, StructLayoutImpl {
+public sealed interface StructLayout extends GroupLayout permits StructLayoutImpl {
 
     /**
      * {@inheritDoc}
@@ -60,69 +60,69 @@ public sealed interface StructLayout extends GroupLayout permits StructLayout.Of
     @Override
     StructLayout withByteAlignment(long byteAlignment);
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType);
+//   *//**
+//  * {@inheritDoc}
+//  *//*
+// @Override
+// <R extends Record> OfCarrier<R> withCarrier(Class<R> carrierType);
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    <R> OfCarrier<R> withCarrier(Class<R> carrierType,
-                                 Function<? super MemorySegment, ? extends R> unmarshaller,
-                                 BiConsumer<? super MemorySegment, ? super R> marshaller);
+// *//**
+//  * {@inheritDoc}
+//  *//*
+// @Override
+// <R> OfCarrier<R> withCarrier(Class<R> carrierType,
+//                              Function<? super MemorySegment, ? extends R> unmarshaller,
+//                              BiConsumer<? super MemorySegment, ? super R> marshaller);*/
 
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    StructLayout withoutCarrier();
+//   *//**
+//  * {@inheritDoc}
+//  *//*
+// @Override
+// StructLayout withoutCarrier();*/
 
-    /**
-     * A struct layout whose carrier is {@code T}.
-     *
-     * @param <T> record carrier type
-     *
-     * @since 25
-     */
-    sealed interface OfCarrier<T>
-            extends StructLayout, GroupLayout.OfCarrier<T>
-            permits StructLayoutImpl.OfCarrierImpl {
+//   *//**
+//  * A struct layout whose carrier is {@code T}.
+//  *
+//  * @param <T> record carrier type
+//  *
+//  * @since 25
+//  *//*
+// sealed interface OfCarrier<T>
+//         extends StructLayout, GroupLayout.OfCarrier<T>
+//         permits StructLayoutImpl.OfCarrierImpl {
 
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        StructLayout.OfCarrier<T> withName(String name);
+//     *//**
+//      * {@inheritDoc}
+//      *//*
+//     @Override
+//     StructLayout.OfCarrier<T> withName(String name);
 
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        StructLayout.OfCarrier<T> withoutName();
+//     *//**
+//      * {@inheritDoc}
+//      *//*
+//     @Override
+//     StructLayout.OfCarrier<T> withoutName();
 
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        StructLayout.OfCarrier<T> withByteAlignment(long byteAlignment);
+//     *//**
+//      * {@inheritDoc}
+//      *//*
+//     @Override
+//     StructLayout.OfCarrier<T> withByteAlignment(long byteAlignment);
 
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        <R extends Record> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType);
+//     *//**
+//      * {@inheritDoc}
+//      *//*
+//     @Override
+//     <R extends Record> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType);
 
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        <R> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType,
-                                                  Function<? super MemorySegment, ? extends R> unmarshaller,
-                                                  BiConsumer<? super MemorySegment, ? super R> marshaller);
-    }
+//     *//**
+//      * {@inheritDoc}
+//      *//*
+//     @Override
+//     <R> StructLayout.OfCarrier<R> withCarrier(Class<R> carrierType,
+//                                               Function<? super MemorySegment, ? extends R> unmarshaller,
+//                                               BiConsumer<? super MemorySegment, ? super R> marshaller);
+// }*/
 
 }

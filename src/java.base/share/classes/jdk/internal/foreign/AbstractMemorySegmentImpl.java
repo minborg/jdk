@@ -49,6 +49,8 @@ import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.foreign.UnmapperProxy;
 import jdk.internal.foreign.layout.AbstractGroupLayout;
+import jdk.internal.foreign.layout.InternalCompositeLayoutOfClass;
+import jdk.internal.foreign.layout.MemoryLayoutUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
@@ -180,11 +182,13 @@ public abstract sealed class AbstractMemorySegmentImpl
                 this);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public <T> Spliterator<T> spliterator(GroupLayout.OfCarrier<T> elementLayout) {
+    public <T> Spliterator<T> spliterator(CompositeLayout.OfClass<T> elementLayout) {
         Objects.requireNonNull(elementLayout);
         SegmentSplitter delegate = (SegmentSplitter) spliterator((MemoryLayout) elementLayout);
-        Function<MemorySegment, T> unmarshaller = ((AbstractGroupLayout.AbstractOfCarrier<T, ?>)elementLayout).unmarshaller();
+        final InternalCompositeLayoutOfClass<T> elementLayoutImpl = (InternalCompositeLayoutOfClass<T>) elementLayout;
+        Function<MemorySegment, T> unmarshaller = s -> elementLayoutImpl.get(s, 0);
         return new ObjectSplitter<>(delegate, unmarshaller);
     }
 
@@ -194,7 +198,8 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @Override
-    public <T> Stream<T> elements(GroupLayout.OfCarrier<T> elementLayout) {
+    public <T> Stream<T> elements(CompositeLayout.OfClass<T> elementLayout) {
+        Objects.requireNonNull(elementLayout);
         return elements((MemoryLayout) elementLayout)
                 .map(s -> s.get(elementLayout, 0));
     }
@@ -334,7 +339,7 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T> T[] toArray(GroupLayout.OfCarrier<T> elementLayout) {
+    public <T> T[] toArray(CompositeLayout.OfClass<T> elementLayout) {
         Objects.requireNonNull(elementLayout);
         return elements(elementLayout).toArray(i -> (T[]) Array.newInstance(elementLayout.carrier(), i));
     }
@@ -845,14 +850,18 @@ public abstract sealed class AbstractMemorySegmentImpl
         return (MemorySegment) layout.varHandle().get((MemorySegment)this, offset);
     }
 
+    @SuppressWarnings("unchecked")
+    @ForceInline
     @Override
-    public <T> T get(GroupLayout.OfCarrier<T> layout, long offset) {
-        return ((AbstractGroupLayout.AbstractOfCarrier<T, ?>) layout).unmarshaller().apply(((MemorySegment) this).asSlice(offset));
+    public <T> T get(CompositeLayout.OfClass<T> layout, long offset) {
+        return ((InternalCompositeLayoutOfClass<T>) layout).get(this, offset);
     }
 
+    @SuppressWarnings("unchecked")
+    @ForceInline
     @Override
-    public <T> void set(GroupLayout.OfCarrier<T> layout, long offset, T value) {
-        ((AbstractGroupLayout.AbstractOfCarrier<T, ?>)layout).marshaller().accept(((MemorySegment) this).asSlice(offset), value);
+    public <T> void set(CompositeLayout.OfClass<T> layout, long offset, T value) {
+        ((InternalCompositeLayoutOfClass<T>)layout).set(this, offset, value);
     }
 
     @ForceInline
@@ -989,14 +998,16 @@ public abstract sealed class AbstractMemorySegmentImpl
         layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
     }
 
+    @ForceInline
     @Override
-    public <T> T getAtIndex(GroupLayout.OfCarrier<T> layout, long index) {
+    public <T> T getAtIndex(CompositeLayout.OfClass<T> layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
         return get(layout, index * layout.byteSize());
     }
 
+    @ForceInline
     @Override
-    public <T> void setAtIndex(GroupLayout.OfCarrier<T> layout, long index, T value) {
+    public <T> void setAtIndex(CompositeLayout.OfClass<T> layout, long index, T value) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
         Objects.requireNonNull(value);
         set(layout, index * layout.byteSize(), value);

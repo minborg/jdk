@@ -25,16 +25,37 @@
  */
 package jdk.internal.foreign.layout;
 
+import java.lang.foreign.MemoryLayout;
+import java.util.List;
+import java.util.SequencedCollection;
+import java.util.function.UnaryOperator;
+
 public final class MemoryLayoutUtil {
 
-    private MemoryLayoutUtil() {
-    }
+    private MemoryLayoutUtil() {}
 
     public static long requireByteSizeValid(long byteSize, boolean allowZero) {
         if ((byteSize == 0 && !allowZero) || byteSize < 0) {
             throw new IllegalArgumentException("Invalid byte size: " + byteSize);
         }
         return byteSize;
+    }
+
+    static List<MemoryLayout> transform(SequencedCollection<? extends MemoryLayout> layouts,
+                                        UnaryOperator<MemoryLayout> mapper) {
+        return layouts.stream().map(mapper).toList();
+    }
+
+    public static void assertRecord(Class<?> carrier) {
+        if (carrier.equals(Record.class) || !(Record.class.isAssignableFrom(carrier))) {
+            throw new IllegalArgumentException("The provided carrier is not a Record");
+        }
+    }
+
+    public static void assertRecordArray(Class<?> carrier) {
+        if (carrier.equals(Record[].class) || !(Record[].class.isAssignableFrom(carrier))) {
+            throw new IllegalArgumentException("The provided carrier is not a Record array");
+        }
     }
 
 }

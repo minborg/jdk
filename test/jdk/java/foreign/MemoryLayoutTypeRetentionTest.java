@@ -162,8 +162,6 @@ public class MemoryLayoutTypeRetentionTest {
         check(v);
     }
 
-    record Point(int x, int y){}
-
     @Test
     public void testGroupLayout() {
         GroupLayout v = MemoryLayout.structLayout(
@@ -171,11 +169,7 @@ public class MemoryLayoutTypeRetentionTest {
                         JAVA_LONG.withByteAlignment(BYTE_ALIGNMENT))
                 .withByteAlignment(BYTE_ALIGNMENT)
                 .withoutName()
-                .withName(NAME)
-                .withCarrier(Point.class)
-                .withCarrier(Point.class, ms -> new Point(ms.get(JAVA_INT, 0), ms.get(JAVA_INT, 4)), (ms, p) -> {})
-                .withoutCarrier()
-                .withCarrier(Point.class, ms -> new Point(ms.get(JAVA_INT, 0), ms.get(JAVA_INT, 4)), (ms, p) -> {});
+                .withName(NAME);
         check(v);
     }
 
@@ -186,12 +180,7 @@ public class MemoryLayoutTypeRetentionTest {
                         JAVA_LONG.withByteAlignment(BYTE_ALIGNMENT))
                 .withByteAlignment(BYTE_ALIGNMENT)
                 .withoutName()
-                .withName(NAME)
-                .withCarrier(Point.class)
-                .withCarrier(Point.class, ms -> new Point(ms.get(JAVA_INT, 0), ms.get(JAVA_INT, 4)), (ms, p) -> {})
-                .withoutCarrier()
-                .withCarrier(Point.class, ms -> new Point(ms.get(JAVA_INT, 0), ms.get(JAVA_INT, 4)), (ms, p) -> {});
-
+                .withName(NAME);
         check(v);
     }
 
@@ -202,11 +191,35 @@ public class MemoryLayoutTypeRetentionTest {
                     JAVA_LONG.withByteAlignment(BYTE_ALIGNMENT))
                 .withByteAlignment(BYTE_ALIGNMENT)
                 .withoutName()
-                .withName(NAME)
-                .withCarrier(Point.class)
-                .withCarrier(Point.class, ms -> new Point(ms.get(JAVA_INT, 0), ms.get(JAVA_INT, 4)), (ms, p) -> {})
-                .withoutCarrier()
-                .withCarrier(Point.class, ms -> new Point(ms.get(JAVA_INT, 0), ms.get(JAVA_INT, 4)), (ms, p) -> {});
+                .withName(NAME);
+        check(v);
+    }
+
+    record Point(int x, int y){}
+
+    @Test
+    public void testStructLayoutBind() {
+        CompositeLayout.OfClass<Point> v = MemoryLayout.structLayout(
+                        JAVA_INT.withByteAlignment(BYTE_ALIGNMENT),
+                        JAVA_LONG.withByteAlignment(BYTE_ALIGNMENT))
+                .bind(Point.class, null, null);
+        check(v);
+    }
+
+    @Test
+    public void testUnionLayoutBind() {
+        CompositeLayout.OfClass<Point> v = MemoryLayout.unionLayout(
+                        JAVA_INT.withByteAlignment(BYTE_ALIGNMENT),
+                        JAVA_LONG.withByteAlignment(BYTE_ALIGNMENT))
+                .bind(Point.class, null, null);
+        check(v);
+    }
+
+    @Test
+    public void testSequenceLayoutBind() {
+        CompositeLayout.OfClass<Point[]> v = MemoryLayout.sequenceLayout(1,
+                        JAVA_INT.withByteAlignment(BYTE_ALIGNMENT))
+                .bind(Point[].class, null, null);
         check(v);
     }
 
