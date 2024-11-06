@@ -82,8 +82,9 @@ public class SegmentBulkFill3Arg {
 
     @Benchmark
     public void heapSegmentFillJavaLoop() {
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            heapSegment.set(ValueLayout.JAVA_BYTE, i + OFFSET, (byte) 0);
+        final int end = OFFSET + ELEM_SIZE;
+        for (int i = OFFSET; i < end; i++) {
+            heapSegment.set(ValueLayout.JAVA_BYTE, i, (byte) 0);
         }
     }
 
@@ -99,8 +100,9 @@ public class SegmentBulkFill3Arg {
 
     @Benchmark
     public void nativeSegmentFillJavaLoop() {
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            nativeSegment.set(ValueLayout.JAVA_BYTE, i + OFFSET, (byte) 0);
+        final int end = OFFSET + ELEM_SIZE;
+        for (int i = OFFSET; i < end; i++) {
+            nativeSegment.set(ValueLayout.JAVA_BYTE, i, (byte) 0);
         }
     }
 
