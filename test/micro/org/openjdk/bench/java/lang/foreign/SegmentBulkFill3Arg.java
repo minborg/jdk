@@ -38,6 +38,7 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -80,6 +81,13 @@ public class SegmentBulkFill3Arg {
     }
 
     @Benchmark
+    public void heapSegmentFillJavaLoop() {
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            heapSegment.set(ValueLayout.JAVA_BYTE, i + OFFSET, (byte) 0);
+        }
+    }
+
+    @Benchmark
     public void nativeSegmentFillJava() {
         nativeSegment.fill(OFFSET, ELEM_SIZE, (byte) 0);
     }
@@ -87,6 +95,13 @@ public class SegmentBulkFill3Arg {
     @Benchmark
     public void nativeSegmentFillJavaSlice() {
         nativeSegment.asSlice(OFFSET, ELEM_SIZE).fill((byte) 0);
+    }
+
+    @Benchmark
+    public void nativeSegmentFillJavaLoop() {
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            nativeSegment.set(ValueLayout.JAVA_BYTE, i + OFFSET, (byte) 0);
+        }
     }
 
 }
