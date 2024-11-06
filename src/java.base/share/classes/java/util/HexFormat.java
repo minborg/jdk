@@ -26,9 +26,11 @@
 
 package java.util;
 
+import jdk.internal.ValueBased;
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.HexDigits;
+import jdk.internal.vm.annotation.Stable;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -136,7 +138,7 @@ import java.nio.charset.StandardCharsets;
  * @since 17
  */
 
-
+@ValueBased
 public final class HexFormat {
 
     // Access to create strings from a byte array.
@@ -144,6 +146,7 @@ public final class HexFormat {
 
     // Analysis has shown that generating the whole array allows the JIT to generate
     // better code compared to a slimmed down array, such as one cutting off after 'f'
+    @Stable
     private static final byte[] DIGITS = {
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -166,9 +169,13 @@ public final class HexFormat {
 
     private static final byte[] EMPTY_BYTES = {};
 
+    @Stable
     private final String delimiter;
+    @Stable
     private final String prefix;
+    @Stable
     private final String suffix;
+    @Stable
     private final boolean ucase;
 
     /**
