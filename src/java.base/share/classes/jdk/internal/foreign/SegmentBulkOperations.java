@@ -103,6 +103,49 @@ public final class SegmentBulkOperations {
     }
 
     @ForceInline
+    public static MemorySegment fill(AbstractMemorySegmentImpl dst, long offset, long length, byte value) {
+        dst.checkReadOnly(false);
+        if (length == 0) {
+            // Implicit state check
+            dst.checkValidState();
+        } else if (length < NATIVE_THRESHOLD_FILL) {
+            // 0 <= length < FILL_NATIVE_LIMIT : 0...0X...XXXX
+
+            // Handle smaller segments directly without transitioning to native code
+            final long u = Byte.toUnsignedLong(value);
+            final long longValue = u << 56 | u << 48 | u << 40 | u << 32 | u << 24 | u << 16 | u << 8 | u;
+
+            // 0...0X...X000
+            final int limit = (int) (length & (NATIVE_THRESHOLD_FILL - 8));
+            for (; offset < limit; offset += 8) {
+                SCOPED_MEMORY_ACCESS.putLongUnaligned(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + offset, longValue, !Architecture.isLittleEndian());
+            }
+            int remaining = (int) length - limit;
+            // 0...0X00
+            if (remaining >= 4) {
+                SCOPED_MEMORY_ACCESS.putIntUnaligned(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + offset, (int) longValue, !Architecture.isLittleEndian());
+                offset += 4;
+                remaining -= 4;
+            }
+            // 0...00X0
+            if (remaining >= 2) {
+                SCOPED_MEMORY_ACCESS.putShortUnaligned(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + offset, (short) longValue, !Architecture.isLittleEndian());
+                offset += 2;
+                remaining -= 2;
+            }
+            // 0...000X
+            if (remaining == 1) {
+                SCOPED_MEMORY_ACCESS.putByte(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + offset, value);
+            }
+            // We have now fully handled 0...0X...XXXX
+        } else {
+            // Handle larger segments via native calls
+            SCOPED_MEMORY_ACCESS.setMemory(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + offset, length, value);
+        }
+        return dst;
+    }
+
+    @ForceInline
     public static void copy(AbstractMemorySegmentImpl src, long srcOffset,
                             AbstractMemorySegmentImpl dst, long dstOffset,
                             long size) {

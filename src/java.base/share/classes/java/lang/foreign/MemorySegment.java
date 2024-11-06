@@ -950,6 +950,36 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     MemorySegment fill(byte value);
 
     /**
+     * Partially fills the contents of this memory segment with the given value starting
+     * at the given {@code offset} and continuing the given {@code length} bytes.
+     * <p>
+     * More specifically, the given {@code value} is written into each address from
+     * {@code offset} to {@code offset + length -1} of this segment. Equivalent to
+     * (but likely more efficient than) the following code:
+     *
+     * {@snippet lang=java :
+     * segment.asSlice(offset, length).fill(value);
+     * }
+     * <p>
+     * This method can be useful to initialize or reset parts of the contents of a
+     * memory segment.
+     *
+     * @param  offset in the segment from which to start filling, specified in bytes
+     * @param  length the number of address to fill, specified in bytes
+     * @param  value the value to write into this segment
+     * @return this memory segment
+     * @throws IllegalStateException if the {@linkplain #scope() scope} associated with
+     *         this segment is not {@linkplain Scope#isAlive() alive}
+     * @throws WrongThreadException if this method is called from a thread {@code T},
+     *         such that {@code isAccessibleBy(T) == false}
+     * @throws IllegalArgumentException if this segment is
+     *         {@linkplain #isReadOnly() read-only}
+     * @throws IndexOutOfBoundsException if {@code offset < 0}, {@code offset > byteSize()},
+     *         {@code length < 0}, or {@code length > byteSize() - offset}
+     */
+    MemorySegment fill(long offset, long length, byte value);
+
+    /**
      * Performs a bulk copy from the given source segment to this segment. More specifically,
      * the bytes at offset {@code 0} through {@code src.byteSize() - 1} in the source
      * segment are copied into this segment at offset {@code 0} through

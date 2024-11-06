@@ -184,6 +184,13 @@ public abstract sealed class AbstractMemorySegmentImpl
         return SegmentBulkOperations.fill(this, value);
     }
 
+    @ForceInline
+    @Override
+    public MemorySegment fill(long offset, long length, byte value) {
+        checkBounds(offset, length);
+        return SegmentBulkOperations.fill(this, offset, length, value);
+    }
+
     @Override
     public MemorySegment allocate(long byteSize, long byteAlignment) {
         Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
