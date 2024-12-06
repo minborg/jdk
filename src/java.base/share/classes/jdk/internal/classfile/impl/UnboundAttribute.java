@@ -36,6 +36,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 
 import static java.util.Objects.requireNonNull;
@@ -792,7 +793,7 @@ public abstract sealed class UnboundAttribute<T extends Attribute<T>>
                 array[i] = List.copyOf((List<?>) array[i]);
             }
 
-            this.elements = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(array);
+            this.elements = SharedSecrets.getOrThrow(JavaUtilCollectionAccess.class).listFromTrustedArray(array);
         }
 
         @Override
@@ -822,7 +823,7 @@ public abstract sealed class UnboundAttribute<T extends Attribute<T>>
                 array[i] = List.copyOf((List<?>) array[i]);
             }
 
-            this.elements = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(array);
+            this.elements = SharedSecrets.getOrThrow(JavaUtilCollectionAccess.class).listFromTrustedArray(array);
         }
 
         @Override

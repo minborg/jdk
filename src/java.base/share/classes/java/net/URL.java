@@ -1755,7 +1755,7 @@ public final class URL implements java.io.Serializable {
     }
 
     static {
-        SharedSecrets.setJavaNetURLAccess(
+        SharedSecrets.putOrThrow(JavaNetURLAccess.class,
                 new JavaNetURLAccess() {
                     @Override
                     public URLStreamHandler getHandler(URL u) {

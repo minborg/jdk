@@ -25,6 +25,9 @@
 
 package jdk.internal.access;
 
+import jdk.internal.lang.stable.StableHeterogeneousContainer;
+import jdk.internal.lang.stable.StableValueFactories;
+
 import javax.crypto.SealedObject;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ObjectInputFilter;
@@ -32,8 +35,9 @@ import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
 import java.security.Security;
 import java.security.spec.EncodedKeySpec;
+import java.util.Map;
+import java.util.Objects;
 import java.util.ResourceBundle;
-import java.util.concurrent.ForkJoinPool;
 import java.util.jar.JarFile;
 import java.io.Console;
 import java.io.FileDescriptor;
@@ -58,7 +62,27 @@ import javax.security.auth.x500.X500Principal;
  * </strong>
  */
 
-public class SharedSecrets {
+public final class SharedSecrets {
+
+    // No instances
+    private SharedSecrets() {}
+
+    // This map holds all Access interfaces and their associations for creating an Access
+    // implementation (if any).
+    // Components with no initialization code should use `null` as initialization
+    // Todo: If we use a mutable map, the entries can be removed when they have been used
+    private static final Map<Class<?>, Object> IMPLEMENTATIONS = Map.ofEntries(
+            Map.entry(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$Access"),
+            Map.entry(JavaUtilConcurrentFJPAccess.class, "java.util.concurrent.ForkJoinPool"), // ForkJoinPool.class : Is this equivalent to the old solution?
+            Map.entry(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access"),
+            Map.entry(JavaUtilJarAccess.class, JarFile.class),
+            Map.entry(JavaNetUriAccess.class, java.net.URI.class),
+            Map.entry(JavaNetURLAccess.class, java.net.URL.class)
+    );
+    // This container holds the actual Access components
+    private static final StableHeterogeneousContainer COMPONENTS =
+            StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
+
     private static JavaAWTAccess javaAWTAccess;
     private static JavaAWTFontAccess javaAWTFontAccess;
     private static JavaBeansAccess javaBeansAccess;
@@ -77,13 +101,7 @@ public class SharedSecrets {
     private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
     private static JavaNetInetAddressAccess javaNetInetAddressAccess;
     private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
-    private static JavaNetUriAccess javaNetUriAccess;
-    private static JavaNetURLAccess javaNetURLAccess;
     private static JavaNioAccess javaNioAccess;
-    private static JavaUtilCollectionAccess javaUtilCollectionAccess;
-    private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
-    private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
-    private static JavaUtilJarAccess javaUtilJarAccess;
     private static JavaUtilZipFileAccess javaUtilZipFileAccess;
     private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
     private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
@@ -93,62 +111,41 @@ public class SharedSecrets {
     private static JavaxCryptoSpecAccess javaxCryptoSpecAccess;
     private static JavaxSecurityAccess javaxSecurityAccess;
 
-    public static void setJavaUtilCollectionAccess(JavaUtilCollectionAccess juca) {
-        javaUtilCollectionAccess = juca;
+    public static <T> void putOrThrow(Class<T> type, T access) {
+        if (!COMPONENTS.tryPut(type, access)) {
+            throw new IllegalArgumentException(
+                    "The type '" + type + "' was already associated with " + COMPONENTS.get(type));
+        }
     }
 
-    public static JavaUtilCollectionAccess getJavaUtilCollectionAccess() {
-        var access = javaUtilCollectionAccess;
+    public static <T> T getOrNull(Class<T> type) {
+        T access = COMPONENTS.get(type);
         if (access == null) {
-            try {
-                Class.forName("java.util.ImmutableCollections$Access", true, null);
-                access = javaUtilCollectionAccess;
-            } catch (ClassNotFoundException e) {}
+            Object impl = IMPLEMENTATIONS.get(type);
+            if (impl == null) {
+                // there is no impl (e.g. for JavaAWTAccess)
+                return null;
+            }
+            // Cannot use pattern matching this early in the init sequence
+            if (impl instanceof String s) {
+                try {
+                    Class.forName(s, true, null);
+                } catch (ClassNotFoundException e) {
+                    throw new InternalError(e);
+                }
+            }
+            if (impl instanceof Class<?> c) {
+                ensureClassInitialized(c);
+            }
+            access = COMPONENTS.get(type);
         }
         return access;
     }
 
-    public static void setJavaUtilConcurrentTLRAccess(JavaUtilConcurrentTLRAccess access) {
-        javaUtilConcurrentTLRAccess = access;
-    }
-
-    public static JavaUtilConcurrentTLRAccess getJavaUtilConcurrentTLRAccess() {
-        var access = javaUtilConcurrentTLRAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.util.concurrent.ThreadLocalRandom$Access", true, null);
-                access = javaUtilConcurrentTLRAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-    public static void setJavaUtilConcurrentFJPAccess(JavaUtilConcurrentFJPAccess access) {
-        javaUtilConcurrentFJPAccess = access;
-    }
-
-    public static JavaUtilConcurrentFJPAccess getJavaUtilConcurrentFJPAccess() {
-        var access = javaUtilConcurrentFJPAccess;
-        if (access == null) {
-            ensureClassInitialized(ForkJoinPool.class);
-            access = javaUtilConcurrentFJPAccess;
-        }
-        return access;
-    }
-
-    public static JavaUtilJarAccess javaUtilJarAccess() {
-        var access = javaUtilJarAccess;
-        if (access == null) {
-            // Ensure JarFile is initialized; we know that this class
-            // provides the shared secret
-            ensureClassInitialized(JarFile.class);
-            access = javaUtilJarAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
-        javaUtilJarAccess = access;
+    public static <T> T getOrThrow(Class<T> type) {
+        return Objects.requireNonNull(
+                getOrNull(type)
+        );
     }
 
     public static void setJavaLangAccess(JavaLangAccess jla) {
@@ -201,32 +198,6 @@ public class SharedSecrets {
 
     public static JavaLangReflectAccess getJavaLangReflectAccess() {
         return javaLangReflectAccess;
-    }
-
-    public static void setJavaNetUriAccess(JavaNetUriAccess jnua) {
-        javaNetUriAccess = jnua;
-    }
-
-    public static JavaNetUriAccess getJavaNetUriAccess() {
-        var access = javaNetUriAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.URI.class);
-            access = javaNetUriAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetURLAccess(JavaNetURLAccess jnua) {
-        javaNetURLAccess = jnua;
-    }
-
-    public static JavaNetURLAccess getJavaNetURLAccess() {
-        var access = javaNetURLAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.URL.class);
-            access = javaNetURLAccess;
-        }
-        return access;
     }
 
     public static void setJavaNetInetAddressAccess(JavaNetInetAddressAccess jna) {

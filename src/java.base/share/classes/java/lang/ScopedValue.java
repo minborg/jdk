@@ -817,7 +817,7 @@ public final class ScopedValue<T> {
         }
 
         private static final JavaUtilConcurrentTLRAccess THREAD_LOCAL_RANDOM_ACCESS
-                = SharedSecrets.getJavaUtilConcurrentTLRAccess();
+                = SharedSecrets.getOrThrow(JavaUtilConcurrentTLRAccess.class);
 
         // Return either true or false, at pseudo-random, with a bias towards true.
         // This chooses either the primary or secondary cache slot, but the

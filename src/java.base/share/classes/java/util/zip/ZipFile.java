@@ -1112,7 +1112,7 @@ public class ZipFile implements ZipConstants, Closeable {
     private static class Source {
         // While this is only used from ZipFile, defining it there would cause
         // a bootstrap cycle that would leave this initialized as null
-        private static final JavaUtilJarAccess JUJA = SharedSecrets.javaUtilJarAccess();
+        private static final JavaUtilJarAccess JUJA = SharedSecrets.getOrThrow(JavaUtilJarAccess.class);
         // "META-INF/".length()
         private static final int META_INF_LEN = 9;
         // "META-INF/versions//".length()

@@ -26,6 +26,8 @@ package jdk.internal.classfile.impl;
 
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.CodeAttribute;
+
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.classfile.components.ClassPrinter;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.ModuleEntry;
@@ -165,7 +167,7 @@ public class Util {
         for (int i = 0; i < result.length; i++) {
             result[i] = TemporaryConstantPool.INSTANCE.classEntry(list.get(i));
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(result);
+        return SharedSecrets.getOrThrow(JavaUtilCollectionAccess.class).listFromTrustedArray(result);
     }
 
     public static List<ModuleEntry> moduleEntryList(List<? extends ModuleDesc> list) {
@@ -173,7 +175,7 @@ public class Util {
         for (int i = 0; i < result.length; i++) {
             result[i] = TemporaryConstantPool.INSTANCE.moduleEntry(TemporaryConstantPool.INSTANCE.utf8Entry(list.get(i).name()));
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(result);
+        return SharedSecrets.getOrThrow(JavaUtilCollectionAccess.class).listFromTrustedArray(result);
     }
 
     public static void checkKind(Opcode op, Opcode.Kind k) {

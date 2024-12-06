@@ -1,5 +1,6 @@
 package jdk.internal.lang.stable;
 
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 
 import java.util.EnumSet;
@@ -46,16 +47,16 @@ public final class StableValueFactories {
                 : StableFunction.of(inputs, original);
     }
 
-    public static StableHeterogeneousContainer ofHeterogeneousContainer(Set<Class<?>> types) {
-        return new StableHeterogeneousContainer.Impl(types);
-    }
-
     public static <E> List<E> ofList(int size, IntFunction<? extends E> mapper) {
-        return SharedSecrets.getJavaUtilCollectionAccess().stableList(size, mapper);
+        return SharedSecrets.getOrThrow(JavaUtilCollectionAccess.class).stableList(size, mapper);
     }
 
     public static <K, V> Map<K, V> ofMap(Set<K> keys, Function<? super K, ? extends V> mapper) {
-        return SharedSecrets.getJavaUtilCollectionAccess().stableMap(keys, mapper);
+        return SharedSecrets.getOrThrow(JavaUtilCollectionAccess.class).stableMap(keys, mapper);
+    }
+
+    public static StableHeterogeneousContainer ofHeterogeneousContainer(Set<Class<?>> inputs) {
+        return new StableHeterogeneousContainer.Impl(inputs);
     }
 
     // Supporting methods
