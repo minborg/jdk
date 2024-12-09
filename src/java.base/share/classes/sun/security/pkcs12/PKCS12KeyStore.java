@@ -63,6 +63,7 @@ import javax.crypto.Mac;
 import javax.security.auth.DestroyFailedException;
 import javax.security.auth.x500.X500Principal;
 
+import jdk.internal.access.JavaSecuritySpecAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.tools.KeyStoreUtil;
 import sun.security.util.*;
@@ -399,7 +400,7 @@ public final class PKCS12KeyStore extends KeyStoreSpi {
                             }
                             return tmp;
                         } finally {
-                            SharedSecrets.getJavaSecuritySpecAccess()
+                            SharedSecrets.getOrThrow(JavaSecuritySpecAccess.class)
                                     .clearEncodedKeySpec(kspec);
                         }
                         // decode secret key
