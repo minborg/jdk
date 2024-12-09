@@ -95,6 +95,7 @@ public final class SharedSecrets {
             Map.entry(JavaIORandomAccessFileAccess.class, RandomAccessFile.class),
             Map.entry(JavaObjectInputStreamReadString.class, ObjectInputStream.class),
             Map.entry(JavaObjectInputStreamAccess.class, ObjectInputStream.class),
+            Map.entry(JavaObjectInputFilterAccess.class, ObjectInputFilter.Config.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -103,7 +104,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
     private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
     private static JavaNetInetAddressAccess javaNetInetAddressAccess;
     private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
@@ -245,19 +245,6 @@ public final class SharedSecrets {
 
     public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
         javaUtilResourceBundleAccess = access;
-    }
-
-    public static JavaObjectInputFilterAccess getJavaObjectInputFilterAccess() {
-        var access = javaObjectInputFilterAccess;
-        if (access == null) {
-            ensureClassInitialized(ObjectInputFilter.Config.class);
-            access = javaObjectInputFilterAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaObjectInputFilterAccess(JavaObjectInputFilterAccess access) {
-        javaObjectInputFilterAccess = access;
     }
 
     public static JavaObjectStreamReflectionAccess getJavaObjectStreamReflectionAccess() {
