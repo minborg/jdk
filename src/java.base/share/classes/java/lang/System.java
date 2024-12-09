@@ -60,6 +60,7 @@ import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import jdk.internal.access.JavaIOAccess;
 import jdk.internal.access.JavaLangRefAccess;
 import jdk.internal.javac.Restricted;
 import jdk.internal.loader.NativeLibraries;
@@ -234,7 +235,7 @@ public final class System {
          if ((c = cons) == null) {
              synchronized (System.class) {
                  if ((c = cons) == null) {
-                     cons = c = SharedSecrets.getJavaIOAccess().console();
+                     cons = c = SharedSecrets.getOrThrow(JavaIOAccess.class).console();
                  }
              }
          }

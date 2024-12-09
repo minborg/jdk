@@ -649,7 +649,7 @@ public sealed class Console implements Flushable permits ProxyingConsole {
     private static final Console cons = instantiateConsole();
     static {
         // Set up JavaIOAccess in SharedSecrets
-        SharedSecrets.setJavaIOAccess(new JavaIOAccess() {
+        SharedSecrets.putOrThrow(JavaIOAccess.class, new JavaIOAccess() {
             public Console console() {
                 return cons;
             }

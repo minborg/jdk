@@ -89,6 +89,7 @@ public final class SharedSecrets {
             Map.entry(JavaLangModuleAccess.class, ModuleDescriptor.class),
             Map.entry(JavaLangRefAccess.class, NO_OP),
             Map.entry(JavaLangReflectAccess.class, NO_OP),
+            Map.entry(JavaIOAccess.class, Console.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -97,8 +98,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaLangReflectAccess javaLangReflectAccess;
-    private static JavaIOAccess javaIOAccess;
     private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
     private static JavaIOFilePermissionAccess javaIOFilePermissionAccess;
     private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
@@ -205,19 +204,6 @@ public final class SharedSecrets {
             // shared secret.
             ensureClassInitialized(java.nio.Buffer.class);
             access = javaNioAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaIOAccess(JavaIOAccess jia) {
-        javaIOAccess = jia;
-    }
-
-    public static JavaIOAccess getJavaIOAccess() {
-        var access = javaIOAccess;
-        if (access == null) {
-            ensureClassInitialized(Console.class);
-            access = javaIOAccess;
         }
         return access;
     }
