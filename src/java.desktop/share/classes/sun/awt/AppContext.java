@@ -748,7 +748,7 @@ public final class AppContext {
 
     // Set up JavaAWTAccess in SharedSecrets
     static {
-        SharedSecrets.setJavaAWTAccess(new JavaAWTAccess() {
+        SharedSecrets.putOrThrow(JavaAWTAccess.class, new JavaAWTAccess() {
             private boolean hasRootThreadGroup(final AppContext ecx) {
                 return ecx.threadGroup.getParent() == null;
             }

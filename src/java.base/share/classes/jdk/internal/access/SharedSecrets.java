@@ -80,13 +80,14 @@ public final class SharedSecrets {
             Map.entry(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access"),
             Map.entry(JavaUtilJarAccess.class, JarFile.class),
             Map.entry(JavaNetUriAccess.class, java.net.URI.class),
-            Map.entry(JavaNetURLAccess.class, java.net.URL.class)
+            Map.entry(JavaNetURLAccess.class, java.net.URL.class),
+
+            Map.entry(JavaAWTAccess.class, NO_OP) // this may return null in which case calling code needs to provision for.
     );
     // This container holds the actual Access components
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaAWTAccess javaAWTAccess;
     private static JavaAWTFontAccess javaAWTFontAccess;
     private static JavaBeansAccess javaBeansAccess;
     private static JavaLangInvokeAccess javaLangInvokeAccess;
@@ -300,15 +301,6 @@ public final class SharedSecrets {
         javaUtilZipFileAccess = access;
     }
 
-    public static void setJavaAWTAccess(JavaAWTAccess jaa) {
-        javaAWTAccess = jaa;
-    }
-
-    public static JavaAWTAccess getJavaAWTAccess() {
-        // this may return null in which case calling code needs to
-        // provision for.
-        return javaAWTAccess;
-    }
 
     public static void setJavaAWTFontAccess(JavaAWTFontAccess jafa) {
         javaAWTFontAccess = jafa;

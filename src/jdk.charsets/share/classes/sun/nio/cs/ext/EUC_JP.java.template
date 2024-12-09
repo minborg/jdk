@@ -46,7 +46,7 @@ public class EUC_JP
     extends Charset
     implements HistoricallyNamedCharset
 {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
     public EUC_JP() {
         super("EUC-JP",  $ALIASES$);
