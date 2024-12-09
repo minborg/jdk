@@ -78,7 +78,7 @@ public class TestUILoggerContext {
 
         static final JavaAWTAccessStub javaAwtAccess = new JavaAWTAccessStub();
         public static void init() {
-            SharedSecrets.setJavaAWTAccess(javaAwtAccess);
+            SharedSecrets.putOrThrow(JavaAWTAccess.class, javaAwtAccess);
         }
 
         public static void changeContext() {

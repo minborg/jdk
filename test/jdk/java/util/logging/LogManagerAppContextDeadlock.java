@@ -101,7 +101,7 @@ public class LogManagerAppContextDeadlock {
         }
 
         static {
-            SharedSecrets.setJavaAWTAccess(new JavaAWTAccess() {
+            SharedSecrets.putOrThrow(JavaAWTAccess.class, new JavaAWTAccess() {
                 @Override
                 public Object getAppletContext() {
                     if (numAppContexts.get() == 0) return null;

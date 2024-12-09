@@ -43,7 +43,7 @@ public class TestGetLoggerNPE {
     public static void main(String[] args) throws Exception {
         final String testCase = args.length == 0 ? "getLogger" : args[0];
         final JavaAWTAccessStub access = new JavaAWTAccessStub();
-        SharedSecrets.setJavaAWTAccess(access);
+        SharedSecrets.putOrThrow(JavaAWTAccess.class, access);
         final ThreadGroup tg = new ThreadGroup("TestGroup");
         Thread t = new Thread(tg, "test") {
             public void run() {
