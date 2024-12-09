@@ -53,5 +53,5 @@ public class CarrierThreadLocal<T> extends ThreadLocal<T> {
         return JLA.isCarrierThreadLocalPresent(this);
     }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 }

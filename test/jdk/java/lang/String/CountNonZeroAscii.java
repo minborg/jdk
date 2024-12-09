@@ -36,7 +36,7 @@ import java.util.Arrays;
  * @run main/othervm -XX:-CompactStrings CountNonZeroAscii
  */
 public class CountNonZeroAscii {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
     public static void main(String [] args) {
         byte[] bytes = new byte[1000];

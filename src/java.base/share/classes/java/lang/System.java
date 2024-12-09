@@ -1972,7 +1972,7 @@ public final class System {
 
     private static void setJavaLangAccess() {
         // Allow privileged classes outside of java.lang
-        SharedSecrets.setJavaLangAccess(new JavaLangAccess() {
+        SharedSecrets.putOrThrow(JavaLangAccess.class, new JavaLangAccess() {
             public List<Method> getDeclaredPublicMethods(Class<?> klass, String name, Class<?>... parameterTypes) {
                 return klass.getDeclaredPublicMethods(name, parameterTypes);
             }

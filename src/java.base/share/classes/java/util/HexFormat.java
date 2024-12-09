@@ -140,7 +140,7 @@ import java.nio.charset.StandardCharsets;
 public final class HexFormat {
 
     // Access to create strings from a byte array.
-    private static final JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess jla = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
     // Analysis has shown that generating the whole array allows the JIT to generate
     // better code compared to a slimmed down array, such as one cutting off after 'f'

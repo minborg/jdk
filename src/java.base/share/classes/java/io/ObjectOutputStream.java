@@ -173,7 +173,7 @@ import static jdk.internal.util.ModifiedUtf.utfLen;
 public class ObjectOutputStream
     extends OutputStream implements ObjectOutput, ObjectStreamConstants
 {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
     private static class Caches {
         /** cache of subclass security audit results */

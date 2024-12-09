@@ -47,10 +47,7 @@ import jdk.internal.access.SharedSecrets;
 public class Blocker {
     private static final JavaLangAccess JLA;
     static {
-        JLA = SharedSecrets.getJavaLangAccess();
-        if (JLA == null) {
-            throw new InternalError("JavaLangAccess not setup");
-        }
+        JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
     }
 
     private Blocker() { }

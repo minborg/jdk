@@ -116,7 +116,7 @@ public class Reflection {
                 currentClass.getModule() :
                 ClassLoader.getSystemClassLoader().getUnnamedModule();
         class Holder {
-            static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+            static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
         }
         if (module != null) {
             // not in init phase

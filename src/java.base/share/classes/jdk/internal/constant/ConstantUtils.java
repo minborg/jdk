@@ -42,7 +42,7 @@ import static jdk.internal.constant.PrimitiveClassDescImpl.*;
  * Helper methods for the implementation of {@code java.lang.constant}.
  */
 public final class ConstantUtils {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
     /** an empty constant descriptor */
     public static final ConstantDesc[] EMPTY_CONSTANTDESC = new ConstantDesc[0];

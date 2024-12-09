@@ -3985,7 +3985,7 @@ public class ForkJoinPool extends AbstractExecutorService {
         interruptibleTaskClass = ForkJoinTask.InterruptibleTask.class;
         Class<?> dep = LockSupport.class; // ensure loaded
         // allow access to non-public methods
-        JLA = SharedSecrets.getJavaLangAccess();
+        JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
         SharedSecrets.putOrThrow(JavaUtilConcurrentFJPAccess.class,
             new JavaUtilConcurrentFJPAccess() {
                 @Override

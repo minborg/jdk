@@ -33,6 +33,7 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.vm.annotation.Stable;
 import sun.reflect.annotation.AnnotationParser;
@@ -84,7 +85,7 @@ public abstract sealed class Executable extends AccessibleObject
     Annotation[][] parseParameterAnnotations(byte[] parameterAnnotations) {
         return AnnotationParser.parseParameterAnnotations(
                parameterAnnotations,
-               SharedSecrets.getJavaLangAccess().
+               SharedSecrets.getOrThrow(JavaLangAccess.class).
                getConstantPool(getDeclaringClass()),
                getDeclaringClass());
     }
@@ -666,7 +667,7 @@ public abstract sealed class Executable extends AccessibleObject
                     } else {
                         declAnnos = AnnotationParser.parseAnnotations(
                                 getAnnotationBytes(),
-                                SharedSecrets.getJavaLangAccess().
+                                SharedSecrets.getOrThrow(JavaLangAccess.class).
                                         getConstantPool(getDeclaringClass()),
                                 getDeclaringClass()
                         );
@@ -703,7 +704,7 @@ public abstract sealed class Executable extends AccessibleObject
      */
     AnnotatedType getAnnotatedReturnType0(Type returnType) {
         return TypeAnnotationParser.buildAnnotatedType(getTypeAnnotationBytes0(),
-                SharedSecrets.getJavaLangAccess().
+                SharedSecrets.getOrThrow(JavaLangAccess.class).
                         getConstantPool(getDeclaringClass()),
                 this,
                 getDeclaringClass(),
@@ -741,7 +742,7 @@ public abstract sealed class Executable extends AccessibleObject
         if (Modifier.isStatic(this.getModifiers()))
             return null;
         return TypeAnnotationParser.buildAnnotatedType(getTypeAnnotationBytes0(),
-                SharedSecrets.getJavaLangAccess().
+                SharedSecrets.getOrThrow(JavaLangAccess.class).
                         getConstantPool(getDeclaringClass()),
                 this,
                 getDeclaringClass(),
@@ -794,7 +795,7 @@ public abstract sealed class Executable extends AccessibleObject
     @SuppressWarnings("doclint:reference") // cross-module links
     public AnnotatedType[] getAnnotatedParameterTypes() {
         return TypeAnnotationParser.buildAnnotatedTypes(getTypeAnnotationBytes0(),
-                SharedSecrets.getJavaLangAccess().
+                SharedSecrets.getOrThrow(JavaLangAccess.class).
                         getConstantPool(getDeclaringClass()),
                 this,
                 getDeclaringClass(),
@@ -818,7 +819,7 @@ public abstract sealed class Executable extends AccessibleObject
      */
     public AnnotatedType[] getAnnotatedExceptionTypes() {
         return TypeAnnotationParser.buildAnnotatedTypes(getTypeAnnotationBytes0(),
-                SharedSecrets.getJavaLangAccess().
+                SharedSecrets.getOrThrow(JavaLangAccess.class).
                         getConstantPool(getDeclaringClass()),
                 this,
                 getDeclaringClass(),

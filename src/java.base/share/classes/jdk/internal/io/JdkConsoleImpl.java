@@ -39,6 +39,7 @@ import java.util.Formatter;
 import java.util.Locale;
 import java.util.Objects;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.nio.cs.StreamDecoder;
 import sun.nio.cs.StreamEncoder;
@@ -192,7 +193,7 @@ public final class JdkConsoleImpl implements JdkConsole {
         try {
             // Add a shutdown hook to restore console's echo state should
             // it be necessary.
-            SharedSecrets.getJavaLangAccess()
+            SharedSecrets.getOrThrow(JavaLangAccess.class)
                     .registerShutdownHook(0 /* shutdown hook invocation order */,
                             false /* only register if shutdown is not in progress */,
                             new Runnable() {

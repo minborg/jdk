@@ -53,14 +53,14 @@ import jdk.internal.util.StaticProperty;
 public class BootLoader {
     private BootLoader() { }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
     // The unnamed module for the boot loader
     private static final Module UNNAMED_MODULE;
     private static final String JAVA_HOME = StaticProperty.javaHome();
 
     static {
-        JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+        JavaLangAccess jla = SharedSecrets.getOrThrow(JavaLangAccess.class);
         UNNAMED_MODULE = jla.defineUnnamedModule(null);
         jla.addEnableNativeAccess(UNNAMED_MODULE);
         setBootLoaderUnnamedModule0(UNNAMED_MODULE);
@@ -214,7 +214,7 @@ public class BootLoader {
      * defined to the boot loader.
      */
     static class PackageHelper {
-        private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+        private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
         /**
          * Define the {@code Package} with the given name. The specified

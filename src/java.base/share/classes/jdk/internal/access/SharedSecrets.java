@@ -67,11 +67,14 @@ public final class SharedSecrets {
     // No instances
     private SharedSecrets() {}
 
+    private static final Object NO_OP = new Object();
+
     // This map holds all Access interfaces and their associations for creating an Access
     // implementation (if any).
-    // Components with no initialization code should use `null` as initialization
+    // Components with no initialization code can use NO_OP as initialization
     // Todo: If we use a mutable map, the entries can be removed when they have been used
     private static final Map<Class<?>, Object> IMPLEMENTATIONS = Map.ofEntries(
+            Map.entry(JavaLangAccess.class, NO_OP),
             Map.entry(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$Access"),
             Map.entry(JavaUtilConcurrentFJPAccess.class, "java.util.concurrent.ForkJoinPool"), // ForkJoinPool.class : Is this equivalent to the old solution?
             Map.entry(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access"),
@@ -86,7 +89,6 @@ public final class SharedSecrets {
     private static JavaAWTAccess javaAWTAccess;
     private static JavaAWTFontAccess javaAWTFontAccess;
     private static JavaBeansAccess javaBeansAccess;
-    private static JavaLangAccess javaLangAccess;
     private static JavaLangInvokeAccess javaLangInvokeAccess;
     private static JavaLangModuleAccess javaLangModuleAccess;
     private static JavaLangRefAccess javaLangRefAccess;
@@ -146,14 +148,6 @@ public final class SharedSecrets {
         return Objects.requireNonNull(
                 getOrNull(type)
         );
-    }
-
-    public static void setJavaLangAccess(JavaLangAccess jla) {
-        javaLangAccess = jla;
-    }
-
-    public static JavaLangAccess getJavaLangAccess() {
-        return javaLangAccess;
     }
 
     public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {

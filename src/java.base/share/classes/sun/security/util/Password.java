@@ -29,6 +29,8 @@ import java.io.*;
 import java.nio.*;
 import java.nio.charset.*;
 import java.util.Arrays;
+
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -55,7 +57,7 @@ public class Password {
             // Only use Console if `in` is the initial System.in
             Console con;
             if (!isEchoOn &&
-                    in == SharedSecrets.getJavaLangAccess().initialSystemIn() &&
+                    in == SharedSecrets.getOrThrow(JavaLangAccess.class).initialSystemIn() &&
                     ((con = System.console()) != null)) {
                 consoleEntered = con.readPassword();
                 // readPassword returns "" if you just press ENTER with the built-in Console,

@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.vm.annotation.Stable;
 import sun.nio.ch.FileChannelImpl;
@@ -486,6 +487,6 @@ public class VM {
      * Return the initial value of System.err that was set during VM initialization.
      */
     public static PrintStream initialErr() {
-        return SharedSecrets.getJavaLangAccess().initialSystemErr();
+        return SharedSecrets.getOrThrow(JavaLangAccess.class).initialSystemErr();
     }
 }

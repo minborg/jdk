@@ -409,7 +409,7 @@ public class Proxy implements java.io.Serializable {
      * in which the proxy class will be defined.
      */
     private static final class ProxyBuilder {
-        private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+        private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
         // prefix for all proxy class names
         private static final String proxyClassNamePrefix = "$Proxy";

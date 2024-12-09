@@ -461,5 +461,5 @@ public class LockSupport {
     private static final long PARKBLOCKER
         = U.objectFieldOffset(Thread.class, "parkBlocker");
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 }

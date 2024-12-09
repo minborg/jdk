@@ -36,6 +36,8 @@ package jdk.internal.reflect.constantPool;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.reflect.ConstantPool;
 import jdk.test.lib.Asserts;
@@ -43,7 +45,7 @@ import jdk.test.lib.Asserts;
 public class ConstantPoolTest {
 
     private static final Class<?> TEST_CLASS = ConstantPoolTestDummy.class;
-    private static final ConstantPool CP = SharedSecrets.getJavaLangAccess()
+    private static final ConstantPool CP = SharedSecrets.getOrThrow(JavaLangAccess.class)
             .getConstantPool(TEST_CLASS);
 
     public static void main(String[] s) {

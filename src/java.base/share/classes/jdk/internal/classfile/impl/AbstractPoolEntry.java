@@ -127,7 +127,7 @@ public abstract sealed class AbstractPoolEntry {
 
         enum State { RAW, BYTE, CHAR, STRING }
 
-        private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+        private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
         private State state;
         private final byte[] rawBytes; // null if initialized directly from a string

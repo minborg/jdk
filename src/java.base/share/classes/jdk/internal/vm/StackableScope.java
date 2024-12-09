@@ -36,7 +36,7 @@ import jdk.internal.vm.annotation.ReservedStackAccess;
  * scope stack.
  */
 public class StackableScope {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
     private final Thread owner;
     private volatile StackableScope previous;

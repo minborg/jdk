@@ -41,7 +41,7 @@ import static jdk.internal.util.ModifiedUtf.putChar;
 import static jdk.internal.util.ModifiedUtf.utfLen;
 
 public final class BufWriterImpl implements BufWriter {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
 
     private final ConstantPoolBuilder constantPool;
     private final ClassFileImpl context;

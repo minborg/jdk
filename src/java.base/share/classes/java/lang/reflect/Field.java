@@ -25,6 +25,7 @@
 
 package java.lang.reflect;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.FieldAccessor;
@@ -1275,7 +1276,7 @@ class Field extends AccessibleObject implements Member {
                     } else {
                         declAnnos = AnnotationParser.parseAnnotations(
                                 annotations,
-                                SharedSecrets.getJavaLangAccess()
+                                SharedSecrets.getOrThrow(JavaLangAccess.class)
                                         .getConstantPool(getDeclaringClass()),
                                 getDeclaringClass());
                     }
@@ -1298,7 +1299,7 @@ class Field extends AccessibleObject implements Member {
      */
     public AnnotatedType getAnnotatedType() {
         return TypeAnnotationParser.buildAnnotatedType(getTypeAnnotationBytes0(),
-                                                       SharedSecrets.getJavaLangAccess().
+                                                       SharedSecrets.getOrThrow(JavaLangAccess.class).
                                                            getConstantPool(getDeclaringClass()),
                                                        this,
                                                        getDeclaringClass(),
