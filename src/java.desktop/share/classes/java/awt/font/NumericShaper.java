@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import jdk.internal.access.JavaAWTAccess;
@@ -148,9 +149,9 @@ public final class NumericShaper implements java.io.Serializable {
 
     // For access from java.text.Bidi
     static {
-        SharedSecrets.computeIfAbsent(JavaAWTFontAccess.class, new Supplier<JavaAWTFontAccess>() {
+        SharedSecrets.computeIfAbsent(JavaAWTFontAccess.class, new Function<Class<JavaAWTFontAccess>, JavaAWTFontAccess>() {
             @Override
-            public JavaAWTFontAccess get() {
+            public JavaAWTFontAccess apply(Class<JavaAWTFontAccess> javaAWTFontAccessClass) {
                 return new JavaAWTFontAccessImpl();
             }
         });

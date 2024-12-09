@@ -33,7 +33,7 @@ public sealed interface StableHeterogeneousContainer {
      */
     <T> boolean tryPut(Class<T> type, T instance);
 
-    <T> T computeIfAbsent(Class<T> type, Function<Class<T>, T> constructor);
+    <T> T computeIfAbsent(Class<T> type, Function<? super Class<T>, ? extends T> constructor);
 
     /**
      * {@return the instance associated with the provided {@code type}, {@code null}
@@ -66,7 +66,7 @@ public sealed interface StableHeterogeneousContainer {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T computeIfAbsent(Class<T> type, Function<Class<T>, T> constructor) {
+        public <T> T computeIfAbsent(Class<T> type,Function<? super Class<T>, ? extends T> constructor) {
             Objects.requireNonNull(type);
             Objects.requireNonNull(constructor);
             return (T) of(type).computeIfUnset(new Supplier<Object>() {

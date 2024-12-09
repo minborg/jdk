@@ -145,15 +145,10 @@ public final class SharedSecrets {
         return COMPONENTS.get(type);
     }
 
-    public static <T> T computeIfAbsent(Class<T> type, Supplier<? extends T> supplier) {
+    public static <T> T computeIfAbsent(Class<T> type, Function<? super Class<T>, ? extends T> mapper) {
         T access = COMPONENTS.get(type);
         if (access == null) {
-            return COMPONENTS.computeIfAbsent(type, new Function<Class<T>, T>() {
-                @Override
-                public T apply(Class<T> type) {
-                    return supplier.get();
-                }
-            });
+            return COMPONENTS.computeIfAbsent(type, mapper);
         }
         return access;
     }
