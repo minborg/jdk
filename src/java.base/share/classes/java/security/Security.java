@@ -314,7 +314,7 @@ public final class Security {
     static {
         initialize();
         // Set up JavaSecurityPropertiesAccess in SharedSecrets
-        SharedSecrets.setJavaSecurityPropertiesAccess(new JavaSecurityPropertiesAccess() {
+        SharedSecrets.putOrThrow(JavaSecurityPropertiesAccess.class, new JavaSecurityPropertiesAccess() {
             @Override
             public Properties getInitialProperties() {
                 return initialSecurityProperties;

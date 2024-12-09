@@ -101,6 +101,7 @@ public final class SharedSecrets {
             Map.entry(JavaNetHttpCookieAccess.class, java.net.HttpCookie.class),
             Map.entry(JavaNioAccess.class, java.nio.Buffer.class),
             Map.entry(JavaUtilResourceBundleAccess.class, ResourceBundle.class),
+            Map.entry(JavaSecurityPropertiesAccess.class, Security.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -110,7 +111,6 @@ public final class SharedSecrets {
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
     private static JavaUtilZipFileAccess javaUtilZipFileAccess;
-    private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
     private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
     private static JavaSecuritySpecAccess javaSecuritySpecAccess;
     private static JavaxCryptoSealedObjectAccess javaxCryptoSealedObjectAccess;
@@ -165,19 +165,6 @@ public final class SharedSecrets {
         return Objects.requireNonNull(
                 getOrNull(type)
         );
-    }
-
-    public static void setJavaSecurityPropertiesAccess(JavaSecurityPropertiesAccess jspa) {
-        javaSecurityPropertiesAccess = jspa;
-    }
-
-    public static JavaSecurityPropertiesAccess getJavaSecurityPropertiesAccess() {
-        var access = javaSecurityPropertiesAccess;
-        if (access == null) {
-            ensureClassInitialized(Security.class);
-            access = javaSecurityPropertiesAccess;
-        }
-        return access;
     }
 
     public static JavaUtilZipFileAccess getJavaUtilZipFileAccess() {
