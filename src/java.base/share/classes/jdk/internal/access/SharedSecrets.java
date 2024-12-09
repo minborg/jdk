@@ -93,6 +93,7 @@ public final class SharedSecrets {
             Map.entry(JavaIOFileDescriptorAccess.class, FileDescriptor.class),
             Map.entry(JavaIOFilePermissionAccess.class, FilePermission.class),
             Map.entry(JavaIORandomAccessFileAccess.class, RandomAccessFile.class),
+            Map.entry(JavaObjectInputStreamReadString.class, ObjectInputStream.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -101,7 +102,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
     private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
     private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
     private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
@@ -245,19 +245,6 @@ public final class SharedSecrets {
 
     public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
         javaUtilResourceBundleAccess = access;
-    }
-
-    public static JavaObjectInputStreamReadString getJavaObjectInputStreamReadString() {
-        var access = javaObjectInputStreamReadString;
-        if (access == null) {
-            ensureClassInitialized(ObjectInputStream.class);
-            access = javaObjectInputStreamReadString;
-        }
-        return access;
-    }
-
-    public static void setJavaObjectInputStreamReadString(JavaObjectInputStreamReadString access) {
-        javaObjectInputStreamReadString = access;
     }
 
     public static JavaObjectInputStreamAccess getJavaObjectInputStreamAccess() {
