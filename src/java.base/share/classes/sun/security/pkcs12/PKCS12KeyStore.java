@@ -64,6 +64,7 @@ import javax.security.auth.DestroyFailedException;
 import javax.security.auth.x500.X500Principal;
 
 import jdk.internal.access.JavaSecuritySpecAccess;
+import jdk.internal.access.JavaxCryptoSpecAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.tools.KeyStoreUtil;
 import sun.security.util.*;
@@ -426,7 +427,7 @@ public final class PKCS12KeyStore extends KeyStoreSpi {
                                     tmp = sKeyFactory.generateSecret(pbeKeySpec);
                                 } finally {
                                     ((PBEKeySpec)pbeKeySpec).clearPassword();
-                                    SharedSecrets.getJavaxCryptoSpecAccess()
+                                    SharedSecrets.getOrThrow(JavaxCryptoSpecAccess.class)
                                             .clearSecretKeySpec(secretKeySpec);
                                 }
                             } else {
