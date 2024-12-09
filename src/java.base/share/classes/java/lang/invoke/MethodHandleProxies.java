@@ -503,7 +503,7 @@ public class MethodHandleProxies {
         }
     }
 
-    private static final JavaLangReflectAccess JLRA = SharedSecrets.getJavaLangReflectAccess();
+    private static final JavaLangReflectAccess JLRA = SharedSecrets.getOrThrow(JavaLangReflectAccess.class);
     private static final AtomicInteger counter = new AtomicInteger();
 
     private static String nextModuleName() {

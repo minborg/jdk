@@ -88,6 +88,7 @@ public final class SharedSecrets {
             Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl"),
             Map.entry(JavaLangModuleAccess.class, ModuleDescriptor.class),
             Map.entry(JavaLangRefAccess.class, NO_OP),
+            Map.entry(JavaLangReflectAccess.class, NO_OP),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -165,14 +166,6 @@ public final class SharedSecrets {
         return Objects.requireNonNull(
                 getOrNull(type)
         );
-    }
-
-    public static void setJavaLangReflectAccess(JavaLangReflectAccess jlra) {
-        javaLangReflectAccess = jlra;
-    }
-
-    public static JavaLangReflectAccess getJavaLangReflectAccess() {
-        return javaLangReflectAccess;
     }
 
     public static void setJavaNetInetAddressAccess(JavaNetInetAddressAccess jna) {
