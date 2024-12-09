@@ -73,7 +73,7 @@ import static org.testng.Assert.*;
 
 @Test
 public class ModuleDescriptorTest {
-    private static final JavaLangModuleAccess JLMA = SharedSecrets.getJavaLangModuleAccess();
+    private static final JavaLangModuleAccess JLMA = SharedSecrets.getOrThrow(JavaLangModuleAccess.class);
 
     @DataProvider(name = "invalidNames")
     public Object[][] invalidNames() {

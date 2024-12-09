@@ -3,6 +3,7 @@ package jdk.internal.lang.stable;
 import jdk.internal.vm.annotation.Stable;
 
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -33,6 +34,8 @@ public sealed interface StableHeterogeneousContainer {
      */
     <T> boolean tryPut(Class<T> type, T instance);
 
+    <T> void putOrThrow(Class<T> type, T instance);
+
     <T> T computeIfAbsent(Class<T> type, Function<? super Class<T>, ? extends T> constructor);
 
     /**
@@ -44,6 +47,8 @@ public sealed interface StableHeterogeneousContainer {
      *         specified at creation
      */
     <T> T get(Class<T> type);
+
+    <T> T getOrThrow(Class<T> type);
 
     final class Impl implements StableHeterogeneousContainer {
 
@@ -62,6 +67,14 @@ public sealed interface StableHeterogeneousContainer {
                     .trySet(
                             type.cast(instance)
                     );
+        }
+
+        @Override
+        public <T> void putOrThrow(Class<T> type, T instance) {
+            if (!tryPut(type, instance)) {
+                throw new IllegalArgumentException(
+                        "The type '" + type + "' was already associated with " + get(type));
+            }
         }
 
         @SuppressWarnings("unchecked")
@@ -86,6 +99,15 @@ public sealed interface StableHeterogeneousContainer {
                     of(type)
                             .orElse(null)
             );
+        }
+
+        @Override
+        public <T> T getOrThrow(Class<T> type) {
+            T t = get(type);
+            if (t == null) {
+                throw new NoSuchElementException("No instance for: " + type);
+            }
+            return t;
         }
 
         private StableValue<Object> of(Class<?> type) {

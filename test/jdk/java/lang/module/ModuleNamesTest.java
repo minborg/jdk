@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.Set;
 
+import jdk.internal.access.JavaLangModuleAccess;
 import jdk.internal.access.SharedSecrets;
 
 import jdk.test.lib.util.ModuleInfoWriter;
@@ -238,7 +239,7 @@ public class ModuleNamesTest {
      * Returns a Builder that does not validate module names.
      */
     private Builder newBuilder(String mn) {
-        return SharedSecrets.getJavaLangModuleAccess()
+        return SharedSecrets.getOrThrow(JavaLangModuleAccess.class)
                             .newModuleBuilder(mn, false, Set.of());
     }
 

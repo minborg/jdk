@@ -38,6 +38,7 @@ import java.lang.module.ModuleDescriptor;
 import java.security.Security;
 import java.security.spec.EncodedKeySpec;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.function.Function;
@@ -94,7 +95,7 @@ public final class SharedSecrets {
             Map.entry(JavaIORandomAccessFileAccess.class, "java.io.RandomAccessFile"),
             Map.entry(JavaObjectInputStreamReadString.class, "java.io.ObjectInputStream"),
             Map.entry(JavaObjectInputStreamAccess.class, "java.io.ObjectInputStream"),
-            Map.entry(JavaObjectInputFilterAccess.class, "java.io.ObjectInputFilter.Config"),
+            Map.entry(JavaObjectInputFilterAccess.class, "java.io.ObjectInputFilter$Config"),
             Map.entry(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access"),
             Map.entry(JavaNetInetAddressAccess.class, "java.net.InetAddress"),
             Map.entry(JavaNetHttpCookieAccess.class, "java.net.HttpCookie"),
@@ -108,18 +109,15 @@ public final class SharedSecrets {
             Map.entry(JavaxSecurityAccess.class, "javax.security.auth.x500.X500Principal"),
             Map.entry(JavaUtilZipFileAccess.class, "java.util.zip.ZipFile"),
 
-            Map.entry(JavaAWTFontAccess.class, ""), // this may return null in which case calling code needs to provision for.
-            Map.entry(JavaAWTAccess.class, "")      // this may return null in which case calling code needs to provision for.
+            Map.entry(JavaAWTFontAccess.class, ""), // this Access may be null in which case calling code needs to provision for.
+            Map.entry(JavaAWTAccess.class, "")      // this Access may be null in which case calling code needs to provision for.
     );
     // This container holds the actual Access components
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
     public static <T> void putOrThrow(Class<T> type, T access) {
-        if (!COMPONENTS.tryPut(type, access)) {
-            throw new IllegalArgumentException(
-                    "The type '" + type + "' was already associated with " + COMPONENTS.get(type));
-        }
+        COMPONENTS.putOrThrow(type, access);
     }
 
     @ForceInline
@@ -145,18 +143,27 @@ public final class SharedSecrets {
         return COMPONENTS.get(type);
     }
 
-    public static <T> T computeIfAbsent(Class<T> type, Function<? super Class<T>, ? extends T> mapper) {
-        T access = COMPONENTS.get(type);
-        if (access == null) {
-            return COMPONENTS.computeIfAbsent(type, mapper);
-        }
-        return access;
+    public static <T> T computeIfAbsent(Class<T> type,
+                                        Function<? super Class<T>, ? extends T> mapper) {
+        return COMPONENTS.computeIfAbsent(type, mapper);
     }
 
     public static <T> T getOrThrow(Class<T> type) {
-        return Objects.requireNonNull(
-                getOrNull(type)
-        );
+        T t = getOrNull(type);
+        if (t == null) {
+            throw new NoSuchElementException("No instance of " + type);
+        }
+        return t;
+    }
+
+    // Closed compatibility: To be removed!
+
+    static JavaUtilZipFileAccess getJavaUtilZipFileAccess() {
+        return getOrThrow(JavaUtilZipFileAccess.class);
+    }
+
+    static void setJavaxCryptoSealedObjectAccess(JavaxCryptoSealedObjectAccess a) {
+        putOrThrow(JavaxCryptoSealedObjectAccess.class, a);
     }
 
 }
