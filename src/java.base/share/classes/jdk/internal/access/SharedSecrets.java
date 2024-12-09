@@ -86,6 +86,8 @@ public final class SharedSecrets {
             Map.entry(JavaNetURLAccess.class, java.net.URL.class),
             Map.entry(JavaBeansAccess.class, NO_OP),
             Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl"),
+            Map.entry(JavaLangModuleAccess.class, ModuleDescriptor.class),
+            Map.entry(JavaLangRefAccess.class, NO_OP),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -94,8 +96,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaLangModuleAccess javaLangModuleAccess;
-    private static JavaLangRefAccess javaLangRefAccess;
     private static JavaLangReflectAccess javaLangReflectAccess;
     private static JavaIOAccess javaIOAccess;
     private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
@@ -165,38 +165,6 @@ public final class SharedSecrets {
         return Objects.requireNonNull(
                 getOrNull(type)
         );
-    }
-
-    public static JavaLangInvokeAccess getJavaLangInvokeAccess() {
-        var access = javaLangInvokeAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.lang.invoke.MethodHandleImpl", true, null);
-                access = javaLangInvokeAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-    public static void setJavaLangModuleAccess(JavaLangModuleAccess jlrma) {
-        javaLangModuleAccess = jlrma;
-    }
-
-    public static JavaLangModuleAccess getJavaLangModuleAccess() {
-        var access = javaLangModuleAccess;
-        if (access == null) {
-            ensureClassInitialized(ModuleDescriptor.class);
-            access = javaLangModuleAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaLangRefAccess(JavaLangRefAccess jlra) {
-        javaLangRefAccess = jlra;
-    }
-
-    public static JavaLangRefAccess getJavaLangRefAccess() {
-        return javaLangRefAccess;
     }
 
     public static void setJavaLangReflectAccess(JavaLangReflectAccess jlra) {

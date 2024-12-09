@@ -60,6 +60,7 @@ import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import jdk.internal.access.JavaLangRefAccess;
 import jdk.internal.javac.Restricted;
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.logger.LoggerFinderLoader.TemporaryLoggerFinder;
@@ -1808,7 +1809,7 @@ public final class System {
         VM.initializeOSEnvironment();
 
         // start Finalizer and Reference Handler threads
-        SharedSecrets.getJavaLangRefAccess().startThreads();
+        SharedSecrets.getOrThrow(JavaLangRefAccess.class).startThreads();
 
         // system properties, java.lang and other core classes are now initialized
         VM.initLevel(1);

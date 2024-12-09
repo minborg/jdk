@@ -62,7 +62,7 @@ public class Modules {
     private Modules() { }
 
     private static final JavaLangAccess JLA = SharedSecrets.getOrThrow(JavaLangAccess.class);
-    private static final JavaLangModuleAccess JLMA = SharedSecrets.getJavaLangModuleAccess();
+    private static final JavaLangModuleAccess JLMA = SharedSecrets.getOrThrow(JavaLangModuleAccess.class);
 
     /**
      * Creates a new Module. The module has the given ModuleDescriptor and
