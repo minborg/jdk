@@ -789,7 +789,7 @@ public class PriorityQueue<E> extends AbstractQueue<E>
         // Read in (and discard) array length
         s.readInt();
 
-        SharedSecrets.getJavaObjectInputStreamAccess().checkArray(s, Object[].class, size);
+        SharedSecrets.getOrThrow(JavaObjectInputStreamAccess.class).checkArray(s, Object[].class, size);
         final Object[] es = queue = new Object[Math.max(size, 1)];
 
         // Read in all elements.

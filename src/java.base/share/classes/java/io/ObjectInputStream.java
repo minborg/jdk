@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.JavaObjectInputStreamReadString;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.event.DeserializationEvent;
@@ -4086,7 +4087,7 @@ public class ObjectInputStream
     }
 
     static {
-        SharedSecrets.setJavaObjectInputStreamAccess(ObjectInputStream::checkArray);
+        SharedSecrets.putOrThrow(JavaObjectInputStreamAccess.class, ObjectInputStream::checkArray);
         SharedSecrets.putOrThrow(JavaObjectInputStreamReadString.class, ObjectInputStream::readString);
     }
 
