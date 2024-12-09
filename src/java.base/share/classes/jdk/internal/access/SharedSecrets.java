@@ -71,26 +71,23 @@ public final class SharedSecrets {
     // No instances
     private SharedSecrets() {}
 
-    // Marker for access classes that do not have any initialization logic
-    private static final Object NO_OP = new Object();
-
     // This map holds all Access interfaces and their associations for creating an Access
     // implementation (if any).
-    // Components with no initialization code can use NO_OP as initialization
+    // Components with no initialization code use "" (an empty string) as initialization
     // Todo: If we use a mutable map, the entries can be removed when they have been used
-    private static final Map<Class<?>, Object> IMPLEMENTATIONS = Map.ofEntries(
-            Map.entry(JavaLangAccess.class, NO_OP),
+    private static final Map<Class<?>, String> IMPLEMENTATIONS = Map.ofEntries(
+            Map.entry(JavaLangAccess.class, ""),
             Map.entry(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$Access"),
             Map.entry(JavaUtilConcurrentFJPAccess.class, "java.util.concurrent.ForkJoinPool"),
             Map.entry(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access"),
             Map.entry(JavaUtilJarAccess.class, "java.util.jar.JarFile"),
             Map.entry(JavaNetUriAccess.class, "java.net.URI"),
             Map.entry(JavaNetURLAccess.class, "java.net.URL"),
-            Map.entry(JavaBeansAccess.class, NO_OP),
+            Map.entry(JavaBeansAccess.class, ""),
             Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl"),
             Map.entry(JavaLangModuleAccess.class, "java.lang.module.ModuleDescriptor"),
-            Map.entry(JavaLangRefAccess.class, NO_OP),
-            Map.entry(JavaLangReflectAccess.class, NO_OP),
+            Map.entry(JavaLangRefAccess.class, ""),
+            Map.entry(JavaLangReflectAccess.class, ""),
             Map.entry(JavaIOAccess.class, "java.io.Console"),
             Map.entry(JavaIOFileDescriptorAccess.class, "java.io.FileDescriptor"),
             Map.entry(JavaIOFilePermissionAccess.class, "java.io.FilePermission"),
@@ -111,8 +108,8 @@ public final class SharedSecrets {
             Map.entry(JavaxSecurityAccess.class, "javax.security.auth.x500.X500Principal"),
             Map.entry(JavaUtilZipFileAccess.class, "java.util.zip.ZipFile"),
 
-            Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
-            Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
+            Map.entry(JavaAWTFontAccess.class, ""), // this may return null in which case calling code needs to provision for.
+            Map.entry(JavaAWTAccess.class, "")      // this may return null in which case calling code needs to provision for.
     );
     // This container holds the actual Access components
     private static final StableHeterogeneousContainer COMPONENTS =
@@ -135,21 +132,15 @@ public final class SharedSecrets {
 
     @DontInline
     public static <T> T getOrNullSlowPath(Class<T> type) {
-        final Object impl = IMPLEMENTATIONS.get(type);
-        if (impl == NO_OP) {
+        final String name = IMPLEMENTATIONS.get(type);
+        if (name.isEmpty()) {
             // there is no impl (e.g. for JavaAWTAccess)
             return null;
         }
-        // Cannot use pattern matching this early in the init sequence
-        if (impl instanceof String s) {
-            try {
-                Class.forName(s, true, null);
-            } catch (ClassNotFoundException e) {
-                throw new InternalError(e);
-            }
-        }
-        if (impl instanceof Class<?> c) {
-            ensureClassInitialized(c);
+        try {
+            Class.forName(name, true, null);
+        } catch (ClassNotFoundException e) {
+            throw new InternalError(e);
         }
         return COMPONENTS.get(type);
     }
@@ -173,9 +164,4 @@ public final class SharedSecrets {
         );
     }
 
-    private static void ensureClassInitialized(Class<?> c) {
-        try {
-            MethodHandles.lookup().ensureInitialized(c);
-        } catch (IllegalAccessException e) {}
-    }
 }
