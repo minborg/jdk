@@ -27,6 +27,8 @@ package jdk.internal.access;
 
 import jdk.internal.lang.stable.StableHeterogeneousContainer;
 import jdk.internal.lang.stable.StableValueFactories;
+import jdk.internal.vm.annotation.DontInline;
+import jdk.internal.vm.annotation.ForceInline;
 
 import javax.crypto.SealedObject;
 import javax.crypto.spec.SecretKeySpec;
@@ -123,28 +125,33 @@ public final class SharedSecrets {
         }
     }
 
+    @ForceInline
     public static <T> T getOrNull(Class<T> type) {
-        T access = COMPONENTS.get(type);
-        if (access == null) {
-            Object impl = IMPLEMENTATIONS.get(type);
-            if (impl == NO_OP) {
-                // there is no impl (e.g. for JavaAWTAccess)
-                return null;
-            }
-            // Cannot use pattern matching this early in the init sequence
-            if (impl instanceof String s) {
-                try {
-                    Class.forName(s, true, null);
-                } catch (ClassNotFoundException e) {
-                    throw new InternalError(e);
-                }
-            }
-            if (impl instanceof Class<?> c) {
-                ensureClassInitialized(c);
-            }
-            access = COMPONENTS.get(type);
+        final T access = COMPONENTS.get(type);
+        return access == null
+                ? getOrNullSlowPath(type)
+                : access;
+    }
+
+    @DontInline
+    public static <T> T getOrNullSlowPath(Class<T> type) {
+        final Object impl = IMPLEMENTATIONS.get(type);
+        if (impl == NO_OP) {
+            // there is no impl (e.g. for JavaAWTAccess)
+            return null;
         }
-        return access;
+        // Cannot use pattern matching this early in the init sequence
+        if (impl instanceof String s) {
+            try {
+                Class.forName(s, true, null);
+            } catch (ClassNotFoundException e) {
+                throw new InternalError(e);
+            }
+        }
+        if (impl instanceof Class<?> c) {
+            ensureClassInitialized(c);
+        }
+        return COMPONENTS.get(type);
     }
 
     public static <T> T computeIfAbsent(Class<T> type, Supplier<? extends T> supplier) {
