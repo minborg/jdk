@@ -98,7 +98,7 @@ public final class X500Principal implements Principal, java.io.Serializable {
 
     static {
         // Set up JavaxSecurityAccess in SharedSecrets
-        SharedSecrets.setJavaxSecurityAccess(
+        SharedSecrets.putOrThrow(JavaxSecurityAccess.class,
             new JavaxSecurityAccess() {
                 @Override
                 public X500Name asX500Name(X500Principal principal) {
