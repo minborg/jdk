@@ -99,6 +99,7 @@ public final class SharedSecrets {
             Map.entry(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access"),
             Map.entry(JavaNetInetAddressAccess.class, java.net.InetAddress.class),
             Map.entry(JavaNetHttpCookieAccess.class, java.net.HttpCookie.class),
+            Map.entry(JavaNioAccess.class, java.nio.Buffer.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -107,8 +108,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
-    private static JavaNioAccess javaNioAccess;
     private static JavaUtilZipFileAccess javaUtilZipFileAccess;
     private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
     private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
@@ -166,21 +165,6 @@ public final class SharedSecrets {
         return Objects.requireNonNull(
                 getOrNull(type)
         );
-    }
-
-    public static void setJavaNioAccess(JavaNioAccess jna) {
-        javaNioAccess = jna;
-    }
-
-    public static JavaNioAccess getJavaNioAccess() {
-        var access = javaNioAccess;
-        if (access == null) {
-            // Ensure java.nio.Buffer is initialized, which provides the
-            // shared secret.
-            ensureClassInitialized(java.nio.Buffer.class);
-            access = javaNioAccess;
-        }
-        return access;
     }
 
     public static void setJavaSecurityPropertiesAccess(JavaSecurityPropertiesAccess jspa) {

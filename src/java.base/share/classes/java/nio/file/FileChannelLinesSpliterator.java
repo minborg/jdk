@@ -281,7 +281,7 @@ final class FileChannelLinesSpliterator implements Spliterator<String> {
             ByteBuffer b = buffer;
             buffer = null;
             if (bufRefCount.decrementAndGet() == 0) {
-                JavaNioAccess nioAccess = SharedSecrets.getJavaNioAccess();
+                JavaNioAccess nioAccess = SharedSecrets.getOrThrow(JavaNioAccess.class);
                 try {
                     nioAccess.unmapper(b).unmap();
                 } catch (UnsupportedOperationException ignored) {

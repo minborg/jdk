@@ -63,7 +63,7 @@ public abstract sealed class AbstractMemorySegmentImpl
         implements MemorySegment, SegmentAllocator, BiFunction<String, List<Number>, RuntimeException>
         permits HeapMemorySegmentImpl, NativeMemorySegmentImpl {
 
-    static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    static final JavaNioAccess NIO_ACCESS = SharedSecrets.getOrThrow(JavaNioAccess.class);
 
     final long length;
     final boolean readOnly;

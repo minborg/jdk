@@ -376,6 +376,8 @@ public final class IOUtil {
         return read(fd, bufs, offset, length, directIO, false, alignment, nd);
     }
 
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getOrThrow(JavaNioAccess.class);
+
     static long read(FileDescriptor fd, ByteBuffer[] bufs, int offset, int length,
                      boolean directIO, boolean async,
                      int alignment, NativeDispatcher nd)
@@ -474,8 +476,6 @@ public final class IOUtil {
             vec.release();
         }
     }
-
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
 
     static void acquireScope(ByteBuffer bb, boolean async) {
         if (async && NIO_ACCESS.isThreadConfined(bb)) {
