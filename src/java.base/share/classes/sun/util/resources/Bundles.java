@@ -75,7 +75,7 @@ public abstract class Bundles {
         };
 
     private static final JavaUtilResourceBundleAccess bundleAccess
-                            = SharedSecrets.getJavaUtilResourceBundleAccess();
+                            = SharedSecrets.getOrThrow(JavaUtilResourceBundleAccess.class);
 
     /**
      * The cache is a map from cache keys (with bundle base name, locale, and

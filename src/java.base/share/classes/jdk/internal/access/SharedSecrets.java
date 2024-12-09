@@ -100,6 +100,7 @@ public final class SharedSecrets {
             Map.entry(JavaNetInetAddressAccess.class, java.net.InetAddress.class),
             Map.entry(JavaNetHttpCookieAccess.class, java.net.HttpCookie.class),
             Map.entry(JavaNioAccess.class, java.nio.Buffer.class),
+            Map.entry(JavaUtilResourceBundleAccess.class, ResourceBundle.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -109,7 +110,6 @@ public final class SharedSecrets {
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
     private static JavaUtilZipFileAccess javaUtilZipFileAccess;
-    private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
     private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
     private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
     private static JavaSecuritySpecAccess javaSecuritySpecAccess;
@@ -191,19 +191,6 @@ public final class SharedSecrets {
 
     public static void setJavaUtilZipFileAccess(JavaUtilZipFileAccess access) {
         javaUtilZipFileAccess = access;
-    }
-
-    public static JavaUtilResourceBundleAccess getJavaUtilResourceBundleAccess() {
-        var access = javaUtilResourceBundleAccess;
-        if (access == null) {
-            ensureClassInitialized(ResourceBundle.class);
-            access = javaUtilResourceBundleAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
-        javaUtilResourceBundleAccess = access;
     }
 
     public static void setJavaSecuritySignatureAccess(JavaSecuritySignatureAccess jssa) {

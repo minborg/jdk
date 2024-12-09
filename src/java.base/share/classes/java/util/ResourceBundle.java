@@ -372,7 +372,7 @@ public abstract class ResourceBundle {
     private static final int INITIAL_CACHE_SIZE = 32;
 
     static {
-        SharedSecrets.setJavaUtilResourceBundleAccess(
+        SharedSecrets.putOrThrow(JavaUtilResourceBundleAccess.class,
             new JavaUtilResourceBundleAccess() {
                 @Override
                 public void setParent(ResourceBundle bundle,
