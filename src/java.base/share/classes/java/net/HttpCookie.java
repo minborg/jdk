@@ -986,7 +986,7 @@ public final class HttpCookie implements Cloneable {
     }
 
     static {
-        SharedSecrets.setJavaNetHttpCookieAccess(
+        SharedSecrets.putOrThrow(JavaNetHttpCookieAccess.class,
             new JavaNetHttpCookieAccess() {
                 public List<HttpCookie> parse(String header) {
                     return HttpCookie.parse(header, true);

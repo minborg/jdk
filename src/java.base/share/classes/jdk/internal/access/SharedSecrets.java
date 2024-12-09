@@ -98,6 +98,7 @@ public final class SharedSecrets {
             Map.entry(JavaObjectInputFilterAccess.class, ObjectInputFilter.Config.class),
             Map.entry(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access"),
             Map.entry(JavaNetInetAddressAccess.class, java.net.InetAddress.class),
+            Map.entry(JavaNetHttpCookieAccess.class, java.net.HttpCookie.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -165,19 +166,6 @@ public final class SharedSecrets {
         return Objects.requireNonNull(
                 getOrNull(type)
         );
-    }
-
-    public static void setJavaNetHttpCookieAccess(JavaNetHttpCookieAccess a) {
-        javaNetHttpCookieAccess = a;
-    }
-
-    public static JavaNetHttpCookieAccess getJavaNetHttpCookieAccess() {
-        var access = javaNetHttpCookieAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.HttpCookie.class);
-            access = javaNetHttpCookieAccess;
-        }
-        return access;
     }
 
     public static void setJavaNioAccess(JavaNioAccess jna) {
