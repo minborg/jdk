@@ -367,7 +367,7 @@ public sealed class InetAddress implements Serializable permits Inet4Address, In
         HOSTS_FILE_NAME =
                 System.getProperty("jdk.net.hosts.file");
         jdk.internal.loader.BootLoader.loadLibrary("net");
-        SharedSecrets.setJavaNetInetAddressAccess(
+        SharedSecrets.putOrThrow(JavaNetInetAddressAccess.class,
                 new JavaNetInetAddressAccess() {
                     public String getOriginalHostName(InetAddress ia) {
                         return ia.holder.getOriginalHostName();

@@ -97,6 +97,7 @@ public final class SharedSecrets {
             Map.entry(JavaObjectInputStreamAccess.class, ObjectInputStream.class),
             Map.entry(JavaObjectInputFilterAccess.class, ObjectInputFilter.Config.class),
             Map.entry(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access"),
+            Map.entry(JavaNetInetAddressAccess.class, java.net.InetAddress.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -105,7 +106,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaNetInetAddressAccess javaNetInetAddressAccess;
     private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
     private static JavaNioAccess javaNioAccess;
     private static JavaUtilZipFileAccess javaUtilZipFileAccess;
@@ -165,19 +165,6 @@ public final class SharedSecrets {
         return Objects.requireNonNull(
                 getOrNull(type)
         );
-    }
-
-    public static void setJavaNetInetAddressAccess(JavaNetInetAddressAccess jna) {
-        javaNetInetAddressAccess = jna;
-    }
-
-    public static JavaNetInetAddressAccess getJavaNetInetAddressAccess() {
-        var access = javaNetInetAddressAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.InetAddress.class);
-            access = javaNetInetAddressAccess;
-        }
-        return access;
     }
 
     public static void setJavaNetHttpCookieAccess(JavaNetHttpCookieAccess a) {

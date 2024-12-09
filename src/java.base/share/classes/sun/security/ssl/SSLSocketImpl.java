@@ -1618,7 +1618,7 @@ public final class SSLSocketImpl
         }
 
         JavaNetInetAddressAccess jna =
-                SharedSecrets.getJavaNetInetAddressAccess();
+                SharedSecrets.getOrThrow(JavaNetInetAddressAccess.class);
         String originalHostname = jna.getOriginalHostName(inetAddress);
         if (originalHostname != null && !originalHostname.isEmpty()) {
 
