@@ -104,6 +104,7 @@ public final class SharedSecrets {
             Map.entry(JavaSecurityPropertiesAccess.class, Security.class),
             Map.entry(JavaSecuritySignatureAccess.class, Signature.class),
             Map.entry(JavaSecuritySpecAccess.class, EncodedKeySpec.class),
+            Map.entry(JavaxCryptoSealedObjectAccess.class, SealedObject.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -113,7 +114,6 @@ public final class SharedSecrets {
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
     private static JavaUtilZipFileAccess javaUtilZipFileAccess;
-    private static JavaxCryptoSealedObjectAccess javaxCryptoSealedObjectAccess;
     private static JavaxCryptoSpecAccess javaxCryptoSpecAccess;
     private static JavaxSecurityAccess javaxSecurityAccess;
 
@@ -189,19 +189,6 @@ public final class SharedSecrets {
         if (access == null) {
             ensureClassInitialized(SecretKeySpec.class);
             access = javaxCryptoSpecAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaxCryptoSealedObjectAccess(JavaxCryptoSealedObjectAccess jcsoa) {
-        javaxCryptoSealedObjectAccess = jcsoa;
-    }
-
-    public static JavaxCryptoSealedObjectAccess getJavaxCryptoSealedObjectAccess() {
-        var access = javaxCryptoSealedObjectAccess;
-        if (access == null) {
-            ensureClassInitialized(SealedObject.class);
-            access = javaxCryptoSealedObjectAccess;
         }
         return access;
     }
