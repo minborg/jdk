@@ -232,8 +232,8 @@ public final class FilePermission extends Permission implements Serializable {
     }
 
     static {
-        SharedSecrets.setJavaIOFilePermissionAccess(
-            /**
+        SharedSecrets.putOrThrow(JavaIOFilePermissionAccess.class,
+            /*
              * Creates FilePermission objects with special internals.
              * See {@link FilePermCompat#newPermPlusAltPath(Permission)} and
              * {@link FilePermCompat#newPermUsingAltPath(Permission)}.

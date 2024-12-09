@@ -91,6 +91,8 @@ public final class SharedSecrets {
             Map.entry(JavaLangReflectAccess.class, NO_OP),
             Map.entry(JavaIOAccess.class, Console.class),
             Map.entry(JavaIOFileDescriptorAccess.class, FileDescriptor.class),
+            Map.entry(JavaIOFilePermissionAccess.class, FilePermission.class),
+            Map.entry(JavaIORandomAccessFileAccess.class, RandomAccessFile.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -99,8 +101,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaIOFilePermissionAccess javaIOFilePermissionAccess;
-    private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
     private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
     private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
     private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
@@ -208,19 +208,6 @@ public final class SharedSecrets {
         return access;
     }
 
-    public static JavaIOFilePermissionAccess getJavaIOFilePermissionAccess() {
-        var access = javaIOFilePermissionAccess;
-        if (access == null) {
-            ensureClassInitialized(FilePermission.class);
-            access = javaIOFilePermissionAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaIOFilePermissionAccess(JavaIOFilePermissionAccess jiofpa) {
-        javaIOFilePermissionAccess = jiofpa;
-    }
-
     public static void setJavaSecurityPropertiesAccess(JavaSecurityPropertiesAccess jspa) {
         javaSecurityPropertiesAccess = jspa;
     }
@@ -312,19 +299,6 @@ public final class SharedSecrets {
 
     public static void setJavaObjectStreamReflectionAccess(JavaObjectStreamReflectionAccess access) {
         javaObjectStreamReflectionAccess = access;
-    }
-
-    public static void setJavaIORandomAccessFileAccess(JavaIORandomAccessFileAccess jirafa) {
-        javaIORandomAccessFileAccess = jirafa;
-    }
-
-    public static JavaIORandomAccessFileAccess getJavaIORandomAccessFileAccess() {
-        var access = javaIORandomAccessFileAccess;
-        if (access == null) {
-            ensureClassInitialized(RandomAccessFile.class);
-            access = javaIORandomAccessFileAccess;
-        }
-        return access;
     }
 
     public static void setJavaSecuritySignatureAccess(JavaSecuritySignatureAccess jssa) {

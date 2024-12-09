@@ -27,6 +27,8 @@ package sun.security.util;
 
 import java.io.FilePermission;
 import java.security.Permission;
+
+import jdk.internal.access.JavaIOFilePermissionAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -62,7 +64,7 @@ public class FilePermCompat {
 
     public static Permission newPermPlusAltPath(Permission input) {
         if (compat && input instanceof FilePermission) {
-            return SharedSecrets.getJavaIOFilePermissionAccess()
+            return SharedSecrets.getOrThrow(JavaIOFilePermissionAccess.class)
                     .newPermPlusAltPath((FilePermission) input);
         }
         return input;
@@ -70,7 +72,7 @@ public class FilePermCompat {
 
     public static Permission newPermUsingAltPath(Permission input) {
         if (input instanceof FilePermission) {
-            return SharedSecrets.getJavaIOFilePermissionAccess()
+            return SharedSecrets.getOrThrow(JavaIOFilePermissionAccess.class)
                     .newPermUsingAltPath((FilePermission) input);
         }
         return null;
