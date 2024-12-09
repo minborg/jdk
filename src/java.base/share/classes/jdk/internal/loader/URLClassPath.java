@@ -609,7 +609,7 @@ public class URLClassPath {
         private final URL csu;
         private boolean closed = false;
         private static final JavaUtilZipFileAccess zipAccess =
-                SharedSecrets.getJavaUtilZipFileAccess();
+                SharedSecrets.getOrThrow(JavaUtilZipFileAccess.class);
 
         /*
          * Creates a new JarLoader for the specified URL referring to

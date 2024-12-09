@@ -167,7 +167,7 @@ public class JarFile extends ZipFile {
         // Set up JavaUtilJarAccess in SharedSecrets
         SharedSecrets.putOrThrow(JavaUtilJarAccess.class, new JavaUtilJarAccessImpl());
         // Get JavaUtilZipFileAccess from SharedSecrets
-        JUZFA = SharedSecrets.getJavaUtilZipFileAccess();
+        JUZFA = SharedSecrets.getOrThrow(JavaUtilZipFileAccess.class);
         // multi-release jar file versions >= 9
         BASE_VERSION = Runtime.Version.parse(Integer.toString(8));
         BASE_VERSION_FEATURE = BASE_VERSION.feature();

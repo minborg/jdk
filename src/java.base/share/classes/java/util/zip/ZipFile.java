@@ -1062,7 +1062,7 @@ public class ZipFile implements ZipConstants, Closeable {
     }
 
     static {
-        SharedSecrets.setJavaUtilZipFileAccess(
+        SharedSecrets.putOrThrow(JavaUtilZipFileAccess.class,
             new JavaUtilZipFileAccess() {
                 @Override
                 public boolean startsWithLocHeader(ZipFile zip) {
