@@ -85,6 +85,7 @@ public final class SharedSecrets {
             Map.entry(JavaNetUriAccess.class, java.net.URI.class),
             Map.entry(JavaNetURLAccess.class, java.net.URL.class),
             Map.entry(JavaBeansAccess.class, NO_OP),
+            Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl"),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -93,7 +94,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaLangInvokeAccess javaLangInvokeAccess;
     private static JavaLangModuleAccess javaLangModuleAccess;
     private static JavaLangRefAccess javaLangRefAccess;
     private static JavaLangReflectAccess javaLangReflectAccess;
@@ -165,10 +165,6 @@ public final class SharedSecrets {
         return Objects.requireNonNull(
                 getOrNull(type)
         );
-    }
-
-    public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {
-        javaLangInvokeAccess = jlia;
     }
 
     public static JavaLangInvokeAccess getJavaLangInvokeAccess() {

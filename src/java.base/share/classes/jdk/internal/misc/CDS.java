@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.StaticProperty;
 
@@ -197,7 +198,7 @@ public class CDS {
         Objects.requireNonNull(lines);
         validateInputLines(lines);
         Stream<String> lineStream = Arrays.stream(lines);
-        Map<String, byte[]> result = SharedSecrets.getJavaLangInvokeAccess().generateHolderClasses(lineStream);
+        Map<String, byte[]> result = SharedSecrets.getOrThrow(JavaLangInvokeAccess.class).generateHolderClasses(lineStream);
         int size = result.size();
         Object[] retArray = new Object[size * 2];
         int index = 0;
