@@ -45,7 +45,9 @@ import java.io.Serial;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
+import jdk.internal.access.JavaAWTFontAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -248,9 +250,12 @@ public final class TextAttribute extends Attribute {
 
     // For access from java.text.Bidi
     static {
-        if (SharedSecrets.getJavaAWTFontAccess() == null) {
-            SharedSecrets.setJavaAWTFontAccess(new JavaAWTFontAccessImpl());
-        }
+        SharedSecrets.computeIfAbsent(JavaAWTFontAccess.class, new Supplier<JavaAWTFontAccess>() {
+            @Override
+            public JavaAWTFontAccess get() {
+                return new JavaAWTFontAccessImpl();
+            }
+        });
     }
 
     /**

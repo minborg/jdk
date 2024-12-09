@@ -38,6 +38,8 @@ import java.security.spec.EncodedKeySpec;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ResourceBundle;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.jar.JarFile;
 import java.io.Console;
 import java.io.FileDescriptor;
@@ -67,6 +69,7 @@ public final class SharedSecrets {
     // No instances
     private SharedSecrets() {}
 
+    // Marker for access classes that do not have any initialization logic
     private static final Object NO_OP = new Object();
 
     // This map holds all Access interfaces and their associations for creating an Access
@@ -82,13 +85,13 @@ public final class SharedSecrets {
             Map.entry(JavaNetUriAccess.class, java.net.URI.class),
             Map.entry(JavaNetURLAccess.class, java.net.URL.class),
 
-            Map.entry(JavaAWTAccess.class, NO_OP) // this may return null in which case calling code needs to provision for.
+            Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
+            Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
     );
     // This container holds the actual Access components
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaAWTFontAccess javaAWTFontAccess;
     private static JavaBeansAccess javaBeansAccess;
     private static JavaLangInvokeAccess javaLangInvokeAccess;
     private static JavaLangModuleAccess javaLangModuleAccess;
@@ -125,7 +128,7 @@ public final class SharedSecrets {
         T access = COMPONENTS.get(type);
         if (access == null) {
             Object impl = IMPLEMENTATIONS.get(type);
-            if (impl == null) {
+            if (impl == NO_OP) {
                 // there is no impl (e.g. for JavaAWTAccess)
                 return null;
             }
@@ -141,6 +144,19 @@ public final class SharedSecrets {
                 ensureClassInitialized(c);
             }
             access = COMPONENTS.get(type);
+        }
+        return access;
+    }
+
+    public static <T> T computeIfAbsent(Class<T> type, Supplier<? extends T> supplier) {
+        T access = COMPONENTS.get(type);
+        if (access == null) {
+            return COMPONENTS.computeIfAbsent(type, new Function<Class<T>, T>() {
+                @Override
+                public T apply(Class<T> type) {
+                    return supplier.get();
+                }
+            });
         }
         return access;
     }
@@ -299,17 +315,6 @@ public final class SharedSecrets {
 
     public static void setJavaUtilZipFileAccess(JavaUtilZipFileAccess access) {
         javaUtilZipFileAccess = access;
-    }
-
-
-    public static void setJavaAWTFontAccess(JavaAWTFontAccess jafa) {
-        javaAWTFontAccess = jafa;
-    }
-
-    public static JavaAWTFontAccess getJavaAWTFontAccess() {
-        // this may return null in which case calling code needs to
-        // provision for.
-        return javaAWTFontAccess;
     }
 
     public static JavaBeansAccess getJavaBeansAccess() {
