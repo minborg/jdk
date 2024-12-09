@@ -122,7 +122,7 @@ import sun.security.util.KnownOIDs;
 public abstract class Signature extends SignatureSpi {
 
     static {
-        SharedSecrets.setJavaSecuritySignatureAccess(
+        SharedSecrets.putOrThrow(JavaSecuritySignatureAccess.class,
             new JavaSecuritySignatureAccess() {
                 @Override
                 public void initVerify(Signature s, PublicKey publicKey,
