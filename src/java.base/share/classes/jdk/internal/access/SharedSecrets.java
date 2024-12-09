@@ -96,6 +96,7 @@ public final class SharedSecrets {
             Map.entry(JavaObjectInputStreamReadString.class, ObjectInputStream.class),
             Map.entry(JavaObjectInputStreamAccess.class, ObjectInputStream.class),
             Map.entry(JavaObjectInputFilterAccess.class, ObjectInputFilter.Config.class),
+            Map.entry(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access"),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -104,7 +105,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
     private static JavaNetInetAddressAccess javaNetInetAddressAccess;
     private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
     private static JavaNioAccess javaNioAccess;
@@ -245,21 +245,6 @@ public final class SharedSecrets {
 
     public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
         javaUtilResourceBundleAccess = access;
-    }
-
-    public static JavaObjectStreamReflectionAccess getJavaObjectStreamReflectionAccess() {
-        var access = javaObjectStreamReflectionAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.io.ObjectStreamReflection$Access", true, null);
-                access = javaObjectStreamReflectionAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-    public static void setJavaObjectStreamReflectionAccess(JavaObjectStreamReflectionAccess access) {
-        javaObjectStreamReflectionAccess = access;
     }
 
     public static void setJavaSecuritySignatureAccess(JavaSecuritySignatureAccess jssa) {
