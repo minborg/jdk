@@ -44,7 +44,7 @@ class JavaBeansAccessor {
     }
 
     private static JavaBeansAccess getJavaBeansAccess() {
-        return SharedSecrets.getJavaBeansAccess();
+        return SharedSecrets.getOrNull(JavaBeansAccess.class);
     }
 
     static boolean isAvailable() {
