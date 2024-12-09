@@ -90,6 +90,7 @@ public final class SharedSecrets {
             Map.entry(JavaLangRefAccess.class, NO_OP),
             Map.entry(JavaLangReflectAccess.class, NO_OP),
             Map.entry(JavaIOAccess.class, Console.class),
+            Map.entry(JavaIOFileDescriptorAccess.class, FileDescriptor.class),
 
             Map.entry(JavaAWTFontAccess.class, NO_OP), // this may return null in which case calling code needs to provision for.
             Map.entry(JavaAWTAccess.class, NO_OP)      // this may return null in which case calling code needs to provision for.
@@ -98,7 +99,6 @@ public final class SharedSecrets {
     private static final StableHeterogeneousContainer COMPONENTS =
             StableValueFactories.ofHeterogeneousContainer(IMPLEMENTATIONS.keySet());
 
-    private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
     private static JavaIOFilePermissionAccess javaIOFilePermissionAccess;
     private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
     private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
@@ -208,10 +208,6 @@ public final class SharedSecrets {
         return access;
     }
 
-    public static void setJavaIOFileDescriptorAccess(JavaIOFileDescriptorAccess jiofda) {
-        javaIOFileDescriptorAccess = jiofda;
-    }
-
     public static JavaIOFilePermissionAccess getJavaIOFilePermissionAccess() {
         var access = javaIOFilePermissionAccess;
         if (access == null) {
@@ -223,15 +219,6 @@ public final class SharedSecrets {
 
     public static void setJavaIOFilePermissionAccess(JavaIOFilePermissionAccess jiofpa) {
         javaIOFilePermissionAccess = jiofpa;
-    }
-
-    public static JavaIOFileDescriptorAccess getJavaIOFileDescriptorAccess() {
-        var access = javaIOFileDescriptorAccess;
-        if (access == null) {
-            ensureClassInitialized(FileDescriptor.class);
-            access = javaIOFileDescriptorAccess;
-        }
-        return access;
     }
 
     public static void setJavaSecurityPropertiesAccess(JavaSecurityPropertiesAccess jspa) {

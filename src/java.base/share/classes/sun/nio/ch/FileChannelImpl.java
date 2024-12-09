@@ -69,7 +69,7 @@ public class FileChannelImpl
 {
     // Access to FileDescriptor internals
     private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
+        SharedSecrets.getOrThrow(JavaIOFileDescriptorAccess.class);
 
     // Used to make native read and write calls
     private static final FileDispatcher nd = new FileDispatcherImpl();

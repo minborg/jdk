@@ -41,7 +41,7 @@ import jdk.internal.util.OperatingSystem;
 public final class SdpSupport {
     private static final boolean isSupported = OperatingSystem.isLinux();
     private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
+        SharedSecrets.getOrThrow(JavaIOFileDescriptorAccess.class);
 
     private SdpSupport() { }
 

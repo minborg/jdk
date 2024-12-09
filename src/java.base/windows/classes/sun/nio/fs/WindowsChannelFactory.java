@@ -49,7 +49,7 @@ import static sun.nio.fs.WindowsConstants.*;
 
 class WindowsChannelFactory {
     private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
+        SharedSecrets.getOrThrow(JavaIOFileDescriptorAccess.class);
 
     private WindowsChannelFactory() { }
 

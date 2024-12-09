@@ -45,7 +45,7 @@ import static sun.nio.fs.UnixConstants.*;
 
 class UnixChannelFactory {
     private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
+        SharedSecrets.getOrThrow(JavaIOFileDescriptorAccess.class);
 
     protected UnixChannelFactory() {
     }
