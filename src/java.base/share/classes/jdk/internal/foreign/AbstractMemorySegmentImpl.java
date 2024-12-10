@@ -48,16 +48,16 @@ import java.util.stream.StreamSupport;
 import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.foreign.UnmapperProxy;
-import jdk.internal.foreign.layout.AbstractGroupLayout;
-import jdk.internal.foreign.layout.InternalCompositeLayoutOfClass;
-import jdk.internal.foreign.layout.MemoryLayoutUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
+import jdk.internal.util.Architecture;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.util.Preconditions;
 import jdk.internal.vm.annotation.ForceInline;
 import sun.nio.ch.DirectBuffer;
+
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 /**
  * This abstract class provides an immutable implementation for the {@code MemorySegment} interface. This class contains information
@@ -318,15 +318,6 @@ public abstract sealed class AbstractMemorySegmentImpl
     @Override
     public final double[] toArray(ValueLayout.OfDouble elementLayout) {
         return toArray(double[].class, elementLayout, double[]::new, MemorySegment::ofArray);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public <T> T[] toArray(CompositeLayout.OfClass<T> elementLayout) {
-        Objects.requireNonNull(elementLayout);
-        return elements(elementLayout)
-                .map(s -> s.get(elementLayout, 0))
-                .toArray(i -> (T[]) Array.newInstance(elementLayout.carrier(), i));
     }
 
     private <Z> Z toArray(Class<Z> arrayClass, ValueLayout elemLayout, IntFunction<Z> arrayFactory, Function<Z, MemorySegment> segmentFactory) {
@@ -780,20 +771,6 @@ public abstract sealed class AbstractMemorySegmentImpl
     @Override
     public MemorySegment get(AddressLayout layout, long offset) {
         return (MemorySegment) layout.varHandle().get((MemorySegment)this, offset);
-    }
-
-    @SuppressWarnings("unchecked")
-    @ForceInline
-    @Override
-    public <T> T get(CompositeLayout.OfClass<T> layout, long offset) {
-        return ((InternalCompositeLayoutOfClass<T>) layout).get(this, offset);
-    }
-
-    @SuppressWarnings("unchecked")
-    @ForceInline
-    @Override
-    public <T> void set(CompositeLayout.OfClass<T> layout, long offset, T value) {
-        ((InternalCompositeLayoutOfClass<T>)layout).set(this, offset, value);
     }
 
     @ForceInline
