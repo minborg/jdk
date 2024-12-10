@@ -156,13 +156,13 @@ public final class SharedSecrets {
         return t;
     }
 
-    // Closed compatibility: To be removed!
+    // Compatibility with external tests: To be removed!
 
-    static JavaUtilZipFileAccess getJavaUtilZipFileAccess() {
+    public static JavaUtilZipFileAccess getJavaUtilZipFileAccess() {
         return getOrThrow(JavaUtilZipFileAccess.class);
     }
 
-    static void setJavaxCryptoSealedObjectAccess(JavaxCryptoSealedObjectAccess a) {
+    public static void setJavaxCryptoSealedObjectAccess(JavaxCryptoSealedObjectAccess a) {
         putOrThrow(JavaxCryptoSealedObjectAccess.class, a);
     }
 
