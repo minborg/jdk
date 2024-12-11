@@ -26,6 +26,7 @@
 package jdk.internal.foreign;
 
 import java.lang.foreign.*;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -187,6 +188,12 @@ public abstract sealed class AbstractMemorySegmentImpl
         return StreamSupport.stream(spliterator(elementLayout), false);
     }
 
+    @Override
+    public <T> Stream<T> mapElements(CompositeLayout.OfClass<T> elementLayout) {
+        return elements(elementLayout)
+                .map(s -> s.get(elementLayout, 0));
+    }
+
     @ForceInline
     @Override
     public final MemorySegment fill(byte value) {
@@ -318,6 +325,12 @@ public abstract sealed class AbstractMemorySegmentImpl
     @Override
     public final double[] toArray(ValueLayout.OfDouble elementLayout) {
         return toArray(double[].class, elementLayout, double[]::new, MemorySegment::ofArray);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> T[] toArray(CompositeLayout.OfClass<T> elementLayout) {
+        return (T[]) mapElements(elementLayout).toArray();
     }
 
     private <Z> Z toArray(Class<Z> arrayClass, ValueLayout elemLayout, IntFunction<Z> arrayFactory, Function<Z, MemorySegment> segmentFactory) {
@@ -778,6 +791,48 @@ public abstract sealed class AbstractMemorySegmentImpl
     public void set(AddressLayout layout, long offset, MemorySegment value) {
         Objects.requireNonNull(value);
         layout.varHandle().set((MemorySegment)this, offset, value);
+    }
+
+    @SuppressWarnings("unchecked")
+    @ForceInline
+    @Override
+    public <T> T get(CompositeLayout.OfClass<T> layout, long offset) {
+        try {
+            return (T) layout.getter()
+                    .asType(MethodType.methodType(Object.class, MemorySegment.class, long.class))
+                    .invokeExact((MemorySegment) this, offset); // Todo: Hold an internal variant with AbstractMemorySegment coordinate
+        } catch (NullPointerException |
+                 IndexOutOfBoundsException |
+                 WrongThreadException |
+                 IllegalStateException |
+                 IllegalArgumentException rethrow) {
+            throw rethrow;
+        } catch (Throwable e) {
+            throw new RuntimeException("Unable to invoke getter() with " +
+                    "segment=" + this +
+                    ", offset=" + offset, e);
+        }
+    }
+
+    @Override
+    public <T> void set(CompositeLayout.OfClass<T> layout, long offset, T value) {
+        try {
+            layout.setter()
+                    .asType(MethodType.methodType(void.class, MemorySegment.class, long.class, Object.class))
+                    .invokeExact((MemorySegment) this, offset, (Object) value); // Todo: Use internal MH variant
+        } catch (IndexOutOfBoundsException |
+                 WrongThreadException |
+                 IllegalStateException |
+                 IllegalArgumentException |
+                 UnsupportedOperationException |
+                 NullPointerException rethrow) {
+            throw rethrow;
+        } catch (Throwable e) {
+            throw new RuntimeException("Unable to invoke setter() with " +
+                    "segment=" + this +
+                    ", offset=" + offset +
+                    ", value=" + value, e);
+        }
     }
 
     @ForceInline

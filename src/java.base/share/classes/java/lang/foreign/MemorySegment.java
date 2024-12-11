@@ -595,6 +595,27 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     Stream<MemorySegment> elements(MemoryLayout elementLayout);
 
     /**
+     * Returns a sequential {@code Stream<T>} applying the provided {@code elementLayout}
+     * over disjoint slices (whose size matches that of the specified layout) in this
+     * segment. Calling this method is equivalent to the following code:
+     * {@snippet lang=java :
+     *     elements(elementLayout)
+     *         .map(s -> s.get(elementLayout, 0))
+     * }
+     *
+     * @param elementLayout the layout to be used for splitting
+     * @param <T>            element type
+     * @return a sequential {@code Stream<T>}
+     * @throws IllegalArgumentException if {@code elementLayout.byteSize() == 0}
+     * @throws IllegalArgumentException if {@code byteSize() % elementLayout.byteSize() != 0}
+     * @throws IllegalArgumentException if {@code elementLayout.byteSize() % elementLayout.byteAlignment() != 0}
+     * @throws IllegalArgumentException if this segment is
+     *         <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraint</a>
+     *         in the provided layout
+     */
+    <T> Stream<T> mapElements(CompositeLayout.OfClass<T> elementLayout);
+
+    /**
      * {@return the scope associated with this memory segment}
      */
     Scope scope();
