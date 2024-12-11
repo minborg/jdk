@@ -574,14 +574,6 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * {@snippet lang=java :
      * StreamSupport.stream(segment.spliterator(elementLayout), false);
      * }
-     * <p>
-     * Given a {@code layout} of type
-     * {@linkplain CompositeLayout.OfClass {@code CompositeLayout.OfClass<T>}} an
-     * element stream can be turned into a carrier stream using the following idiom:
-     * {@snippet lang=java:
-     *     elements(layout)
-     *         .map(s -> s.get(layout, 0));
-     * }
      *
      * @param elementLayout the layout to be used for splitting
      * @return a sequential {@code Stream} over disjoint slices in this segment
