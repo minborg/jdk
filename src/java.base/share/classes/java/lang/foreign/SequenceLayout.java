@@ -27,6 +27,9 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.layout.SequenceLayoutImpl;
 
+import java.lang.invoke.MethodHandle;
+import java.util.function.UnaryOperator;
+
 /**
  * A compound layout that denotes a homogeneous repetition of a given
  * <em>element layout</em>. The repetition count is said to be the sequence layout's
@@ -51,6 +54,7 @@ import jdk.internal.foreign.layout.SequenceLayoutImpl;
  * This class is immutable, thread-safe and
  * <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
  *
+ * @sealedGraph
  * @since 22
  */
 public sealed interface SequenceLayout
@@ -167,4 +171,16 @@ public sealed interface SequenceLayout
      *         {@code byteAlignment < elementLayout().byteAlignment()}
      */
     SequenceLayout withByteAlignment(long byteAlignment);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    <R> OfClass<R> bind(Class<R> carrier, MethodHandle getter, MethodHandle setter);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper);
 }

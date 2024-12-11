@@ -135,6 +135,18 @@ public sealed interface CompositeLayout
          */
         MethodHandle setter();
 
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        <R> OfClass<R> bind(Class<R> carrier, MethodHandle getter, MethodHandle setter);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper);
+
     }
 
 }

@@ -27,8 +27,10 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.layout.UnionLayoutImpl;
 
+import java.lang.invoke.MethodHandle;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * A group layout whose member layouts are laid out at the same starting offset.
@@ -37,6 +39,7 @@ import java.util.function.Function;
  * Implementing classes are immutable, thread-safe and
  * <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
  *
+ * @sealedGraph
  * @since 22
  */
 public sealed interface UnionLayout
@@ -61,5 +64,17 @@ public sealed interface UnionLayout
      */
     @Override
     UnionLayout withByteAlignment(long byteAlignment);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    <R> OfClass<R> bind(Class<R> carrier, MethodHandle getter, MethodHandle setter);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper);
 
 }

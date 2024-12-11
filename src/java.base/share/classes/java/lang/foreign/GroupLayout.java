@@ -25,7 +25,9 @@
 
 package java.lang.foreign;
 
+import java.lang.invoke.MethodHandle;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 /**
  * A compound layout that is an aggregation of multiple, heterogeneous
@@ -77,4 +79,16 @@ public sealed interface GroupLayout
      */
     @Override
     GroupLayout withByteAlignment(long byteAlignment);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    <R> OfClass<R> bind(Class<R> carrier, MethodHandle getter, MethodHandle setter);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    CompositeLayout mapConstituentLayouts(UnaryOperator<MemoryLayout> mapper);
 }
