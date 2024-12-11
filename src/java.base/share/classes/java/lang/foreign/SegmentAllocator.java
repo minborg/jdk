@@ -383,7 +383,7 @@ public interface SegmentAllocator {
      *
      * @since 25
      */
-    default <T> MemorySegment allocateFrom(GroupLayout.OfClass<T> layout, T value) {
+    default <T> MemorySegment allocateFrom(CompositeLayout.OfClass<T> layout, T value) {
         Objects.requireNonNull(value);
         Objects.requireNonNull(layout);
         MemorySegment segment = allocateNoInit(layout);

@@ -202,6 +202,7 @@ public class MemoryLayoutTypeRetentionTest {
         CompositeLayout.OfClass<Point> v = MemoryLayout.structLayout(
                         JAVA_INT.withByteAlignment(BYTE_ALIGNMENT),
                         JAVA_LONG.withByteAlignment(BYTE_ALIGNMENT))
+                .withName(NAME)
                 .bind(Point.class, null, null);
         check(v);
     }
@@ -211,6 +212,7 @@ public class MemoryLayoutTypeRetentionTest {
         CompositeLayout.OfClass<Point> v = MemoryLayout.unionLayout(
                         JAVA_INT.withByteAlignment(BYTE_ALIGNMENT),
                         JAVA_LONG.withByteAlignment(BYTE_ALIGNMENT))
+                .withName(NAME)
                 .bind(Point.class, null, null);
         check(v);
     }
@@ -219,6 +221,7 @@ public class MemoryLayoutTypeRetentionTest {
     public void testSequenceLayoutBind() {
         CompositeLayout.OfClass<Point[]> v = MemoryLayout.sequenceLayout(1,
                         JAVA_INT.withByteAlignment(BYTE_ALIGNMENT))
+                .withName(NAME)
                 .bind(Point[].class, null, null);
         check(v);
     }

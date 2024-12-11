@@ -114,6 +114,8 @@ public class TestNulls {
             .map(Method::getName)
             .collect(Collectors.toSet());
 
+    public record Point(int x, int y){}
+
     static final Map<Class<?>, Object> DEFAULT_VALUES = new HashMap<>();
 
     static <Z> void addDefaultMapping(Class<Z> carrier, Z value) {
@@ -174,6 +176,7 @@ public class TestNulls {
         addDefaultMapping(Supplier.class, () -> null);
         addDefaultMapping(ClassLoader.class, TestNulls.class.getClassLoader());
         addDefaultMapping(Thread.UncaughtExceptionHandler.class, (thread, ex) -> {});
+        addDefaultMapping(CompositeLayout.OfClass.class, MemoryLayout.structLayout(JAVA_INT.withName("x"), JAVA_INT.withName("y")).bind(Point.class, null, null));
     }
 
     static final Map<Class<?>, Object[]> REPLACEMENT_VALUES = new HashMap<>();

@@ -85,10 +85,18 @@ public interface InternalCompositeLayoutOfClass<T> {
     }
 
     static MethodHandle adaptGetter(MethodHandle getter) {
+        // Todo: Remove this null check
+        if (getter == null) {
+            return null;
+        }
         return getter.asType(MethodType.methodType(Object.class, MemorySegment.class, long.class));
     }
 
     static MethodHandle adaptSetter(MethodHandle setter) {
+        // Todo: Remove this null check
+        if (setter == null) {
+            return null;
+        }
         return setter.asType(MethodType.methodType(void.class, MemorySegment.class, long.class, Object.class));
     }
 
