@@ -353,10 +353,6 @@ public abstract sealed class AbstractMemorySegmentImpl
         checkBounds(offset, length);
     }
 
-    public void checkValidState() {
-        sessionImpl().checkValidState();
-    }
-
     @ForceInline
     public final void checkEnclosingLayout(long offset, MemoryLayout enclosing, boolean readOnly) {
         checkAccess(offset, enclosing.byteSize(), readOnly);
@@ -415,7 +411,7 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @Override
-    public Scope scope() {
+    public MemorySessionImpl scope() {
         return scope;
     }
 
