@@ -475,7 +475,7 @@ public interface SegmentAllocator {
      *           following code:
      * {@snippet lang = java:
      * this.allocateFrom(layout, MemorySegment.ofArray(array),
-     *                   ValueLayout.JAVA_BYTE, 0, array.length)
+     *                   ValueLayout.JAVA_BOOLEAN, 0, array.length)
      *}
      * @param elementLayout the element layout of the array to be allocated
      * @param elements      the boolean elements to be copied to the newly allocated

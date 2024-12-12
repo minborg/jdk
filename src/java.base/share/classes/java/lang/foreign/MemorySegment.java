@@ -1461,11 +1461,11 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * the given array reachable. The returned segment is always accessible, from any
      * thread. Its {@link #address()} is set to zero.
      *
-     * @param byteArray the primitive array backing the heap memory segment
+     * @param booleanArray the primitive array backing the heap memory segment
      * @return a heap memory segment backed by a boolean array
      */
-    static MemorySegment ofArray(boolean[] byteArray) {
-        return SegmentFactories.fromArray(byteArray);
+    static MemorySegment ofArray(boolean[] booleanArray) {
+        return SegmentFactories.fromArray(booleanArray);
     }
 
     /**
