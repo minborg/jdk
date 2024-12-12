@@ -33,7 +33,9 @@ import org.junit.jupiter.api.Test;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 import static java.lang.foreign.ValueLayout.JAVA_BOOLEAN;
 import static org.junit.jupiter.api.Assertions.*;
@@ -127,6 +129,75 @@ final class TestBooleanAdditions {
                 }
             }
         }
+    }
+
+    @Nested
+    final class TestSegmentBulkOperations {
+
+        private static final UnaryOperator<Byte> BYTE_TO_BOOLEAN_BYTE = b -> (byte) (b != 0 ? 1 : 0);
+
+        // compress
+        // 256 -> 8 -> 3 -> 2 -> 1
+        private static final UnaryOperator<Byte> BIT_COUNT =
+                b -> (byte) Integer.bitCount(Integer.bitCount(Integer.bitCount(Integer.bitCount(b))));
+
+        private static final UnaryOperator<Byte> MASK_SIFT_OR =
+                b -> (byte) (((b & 0x80) >> 7) |
+                        ((b & 0x40) >> 6) |
+                        ((b & 0x20) >> 5) |
+                        ((b & 0x10) >> 4) |
+                        ((b & 0x08) >> 3) |
+                        ((b & 0x04) >> 2) |
+                        ((b & 0x02) >> 1) |
+                        ((b & 0x01)));
+
+        private static final UnaryOperator<Byte> MIN = b -> (byte) Math.min(1, b & 0xff);
+
+        private static final UnaryOperator<Byte> BIT_COUNT2 = b -> (byte) ((Integer.bitCount(b & 0xff) + 7) / 8);
+        private static final UnaryOperator<Byte> X = b -> (byte) ((b * 31) & 0x01);
+
+        @Test
+        void branchLessConversion() {
+            for (int i = Byte.MIN_VALUE; i <= Byte.MAX_VALUE; i++) {
+                byte b = (byte) i;
+                byte expected = BYTE_TO_BOOLEAN_BYTE.apply(b);
+                assertEquals(expected, BIT_COUNT.apply(b), "BIT_COUNT: " + i);
+                assertEquals(expected, MASK_SIFT_OR.apply(b), "MASK_SIFT_OR: " + i);
+                assertEquals(expected, MIN.apply(b), "MIN: " + i);
+                assertEquals(expected, BIT_COUNT2.apply(b), "BIT_COUNT2: " + i);
+                System.out.println("b=" + b + " -> " + X.apply(b));
+            }
+            fail();
+        }
+
+        @Test
+        void find() {
+            int best = Integer.MAX_VALUE;
+            for (int i = 0; i < 7; i++) {
+                final int multiplier = i;
+                System.out.println("multiplier = " + multiplier);
+                UnaryOperator<Byte> mapper = b -> (byte) ((b * ~(b + multiplier) & 0x01));
+                int err = 0;
+                for (int v = Byte.MIN_VALUE; v <= Byte.MAX_VALUE; v++) {
+                    byte b = (byte) v;
+                    byte e = BYTE_TO_BOOLEAN_BYTE.apply(b);
+                    byte a = mapper.apply(b);
+                    if (!Objects.equals(e, a)) {
+                        err++;
+                        System.out.println("failed for = " + b + ", e=" + e + ", a=" + a);
+                    }
+                }
+                System.out.println("i=" + i + ", err=" + err);
+                best = Math.min(best, err);
+            }
+            System.out.println("best = " + best);
+        }
+
+
+    }
+
+    static byte normalize(byte b) {
+        return (byte) (b == 0 ? 0 : 1);
     }
 
     private static byte[] byteArray() {
