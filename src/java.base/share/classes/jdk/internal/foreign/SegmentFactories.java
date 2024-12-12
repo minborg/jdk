@@ -26,6 +26,7 @@
 package jdk.internal.foreign;
 
 import jdk.internal.access.foreign.UnmapperProxy;
+import jdk.internal.foreign.HeapMemorySegmentImpl.OfBoolean;
 import jdk.internal.foreign.HeapMemorySegmentImpl.OfByte;
 import jdk.internal.foreign.HeapMemorySegmentImpl.OfChar;
 import jdk.internal.foreign.HeapMemorySegmentImpl.OfDouble;
@@ -87,6 +88,14 @@ public class SegmentFactories {
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.BYTE.scale();
         return new OfByte(Utils.BaseAndScale.BYTE.base(), arr, byteSize, false,
+                MemorySessionImpl.createHeap(arr));
+    }
+
+    public static OfBoolean fromArray(boolean[] arr) {
+        ensureInitialized();
+        Objects.requireNonNull(arr);
+        long byteSize = (long)arr.length * Utils.BaseAndScale.BOOLEAN.scale();
+        return new HeapMemorySegmentImpl.OfBoolean(Utils.BaseAndScale.BOOLEAN.base(), arr, byteSize, false,
                 MemorySessionImpl.createHeap(arr));
     }
 

@@ -282,13 +282,14 @@ public class TestSegmentAllocators {
             }
         };
         allocator.allocateFrom(ValueLayout.JAVA_BYTE);
+        allocator.allocateFrom(ValueLayout.JAVA_BOOLEAN);
         allocator.allocateFrom(ValueLayout.JAVA_SHORT);
         allocator.allocateFrom(ValueLayout.JAVA_CHAR);
         allocator.allocateFrom(ValueLayout.JAVA_INT);
         allocator.allocateFrom(ValueLayout.JAVA_FLOAT);
         allocator.allocateFrom(ValueLayout.JAVA_LONG);
         allocator.allocateFrom(ValueLayout.JAVA_DOUBLE);
-        assertEquals(calls.get(), 7);
+        assertEquals(calls.get(), 8);
     }
 
     @Test
@@ -356,6 +357,9 @@ public class TestSegmentAllocators {
             scalarAllocations.add(new Object[] { (byte)42, factory, ValueLayout.JAVA_BYTE,
                     (AllocationFunction.OfByte) SegmentAllocator::allocateFrom,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
+            scalarAllocations.add(new Object[] { true, factory, ValueLayout.JAVA_BOOLEAN,
+                    (AllocationFunction.OfBoolean) SegmentAllocator::allocateFrom,
+                    (Function<MemoryLayout, VarHandle>) MemoryLayout::varHandle});
             scalarAllocations.add(new Object[] { (short)42, factory, ValueLayout.JAVA_SHORT.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfShort) SegmentAllocator::allocateFrom,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
@@ -412,6 +416,9 @@ public class TestSegmentAllocators {
             arrayAllocations.add(new Object[] { factory, ValueLayout.JAVA_BYTE,
                     (AllocationFunction.OfByteArray) SegmentAllocator::allocateFrom,
                     ToArrayHelper.toByteArray });
+            arrayAllocations.add(new Object[] { factory, ValueLayout.JAVA_BOOLEAN,
+                    (AllocationFunction.OfBooleanArray) SegmentAllocator::allocateFrom,
+                    ToArrayHelper.toBooleanArray });
             arrayAllocations.add(new Object[] { factory, ValueLayout.JAVA_CHAR.withOrder(ByteOrder.LITTLE_ENDIAN),
                     (AllocationFunction.OfCharArray) SegmentAllocator::allocateFrom,
                     ToArrayHelper.toCharArray });
@@ -469,6 +476,7 @@ public class TestSegmentAllocators {
         interface OfAddress extends AllocationFunction<MemorySegment, AddressLayout> { }
 
         interface OfByteArray extends AllocationFunction<byte[], ValueLayout.OfByte> { }
+        interface OfBooleanArray extends AllocationFunction<boolean[], ValueLayout.OfBoolean> { }
         interface OfCharArray extends AllocationFunction<char[], ValueLayout.OfChar> { }
         interface OfShortArray extends AllocationFunction<short[], ValueLayout.OfShort> { }
         interface OfIntArray extends AllocationFunction<int[], ValueLayout.OfInt> { }
@@ -514,6 +522,23 @@ public class TestSegmentAllocators {
                 ByteBuffer buffer = segment.asByteBuffer().order(layout.order());
                 byte[] found = new byte[buffer.limit()];
                 buffer.get(found);
+                return found;
+            }
+        };
+
+        ToArrayHelper<boolean[]> toBooleanArray = new ToArrayHelper<>() {
+            @Override
+            public boolean[] array() {
+                return new boolean[] { false, true, false, false, false, false, false, false, false, false, false };
+            }
+
+            @Override
+            public boolean[] toArray(MemorySegment segment, ValueLayout layout) {
+                ByteBuffer buffer = segment.asByteBuffer().order(layout.order());
+                boolean[] found = new boolean[buffer.limit()];
+                for (int i = 0; i < found.length; i++) {
+                    found[i] = (buffer.get(i) == 1);
+                }
                 return found;
             }
         };

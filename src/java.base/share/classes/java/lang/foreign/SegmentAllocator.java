@@ -180,6 +180,31 @@ public interface SegmentAllocator {
     }
 
     /**
+     * {@return a new memory segment initialized with the provided boolean value}
+     * <p>
+     * The size of the allocated memory segment is the
+     * {@linkplain MemoryLayout#byteSize() size} of the given layout. The given value is
+     * written into the segment according to the byte order and alignment constraint of
+     * the given layout.
+     *
+     * @implSpec The default implementation is equivalent to:
+     * {@snippet lang=java :
+     *  MemorySegment seg = allocate(Objects.requireNonNull(layout));
+     *  seg.set(layout, 0, value);
+     *  return seg;
+     * }
+     *
+     * @param layout the layout of the block of memory to be allocated
+     * @param value  the value to be set in the newly allocated memory segment
+     */
+    default MemorySegment allocateFrom(ValueLayout.OfBoolean layout, boolean value) {
+        Objects.requireNonNull(layout);
+        MemorySegment seg = allocateNoInit(layout);
+        seg.set(layout, 0, value);
+        return seg;
+    }
+
+    /**
      * {@return a new memory segment initialized with the provided char value}
      * <p>
      * The size of the allocated memory segment is the
@@ -435,6 +460,33 @@ public interface SegmentAllocator {
     default MemorySegment allocateFrom(ValueLayout.OfByte elementLayout, byte... elements) {
         return allocateFrom(elementLayout, MemorySegment.ofArray(elements),
                 ValueLayout.JAVA_BYTE, 0, elements.length);
+    }
+
+    /**
+     * {@return a new memory segment initialized with the elements in the provided
+     *          boolean array}
+     * <p>
+     * The size of the allocated memory segment is
+     * {@code elementLayout.byteSize() * elements.length}. The contents of the
+     * source array is copied into the result segment element by element, according
+     * to the byte order and alignment constraint of the given element layout.
+     *
+     * @implSpec The default implementation for this method is equivalent to the
+     *           following code:
+     * {@snippet lang = java:
+     * this.allocateFrom(layout, MemorySegment.ofArray(array),
+     *                   ValueLayout.JAVA_BYTE, 0, array.length)
+     *}
+     * @param elementLayout the element layout of the array to be allocated
+     * @param elements      the boolean elements to be copied to the newly allocated
+     *                      memory block
+     * @throws IllegalArgumentException if
+     *         {@code elementLayout.byteAlignment() > elementLayout.byteSize()}
+     */
+    @ForceInline
+    default MemorySegment allocateFrom(ValueLayout.OfBoolean elementLayout, boolean... elements) {
+        return allocateFrom(elementLayout, MemorySegment.ofArray(elements),
+                ValueLayout.JAVA_BOOLEAN, 0, elements.length);
     }
 
     /**

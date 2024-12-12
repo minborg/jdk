@@ -302,6 +302,8 @@ public final class Utils {
 
         public static final BaseAndScale BYTE =
                 new BaseAndScale(Unsafe.ARRAY_BYTE_BASE_OFFSET, Unsafe.ARRAY_BYTE_INDEX_SCALE);
+        public static final BaseAndScale BOOLEAN =
+                new BaseAndScale(Unsafe.ARRAY_BOOLEAN_BASE_OFFSET, Unsafe.ARRAY_BOOLEAN_INDEX_SCALE);
         public static final BaseAndScale CHAR =
                 new BaseAndScale(Unsafe.ARRAY_CHAR_BASE_OFFSET, Unsafe.ARRAY_CHAR_INDEX_SCALE);
         public static final BaseAndScale SHORT =
@@ -317,13 +319,14 @@ public final class Utils {
 
         public static BaseAndScale of(Object array) {
             return switch (array) {
-                case byte[]   _ -> BaseAndScale.BYTE;
-                case char[]   _ -> BaseAndScale.CHAR;
-                case short[]  _ -> BaseAndScale.SHORT;
-                case int[]    _ -> BaseAndScale.INT;
-                case float[]  _ -> BaseAndScale.FLOAT;
-                case long[]   _ -> BaseAndScale.LONG;
-                case double[] _ -> BaseAndScale.DOUBLE;
+                case byte[]    _ -> BaseAndScale.BYTE;
+                case boolean[] _ -> BaseAndScale.BOOLEAN;
+                case char[]    _ -> BaseAndScale.CHAR;
+                case short[]   _ -> BaseAndScale.SHORT;
+                case int[]     _ -> BaseAndScale.INT;
+                case float[]   _ -> BaseAndScale.FLOAT;
+                case long[]    _ -> BaseAndScale.LONG;
+                case double[]  _ -> BaseAndScale.DOUBLE;
                 default -> throw new IllegalArgumentException("Not a supported array class: " + array.getClass().getSimpleName());
             };
         }

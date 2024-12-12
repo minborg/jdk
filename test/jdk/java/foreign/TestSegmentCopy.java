@@ -41,6 +41,7 @@ import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import static java.lang.foreign.ValueLayout.JAVA_BOOLEAN;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static org.testng.Assert.*;
 
@@ -295,6 +296,8 @@ public class TestSegmentCopy {
     enum Type {
         // Byte
         BYTE(byte.class, JAVA_BYTE, i -> (byte)i),
+        // Boolean
+        BOOLEAN(boolean.class, JAVA_BOOLEAN, i -> i == 1),
         //LE
         SHORT_LE(short.class, ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN), i -> (short)i),
         CHAR_LE(char.class, ValueLayout.JAVA_CHAR_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN), i -> (char)i),

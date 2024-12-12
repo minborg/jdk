@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static java.lang.foreign.ValueLayout.JAVA_BOOLEAN;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
@@ -122,6 +123,7 @@ public class TestScopedOperations {
         ScopedOperation.ofScope(a -> a.allocate(1, 1), "Arena::allocate/size/align");
         ScopedOperation.ofScope(a -> a.allocate(JAVA_BYTE), "Arena::allocate/layout");
         ScopedOperation.ofScope(a -> a.allocateFrom(JAVA_BYTE, (byte) 0), "Arena::allocate/byte");
+        ScopedOperation.ofScope(a -> a.allocateFrom(JAVA_BOOLEAN, true), "Arena::allocate/boolean");
         ScopedOperation.ofScope(a -> a.allocateFrom(ValueLayout.JAVA_CHAR, (char) 0), "Arena::allocate/char");
         ScopedOperation.ofScope(a -> a.allocateFrom(ValueLayout.JAVA_SHORT, (short) 0), "Arena::allocate/short");
         ScopedOperation.ofScope(a -> a.allocateFrom(ValueLayout.JAVA_INT, 0), "Arena::allocate/int");
@@ -130,6 +132,7 @@ public class TestScopedOperations {
         ScopedOperation.ofScope(a -> a.allocateFrom(ValueLayout.JAVA_DOUBLE, 0d), "Arena::allocate/double");
         ScopedOperation.ofScope(a -> a.allocate(JAVA_BYTE, 1L), "Arena::allocate/size");
         ScopedOperation.ofScope(a -> a.allocateFrom(JAVA_BYTE, new byte[]{0}), "Arena::allocateFrom/byte");
+        ScopedOperation.ofScope(a -> a.allocateFrom(JAVA_BOOLEAN, new boolean[]{false}), "Arena::allocateFrom/boolean");
         ScopedOperation.ofScope(a -> a.allocateFrom(ValueLayout.JAVA_CHAR, new char[]{0}), "Arena::allocateFrom/char");
         ScopedOperation.ofScope(a -> a.allocateFrom(ValueLayout.JAVA_SHORT, new short[]{0}), "Arena::allocateFrom/short");
         ScopedOperation.ofScope(a -> a.allocateFrom(ValueLayout.JAVA_INT, new int[]{0}), "Arena::allocateFrom/int");

@@ -1153,6 +1153,23 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     byte[] toArray(ValueLayout.OfByte elementLayout);
 
     /**
+     * Copy the contents of this memory segment into a new boolean array.
+     *
+     * @param elementLayout the source element layout. If the byte order associated with
+     *                      the layout is different from the
+     *                      {@linkplain ByteOrder#nativeOrder native order}, a byte swap
+     *                      operation will be performed on each array element
+     * @return a new boolean array whose contents are copied from this memory segment
+     * @throws IllegalStateException if the {@linkplain #scope() scope} associated with
+     *         this segment is not {@linkplain Scope#isAlive() alive}
+     * @throws WrongThreadException if this method is called from a thread {@code T},
+     *         such that {@code isAccessibleBy(T) == false}
+     * @throws IllegalStateException if this segment's contents cannot be copied into a
+     *         {@code boolean[]} instance, e.g. its size is greater than {@link Integer#MAX_VALUE}
+     */
+    boolean[] toArray(ValueLayout.OfBoolean elementLayout);
+
+    /**
      * Copy the contents of this memory segment into a new short array.
      *
      * @param elementLayout the source element layout. If the byte order associated with
@@ -1435,6 +1452,19 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @return a heap memory segment backed by a byte array
      */
     static MemorySegment ofArray(byte[] byteArray) {
+        return SegmentFactories.fromArray(byteArray);
+    }
+
+    /**
+     * Creates a heap segment backed by the on-heap region of memory that holds the given
+     * boolean array. The scope of the returned segment is an automatic scope that keeps
+     * the given array reachable. The returned segment is always accessible, from any
+     * thread. Its {@link #address()} is set to zero.
+     *
+     * @param byteArray the primitive array backing the heap memory segment
+     * @return a heap memory segment backed by a boolean array
+     */
+    static MemorySegment ofArray(boolean[] byteArray) {
         return SegmentFactories.fromArray(byteArray);
     }
 

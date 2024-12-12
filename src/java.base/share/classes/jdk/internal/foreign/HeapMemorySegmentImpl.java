@@ -51,6 +51,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
     // Constants defining the maximum alignment supported by various kinds of heap arrays.
 
     private static final long MAX_ALIGN_BYTE_ARRAY = ValueLayout.JAVA_BYTE.byteAlignment();
+    private static final long MAX_ALIGN_BOOLEAN_ARRAY = ValueLayout.JAVA_BOOLEAN.byteAlignment();
     private static final long MAX_ALIGN_SHORT_ARRAY = ValueLayout.JAVA_SHORT.byteAlignment();
     private static final long MAX_ALIGN_INT_ARRAY = ValueLayout.JAVA_INT.byteAlignment();
     private static final long MAX_ALIGN_LONG_ARRAY = ValueLayout.JAVA_LONG.byteAlignment();
@@ -122,6 +123,33 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
         @Override
         public long address() {
             return offset - Utils.BaseAndScale.BYTE.base();
+        }
+    }
+
+    public static final class OfBoolean extends HeapMemorySegmentImpl {
+
+        OfBoolean(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
+            super(offset, base, length, readOnly, session);
+        }
+
+        @Override
+        OfByte dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
+            return new OfByte(this.offset + offset, base, size, readOnly, scope);
+        }
+
+        @Override
+        public boolean[] unsafeGetBase() {
+            return (boolean[])Objects.requireNonNull(base);
+        }
+
+        @Override
+        public long maxAlignMask() {
+            return MAX_ALIGN_BOOLEAN_ARRAY;
+        }
+
+        @Override
+        public long address() {
+            return offset - Utils.BaseAndScale.BOOLEAN.base();
         }
     }
 

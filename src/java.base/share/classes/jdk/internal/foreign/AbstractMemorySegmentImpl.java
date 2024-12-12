@@ -281,6 +281,11 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @Override
+    public final boolean[] toArray(ValueLayout.OfBoolean elementLayout) {
+        return toArray(boolean[].class, elementLayout, boolean[]::new, MemorySegment::ofArray);
+    }
+
+    @Override
     public final short[] toArray(ValueLayout.OfShort elementLayout) {
         return toArray(short[].class, elementLayout, short[]::new, MemorySegment::ofArray);
     }
@@ -588,9 +593,13 @@ public abstract sealed class AbstractMemorySegmentImpl
         srcImpl.checkAccess(srcOffset, size, true);
         dstImpl.checkAccess(dstOffset, size, false);
         if (srcElementLayout.byteSize() == 1 || srcElementLayout.order() == dstElementLayout.order()) {
-            ScopedMemoryAccess.getScopedMemoryAccess().copyMemory(srcImpl.sessionImpl(), dstImpl.sessionImpl(),
-                    srcImpl.unsafeGetBase(), srcImpl.unsafeGetOffset() + srcOffset,
-                    dstImpl.unsafeGetBase(), dstImpl.unsafeGetOffset() + dstOffset, size);
+            if (dstElementLayout instanceof ValueLayout.OfBoolean) {
+                SegmentBulkOperations.copyMemoryNormalizingBooleans(srcImpl, srcOffset, dstImpl, dstOffset, elementCount);
+            } else {
+                ScopedMemoryAccess.getScopedMemoryAccess().copyMemory(srcImpl.sessionImpl(), dstImpl.sessionImpl(),
+                        srcImpl.unsafeGetBase(), srcImpl.unsafeGetOffset() + srcOffset,
+                        dstImpl.unsafeGetBase(), dstImpl.unsafeGetOffset() + dstOffset, size);
+            }
         } else {
             ScopedMemoryAccess.getScopedMemoryAccess().copySwapMemory(srcImpl.sessionImpl(), dstImpl.sessionImpl(),
                     srcImpl.unsafeGetBase(), srcImpl.unsafeGetOffset() + srcOffset,

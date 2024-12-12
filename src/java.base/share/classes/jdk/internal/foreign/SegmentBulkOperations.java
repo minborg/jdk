@@ -32,6 +32,7 @@ import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 
 /**
  * This class contains optimized bulk operation methods that operate on one or several
@@ -376,6 +377,18 @@ public final class SegmentBulkOperations {
             remaining -= i;
         }
         return ~remaining;
+    }
+
+    @ForceInline
+    public static void copyMemoryNormalizingBooleans(AbstractMemorySegmentImpl src, long srcOffset,
+                                                     AbstractMemorySegmentImpl dst, long dstOffset,
+                                                     long elementCount) {
+        // Normalize boolean values.
+        for (long i = 0; i < elementCount; i++) {
+            final byte v = SCOPED_MEMORY_ACCESS.getByte(src.sessionImpl(), src.unsafeGetBase(), src.unsafeGetOffset() + srcOffset + i);
+            // Todo: Make condition branch less
+            SCOPED_MEMORY_ACCESS.putByte(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + dstOffset + i, (byte) (v != 0 ? 1 : 0));
+        }
     }
 
     static final String PROPERTY_PATH = "java.lang.foreign.native.threshold.power.";
