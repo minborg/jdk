@@ -154,7 +154,11 @@ final class TestBooleanAdditions {
         private static final UnaryOperator<Byte> MIN = b -> (byte) Math.min(1, b & 0xff);
 
         private static final UnaryOperator<Byte> BIT_COUNT2 = b -> (byte) ((Integer.bitCount(b & 0xff) + 7) / 8);
-        private static final UnaryOperator<Byte> X = b -> (byte) ((b * 31) & 0x01);
+        private static final UnaryOperator<Byte> X0 = b -> (byte) ((b | -b) >>> 31);
+        private static final UnaryOperator<Byte> X1 = b -> (byte) (-(b & 0xff) >>> 31);
+        private static final UnaryOperator<Byte> X2 = b -> (byte) (Integer.compress(-(b & 0xff), 1<<31));
+        private static final UnaryOperator<Byte> X3 = b -> (byte)(b >>> 31 - Integer.numberOfLeadingZeros(b));
+        private static final UnaryOperator<Byte> X4 = b -> (byte)((((~b & 0xFF) + 1) >> 8) ^ 1);
 
         @Test
         void branchLessConversion() {
@@ -165,9 +169,12 @@ final class TestBooleanAdditions {
                 assertEquals(expected, MASK_SIFT_OR.apply(b), "MASK_SIFT_OR: " + i);
                 assertEquals(expected, MIN.apply(b), "MIN: " + i);
                 assertEquals(expected, BIT_COUNT2.apply(b), "BIT_COUNT2: " + i);
-                System.out.println("b=" + b + " -> " + X.apply(b));
+                assertEquals(expected, X0.apply(b), "X0: " + i);
+                assertEquals(expected, X1.apply(b), "X1: " + i);
+                assertEquals(expected, X2.apply(b), "X2: " + i);
+                assertEquals(expected, X3.apply(b), "X3: " + i);
+                assertEquals(expected, X4.apply(b), "X4: " + i);
             }
-            fail();
         }
 
         @Test

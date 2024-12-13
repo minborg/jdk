@@ -52,7 +52,7 @@ public class SegmentBulkNormalizeBoolean {
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
-    @Param({"2", "3", "4", "5", "6", "7", "8", "64", "512",
+    @Param({"2", "4", "8", "64", "512",
             "4096", "32768", "262144", "2097152"})
     public int ELEM_SIZE;
 
@@ -70,7 +70,7 @@ public class SegmentBulkNormalizeBoolean {
     }
 
     @Benchmark
-    public int conditional() {
+    public int base() {
         int sum = 0;
         for (int i = 0; i < ELEM_SIZE; i++) {
             final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
@@ -112,6 +112,46 @@ public class SegmentBulkNormalizeBoolean {
         for (int i = 0; i < ELEM_SIZE; i++) {
             final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
             sum += (byte) Math.min(1, v & 0xff);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int andShift() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
+            sum += (byte) (-(v & 0xff) >>> 31);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int compressShift() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
+            sum += (byte) (Integer.compress(-(v & 0xff), 1<<31));
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int shiftCountZeros() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
+            sum += (byte)(v >>> 31 - Integer.numberOfLeadingZeros(v));
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int invertPlusOneShiftFlip() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
+            sum += (((~v & 0xFF) + 1) >> 8) ^ 1;
         }
         return sum;
     }
