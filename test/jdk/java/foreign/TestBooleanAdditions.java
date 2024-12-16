@@ -33,11 +33,11 @@ import org.junit.jupiter.api.Test;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.List;
-import java.util.Objects;
+import java.util.Random;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
-import static java.lang.foreign.ValueLayout.JAVA_BOOLEAN;
+import static java.lang.foreign.ValueLayout.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 final class TestBooleanAdditions {
@@ -61,7 +61,7 @@ final class TestBooleanAdditions {
 
         @Test
         void toArray() {
-            var arr = new boolean[]{false, true};
+            var arr = booleanArray();
             var segment = MemorySegment.ofArray(arr);
             var actual = segment.toArray(JAVA_BOOLEAN);
             assertArrayEquals(arr, actual);
@@ -178,33 +178,39 @@ final class TestBooleanAdditions {
         }
 
         @Test
-        void find() {
-            int best = Integer.MAX_VALUE;
-            for (int i = 0; i < 7; i++) {
-                final int multiplier = i;
-                System.out.println("multiplier = " + multiplier);
-                UnaryOperator<Byte> mapper = b -> (byte) ((b * ~(b + multiplier) & 0x01));
-                int err = 0;
-                for (int v = Byte.MIN_VALUE; v <= Byte.MAX_VALUE; v++) {
-                    byte b = (byte) v;
-                    byte e = BYTE_TO_BOOLEAN_BYTE.apply(b);
-                    byte a = mapper.apply(b);
-                    if (!Objects.equals(e, a)) {
-                        err++;
-                        System.out.println("failed for = " + b + ", e=" + e + ", a=" + a);
-                    }
+        void testLong() {
+            int len = 4096;
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment src = arena.allocate(len);
+                MemorySegment expected = arena.allocate(len);
+                MemorySegment actual = arena.allocate(len);
+                var rnd = new Random(42);
+                for (int i = 0; i < len; i++) {
+                    byte b = (byte) rnd.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE);
+                    src.set(JAVA_BYTE, i, b);
+                    expected.set(JAVA_BYTE, i, BYTE_TO_BOOLEAN_BYTE.apply(b));
                 }
-                System.out.println("i=" + i + ", err=" + err);
-                best = Math.min(best, err);
+                for (int i = 0; i < len; i += Long.BYTES) {
+                    final long v = src.get(JAVA_LONG, i);
+                    long val = (Math.min(0x0001000000000000L, (v >>> 8) & 0x00ff000000000000L) << 8) +
+                            Math.min(0x0001000000000000L, v & 0x00ff000000000000L) +
+                            Math.min(0x0000010000000000L, v & 0x0000ff0000000000L) +
+                            Math.min(0x0000000100000000L, v & 0x000000ff00000000L) +
+                            Math.min(0x0000000001000000L, v & 0x00000000ff000000L) +
+                            Math.min(0x0000000000010000L, v & 0x0000000000ff0000L) +
+                            Math.min(0x0000000000000100L, v & 0x000000000000ff00L) +
+                            Math.min(0x0000000000000001L, v & 0x00000000000000ffL);
+                    actual.set(JAVA_LONG, i, val);
+                }
+                for (int i = 0; i < len; i++) {
+                    byte e = expected.get(JAVA_BYTE, i);
+                    byte a = actual.get(JAVA_BYTE, i);
+                    assertEquals(e, a, "e=" + e + ", a=" + a + ", i=" + i);
+                }
+                assertArrayEquals(expected.toArray(JAVA_BOOLEAN), actual.toArray(JAVA_BOOLEAN));
             }
-            System.out.println("best = " + best);
         }
 
-
-    }
-
-    static byte normalize(byte b) {
-        return (byte) (b == 0 ? 0 : 1);
     }
 
     private static byte[] byteArray() {

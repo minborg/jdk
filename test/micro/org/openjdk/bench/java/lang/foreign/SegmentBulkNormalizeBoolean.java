@@ -26,6 +26,7 @@ package org.openjdk.bench.java.lang.foreign;
 
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.misc.ScopedMemoryAccess;
+import jdk.internal.util.Architecture;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -47,17 +48,20 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @State(Scope.Thread)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Fork(value = 3, jvmArgs = {"--add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED", "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"})
+@Fork(value = 3, jvmArgs = {
+        "--add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED",
+        "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
+        "--add-exports=java.base/jdk.internal.util=ALL-UNNAMED"})
 public class SegmentBulkNormalizeBoolean {
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
-    @Param({"2", "4", "8", "64", "512",
-            "4096", "32768", "262144", "2097152"})
+    @Param({"8", "64", "512", "4096", "32768", "262144", "2097152"})
     public int ELEM_SIZE;
 
     byte[] array;
-    AbstractMemorySegmentImpl segment;
+    AbstractMemorySegmentImpl src;
+    AbstractMemorySegmentImpl dst;
 
     @Setup
     public void setup() {
@@ -66,42 +70,17 @@ public class SegmentBulkNormalizeBoolean {
         for (int i = 0; i < array.length; i++) {
             array[i] = (byte) rnd.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE + 1);
         }
-        segment = (AbstractMemorySegmentImpl) MemorySegment.ofArray(array);
+        src = (AbstractMemorySegmentImpl) MemorySegment.ofArray(array);
+        dst = (AbstractMemorySegmentImpl) MemorySegment.ofArray(array);
     }
 
     @Benchmark
     public int base() {
         int sum = 0;
         for (int i = 0; i < ELEM_SIZE; i++) {
-            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
-            sum += v == 0 ? 0 : 1;
-        }
-        return sum;
-    }
-
-    @Benchmark
-    public int bitLength() {
-        int sum = 0;
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
-            sum += Integer.bitCount(Integer.bitCount(Integer.bitCount(Integer.bitCount(v))));
-        }
-        return sum;
-    }
-
-    @Benchmark
-    public int maskShiftOr() {
-        int sum = 0;
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
-            sum += (byte) (((v & 0x80) >> 7) |
-                    ((v & 0x40) >> 6) |
-                    ((v & 0x20) >> 5) |
-                    ((v & 0x10) >> 4) |
-                    ((v & 0x08) >> 3) |
-                    ((v & 0x04) >> 2) |
-                    ((v & 0x02) >> 1) |
-                    ((v & 0x01)));
+            final byte v = SCOPED_MEMORY_ACCESS.getByte(src.sessionImpl(), src.unsafeGetBase(), src.unsafeGetOffset() + i);
+            byte val = (byte) (v == 0 ? 0 : 1);
+            SCOPED_MEMORY_ACCESS.putByte(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + i, val);
         }
         return sum;
     }
@@ -110,50 +89,59 @@ public class SegmentBulkNormalizeBoolean {
     public int min() {
         int sum = 0;
         for (int i = 0; i < ELEM_SIZE; i++) {
-            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
-            sum += (byte) Math.min(1, v & 0xff);
+            final byte v = SCOPED_MEMORY_ACCESS.getByte(src.sessionImpl(), src.unsafeGetBase(), src.unsafeGetOffset() + i);
+            byte val = (byte) Math.min(1, v & 0xff);
+            SCOPED_MEMORY_ACCESS.putByte(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + i, val);
         }
         return sum;
     }
 
     @Benchmark
-    public int andShift() {
+    public int minShort() {
         int sum = 0;
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
-            sum += (byte) (-(v & 0xff) >>> 31);
+        for (int i = 0; i < ELEM_SIZE; i+=2) {
+            final short v = SCOPED_MEMORY_ACCESS.getShortUnaligned(src.sessionImpl(), src.unsafeGetBase(), src.unsafeGetOffset() + i, !Architecture.isLittleEndian());
+            short val = (short) (Math.min(1, v & 0x00ff) + Math.min(0x0100, v & 0xff00));
+            SCOPED_MEMORY_ACCESS.putShortUnaligned(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + i, val, !Architecture.isLittleEndian());
         }
         return sum;
     }
 
     @Benchmark
-    public int compressShift() {
-        int sum = 0;
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
-            sum += (byte) (Integer.compress(-(v & 0xff), 1<<31));
+    public void minLong() {
+        for (int i = 0; i < ELEM_SIZE; i += Long.BYTES) {
+            final long v = SCOPED_MEMORY_ACCESS.getLongUnaligned(src.sessionImpl(), src.unsafeGetBase(), src.unsafeGetOffset() + i, !Architecture.isLittleEndian());
+            long val = (Math.min(0x0001000000000000L, (v >>> 8) & 0x00ff000000000000L) << 8) +
+                    Math.min(0x0001000000000000L, v & 0x00ff000000000000L) +
+                    Math.min(0x0000010000000000L, v & 0x0000ff0000000000L) +
+                    Math.min(0x0000000100000000L, v & 0x000000ff00000000L) +
+                    Math.min(0x0000000001000000L, v & 0x00000000ff000000L) +
+                    Math.min(0x0000000000010000L, v & 0x0000000000ff0000L) +
+                    Math.min(0x0000000000000100L, v & 0x000000000000ff00L) +
+                    Math.min(0x0000000000000001L, v & 0x00000000000000ffL);
+            SCOPED_MEMORY_ACCESS.putLongUnaligned(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + i, val, !Architecture.isLittleEndian());
         }
-        return sum;
     }
 
     @Benchmark
-    public int shiftCountZeros() {
-        int sum = 0;
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
-            sum += (byte)(v >>> 31 - Integer.numberOfLeadingZeros(v));
+    public void minInt() {
+        for (int i = 0; i < ELEM_SIZE; i += Integer.BYTES) {
+            final int v = SCOPED_MEMORY_ACCESS.getIntUnaligned(src.sessionImpl(), src.unsafeGetBase(), src.unsafeGetOffset() + i, !Architecture.isLittleEndian());
+            int val = (int) Math.min(0x0000000001000000L, v & 0x00000000ff000000L) +
+                    Math.min(0x00010000, v & 0x00ff0000) +
+                    Math.min(0x00000100, v & 0x0000ff00) +
+                    Math.min(0x00000001, v & 0x000000ff);
+            SCOPED_MEMORY_ACCESS.putIntUnaligned(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + i, val, !Architecture.isLittleEndian());
         }
-        return sum;
     }
 
     @Benchmark
-    public int invertPlusOneShiftFlip() {
-        int sum = 0;
+    public void andShift() {
         for (int i = 0; i < ELEM_SIZE; i++) {
-            final byte v = SCOPED_MEMORY_ACCESS.getByte(segment.sessionImpl(), segment.unsafeGetBase(), segment.unsafeGetOffset() + i);
-            sum += (((~v & 0xFF) + 1) >> 8) ^ 1;
+            final byte v = SCOPED_MEMORY_ACCESS.getByte(src.sessionImpl(), src.unsafeGetBase(), src.unsafeGetOffset() + i);
+            byte val = (byte) (-(v & 0xff) >>> 31);
+            SCOPED_MEMORY_ACCESS.putByte(dst.sessionImpl(), dst.unsafeGetBase(), dst.unsafeGetOffset() + i, val);
         }
-        return sum;
     }
 
 }
