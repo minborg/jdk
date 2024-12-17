@@ -282,7 +282,7 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @Override
     public final boolean[] toArray(ValueLayout.OfBoolean elementLayout) {
-        return toArray(boolean[].class, elementLayout, boolean[]::new, MemorySegment::ofArray);
+        return toArray(boolean[].class, elementLayout, boolean[]::new, a -> SegmentFactories.fromArray(a, false));
     }
 
     @Override

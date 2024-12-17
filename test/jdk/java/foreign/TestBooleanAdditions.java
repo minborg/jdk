@@ -55,8 +55,10 @@ final class TestBooleanAdditions {
             assertEquals(arr.length, segment.byteSize());
             assertEquals(arr[0], segment.get(JAVA_BOOLEAN, 0));
             assertEquals(arr[1], segment.get(JAVA_BOOLEAN, 1));
-            assertSame(arr, segment.heapBase().orElseThrow());
+            // Read-only
+            assertTrue(segment.heapBase().isEmpty());
             assertFalse(segment.isNative());
+            assertTrue(segment.isReadOnly());
         }
 
         @Test

@@ -1456,16 +1456,20 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     }
 
     /**
-     * Creates a heap segment backed by the on-heap region of memory that holds the given
-     * boolean array. The scope of the returned segment is an automatic scope that keeps
-     * the given array reachable. The returned segment is always accessible, from any
-     * thread. Its {@link #address()} is set to zero.
+     * Creates a <em>read-only</em> heap segment backed by the on-heap region of memory
+     * that holds the given boolean array. The scope of the returned segment is an
+     * automatic scope that keeps the given array reachable. The returned segment is
+     * always accessible, from any thread. Its {@link #address()} is set to zero.
+     * <p>
+     * In order to prevent values that are not valid for booleans (i.e. values that are
+     * neither {@code 0} nor {@code 1}) being written, the returned MemorySegment is
+     * {@linkplain MemorySegment#isReadOnly() read-only}.
      *
      * @param booleanArray the primitive array backing the heap memory segment
      * @return a heap memory segment backed by a boolean array
      */
     static MemorySegment ofArray(boolean[] booleanArray) {
-        return SegmentFactories.fromArray(booleanArray);
+        return SegmentFactories.fromArray(booleanArray, true);
     }
 
     /**

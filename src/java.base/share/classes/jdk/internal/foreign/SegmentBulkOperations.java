@@ -384,7 +384,8 @@ public final class SegmentBulkOperations {
                                                      AbstractMemorySegmentImpl dst, long dstOffset,
                                                      long elementCount) {
         // Rely on auto vectorization
-        for (; srcOffset < elementCount; srcOffset++, dstOffset++) {
+        final long endOffset = srcOffset + elementCount;
+        for (; srcOffset < endOffset; srcOffset++, dstOffset++) {
             final byte v = SCOPED_MEMORY_ACCESS.getByte(src.sessionImpl(), src.unsafeGetBase(), src.unsafeGetOffset() + srcOffset);
             // `-(v & 0xff) >>> 31` is equivalent to `v != 0 ? 1 : 0` but does not entail controlling the flow of execution
             // This gives around 20% percent performance improvement on most platforms

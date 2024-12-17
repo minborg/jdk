@@ -91,11 +91,11 @@ public class SegmentFactories {
                 MemorySessionImpl.createHeap(arr));
     }
 
-    public static OfBoolean fromArray(boolean[] arr) {
+    public static OfBoolean fromArray(boolean[] arr, boolean readOnly) {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.BOOLEAN.scale();
-        return new HeapMemorySegmentImpl.OfBoolean(Utils.BaseAndScale.BOOLEAN.base(), arr, byteSize, false,
+        return new HeapMemorySegmentImpl.OfBoolean(Utils.BaseAndScale.BOOLEAN.base(), arr, byteSize, readOnly,
                 MemorySessionImpl.createHeap(arr));
     }
 

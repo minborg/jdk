@@ -297,7 +297,7 @@ public class TestSegmentCopy {
         // Byte
         BYTE(byte.class, JAVA_BYTE, i -> (byte)i),
         // Boolean
-        BOOLEAN(boolean.class, JAVA_BOOLEAN, i -> i == 1),
+        BOOLEAN(boolean.class, JAVA_BOOLEAN, i -> i != 0),
         //LE
         SHORT_LE(short.class, ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN), i -> (short)i),
         CHAR_LE(char.class, ValueLayout.JAVA_CHAR_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN), i -> (char)i),
