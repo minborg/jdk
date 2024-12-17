@@ -49,9 +49,9 @@ final class TestBooleanAdditions {
     final class TestMemorySegment {
 
         @Test
-        void ofArray() {
+        void ofArrayAsReadOnly() {
             var arr = new boolean[]{false, true};
-            var segment = MemorySegment.ofArray(arr);
+            var segment = MemorySegment.ofArrayAsReadOnly(arr);
             assertEquals(arr.length, segment.byteSize());
             assertEquals(arr[0], segment.get(JAVA_BOOLEAN, 0));
             assertEquals(arr[1], segment.get(JAVA_BOOLEAN, 1));
@@ -64,7 +64,7 @@ final class TestBooleanAdditions {
         @Test
         void toArray() {
             var arr = booleanArray();
-            var segment = MemorySegment.ofArray(arr);
+            var segment = MemorySegment.ofArrayAsReadOnly(arr);
             var actual = segment.toArray(JAVA_BOOLEAN);
             assertArrayEquals(arr, actual);
         }

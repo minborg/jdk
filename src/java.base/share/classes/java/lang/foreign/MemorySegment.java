@@ -1166,6 +1166,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         such that {@code isAccessibleBy(T) == false}
      * @throws IllegalStateException if this segment's contents cannot be copied into a
      *         {@code boolean[]} instance, e.g. its size is greater than {@link Integer#MAX_VALUE}
+     *
+     * @since 25
      */
     boolean[] toArray(ValueLayout.OfBoolean elementLayout);
 
@@ -1467,8 +1469,10 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *
      * @param booleanArray the primitive array backing the heap memory segment
      * @return a heap memory segment backed by a boolean array
+     *
+     * @since 25
      */
-    static MemorySegment ofArray(boolean[] booleanArray) {
+    static MemorySegment ofArrayAsReadOnly(boolean[] booleanArray) {
         return SegmentFactories.fromArray(booleanArray, true);
     }
 

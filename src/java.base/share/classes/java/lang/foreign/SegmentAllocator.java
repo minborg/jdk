@@ -33,7 +33,6 @@ import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.ArenaImpl;
 import jdk.internal.foreign.SlicingAllocator;
 import jdk.internal.foreign.StringSupport;
-import jdk.internal.foreign.Utils;
 import jdk.internal.vm.annotation.ForceInline;
 
 /**
@@ -196,6 +195,8 @@ public interface SegmentAllocator {
      *
      * @param layout the layout of the block of memory to be allocated
      * @param value  the value to be set in the newly allocated memory segment
+     *
+     * @since 25
      */
     default MemorySegment allocateFrom(ValueLayout.OfBoolean layout, boolean value) {
         Objects.requireNonNull(layout);
@@ -482,10 +483,12 @@ public interface SegmentAllocator {
      *                      memory block
      * @throws IllegalArgumentException if
      *         {@code elementLayout.byteAlignment() > elementLayout.byteSize()}
+     *
+     * @since 25
      */
     @ForceInline
     default MemorySegment allocateFrom(ValueLayout.OfBoolean elementLayout, boolean... elements) {
-        return allocateFrom(elementLayout, MemorySegment.ofArray(elements),
+        return allocateFrom(elementLayout, MemorySegment.ofArrayAsReadOnly(elements),
                 ValueLayout.JAVA_BOOLEAN, 0, elements.length);
     }
 
