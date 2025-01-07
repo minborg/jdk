@@ -235,6 +235,18 @@ public class LayoutPath {
         return handle;
     }
 
+    public VarHandle arrayElementHandle() {
+        //Utils.checkElementAlignment(layout, "Element layout size is not multiple of alignment");
+        long[] arrayStrides = new long[strides.length + 1];
+        long[] arrayBounds = new long[strides.length + 1];
+        System.arraycopy(strides, 0, arrayStrides, 1, strides.length);
+        System.arraycopy(bounds, 0, arrayBounds, 1, bounds.length);
+        arrayStrides[0] = layout.byteSize();
+        arrayBounds[0] = (Long.MAX_VALUE - 1) / layout.byteSize(); // avoid overflows
+        LayoutPath arrayPath = nestedPath(layout, offset, arrayStrides, arrayBounds, derefAdapters, enclosing);
+        return arrayPath.dereferenceHandle();
+    }
+
     @ForceInline
     private static long addScaledOffset(long base, long index, long stride, long bound) {
         Objects.checkIndex(index, bound);

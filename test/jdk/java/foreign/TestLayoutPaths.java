@@ -30,6 +30,7 @@
 import java.lang.foreign.*;
 import java.lang.foreign.MemoryLayout.PathElement;
 
+import org.testng.SkipException;
 import org.testng.annotations.*;
 
 import java.lang.invoke.MethodHandle;
@@ -42,8 +43,7 @@ import java.util.List;
 import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
-import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
-import static java.lang.foreign.MemoryLayout.PathElement.sequenceElement;
+import static java.lang.foreign.MemoryLayout.PathElement.*;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_SHORT;
 import static org.testng.Assert.*;
@@ -335,6 +335,9 @@ public class TestLayoutPaths {
     @Test(dataProvider = "testLayouts", expectedExceptions = ArithmeticException.class)
     public void testOffsetHandleOverflow(MemoryLayout layout, PathElement[] pathElements, long[] indexes,
                                          long expectedByteOffset) throws Throwable {
+        if (layout instanceof ValueLayout) {
+            throw new SkipException(layout.toString());
+        }
         MethodHandle byteOffsetHandle = layout.byteOffsetHandle(pathElements);
         byteOffsetHandle = byteOffsetHandle.asSpreader(long[].class, indexes.length);
         byteOffsetHandle.invoke(Long.MAX_VALUE, indexes);
@@ -391,6 +394,124 @@ public class TestLayoutPaths {
         assertThrows(IndexOutOfBoundsException.class, () -> getter_handle.invoke(segment, 0L, seqIndexes));
     }
 
+    @Test(dataProvider = "testLayouts")
+    public void testArrayElementVarHandleBadSegment2(MemoryLayout layout, PathElement[] pathElements, long[] indexes,
+                                                     long expectedByteOffset) throws Throwable {
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocate(layout);
+            long[] params = new long[indexes.length + 1];
+            System.arraycopy(indexes, 0, params, 1, indexes.length);
+            params[0] = 0;
+            MethodHandle getter_handle = layout.arrayElementVarHandle(pathElements)
+                    .toMethodHandle(AccessMode.GET)
+                    .asSpreader(long[].class, params.length);
+
+            segment.set(JAVA_INT, expectedByteOffset, 42);
+            assertEquals((int) getter_handle.invoke(segment, 0L, params), 42);
+
+            {
+                // Make sure base offset is checked
+                var e = expectThrows(IndexOutOfBoundsException.class, () -> {
+                    int val = (int) getter_handle.invoke(segment, 1000L, params);
+                });
+            }
+
+            /*
+            if (!(layout instanceof ValueLayout)) {
+                for (int i = 0; i < params.length; i++) {
+                    long param = params[i];
+                    params[i] = 1000;
+                    var e = expectThrows(IndexOutOfBoundsException.class, () -> {
+                        int val = (int) getter_handle.invoke(segment, 0L, params);
+                    });
+                    // Restore the parameter
+                    params[i] = param;
+                }
+            } else {
+                params[0] = 1000;
+                var e = expectThrows(IndexOutOfBoundsException.class, () -> {
+                    int val = (int) getter_handle.invoke(segment, 0L, params);
+                });
+            }
+             */
+        }
+
+    }
+
+    @Test
+    public void testArrayElementVarHandleBadSegmentInt() throws Throwable {
+        MemoryLayout layout = JAVA_INT;
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocate(layout);
+            VarHandle handle = layout.arrayElementVarHandle();
+
+            segment.set(JAVA_INT, 0, 42);
+            assertEquals((int) handle.get(segment, 0L, 0L), 42);
+
+
+            // Make sure base offset is checked
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 1000L, 0L);
+            });
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, -1L, 0L);
+            });
+
+            // Faulty combinations should not cancel out each other
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 4L, -1L);
+            });
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, -4L, 1L);
+            });
+
+            // Range check on the index
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 0L, 1000L);
+            });
+
+        }
+    }
+
+    @Test
+    public void testArrayElementVarHandleBadSegmentIntSequence() throws Throwable {
+        MemoryLayout layout = MemoryLayout.sequenceLayout(1, JAVA_INT);
+        try (var arena = Arena.ofConfined()) {
+            var segment = arena.allocate(layout);
+            VarHandle handle = layout.arrayElementVarHandle(sequenceElement());
+
+            segment.set(JAVA_INT, 0, 42);
+            assertEquals((int) handle.get(segment, 0L, 0L, 0L), 42);
+
+            // Make sure base offset is checked
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 1000L, 0L, 0L);
+            });
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, -1L, 0L, 0L);
+            });
+
+            // Faulty combinations should not cancel out each other
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 4L, -1L, 0L);
+            });
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, -4L, 1L, 0L);
+            });
+            // Todo: add combinations
+
+            // Range check on the index
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 0L, 1000L, 0L); //not ok
+            });
+            expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 0L, 0L, 1000L); // ok
+            });
+
+        }
+    }
+
+
     @Test
     public void testHashCodeCollision() {
         PathElement sequenceElement = PathElement.sequenceElement();
@@ -439,6 +560,12 @@ public class TestLayoutPaths {
         List<Object[]> testCases = new ArrayList<>();
 
         testCases.add(new Object[] {
+            JAVA_INT,
+            new PathElement[] { },
+            new long[] {  },
+            0
+        });
+        testCases.add(new Object[] {
             MemoryLayout.sequenceLayout(10, JAVA_INT),
             new PathElement[] { sequenceElement() },
             new long[] { 4 },
@@ -455,12 +582,6 @@ public class TestLayoutPaths {
             new PathElement[] { sequenceElement(), groupElement("y") },
             new long[] { 4 },
             (JAVA_INT.byteSize() + 4) * 4 + 4
-        });
-        testCases.add(new Object[] {
-            MemoryLayout.sequenceLayout(10, JAVA_INT),
-            new PathElement[] { sequenceElement() },
-            new long[] { 4 },
-            JAVA_INT.byteSize() * 4
         });
         testCases.add(new Object[] {
             MemoryLayout.structLayout(
