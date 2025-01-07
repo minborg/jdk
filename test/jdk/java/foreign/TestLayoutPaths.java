@@ -50,6 +50,8 @@ import static org.testng.Assert.*;
 
 public class TestLayoutPaths {
 
+    private static final long OUT_OF_BOUNDS_INDEX = 1000L;
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadByteSelectFromSeq() {
         SequenceLayout seq = MemoryLayout.sequenceLayout(5, JAVA_INT);
@@ -412,17 +414,17 @@ public class TestLayoutPaths {
             {
                 // Make sure base offset is checked
                 var e = expectThrows(IndexOutOfBoundsException.class, () -> {
-                    int val = (int) getter_handle.invoke(segment, 1000L, params);
+                    int _ = (int) getter_handle.invoke(segment, OUT_OF_BOUNDS_INDEX, params);
                 });
+                assertOutOfBoundsOnSegmentMessage(e);
             }
 
-            /*
             if (!(layout instanceof ValueLayout)) {
                 for (int i = 0; i < params.length; i++) {
                     long param = params[i];
-                    params[i] = 1000;
+                    params[i] = OUT_OF_BOUNDS_INDEX;
                     var e = expectThrows(IndexOutOfBoundsException.class, () -> {
-                        int val = (int) getter_handle.invoke(segment, 0L, params);
+                        int _ = (int) getter_handle.invoke(segment, 0L, params);
                     });
                     // Restore the parameter
                     params[i] = param;
@@ -430,16 +432,27 @@ public class TestLayoutPaths {
             } else {
                 params[0] = 1000;
                 var e = expectThrows(IndexOutOfBoundsException.class, () -> {
-                    int val = (int) getter_handle.invoke(segment, 0L, params);
+                    int _ = (int) getter_handle.invoke(segment, 0L, params);
                 });
+                assertOutOfBoundsOnSegmentMessage(e);
             }
-             */
+
         }
 
     }
 
+    private static void assertOutOfBoundsOnSegmentMessage(IndexOutOfBoundsException e) {
+        var message = e.getMessage();
+        assertTrue(message.startsWith("Out of bound access on segment"), message);
+    }
+
+    private static void assertIndexOutOfBoundMessage(IndexOutOfBoundsException e) {
+        var message = e.getMessage();
+        assertTrue(message.startsWith("Index " + OUT_OF_BOUNDS_INDEX + " out of bounds for length"), message);
+    }
+
     @Test
-    public void testArrayElementVarHandleBadSegmentInt() throws Throwable {
+    public void testArrayElementVarHandleBadSegmentInt() {
         MemoryLayout layout = JAVA_INT;
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocate(layout);
@@ -451,30 +464,30 @@ public class TestLayoutPaths {
 
             // Make sure base offset is checked
             expectThrows(IndexOutOfBoundsException.class, () -> {
-                int _ = (int) handle.get(segment, 1000L, 0L);
+                int _ = (int) handle.get(segment, OUT_OF_BOUNDS_INDEX, 0L);
             });
-            expectThrows(IndexOutOfBoundsException.class, () -> {
+            expectThrows(IllegalArgumentException.class, () -> {
                 int _ = (int) handle.get(segment, -1L, 0L);
             });
 
             // Faulty combinations should not cancel out each other
-            expectThrows(IndexOutOfBoundsException.class, () -> {
+            expectThrows(IllegalArgumentException.class, () -> {
                 int _ = (int) handle.get(segment, 4L, -1L);
             });
-            expectThrows(IndexOutOfBoundsException.class, () -> {
+            expectThrows(IllegalArgumentException.class, () -> {
                 int _ = (int) handle.get(segment, -4L, 1L);
             });
 
             // Range check on the index
-            expectThrows(IndexOutOfBoundsException.class, () -> {
-                int _ = (int) handle.get(segment, 0L, 1000L);
+            var e = expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 0L, 2);
             });
-
+            assertOutOfBoundsOnSegmentMessage(e);
         }
     }
 
     @Test
-    public void testArrayElementVarHandleBadSegmentIntSequence() throws Throwable {
+    public void testArrayElementVarHandleBadSegmentIntSequence() {
         MemoryLayout layout = MemoryLayout.sequenceLayout(1, JAVA_INT);
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocate(layout);
@@ -484,33 +497,35 @@ public class TestLayoutPaths {
             assertEquals((int) handle.get(segment, 0L, 0L, 0L), 42);
 
             // Make sure base offset is checked
-            expectThrows(IndexOutOfBoundsException.class, () -> {
-                int _ = (int) handle.get(segment, 1000L, 0L, 0L);
+            var e = expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 2, 0L, 0L);
             });
-            expectThrows(IndexOutOfBoundsException.class, () -> {
+            assertOutOfBoundsOnSegmentMessage(e);
+            expectThrows(IllegalArgumentException.class, () -> {
                 int _ = (int) handle.get(segment, -1L, 0L, 0L);
             });
 
             // Faulty combinations should not cancel out each other
-            expectThrows(IndexOutOfBoundsException.class, () -> {
+            expectThrows(IllegalArgumentException.class, () -> {
                 int _ = (int) handle.get(segment, 4L, -1L, 0L);
             });
-            expectThrows(IndexOutOfBoundsException.class, () -> {
+            expectThrows(IllegalArgumentException.class, () -> {
                 int _ = (int) handle.get(segment, -4L, 1L, 0L);
             });
             // Todo: add combinations
 
             // Range check on the index
-            expectThrows(IndexOutOfBoundsException.class, () -> {
-                int _ = (int) handle.get(segment, 0L, 1000L, 0L); //not ok
+            var e2 = expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 0L, 0L, OUT_OF_BOUNDS_INDEX);
             });
-            expectThrows(IndexOutOfBoundsException.class, () -> {
-                int _ = (int) handle.get(segment, 0L, 0L, 1000L); // ok
-            });
+            assertIndexOutOfBoundMessage(e2);
 
+            var e3 = expectThrows(IndexOutOfBoundsException.class, () -> {
+                int _ = (int) handle.get(segment, 0L, OUT_OF_BOUNDS_INDEX, 0L);
+            });
+            assertOutOfBoundsOnSegmentMessage(e3);
         }
     }
-
 
     @Test
     public void testHashCodeCollision() {
