@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.UnaryOperator;
 import java.util.stream.IntStream;
@@ -67,6 +66,7 @@ public class LayoutPath {
     private static final MethodHandle MH_CHECK_ENCL_LAYOUT;
     private static final MethodHandle MH_SEGMENT_RESIZE;
     private static final MethodHandle MH_ADD_EXACT;
+    private static final MethodHandle MH_CHECK_OFFSET;
 
     static {
         try {
@@ -83,6 +83,8 @@ public class LayoutPath {
                     MethodType.methodType(MemorySegment.class, MemorySegment.class));
             MH_ADD_EXACT = lookup.findStatic(Math.class, "addExact",
                     MethodType.methodType(long.class, long.class, long.class));
+            MH_CHECK_OFFSET = lookup.findStatic(LayoutPath.class, "checkOffset",
+                    MethodType.methodType(long.class, long.class));
         } catch (Throwable ex) {
             throw new ExceptionInInitializerError(ex);
         }
@@ -201,10 +203,7 @@ public class LayoutPath {
     }
 
     public VarHandle dereferenceHandle(boolean adapt) {
-        if (!(layout instanceof ValueLayout valueLayout)) {
-            throw new IllegalArgumentException(
-                    String.format("Path does not select a value layout: %s", breadcrumbs()));
-        }
+        ValueLayout valueLayout = selectedValueLayoutOrThrow();
 
         VarHandle handle = Utils.makeRawSegmentViewVarHandle(valueLayout);              // (MS, ML, long, long)
         handle = MethodHandles.insertCoordinates(handle, 1, rootLayout());          // (MS, long, long)
@@ -218,21 +217,46 @@ public class LayoutPath {
         }
 
         if (adapt) {
-            if (derefAdapters.length > 0) {
-                // plug up the base offset if we have at least 1 enclosing dereference
-                handle = MethodHandles.insertCoordinates(handle, 1, 0);
-            }
-            for (int i = derefAdapters.length; i > 0; i--) {
-                MethodHandle adapter = derefAdapters[i - 1];
-                // the first/outermost adapter will have a base offset coordinate, the rest are constant 0
-                if (i > 1) {
-                    // plug in a constant 0 base offset for all but the outermost access in a deref chain
-                    adapter = MethodHandles.insertArguments(adapter, 1, 0);
-                }
-                handle = MethodHandles.collectCoordinates(handle, 0, adapter);
-            }
+            handle = adapt(handle);
         }
         return handle;
+    }
+
+    private VarHandle dereferenceHandleForArray() {
+        ValueLayout valueLayout = selectedValueLayoutOrThrow();
+
+        VarHandle handle = Utils.makeRawSegmentViewVarHandle(valueLayout);           // (MS, ML, long, long)
+        handle = MethodHandles.insertCoordinates(handle, 1, rootLayout());      // (MS, long, long)
+        handle = MethodHandles.insertCoordinates(handle, 2, 0L);        // (MS, long)
+        MethodHandle offsetAdapter = offsetHandle();
+        handle = MethodHandles.collectCoordinates(handle, 1, offsetAdapter);    // (MS, long, ...)
+        handle = MethodHandles.filterCoordinates(handle, 1, MH_CHECK_OFFSET);   // (MS, long, ...)
+        return adapt(handle);
+    }
+
+    private VarHandle adapt(VarHandle handle) {
+        if (derefAdapters.length > 0) {
+            // plug up the base offset if we have at least 1 enclosing dereference
+            handle = MethodHandles.insertCoordinates(handle, 1, 0);
+        }
+        for (int i = derefAdapters.length; i > 0; i--) {
+            MethodHandle adapter = derefAdapters[i - 1];
+            // the first/outermost adapter will have a base offset coordinate, the rest are constant 0
+            if (i > 1) {
+                // plug in a constant 0 base offset for all but the outermost access in a deref chain
+                adapter = MethodHandles.insertArguments(adapter, 1, 0);
+            }
+            handle = MethodHandles.collectCoordinates(handle, 0, adapter);
+        }
+        return handle;
+    }
+
+    private ValueLayout selectedValueLayoutOrThrow() {
+        if (!(layout instanceof ValueLayout valueLayout)) {
+            throw new IllegalArgumentException(
+                    String.format("Path does not select a value layout: %s", breadcrumbs()));
+        }
+        return valueLayout;
     }
 
     public VarHandle arrayElementHandle() {
@@ -245,6 +269,7 @@ public class LayoutPath {
         arrayBounds[0] = (Long.MAX_VALUE - 1) / layout.byteSize(); // avoid overflows
         LayoutPath arrayPath = nestedPath(layout, offset, arrayStrides, arrayBounds, derefAdapters, enclosing);
         return arrayPath.dereferenceHandle();
+        //return arrayPath.dereferenceHandleForArray();
     }
 
     @ForceInline
@@ -253,6 +278,14 @@ public class LayoutPath {
         // note: the below can overflow, depending on 'base'. When constructing var handles
         // through the layout API, this is never the case, as the injected 'base' is always 0.
         return base + (stride * index);
+    }
+
+    @ForceInline
+    private static long checkOffset(long offset) {
+        if (offset < 0) {
+            throw new IndexOutOfBoundsException();
+        }
+        return offset;
     }
 
     public MethodHandle offsetHandle() {
