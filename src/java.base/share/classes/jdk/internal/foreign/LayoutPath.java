@@ -268,8 +268,7 @@ public class LayoutPath {
         arrayStrides[0] = layout.byteSize();
         arrayBounds[0] = (Long.MAX_VALUE - 1) / layout.byteSize(); // avoid overflows
         LayoutPath arrayPath = nestedPath(layout, offset, arrayStrides, arrayBounds, derefAdapters, enclosing);
-        return arrayPath.dereferenceHandle();
-        //return arrayPath.dereferenceHandleForArray();
+        return arrayPath.dereferenceHandleForArray();
     }
 
     @ForceInline
