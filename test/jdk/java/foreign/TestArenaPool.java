@@ -35,6 +35,7 @@ import java.lang.foreign.ArenaPool;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import jdk.test.lib.thread.VThreadRunner;
@@ -77,11 +78,37 @@ final class TestArenaPool {
                 assertThrows(WrongThreadException.class, () -> {
                     var pool = newPool();
                     CompletableFuture<Arena> future = CompletableFuture.supplyAsync(pool::take);
-                    try (var otherThreadArena = future.get()) {
-                        otherThreadArena.allocate(SMALL_ALLOC_SIZE);
-                    }
+                    var otherThreadArena = future.get();
+                    otherThreadArena.allocate(SMALL_ALLOC_SIZE);
+                    // Intentionally do not close the otherThreadArena here.
                 });
         doInTwoStackedArenas(allocateAction, allocateAction);
+    }
+
+    @Test
+    void allocateConfinementVt() {
+        VThreadRunner.run(this::allocateConfinement);
+    }
+
+    @Test
+    void closeConfinement() {
+        Consumer<Arena> closeAction = arena -> {
+            var pool = newPool();
+            CompletableFuture<Arena> future = CompletableFuture.supplyAsync(pool::take);
+            Arena otherThreadArena = null;
+            try {
+                otherThreadArena = future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                fail(e);
+            }
+            assertThrows(WrongThreadException.class, otherThreadArena::close);
+        };
+        doInTwoStackedArenas(closeAction, closeAction);
+    }
+
+    @Test
+    void closeConfinementVt() {
+        VThreadRunner.run(this::closeConfinement);
     }
 
     @Test

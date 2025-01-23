@@ -82,9 +82,6 @@ public final class ArenaPoolImpl implements ArenaPool {
 
         static final int AVAILABLE = 0;
         static final int TAKEN = 1;
-        static final Unsafe UNSAFE = Unsafe.getUnsafe();
-        static final long SEG_AVAIL_OFFSET =
-                UNSAFE.objectFieldOffset(ThreadLocalArenaPoolImpl.class, "segmentAvailability");
 
         @Stable
         private final Arena pooledArena;
@@ -119,6 +116,10 @@ public final class ArenaPoolImpl implements ArenaPool {
 
         public static final class OfCarrier
                 extends ThreadLocalArenaPoolImpl {
+
+            static final Unsafe UNSAFE = Unsafe.getUnsafe();
+            static final long SEG_AVAIL_OFFSET =
+                    UNSAFE.objectFieldOffset(ThreadLocalArenaPoolImpl.class, "segmentAvailability");
 
             public OfCarrier(long size) {
                 super(size);
@@ -199,12 +200,13 @@ public final class ArenaPoolImpl implements ArenaPool {
             @ForceInline
             @Override
             public void close() {
-                try {
-                    delegate.close();
-                } finally {
-                    if (releaseSegment) {
-                        ThreadLocalArenaPoolImpl.this.releaseSegment();
-                    }
+                delegate.close();
+                // Intentionally do not releaseSegment() in a finally clause as
+                // the segment still is in play if close() initially fails (e.g. is closed
+                // from a non-owner thread). Later on the close() method might be
+                // successfully re-invoked (e.g. from its owner thread).
+                if (releaseSegment) {
+                    ThreadLocalArenaPoolImpl.this.releaseSegment();
                 }
             }
         }
