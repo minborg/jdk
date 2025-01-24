@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @State(Scope.Thread)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Fork(value = 3, jvmArgs = {"--add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED"})
+@Fork(value = 3)
 public class ArenaPoolFromBench {
 
     private static final String TEXT = "The quick brown fox";
@@ -75,6 +75,10 @@ public class ArenaPoolFromBench {
         try (var arena = Arena.ofPooled()) {
             return arena.allocateFrom(TEXT).address();
         }
+    }
+
+    @Fork(value = 3, jvmArgsAppend = "-Djmh.executor=VIRTUAL")
+    public static class OfVirtual extends ArenaPoolFromBench {
     }
 
 }

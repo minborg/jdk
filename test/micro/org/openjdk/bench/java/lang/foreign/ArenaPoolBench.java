@@ -45,7 +45,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 @Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @State(Scope.Thread)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Fork(value = 3, jvmArgs = {"--add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED"})
+@Fork(value = 3)
 public class ArenaPoolBench {
 
     @Param({"4", "16", "64", "512"})
@@ -63,6 +63,10 @@ public class ArenaPoolBench {
         try (var arena = Arena.ofPooled()) {
             return arena.allocate(ELEM_SIZE).address();
         }
+    }
+
+    @Fork(value = 3, jvmArgsAppend = "-Djmh.executor=VIRTUAL")
+    public static class OfVirtual extends ArenaPoolBench {
     }
 
 }
