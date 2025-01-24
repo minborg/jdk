@@ -36,6 +36,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.ArenaPool;
 import java.lang.foreign.ValueLayout;
 import java.util.concurrent.TimeUnit;
 
@@ -65,14 +66,14 @@ public class ArenaPoolFromBench {
 
     @Benchmark
     public long pooledInt() {
-        try (var arena = Arena.ofPooled()) {
+        try (var arena = ArenaPool.global().take()) {
             return arena.allocateFrom(ValueLayout.JAVA_INT, 42).address();
         }
     }
 
     @Benchmark
     public long pooledString() {
-        try (var arena = Arena.ofPooled()) {
+        try (var arena = ArenaPool.global().take()) {
             return arena.allocateFrom(TEXT).address();
         }
     }

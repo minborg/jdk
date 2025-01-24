@@ -26,13 +26,16 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.ArenaPoolImpl;
+import jdk.internal.vm.annotation.ForceInline;
 
 /**
  * An arena pool allows a per-thread reuse of pre-allocated memory.
  * <p>
+ * Memory segments {@linkplain Arena#allocate(long, long) allocated} by pooled arenas
+ * are zero-initialized.
+ * <p>
  * To be further expanded ...
  *
- * @see Arena#ofPooled()
  * @since 25
  */
 public sealed interface ArenaPool
@@ -71,6 +74,20 @@ public sealed interface ArenaPool
             throw new IllegalArgumentException();
         }
         return new ArenaPoolImpl(byteSize);
+    }
+
+    /**
+     * {@return the global arena pool}
+     */
+    @ForceInline
+    static ArenaPool global() {
+        class Holder {
+            static final ArenaPool GLOBAL_ARENA_POOL = new ArenaPoolImpl(
+                    Integer.getInteger(
+                            "jdk.internal.foreign.GLOBAL_ARENA_POOL_SIZE",
+                            1 << 10));
+        }
+        return Holder.GLOBAL_ARENA_POOL;
     }
 
 }

@@ -259,45 +259,6 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
     }
 
     /**
-     * {@return a new pooled confined arena} Segments allocated with the pooled confined
-     *          arena might be recycled when the Arena is {@linkplain Arena#close() closed}
-     *          and can only be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed}
-     *          by the thread that created the arena. I.e. by the arena's <em>owner thread</em>.
-     * <p>
-     * The returned Arena only offers allocation of small segments where at most
-     * an aggregate of 1 KiB may be allocated. The returned Arena will throw
-     * IndexOutOfBoundsException if the aggregate (including alignment losses) exceeds
-     * this limit.
-     * <p>
-     * It is imperative that the returned Arena is closed or else pre-allocated memory
-     * may be inaccessible, effectively creating a memory leak and performance regression.
-     * Here is an example of the use of a short-lived segment and how to correctly close
-     * a pooled arena:
-     *
-     * {@snippet lang=java :
-     * try (var arena = Arena.ofPooled()) {
-     *     MemorySegment segment = arena.allocate(16);
-     *     return doMemoryOperation(segment);
-     * }
-     * }
-     * <p>
-     * Memory segments {@linkplain #allocate(long, long) allocated} by the returned arena
-     * are zero-initialized.
-     *
-     * @see ArenaPool
-     * @since 25
-     */
-    static Arena ofPooled() {
-        class Holder {
-            static final ArenaPool GLOBAL_ARENA_POOL = new ArenaPoolImpl(
-                    Integer.getInteger(
-                            "jdk.internal.foreign.GLOBAL_ARENA_POOL_SIZE",
-                            1 << 10));
-        }
-        return Holder.GLOBAL_ARENA_POOL.take();
-    }
-
-    /**
      * {@return a new shared arena} Segments allocated with the shared arena can be
      *          {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread.
      * <p>
