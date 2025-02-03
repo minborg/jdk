@@ -45,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @State(Scope.Thread)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Fork(value = 3)
+@Fork(value = 3, jvmArgs = "--enable-preview")
 public class ArenaPoolFromBench {
 
     private static final String TEXT = "The quick brown fox";

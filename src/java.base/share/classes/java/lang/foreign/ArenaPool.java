@@ -26,9 +26,12 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.ArenaPoolImpl;
+import jdk.internal.javac.PreviewFeature;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.util.Objects;
+
+import static jdk.internal.javac.PreviewFeature.Feature.POOLED_MEMORY_ALLOCATION;
 
 /**
  * An arena pool that allows the reuse of pre-allocated recyclable native memory regions.
@@ -48,6 +51,7 @@ import java.util.Objects;
  * @see Arena
  * @since 25
  */
+@PreviewFeature(feature = POOLED_MEMORY_ALLOCATION)
 public sealed interface ArenaPool
         permits ArenaPoolImpl {
 

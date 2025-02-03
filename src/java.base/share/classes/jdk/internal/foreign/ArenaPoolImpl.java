@@ -37,11 +37,6 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.ArenaPool;
 import java.lang.foreign.MemorySegment;
 
-// Todo: It is better to zero out memory after it has been used compared to when it is being reused.
-
-// VT0 is mounted on a CT and an arena is allocated. Then another VT1 is mounted on the same CT and
-// allocates an arena. Then VT0 is remounted on the CT and closes its arena.
-
 public final class ArenaPoolImpl implements ArenaPool {
 
     @Stable
@@ -99,7 +94,8 @@ public final class ArenaPoolImpl implements ArenaPool {
         // Used both directly and reflectively
         int segmentAvailability;
 
-        private ThreadLocalArenaPoolImpl(long byteSize, long byteAlignment) {
+        private ThreadLocalArenaPoolImpl(long byteSize,
+                                         long byteAlignment) {
             this.pooledArena = Arena.ofConfined();
             this.segment = pooledArena.allocate(byteSize, byteAlignment);
         }
@@ -147,7 +143,8 @@ public final class ArenaPoolImpl implements ArenaPool {
             static final long SEG_AVAIL_OFFSET =
                     UNSAFE.objectFieldOffset(ThreadLocalArenaPoolImpl.class, "segmentAvailability");
 
-            public OfCarrier(long byteSize, long byteAlignment) {
+            public OfCarrier(long byteSize,
+                             long byteAlignment) {
                 super(byteSize, byteAlignment);
             }
 
@@ -169,7 +166,8 @@ public final class ArenaPoolImpl implements ArenaPool {
         public static final class OfPlatform
                 extends ThreadLocalArenaPoolImpl {
 
-            public OfPlatform(long byteSize, long byteAlignment) {
+            public OfPlatform(long byteSize,
+                              long byteAlignment) {
                 super(byteSize, byteAlignment);
             }
 
@@ -209,7 +207,8 @@ public final class ArenaPoolImpl implements ArenaPool {
             private long sp = 0L;
 
             @ForceInline
-            private SlicingArena(ArenaImpl arena, MemorySegment segment) {
+            private SlicingArena(ArenaImpl arena,
+                                 MemorySegment segment) {
                 this.delegate = arena;
                 this.segment = segment;
             }

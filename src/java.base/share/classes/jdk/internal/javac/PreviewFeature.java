@@ -81,6 +81,7 @@ public @interface PreviewFeature {
         @JEP(number=478, title="Key Derivation Function API", status="Preview")
         KEY_DERIVATION,
         LANGUAGE_MODEL,
+        POOLED_MEMORY_ALLOCATION,
         /**
          * A key for testing.
          */

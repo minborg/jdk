@@ -25,9 +25,9 @@
 /*
  * @test
  * @summary Test ArenaPool
- * @modules java.base/jdk.internal.foreign
  * @library /test/lib
- * @run junit TestArenaPool
+ * @compile --enable-preview -source ${jdk.version} TestArenaPool.java
+ * @run junit/othervm --enable-preview TestArenaPool
  */
 
 import java.lang.foreign.Arena;
