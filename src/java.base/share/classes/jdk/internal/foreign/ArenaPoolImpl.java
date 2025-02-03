@@ -126,11 +126,6 @@ public final class ArenaPoolImpl implements ArenaPool {
          */
         abstract void releaseSegment();
 
-        @Override
-        public String toString() {
-            return "ArenaPool{ segment:" + segment + " }";
-        }
-
         /**
          * Thread safe implementation.
          */

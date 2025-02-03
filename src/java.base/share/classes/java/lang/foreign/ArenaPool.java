@@ -52,7 +52,7 @@ import static jdk.internal.javac.PreviewFeature.Feature.POOLED_MEMORY_ALLOCATION
  * @since 25
  */
 @PreviewFeature(feature = POOLED_MEMORY_ALLOCATION)
-public sealed interface ArenaPool
+public sealed interface ArenaPool // Todo: Should ArenaPool implement a close method?
         permits ArenaPoolImpl {
 
     /**

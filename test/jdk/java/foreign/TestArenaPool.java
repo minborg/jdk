@@ -37,9 +37,12 @@ import java.lang.foreign.ValueLayout;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import jdk.test.lib.thread.VThreadRunner;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -47,6 +50,7 @@ final class TestArenaPool {
 
     private static final long POOL_SIZE = 64;
     private static final long SMALL_ALLOC_SIZE = 8;
+    private static final long VERY_LARGE_ALLOC_SIZE = 1L << 10;
 
     @Test
     void invariants() {
@@ -61,40 +65,43 @@ final class TestArenaPool {
         }
     }
 
-    @Test
-    void negativeAlloc() {
+    @ParameterizedTest
+    @MethodSource("pools")
+    void negativeAlloc(ArenaPool pool) {
         Consumer<Arena> action = arena ->
                 assertThrows(IllegalArgumentException.class, () -> arena.allocate(-1));
-        doInTwoStackedArenas(action, action);
+        doInTwoStackedArenas(pool, action, action);
     }
 
-    @Test
-    void negativeAllocVt() {
-        VThreadRunner.run(this::negativeAlloc);
+    @ParameterizedTest
+    @MethodSource("pools")
+    void negativeAllocVt(ArenaPool pool) {
+        VThreadRunner.run(() -> negativeAlloc(pool));
     }
 
-    @Test
-    void allocateConfinement() {
+    @ParameterizedTest
+    @MethodSource("pools")
+    void allocateConfinement(ArenaPool pool) {
         Consumer<Arena> allocateAction = arena ->
                 assertThrows(WrongThreadException.class, () -> {
-                    var pool = newPool();
                     CompletableFuture<Arena> future = CompletableFuture.supplyAsync(pool::take);
                     var otherThreadArena = future.get();
                     otherThreadArena.allocate(SMALL_ALLOC_SIZE);
                     // Intentionally do not close the otherThreadArena here.
                 });
-        doInTwoStackedArenas(allocateAction, allocateAction);
+        doInTwoStackedArenas(pool, allocateAction, allocateAction);
     }
 
-    @Test
-    void allocateConfinementVt() {
-        VThreadRunner.run(this::allocateConfinement);
+    @ParameterizedTest
+    @MethodSource("pools")
+    void allocateConfinementVt(ArenaPool pool) {
+        VThreadRunner.run(() -> allocateConfinement(pool));
     }
 
-    @Test
-    void closeConfinement() {
+    @ParameterizedTest
+    @MethodSource("pools")
+    void closeConfinement(ArenaPool pool) {
         Consumer<Arena> closeAction = arena -> {
-            var pool = newPool();
             CompletableFuture<Arena> future = CompletableFuture.supplyAsync(pool::take);
             Arena otherThreadArena = null;
             try {
@@ -104,17 +111,18 @@ final class TestArenaPool {
             }
             assertThrows(WrongThreadException.class, otherThreadArena::close);
         };
-        doInTwoStackedArenas(closeAction, closeAction);
+        doInTwoStackedArenas(pool, closeAction, closeAction);
     }
 
-    @Test
-    void closeConfinementVt() {
-        VThreadRunner.run(this::closeConfinement);
+    @ParameterizedTest
+    @MethodSource("pools")
+    void closeConfinementVt(ArenaPool pool) {
+        VThreadRunner.run(() -> closeConfinement(pool));
     }
 
-    @Test
-    void reuse() {
-        var pool = newPool();
+    @ParameterizedTest
+    @MethodSource("pools")
+    void reuse(ArenaPool pool) {
         MemorySegment firstSegment;
         MemorySegment secondSegment;
         try (var arena = pool.take()) {
@@ -130,14 +138,30 @@ final class TestArenaPool {
         assertThrows(IllegalStateException.class, () -> secondSegment.get(ValueLayout.JAVA_BYTE, 0));
     }
 
-    @Test
-    void reuseVt() {
-        VThreadRunner.run(this::reuse);
+    @ParameterizedTest
+    @MethodSource("pools")
+    void reuseVt(ArenaPool pool) {
+        VThreadRunner.run(() -> reuse(pool));
     }
 
-    @Test
-    void outOfOrderUse() {
-        var pool = newPool();
+    @ParameterizedTest
+    @MethodSource("pools")
+    void largeAlloc(ArenaPool pool) {
+        try (var arena = pool.take()) {
+            var segment = arena.allocate(VERY_LARGE_ALLOC_SIZE);
+            assertEquals(VERY_LARGE_ALLOC_SIZE, segment.byteSize());
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("pools")
+    void largeAllocSizeVt(ArenaPool pool) {
+        VThreadRunner.run(() -> largeAlloc(pool));
+    }
+
+    @ParameterizedTest
+    @MethodSource("pools")
+    void outOfOrderUse(ArenaPool pool) {
         Arena firstArena = pool.take();
         Arena secondArena = pool.take();
         firstArena.close();
@@ -146,9 +170,9 @@ final class TestArenaPool {
         thirdArena.close();
     }
 
-    @Test
-    void zeroing() {
-        var pool = newPool();
+    @ParameterizedTest
+    @MethodSource("pools")
+    void zeroing(ArenaPool pool) {
         try (var arena = pool.take()) {
             var seg = arena.allocate(SMALL_ALLOC_SIZE);
             seg.fill((byte) 1);
@@ -161,29 +185,51 @@ final class TestArenaPool {
         }
     }
 
-    @Test
-    void zeroingVt() {
-        VThreadRunner.run(this::zeroing);
+    @ParameterizedTest
+    @MethodSource("pools")
+    void zeroingVt(ArenaPool pool) {
+        VThreadRunner.run(() -> zeroing(pool));
     }
 
-    @Test
-    void useAfterFree() {
-        // How can we test this? Is it even possible to identify a UAF case?
+    @ParameterizedTest
+    @MethodSource("pools")
+    void useAfterFree(ArenaPool pool) {
+        MemorySegment segment = null;
+        try (var arena = pool.take()){
+            segment = arena.allocate(SMALL_ALLOC_SIZE);
+        }
+        final var closedSegment = segment;
+        var e = assertThrows(IllegalStateException.class, () -> closedSegment.get(ValueLayout.JAVA_INT, 0));
+        assertEquals("Already closed", e.getMessage());
     }
 
-    static void doInTwoStackedArenas(Consumer<Arena> firstAction,
+    @ParameterizedTest
+    @MethodSource("pools")
+    void toStringTest(ArenaPool pool) {
+        assertTrue(pool.toString().contains("ArenaPool"));
+        try (var arena = pool.take()) {
+            assertTrue(arena.toString().contains("SlicingArena"));
+        }
+    }
+
+    // Factories and helper methods
+
+    static Stream<ArenaPool> pools() {
+        return Stream.of(
+           ArenaPool.create(POOL_SIZE),
+           ArenaPool.global()
+        );
+    }
+
+    static void doInTwoStackedArenas(ArenaPool pool,
+                                     Consumer<Arena> firstAction,
                                      Consumer<Arena> secondAction) {
-        var pool = newPool();
         try (var firstArena = pool.take()) {
             firstAction.accept(firstArena);
             try (var secondArena = pool.take()) {
                 secondAction.accept(secondArena);
             }
         }
-    }
-
-    static ArenaPool newPool() {
-        return ArenaPool.create(POOL_SIZE);
     }
 
 }
