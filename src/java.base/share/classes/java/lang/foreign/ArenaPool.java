@@ -28,11 +28,11 @@ package java.lang.foreign;
 import jdk.internal.foreign.ArenaPoolImpl;
 import jdk.internal.vm.annotation.ForceInline;
 
+import java.util.Objects;
+
 /**
- * An arena pool allows a per-thread reuse of pre-allocated memory.
- * <p>
- * Memory segments {@linkplain Arena#allocate(long, long) allocated} by pooled arenas
- * are zero-initialized.
+ * An arena pool allows a per-thread reuse of pre-allocated memory of a certain size and
+ * alignment.
  * <p>
  * To be further expanded ...
  *
@@ -44,36 +44,56 @@ public sealed interface ArenaPool
     /**
      * {@return a new Arena that might reuse pre-allocated memory}
      * <p>
-     * It is imperative that the returned Arena is closed or else pre-allocated memory
-     * may be inaccessible, effectively creating a memory leak. Returned arenas are
-     * often short-lived as shown in this example:
+     * Returned arenas are often short-lived as shown in this example:
      * {@snippet lang=java :
      * int result;
      * try (var arena = arenaPool.take()) {
-     *     MemorySegment segment = arena.allocateFrom(Java_INT, 0);
-     *     doMemoryOperation(segment);
+     *     MemorySegment segment = arena.allocate(JAVA_INT);
+     *     doMemoryOperation(segment); // Writes something into the segments
      *     result = segment.get(JAVA_INT, 0);
      * }
      * }
+     * <p>
+     * Memory segments {@linkplain Arena#allocate(long, long) allocated} by the returned arena
+     * are zero-initialized.
+     * <p>
+     * It is imperative that the returned Arena is closed or else pre-allocated memory
+     * may become inaccessible by the thread. For perpetual threads, this constitutes a memory leak.
      * <p>
      * To be further expanded ...
      */
     Arena take();
 
     /**
-     * {@return a new arena pool that can return Arenas capable of allocating
-     *          memory up to the given {@code byteSize}}
+     * {@return a new arena pool that can return Arenas capable of recycling
+     *          memory up to the given {@code byteSize} before allocating new
+     *          memory}
      * <p>
      * To be further expanded ...
      *
-     * @param byteSize the maximum aggregated arena allocations
+     * @param byteSize the maximum amount of recyclable memory for a thread
      * @throws IllegalArgumentException if the provided {@code byteSize} is negative.
      */
     static ArenaPool create(long byteSize) {
         if (byteSize < 0) {
             throw new IllegalArgumentException();
         }
-        return new ArenaPoolImpl(byteSize);
+        return new ArenaPoolImpl(byteSize, 1L);
+    }
+
+    /**
+     * {@return a new arena pool that can return Arenas capable of recycling
+     *          memory up to the given {@code byteSize} before allocating new
+     *          memory}
+     * <p>
+     * To be further expanded ...
+     *
+     * @param layout describing the alignment and size of recyclable memory
+     *
+     */
+    static ArenaPool create(MemoryLayout layout) {
+        Objects.requireNonNull(layout);
+        return new ArenaPoolImpl(layout.byteSize(), layout.byteAlignment());
     }
 
     /**
@@ -85,7 +105,7 @@ public sealed interface ArenaPool
             static final ArenaPool GLOBAL_ARENA_POOL = new ArenaPoolImpl(
                     Integer.getInteger(
                             "jdk.internal.foreign.GLOBAL_ARENA_POOL_SIZE",
-                            1 << 10));
+                            1 << 8), 1L);
         }
         return Holder.GLOBAL_ARENA_POOL;
     }

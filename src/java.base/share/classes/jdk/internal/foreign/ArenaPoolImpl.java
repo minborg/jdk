@@ -36,31 +36,41 @@ import jdk.internal.vm.annotation.Stable;
 import java.lang.foreign.Arena;
 import java.lang.foreign.ArenaPool;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 
 // Todo: Alignment, close in different order, VT remount, make sure pinning/unpinning is correct, zeroing
 // It is better to zero out memory after it has been used compared to when it is being reused.
 
-// VT0 is mounted on a PT and an arena is allocated. Then another VT1 is mounted on the same PT and
-// allocates an arena. Then VT0 is remounted on the PT and closes its arena.
+// VT0 is mounted on a CT and an arena is allocated. Then another VT1 is mounted on the same CT and
+// allocates an arena. Then VT0 is remounted on the CT and closes its arena.
 
 public final class ArenaPoolImpl implements ArenaPool {
 
     @Stable
     private final TerminatingThreadLocal<ThreadLocalArenaPoolImpl> tl;
 
-    public ArenaPoolImpl(long size) {
+    public ArenaPoolImpl(long byteSize, long byteAlignment) {
         this.tl = new TerminatingThreadLocal<>() {
 
             private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
 
             @Override
             protected ThreadLocalArenaPoolImpl initialValue() {
-                final Thread carrierThread = JLA.currentCarrierThread();
-                if (carrierThread instanceof CarrierThread) {
-                    return new ThreadLocalArenaPoolImpl.OfCarrier(size);
+                if (JLA.currentCarrierThread() instanceof CarrierThread) {
+                    // Only a carrier thread that is an instance of `CarrierThread` can
+                    // ever carry virtual threads. (Notably, a `CarrierThread` can also
+                    // carry a platform thread.) This means a `CarrierThread` can carry
+                    // any number of virtual threads, and they can be mounted/unmounted
+                    // from the carrier thread at almost any time. Therefore, we must use
+                    // stronger-than-plain semantics when dealing with mutual exclusion
+                    // of thread local resources.
+                    return new ThreadLocalArenaPoolImpl.OfCarrier(byteSize, byteAlignment);
                 } else {
-                    return new ThreadLocalArenaPoolImpl.OfPlatform(size);
+                    // A carrier thread that is not an instance of `CarrierThread` can
+                    // never carry a virtual thread. Because of this, only one thread will
+                    // be mounted on such a carrier thread. Therefore, we can use plain
+                    // memory semantics when dealing with mutual exclusion of thread local
+                    // resources.
+                    return new ThreadLocalArenaPoolImpl.OfPlatform(byteSize, byteAlignment);
                 }
             }
 
@@ -90,43 +100,60 @@ public final class ArenaPoolImpl implements ArenaPool {
         // Used both directly and reflectively
         int segmentAvailability;
 
-        private ThreadLocalArenaPoolImpl(long size) {
+        private ThreadLocalArenaPoolImpl(long byteSize, long byteAlignment) {
             this.pooledArena = Arena.ofConfined();
-            this.segment = pooledArena.allocate(size);
+            this.segment = pooledArena.allocate(byteSize, byteAlignment);
         }
 
         @ForceInline
         public final Arena take() {
-            if (acquireSegment()) {
-                return new SlicingArena(segment);
-            } else {
-                return new SlicingArena(segment.byteSize());
-            }
+            final Arena arena = Arena.ofConfined();
+            return tryAcquireSegment()
+                    ? new SlicingArena((ArenaImpl) arena, segment)
+                    : arena;
         }
 
         public final void close() {
             // This arena is closed by another thread and the creating thread is dead.
-            // So, this will fail currently
+            // So, this will fail currently??
             pooledArena.close();
         }
 
-        abstract boolean acquireSegment();
+        /**
+         * {@return {@code true } if the segment was acquired for exclusive use,
+         *          {@code false} otherwise}
+         */
+        abstract boolean tryAcquireSegment();
 
+        /**
+         * Unconditionally releases the acquired segment if it was previously acquired,
+         * otherwise this is a no-op.
+         */
         abstract void releaseSegment();
 
+        @Override
+        public String toString() {
+            return "ArenaPool{ segment:" + segment + " }";
+        }
+
+        /**
+         * Thread safe implementation.
+         */
         public static final class OfCarrier
                 extends ThreadLocalArenaPoolImpl {
 
+            // Unsafe allows earlier use in the init sequence and
+            // better start and warmup properties.
             static final Unsafe UNSAFE = Unsafe.getUnsafe();
             static final long SEG_AVAIL_OFFSET =
                     UNSAFE.objectFieldOffset(ThreadLocalArenaPoolImpl.class, "segmentAvailability");
 
-            public OfCarrier(long size) {
-                super(size);
+            public OfCarrier(long byteSize, long byteAlignment) {
+                super(byteSize, byteAlignment);
             }
 
             @ForceInline
-            boolean acquireSegment() {
+            boolean tryAcquireSegment() {
                 return UNSAFE.compareAndSetInt(this, SEG_AVAIL_OFFSET, AVAILABLE, TAKEN);
             }
 
@@ -136,17 +163,25 @@ public final class ArenaPoolImpl implements ArenaPool {
             }
         }
 
+        /**
+         * No need for thread-safe implementation here as a platform thread is
+         * exclusively mounted on a particular carrier thread.
+         */
         public static final class OfPlatform
                 extends ThreadLocalArenaPoolImpl {
 
-            public OfPlatform(long size) {
-                super(size);
+            public OfPlatform(long byteSize, long byteAlignment) {
+                super(byteSize, byteAlignment);
             }
 
             @ForceInline
-            boolean acquireSegment() {
-                segmentAvailability = TAKEN;
-                return true;
+            boolean tryAcquireSegment() {
+                if (segmentAvailability == TAKEN) {
+                    return false;
+                } else {
+                    segmentAvailability = TAKEN;
+                    return true;
+                }
             }
 
             @ForceInline
@@ -155,27 +190,29 @@ public final class ArenaPoolImpl implements ArenaPool {
             }
         }
 
+        /**
+         * A SlicingArena is similar to a {@linkplain SlicingAllocator} but if the
+         * backing segment cannot be used for allocation, a fall-back arena is used
+         * instead. This means allocation never fails due to the size and alignment
+         * of the backing segment.
+         *
+         * Todo: Should we expose a variant of this class as a complement
+         *       to SlicingAllocator?
+         *
+         */
         private final class SlicingArena implements Arena, NoInitSegmentAllocator {
 
             @Stable
-            private final Arena delegate;
+            private final ArenaImpl delegate;
             @Stable
-            private final SlicingAllocator allocator;
-            @Stable
-            private final boolean releaseSegment;
+            private final MemorySegment segment;
+
+            private long sp = 0L;
 
             @ForceInline
-            private SlicingArena(MemorySegment segment) {
-                this.delegate = Arena.ofConfined();
-                this.allocator = (SlicingAllocator) SegmentAllocator.slicingAllocator(segment);
-                this.releaseSegment = true;
-            }
-
-            @ForceInline
-            private SlicingArena(long size) {
-                this.delegate = Arena.ofConfined();
-                this.allocator = (SlicingAllocator) SegmentAllocator.slicingAllocator(delegate.allocate(size));
-                this.releaseSegment = false;
+            private SlicingArena(ArenaImpl arena, MemorySegment segment) {
+                this.delegate = arena;
+                this.segment = segment;
             }
 
             @ForceInline
@@ -193,8 +230,16 @@ public final class ArenaPoolImpl implements ArenaPool {
             @SuppressWarnings("restricted")
             @ForceInline
             public NativeMemorySegmentImpl allocateNoInit(long byteSize, long byteAlignment) {
-                return (NativeMemorySegmentImpl) allocator.allocate(byteSize, byteAlignment)
-                        .reinterpret(byteSize, delegate, null);
+                final long min = segment.address();
+                final long start = Utils.alignUp(min + sp, byteAlignment) - min;
+                if (start + byteSize < segment.byteSize()) {
+                    final MemorySegment slice = segment.asSlice(start, byteSize, byteAlignment);
+                    sp = start + byteSize;
+                    return (NativeMemorySegmentImpl) slice
+                            .reinterpret(byteSize, delegate, null);
+                } else {
+                    return delegate.allocateNoInit(byteSize, byteAlignment);
+                }
             }
 
             @ForceInline
@@ -205,9 +250,7 @@ public final class ArenaPoolImpl implements ArenaPool {
                 // the segment still is in play if close() initially fails (e.g. is closed
                 // from a non-owner thread). Later on the close() method might be
                 // successfully re-invoked (e.g. from its owner thread).
-                if (releaseSegment) {
-                    ThreadLocalArenaPoolImpl.this.releaseSegment();
-                }
+                ThreadLocalArenaPoolImpl.this.releaseSegment();
             }
         }
     }
