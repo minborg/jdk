@@ -12,7 +12,7 @@ Pooled memory allocation offer improved allocation performance over the existing
  * Allow for improved performance when using certain system calls with captures states, e.g. involving `errno` handling.
 
 ## Non-goals
- * It is not a goal to introduce pooled memory that can be shared across threads,
+ * It is not a goal to introduce pooled memory that can be shared across threads akin to `Arena.ofShared()`,
  * It is not a goal to make invocation of system calls like `malloc()` and `free()` faster.
  * It is not a goal to introduce stack-based allocation.
 

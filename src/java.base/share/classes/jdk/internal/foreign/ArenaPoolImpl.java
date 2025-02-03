@@ -37,8 +37,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.ArenaPool;
 import java.lang.foreign.MemorySegment;
 
-// Todo: Alignment, close in different order, VT remount, make sure pinning/unpinning is correct, zeroing
-// It is better to zero out memory after it has been used compared to when it is being reused.
+// Todo: It is better to zero out memory after it has been used compared to when it is being reused.
 
 // VT0 is mounted on a CT and an arena is allocated. Then another VT1 is mounted on the same CT and
 // allocates an arena. Then VT0 is remounted on the CT and closes its arena.
@@ -233,10 +232,12 @@ public final class ArenaPoolImpl implements ArenaPool {
                 final long min = segment.address();
                 final long start = Utils.alignUp(min + sp, byteAlignment) - min;
                 if (start + byteSize < segment.byteSize()) {
+                    Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
                     final MemorySegment slice = segment.asSlice(start, byteSize, byteAlignment);
                     sp = start + byteSize;
-                    return (NativeMemorySegmentImpl) slice
-                            .reinterpret(byteSize, delegate, null);
+                    return fastReinterpret(delegate, (NativeMemorySegmentImpl) slice, byteSize);
+/*                    return (NativeMemorySegmentImpl) slice
+                            .reinterpret(byteSize, delegate, null);*/
                 } else {
                     return delegate.allocateNoInit(byteSize, byteAlignment);
                 }
@@ -254,4 +255,18 @@ public final class ArenaPoolImpl implements ArenaPool {
             }
         }
     }
+
+    @ForceInline
+    static NativeMemorySegmentImpl fastReinterpret(ArenaImpl arena,
+                                                   NativeMemorySegmentImpl segment,
+                                                   long byteSize) {
+        // We already know the segment:
+        //  * is native
+        //  * we have native access
+        //  * there is no cleanup action
+        //  * the segment is read/write
+        return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), byteSize,
+                MemorySessionImpl.toMemorySession(arena), false, null);
+    }
+
 }

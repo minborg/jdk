@@ -53,9 +53,10 @@ final class TestArenaPool {
         assertThrows(IllegalArgumentException.class, () -> ArenaPool.create(-1));
         ArenaPool pool = ArenaPool.create(0);
         try (var arena = pool.take()) {
-            assertThrows(IndexOutOfBoundsException.class, () -> arena.allocate(1));
+            // This should come from the underlying arena and not from recyclable memory
+            assertDoesNotThrow(() -> arena.allocate(1));
             try (var arena2 = pool.take()) {
-                assertThrows(IndexOutOfBoundsException.class, () -> arena2.allocate(1));
+                assertDoesNotThrow(() -> arena.allocate(1));
             }
         }
     }
