@@ -26,6 +26,7 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.ArenaPoolImpl;
+import jdk.internal.foreign.Utils;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.vm.annotation.ForceInline;
 
@@ -43,16 +44,20 @@ import static jdk.internal.javac.PreviewFeature.Feature.POOLED_MEMORY_ALLOCATION
  * The pool attempts to provide recyclable memory regions fairly across threads on a
  * best-effort basis. The pool also tries to balance the number of recyclable memory
  * regions held internally in the pool considering trade-offs between performance and
- * memory allocations.
+ * lingering memory allocations.
  * <p>
  * If an Arena allocation operation cannot be satisfied by using a recyclable memory
  * region, new memory segments are allocated instead; allowing for graceful degradation.
+ * <p>
+ * By design, there is no "global" arena pool for the JDK as the use of such an arena
+ * could introduce security and predictability concerns. Instead, distinct arena pools
+ * should be used in specific application domains.
  *
  * @see Arena
  * @since 25
  */
 @PreviewFeature(feature = POOLED_MEMORY_ALLOCATION)
-public sealed interface ArenaPool // Todo: Should ArenaPool implement a close method?
+public sealed interface ArenaPool
         permits ArenaPoolImpl {
 
     /**
@@ -100,7 +105,7 @@ public sealed interface ArenaPool // Todo: Should ArenaPool implement a close me
      *          memory up to the given {@code byteSize} and with an alignment of 1
      *          byte before allocating new memory}
      *
-     * @param byteSize the maximum amount of recyclable memory for recyclable memory
+     * @param byteSize the byte size for recyclable memory regions
      * @throws IllegalArgumentException if the provided {@code byteSize} is negative.
      */
     static ArenaPool create(long byteSize) {
@@ -108,6 +113,23 @@ public sealed interface ArenaPool // Todo: Should ArenaPool implement a close me
             throw new IllegalArgumentException();
         }
         return new ArenaPoolImpl(byteSize, 1L);
+    }
+
+    /**
+     * {@return a new arena pool that is free to return Arenas capable of recycling
+     *          memory up to the given {@code byteSize} and with an alignment of
+     *          {@code byteAlignment} before allocating new memory}
+     *
+     * @param byteSize      the byte size for recyclable memory regions
+     * @param byteAlignment the byte alignment for recyclable memory regions
+     * @throws IllegalArgumentException if the provided {@code byteSize} is negative.
+     * @throws IllegalArgumentException if the provided {@code byteAlignment} is not
+     *                                  greater than zero or is not a power of two.
+     */
+    static ArenaPool create(long byteSize,
+                            long byteAlignment) {
+        Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
+        return new ArenaPoolImpl(byteSize, byteAlignment);
     }
 
     /**
@@ -121,23 +143,6 @@ public sealed interface ArenaPool // Todo: Should ArenaPool implement a close me
     static ArenaPool create(MemoryLayout layout) {
         Objects.requireNonNull(layout);
         return new ArenaPoolImpl(layout.byteSize(), layout.byteAlignment());
-    }
-
-    /**
-     * {@return the global arena pool}
-     * <p>
-     * The global arena holds pre-allocated recyclable native memory regions
-     * of an unspecified size and alignment.
-     */
-    @ForceInline
-    static ArenaPool global() {
-        class Holder {
-            static final ArenaPool GLOBAL_ARENA_POOL = new ArenaPoolImpl(
-                    Integer.getInteger(
-                            "jdk.internal.foreign.GLOBAL_ARENA_POOL_SIZE",
-                            1 << 8), 1L);
-        }
-        return Holder.GLOBAL_ARENA_POOL;
     }
 
 }

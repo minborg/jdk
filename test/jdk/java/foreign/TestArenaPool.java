@@ -32,6 +32,7 @@
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.ArenaPool;
+import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.concurrent.CompletableFuture;
@@ -44,6 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static org.junit.jupiter.api.Assertions.*;
 
 final class TestArenaPool {
@@ -53,9 +55,24 @@ final class TestArenaPool {
     private static final long VERY_LARGE_ALLOC_SIZE = 1L << 10;
 
     @Test
-    void invariants() {
+    void invariants1LongArg() {
         assertThrows(IllegalArgumentException.class, () -> ArenaPool.create(-1));
         ArenaPool pool = ArenaPool.create(0);
+        try (var arena = pool.take()) {
+            // This should come from the underlying arena and not from recyclable memory
+            assertDoesNotThrow(() -> arena.allocate(1));
+            try (var arena2 = pool.take()) {
+                assertDoesNotThrow(() -> arena.allocate(1));
+            }
+        }
+    }
+
+    @Test
+    void invariants2LongArgs() {
+        assertThrows(IllegalArgumentException.class, () -> ArenaPool.create(-1, 2));
+        assertThrows(IllegalArgumentException.class, () -> ArenaPool.create(1, -1));
+        assertThrows(IllegalArgumentException.class, () -> ArenaPool.create(1, 3));
+        ArenaPool pool = ArenaPool.create(0, 16);
         try (var arena = pool.take()) {
             // This should come from the underlying arena and not from recyclable memory
             assertDoesNotThrow(() -> arena.allocate(1));
@@ -134,8 +151,8 @@ final class TestArenaPool {
         assertNotSame(firstSegment, secondSegment);
         assertNotSame(firstSegment.scope(), secondSegment.scope());
         assertEquals(firstSegment.address(), secondSegment.address());
-        assertThrows(IllegalStateException.class, () -> firstSegment.get(ValueLayout.JAVA_BYTE, 0));
-        assertThrows(IllegalStateException.class, () -> secondSegment.get(ValueLayout.JAVA_BYTE, 0));
+        assertThrows(IllegalStateException.class, () -> firstSegment.get(JAVA_BYTE, 0));
+        assertThrows(IllegalStateException.class, () -> secondSegment.get(JAVA_BYTE, 0));
     }
 
     @ParameterizedTest
@@ -180,7 +197,7 @@ final class TestArenaPool {
         try (var arena = pool.take()) {
             var seg = arena.allocate(SMALL_ALLOC_SIZE);
             for (int i = 0; i < SMALL_ALLOC_SIZE; i++) {
-                assertEquals((byte) 0, seg.get(ValueLayout.JAVA_BYTE, i));
+                assertEquals((byte) 0, seg.get(JAVA_BYTE, i));
             }
         }
     }
@@ -216,8 +233,9 @@ final class TestArenaPool {
 
     static Stream<ArenaPool> pools() {
         return Stream.of(
-           ArenaPool.create(POOL_SIZE),
-           ArenaPool.global()
+                ArenaPool.create(POOL_SIZE),
+                ArenaPool.create(POOL_SIZE, 16),
+                ArenaPool.create(MemoryLayout.sequenceLayout(POOL_SIZE, JAVA_BYTE))
         );
     }
 

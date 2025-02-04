@@ -49,6 +49,8 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 @Fork(value = 3, jvmArgs = "--enable-preview")
 public class ArenaPoolBench {
 
+    private static final ArenaPool POOL = ArenaPool.create(64);
+
     @Param({"4", "16", "64", "512"})
     public int ELEM_SIZE;
 
@@ -61,7 +63,7 @@ public class ArenaPoolBench {
 
     @Benchmark
     public long pooled() {
-        try (var arena = ArenaPool.global().take()) {
+        try (var arena = POOL.take()) {
             return arena.allocate(ELEM_SIZE).address();
         }
     }

@@ -48,6 +48,8 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 3, jvmArgs = "--enable-preview")
 public class ArenaPoolFromBench {
 
+    private static final ArenaPool POOL = ArenaPool.create(32);
+
     private static final String TEXT = "The quick brown fox";
 
     @Benchmark
@@ -66,14 +68,14 @@ public class ArenaPoolFromBench {
 
     @Benchmark
     public long pooledInt() {
-        try (var arena = ArenaPool.global().take()) {
+        try (var arena = POOL.take()) {
             return arena.allocateFrom(ValueLayout.JAVA_INT, 42).address();
         }
     }
 
     @Benchmark
     public long pooledString() {
-        try (var arena = ArenaPool.global().take()) {
+        try (var arena = POOL.take()) {
             return arena.allocateFrom(TEXT).address();
         }
     }
