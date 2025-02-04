@@ -176,6 +176,22 @@ final class TestArenaPool {
         VThreadRunner.run(() -> largeAlloc(pool));
     }
 
+    @Test
+    void allocationSameAsPoolSize() {
+        var pool = ArenaPool.create(4);
+        long firstAddress;
+        try (var arena = pool.take()) {
+            var segment = arena.allocate(4);
+            firstAddress = segment.address();
+        }
+        try (var arena = pool.take()) {
+            var segment = arena.allocate(4);
+            assertEquals(firstAddress, segment.address());
+            var segmentTwo = arena.allocate(4);
+            assertNotEquals(firstAddress, segmentTwo.address());
+        }
+    }
+
     @ParameterizedTest
     @MethodSource("pools")
     void outOfOrderUse(ArenaPool pool) {

@@ -49,7 +49,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 @Fork(value = 3, jvmArgs = "--enable-preview")
 public class ArenaPoolBench {
 
-    private static final ArenaPool POOL = ArenaPool.create(64);
+    private static final ArenaPool POOL = ArenaPool.create(64, 8);
 
     @Param({"4", "16", "64", "512"})
     public int ELEM_SIZE;
