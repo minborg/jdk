@@ -51,7 +51,7 @@ public final class CarrierLocalArenaPools {
 
             @Override
             protected LocalArenaPoolImpl initialValue() {
-                // assert !(JLA.currentCarrierThread() instanceof CarrierThread);
+                //assert !(Thread.currentThread().isVirtual());
 
                 // A carrier thread that is not an instance of `CarrierThread` can
                 // never carry a virtual thread. Because of this, only one thread will
