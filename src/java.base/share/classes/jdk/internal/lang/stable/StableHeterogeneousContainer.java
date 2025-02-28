@@ -173,4 +173,10 @@ public sealed interface StableHeterogeneousContainer {
         }
     }
 
+    // factory
+
+    public static StableHeterogeneousContainer of(Set<Class<?>> types) {
+        return new StableHeterogeneousContainer.Impl(types);
+    }
+
 }

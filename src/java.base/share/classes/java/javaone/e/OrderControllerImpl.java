@@ -17,18 +17,19 @@ import java.util.List;
             |   |./'  :__ \.-'
             '--'
  */
-final class OrderController {
+final class OrderControllerImpl implements OrderController {
 
     public static Logger getLogger() {
 
         final class Holder {
-            private static final Logger LOGGER = Logger.create(OrderController.class);
+            private static final Logger LOGGER = Logger.create(OrderControllerImpl.class);
         }
 
         return Holder.LOGGER;
     }
 
-    void submitOrder(User user, List<Product> products) {
+    @Override
+    public void submitOrder(User user, List<Product> products) {
         getLogger().info("order started");
 
         getLogger().info("order submitted");

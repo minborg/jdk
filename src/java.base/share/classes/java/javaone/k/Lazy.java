@@ -1,17 +1,12 @@
-package java.javaone.j;
+package java.javaone.k;
 
 import java.util.function.Supplier;
 
-public interface Lazy<T> extends Supplier<T> {
+@FunctionalInterface
+interface Lazy<T> extends Supplier<T> {
 
     static <T> Lazy<T> of(Supplier<? extends T> original) {
-        final Supplier<T> delegate = StableValue.supplier(original);
-        return new Lazy<T>() {
-            @Override
-            public T get() {
-                return delegate.get();
-            }
-        };
+        return StableValue.supplier(original)::get;
     }
 
 }

@@ -1,7 +1,10 @@
-package java.devoxx.g;
+package java.javaone.g;
 
-import java.devoxx.ProductRepository;
-import java.devoxx.UserService;
+import java.javaone.OrderController;
+import java.javaone.ProductRepository;
+import java.javaone.UserService;
+import java.javaone.repo.ProductRepositoryImpl;
+import java.javaone.repo.UserServiceImpl;
 
 // -1 + 1
 final class Application {
@@ -16,14 +19,14 @@ final class Application {
     static final StableValue<UserService>       USERS    = StableValue.of();
 
     public static OrderController orders() {
-        return ORDERS.computeIfUnset(OrderController::new);
+        return ORDERS.orElseSet(OrderControllerImpl::new);
     }
 
     public static ProductRepository products() {
-        return PRODUCTS.computeIfUnset(ProductRepository::new);
+        return PRODUCTS.orElseSet(ProductRepositoryImpl::new);
     }
 
     public static UserService users() {
-        return USERS.computeIfUnset(UserService::new);
+        return USERS.orElseSet(UserServiceImpl::new);
     }
 }

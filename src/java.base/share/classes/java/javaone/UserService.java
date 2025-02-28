@@ -1,7 +1,4 @@
-package java.devoxx;
+package java.javaone;
 
 /** A user service. */
-public final class UserService {
-    /**...*/
-    public UserService() {}
-}
+public interface UserService {}

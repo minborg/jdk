@@ -1,4 +1,4 @@
-package java.devoxx.j;
+package java.javaone.j;
 
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -18,7 +18,7 @@ public final class Singleton {
     }
 
     private static final Supplier<MySingleton> SINGLETON_SUPPLIER =
-            StableValue.ofSupplier(MySingleton::new);
+            StableValue.supplier(MySingleton::new);
 
     /**
      * {@return the one and only}
@@ -28,10 +28,10 @@ public final class Singleton {
     }
 
     private static final IntFunction<MySingleton> TRINGLETON_SUPPLIER =
-            StableValue.ofIntFunction(3, _ -> new MySingleton());
+            StableValue.intFunction(3, _ -> new MySingleton());
 
     /**
-     * {@return the one of the three tringletons}
+     * {@return the one of the three "tringletons"}
      * @param index for selecting element
      * @throws IllegalArgumentException if index not in [0, 2]
      */

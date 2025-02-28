@@ -14,9 +14,9 @@ import java.util.stream.Collectors;
 import static java.lang.foreign.ValueLayout.ADDRESS;
 
 /**...*/
-public class StableBindings {
+public class StableBindingsDemo {
     /**...*/
-    public StableBindings() {}
+    public StableBindingsDemo() {}
 
 
     /*   SYNOPSIS
@@ -24,6 +24,7 @@ public class StableBindings {
          #include <string.h>
 
          size_t strlen(const char *s);
+         char *strcat(char *dest, const char *src);
      */
 
     private static final MemoryLayout SIZE_T =
@@ -31,42 +32,42 @@ public class StableBindings {
 
     record Binding(String name, FunctionDescriptor descriptor){}
 
-    static final Bindings BINDINGS = Bindings.of(
-            new Binding("strlen", FunctionDescriptor.of(SIZE_T, ADDRESS))
+    static final StableBindings STABLE_BINDINGS = StableBindings.of(
+            new Binding("strlen", FunctionDescriptor.of(SIZE_T, ADDRESS)),
+            new Binding("strcat", FunctionDescriptor.of(ADDRESS, ADDRESS, ADDRESS))
     );
 
     /**...*/
     void main() {
 
-
-
-
-/*        Linker linker = Linker.nativeLinker();
-        MemorySegment symbol = linker.defaultLookup().findOrThrow("strlen");
-        @SuppressWarnings("restricted") // Dangerous stuff...
-        MethodHandle strlen = linker.downcallHandle(symbol, FunctionDescriptor.of(SIZE_T, ADDRESS));
-        System.out.println("strlen = " + strlen);*/
-
         try (var arena = Arena.ofConfined()) {
-            MemorySegment text = arena.allocateFrom("JavaOne!");
-            long len = (long) BINDINGS.get("strlen").invokeExact(text);
-            System.out.println("len = " + len);
+
+            String javaOne = "JavaOne!";
+            MemorySegment cJavaOne = arena.allocateFrom(javaOne);
+            long len = (long) STABLE_BINDINGS.get("strlen").invokeExact(cJavaOne);
+            System.out.printf("The string '%s' consists of %d characters.%n", javaOne, len);
+
+            String hello = "Hello ";
+            MemorySegment dest = arena.allocate(javaOne.length() + hello.length() + 1);
+            dest.setString(0, hello);
+            MemorySegment r = (MemorySegment) STABLE_BINDINGS.get("strcat").invokeExact(dest, cJavaOne);
+            System.out.println(dest.getString(0));
+
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
 
-
     }
 
     @FunctionalInterface
-    interface Bindings {
+    interface StableBindings {
 
         MethodHandle get(String name);
 
-        record BindingsImpl(
+        record StableBindingsImpl(
                 Map<String, StableValue<MethodHandle>> delegate,
                 Map<String, FunctionDescriptor> descriptors
-        ) implements Bindings {
+        ) implements StableBindings {
 
             @Override
             public MethodHandle get(String name) {
@@ -88,7 +89,7 @@ public class StableBindings {
 
         }
 
-        static Bindings of(Binding... bindings) {
+        static StableBindings of(Binding... bindings) {
             var delegate = Arrays.stream(bindings)
                     .collect(Collectors.toUnmodifiableMap(
                             Binding::name,
@@ -99,7 +100,7 @@ public class StableBindings {
                             Binding::name,
                             Binding::descriptor
                     ));
-            return new BindingsImpl(delegate, descriptors);
+            return new StableBindingsImpl(delegate, descriptors);
         }
 
     }

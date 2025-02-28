@@ -1,4 +1,4 @@
-package java.devoxx.j;
+package java.javaone.j;
 
 import java.util.Arrays;
 

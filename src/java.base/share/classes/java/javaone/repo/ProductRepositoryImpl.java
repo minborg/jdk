@@ -1,10 +1,10 @@
 package java.javaone.repo;
 
-import java.javaone.Product;
+import java.javaone.ProductRepository;
 
-/** A product implementation. */
-public final class ProductImpl implements Product {
+/**...*/
+public final class ProductRepositoryImpl implements ProductRepository {
 
     /**...*/
-    public ProductImpl() {}
+    public ProductRepositoryImpl() {}
 }

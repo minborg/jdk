@@ -1,7 +1,4 @@
-package java.devoxx;
+package java.javaone;
 
 /** A product. */
-public final class Product {
-    /**...*/
-    public Product() {}
-}
+public interface Product {}

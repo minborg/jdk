@@ -1,4 +1,4 @@
-package java.javaone.repo;
+package java.javaone.i;
 
 
 import java.javaone.Logger;
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 // +1
-public final class OrderControllerImpl implements OrderController {
+final class OrderControllerImpl implements OrderController {
 
     private final int id;
     private final Supplier<Logger> logger =

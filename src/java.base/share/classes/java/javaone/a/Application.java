@@ -1,6 +1,8 @@
-package java.devoxx.a;
+package java.javaone.a;
 
-import java.devoxx.*;
+import java.javaone.*;
+import java.javaone.repo.ProductRepositoryImpl;
+import java.javaone.repo.UserServiceImpl;
 
 
 /*
@@ -13,7 +15,7 @@ import java.devoxx.*;
 */
 
 final class Application {
-        static final OrderController   ORDERS   = new OrderController();
-        static final ProductRepository PRODUCTS = new ProductRepository();
-        static final UserService       USERS    = new UserService();
+        static final OrderController   ORDERS   = new OrderControllerImpl();
+        static final ProductRepository PRODUCTS = new ProductRepositoryImpl();
+        static final UserService       USERS    = new UserServiceImpl();
 }

@@ -1,10 +1,10 @@
 package java.javaone.repo;
 
-import java.javaone.User;
+import java.javaone.UserService;
 
 /**...*/
-public final class UserImpl implements User {
+public final class UserServiceImpl implements UserService {
 
     /**...*/
-    public UserImpl() {}
+    public UserServiceImpl() {}
 }

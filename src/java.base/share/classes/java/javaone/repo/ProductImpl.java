@@ -1,4 +1,10 @@
 package java.javaone.repo;
 
-public class ProductImpl {
+import java.javaone.Product;
+
+/**...*/
+public final class ProductImpl implements Product {
+
+    /**...*/
+    public ProductImpl() {}
 }

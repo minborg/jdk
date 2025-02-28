@@ -261,12 +261,13 @@ CustomStableBiFunctionBenchmark.staticStableValue  avgt   10  0.348 ? 0.053  ns/
 
         @Override
         public R apply(T t, U u) {
+            StableValue<R> stableValue;
             try {
-                return Objects.requireNonNull(delegate.get(t).get(u))
-                        .orElseSet(() -> original.apply(t, u));
+                stableValue = Objects.requireNonNull(delegate.get(t).get(u));
             } catch (NullPointerException _) {
                 throw new IllegalArgumentException(t.toString() + ", " + u.toString());
             }
+            return stableValue.orElseSet(() -> original.apply(t, u));
         }
     }
 
@@ -323,5 +324,38 @@ CustomStableBiFunctionBenchmark.staticStableValue  avgt   10  0.348 ? 0.053  ns/
             }*/
         }
     }
+
+
+    static <T, U, R> BiFunction<T, U, R> stableBiFunction(Set<Pair<T, U>> inputs,
+                                                          BiFunction<T, U, R> original) {
+
+        BiFunction<T, U, R> fun = new BiFunction<>() {
+
+            private final BiFunction<T, U, R> o = original;
+
+            private final Map<T, Map<U, StableValue<R>>> delegate = Map.copyOf(inputs.stream()
+                    .collect(Collectors.groupingBy(Pair::left,
+                            Collectors.toUnmodifiableMap(Pair::right,
+                                    _ -> StableValue.of()))));
+
+
+            @Override
+            public R apply(T t, U u) {
+                final StableValue<R> stable;
+                try {
+                    stable = Objects.requireNonNull(delegate.get(t).get(u));
+                } catch (NullPointerException _) {
+                    throw new IllegalArgumentException(t.toString() + ", " + u.toString());
+                }
+                return stable.orElseSet(() -> o.apply(t, u));
+            }
+
+        };
+
+        System.out.println("fun.getClass().isHidden() = " + fun.getClass().isHidden());
+
+        return fun;
+    }
+
 
 }

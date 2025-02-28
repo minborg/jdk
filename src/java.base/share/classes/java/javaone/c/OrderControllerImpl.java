@@ -12,17 +12,18 @@ import java.util.List;
 |_|_| |_|_|
 
 */
-final class OrderController {
+final class OrderControllerImpl implements OrderController {
     private Logger logger;
 
     synchronized Logger getLogger() {
         if (logger == null) {
-            logger = Logger.create(OrderController.class);
+            logger = Logger.create(OrderControllerImpl.class);
         }
         return logger;
     }
 
-    void submitOrder(User user, List<Product> products) {
+    @Override
+    public void submitOrder(User user, List<Product> products) {
         getLogger().info("order started");
 
         getLogger().info("order submitted");

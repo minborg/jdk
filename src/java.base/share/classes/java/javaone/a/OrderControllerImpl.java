@@ -11,12 +11,13 @@ import java.util.List;
 |_|_| |_|_|
 
 */
-final class OrderController {
+final class OrderControllerImpl implements OrderController {
 
     // Reads configuration, creates storage
-    private final Logger logger = Logger.create(OrderController.class);
+    private final Logger logger = Logger.create(OrderControllerImpl.class);
 
-    void submitOrder(User user, List<Product> products) {
+    @Override
+    public void submitOrder(User user, List<Product> products) {
         logger.info("order started");
 
         logger.info("order submitted");

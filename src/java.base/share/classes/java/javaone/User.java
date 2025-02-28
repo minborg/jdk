@@ -1,7 +1,4 @@
-package java.devoxx;
+package java.javaone;
 
 /** A user. */
-public final class User {
-    /**...*/
-    public User() {}
-}
+public interface User {}

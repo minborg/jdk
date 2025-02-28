@@ -1,12 +1,18 @@
-package java.javaone.h;
+package java.javaone.repo;
 
 
-import java.javaone.*;
+import java.javaone.Logger;
+import java.javaone.OrderController;
+import java.javaone.Product;
+import java.javaone.User;
 import java.util.List;
 import java.util.function.Supplier;
 
-// +1
-final class OrderControllerImpl implements OrderController {
+/**...*/
+public final class OrderControllerImpl implements OrderController {
+
+    /**...*/
+    public OrderControllerImpl() {}
 
     private final Supplier<Logger> logger =
             StableValue.supplier( () -> Logger.create(OrderControllerImpl.class) );

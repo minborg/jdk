@@ -1,4 +1,4 @@
-package java.devoxx;
+package java.javaone;
 
 import java.time.Instant;
 

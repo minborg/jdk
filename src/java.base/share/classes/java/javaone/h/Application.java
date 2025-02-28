@@ -1,6 +1,8 @@
-package java.devoxx.h;
+package java.javaone.h;
 
-import java.devoxx.*;
+import java.javaone.*;
+import java.javaone.repo.*;
+import java.javaone.repo.UserImpl;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -10,9 +12,9 @@ import java.util.function.Supplier;
  * Test app
  */
 public final class Application {
-    static final Supplier<OrderController>   ORDERS   = StableValue.ofSupplier(OrderController::new);
-    static final Supplier<ProductRepository> PRODUCTS = StableValue.ofSupplier(ProductRepository::new);
-    static final Supplier<UserService>       USERS    = StableValue.ofSupplier(UserService::new);
+    static final Supplier<OrderController>   ORDERS   = StableValue.supplier(OrderControllerImpl::new);
+    static final Supplier<ProductRepository> PRODUCTS = StableValue.supplier(ProductRepositoryImpl::new);
+    static final Supplier<UserService>       USERS    = StableValue.supplier(UserServiceImpl::new);
 
     /**...*/
     public Application() {}
@@ -22,7 +24,7 @@ public final class Application {
      * @param args ignored
      */
     public static void main(String[] args) {
-        ORDERS.get().submitOrder(new User(), List.of(new Product()));
+        ORDERS.get().submitOrder(new UserImpl(), List.of(new ProductImpl()));
     }
 
 }

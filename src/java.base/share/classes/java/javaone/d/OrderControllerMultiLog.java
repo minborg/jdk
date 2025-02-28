@@ -1,6 +1,6 @@
-package java.devoxx.d;
+package java.javaone.d;
 
-import java.devoxx.*;
+import java.javaone.*;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.List;
@@ -41,7 +41,7 @@ final class OrderControllerMultiLog {
                     // Volatile semantics needed here to establish a
                     // happens-before relation with future volatile reads
                     LOGGERS_HANDLE.setVolatile(loggers, index,
-                            v = Logger.create(OrderController.class));
+                            v = Logger.create(OrderControllerImpl.class));
                 }
             }
         }

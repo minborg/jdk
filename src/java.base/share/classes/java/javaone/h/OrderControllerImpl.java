@@ -6,12 +6,13 @@ import java.util.List;
 import java.util.function.Supplier;
 
 // +1
-final class OrderController {
+final class OrderControllerImpl implements OrderController {
 
     private final Supplier<Logger> logger =
-            StableValue.supplier( () -> Logger.create(OrderController.class) );
+            StableValue.supplier( () -> Logger.create(OrderControllerImpl.class) );
 
-    void submitOrder(User user, List<Product> products) {
+    @Override
+    public void submitOrder(User user, List<Product> products) {
         logger.get().info("order started");
 
         logger.get().info("order submitted");

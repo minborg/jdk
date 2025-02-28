@@ -1,4 +1,4 @@
-package java.devoxx.j;
+package java.javaone.j;
 
 import java.util.Arrays;
 import java.util.List;
@@ -24,7 +24,7 @@ public final class FibonacciStable {
     private static final int MAX = 46; // fib(46) just about fits in an `int`
 
     private static final List<Integer> ELEMENTS =
-            StableValue.ofList(MAX, FibonacciStable::fib);
+            StableValue.list(MAX, FibonacciStable::fib);
 
     /**
      * {@return Fibonacci element of i}

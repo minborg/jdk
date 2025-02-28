@@ -26,15 +26,16 @@ import java.util.concurrent.ConcurrentHashMap;
 |_|_| |_|_|
  */
 
-final class OrderController {
+final class OrderControllerImpl implements OrderController {
 
     private final Map<Class<?>, Logger> logger = new ConcurrentHashMap<>();;
 
     public Logger getLogger() {
-        return logger.computeIfAbsent(OrderController.class, Logger::create);
+        return logger.computeIfAbsent(OrderControllerImpl.class, Logger::create);
     }
 
-    void submitOrder(User user, List<Product> products) {
+    @Override
+    public void submitOrder(User user, List<Product> products) {
         getLogger().info("order started");
 
         getLogger().info("order submitted");

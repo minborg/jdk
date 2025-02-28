@@ -1,11 +1,10 @@
 package java.javaone.k;
 
-import java.javaone.Product;
-import java.javaone.ProductRepository;
-import java.javaone.User;
-import java.javaone.UserService;
+import java.javaone.*;
+import java.javaone.repo.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -14,46 +13,54 @@ import java.util.stream.Collectors;
 /**
  * Test app
  */
-public final class Application {
+public final class ContainerApplication {
 
-    record Provider<T>(Class<T> componentType, Supplier<? extends T> factory) {}
+    record Provider<T>(Class<T> type, Supplier<? extends T> factory) {}
 
-    static final Container COMPONENTS = Container.of(
-            new Provider<>(OrderController.class, OrderController::new),
-            new Provider<>(ProductRepository.class, ProductRepository::new),
-            new Provider<>(UserService.class, UserService::new)
+    static final StableContainer COMPONENTS = StableContainer.of(
+            new Provider<>(OrderController.class, OrderControllerImpl::new),
+            new Provider<>(ProductRepository.class, ProductRepositoryImpl::new),
+            new Provider<>(UserService.class, UserServiceImpl::new)
     );
 
+    // Could also be via ServiceLoader, reflection,
+    // permitted class, dependency injection etc.
+    // See SharedSecrets
+
     /**...*/
-    public Application() {}
+    public ContainerApplication() {}
 
     /**
      * Demo app.
-     * @param args ignored
      */
-    public static void main(String[] args) {
-        COMPONENTS.get(OrderController.class) // Constant folded by the JIT
-                .submitOrder(new User(), List.of(new Product()));
+    void main() {
+        // Eligible for constant folding by the JIT
+        COMPONENTS.get(OrderControllerImpl.class)
+                // Devirtualizable
+                .submitOrder(new UserImpl(), List.of(new ProductImpl()));
     }
 
     @FunctionalInterface
-    interface Container {
+    interface StableContainer {
 
         <T> T get(Class<T> type);
 
-        static Container of(Provider<?>... providers) {
-           var map = Arrays.stream(providers)
-                   .collect(Collectors.toUnmodifiableMap(
-                           Provider::componentType,
-                           p -> StableValue.supplier(p.factory())));
-           return new Container() {
-               @Override
-               public <T> T get(Class<T> type) {
-                   return type.cast(
-                           map.get(type)    // Supplier<T>
-                                   .get()); // T
-               }
-           };
+        record StableContainerImpl(Map<Class<?>, Supplier<?>> delegate) implements StableContainer {
+            @Override
+            public <T> T get(Class<T> type) {
+                return type.cast(
+                        delegate.get(type) // Supplier<T>  -- Stable
+                                .get());   // T
+            }
+        }
+
+        static StableContainer of(Provider<?>... providers) {
+            Map<Class<?>, Supplier<?>> map = Arrays.stream(providers)
+                    .collect(Collectors.toUnmodifiableMap(
+                            Provider::type,
+                            p -> StableValue.supplier(p.factory())));
+
+           return new StableContainerImpl(map);
         }
 
     }

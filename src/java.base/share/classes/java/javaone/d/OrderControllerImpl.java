@@ -11,7 +11,7 @@ import java.util.List;
 |_|_| |_|_|
 
 */
-final class OrderController {
+final class OrderControllerImpl implements OrderController {
 
     private volatile Logger logger;
 
@@ -21,14 +21,15 @@ final class OrderController {
             synchronized (this) {
                 v = logger;
                 if (v == null) {
-                    logger = v = Logger.create(OrderController.class);
+                    logger = v = Logger.create(OrderControllerImpl.class);
                 }
             }
         }
         return v;
     }
 
-    void submitOrder(User user, List<Product> products) {
+    @Override
+    public void submitOrder(User user, List<Product> products) {
         getLogger().info("order started");
 
         getLogger().info("order submitted");
