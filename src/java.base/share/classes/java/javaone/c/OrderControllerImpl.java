@@ -25,7 +25,7 @@ final class OrderControllerImpl implements OrderController {
     @Override
     public void submitOrder(User user, List<Product> products) {
         getLogger().info("order started");
-
+        // ...
         getLogger().info("order submitted");
     }
 }

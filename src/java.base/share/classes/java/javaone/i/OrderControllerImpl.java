@@ -22,7 +22,7 @@ final class OrderControllerImpl implements OrderController {
     @Override
     public void submitOrder(User user, List<Product> products) {
         logger.get().info("order started via " + id);
-
+        // ...
         logger.get().info("order submitted via " + id);
     }
 }

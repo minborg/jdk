@@ -8,10 +8,10 @@ import java.util.function.Function;
 public final class NonEvictingCache {
 
     private static final Function<Integer, Double> SQRT_CACHE =
-            StableValue.function(Set.of(1, 2, 4, 8, 16), i -> Math.sqrt(i));
+            StableValue.function(Set.of(1, 2, 4, 8, 16), i -> StrictMath.sqrt(i));
 
     private static final Map<Integer, Double> SQRT_MAP =
-            StableValue.map(Set.of(1, 2, 4, 8, 16), i -> Math.sqrt(i));
+            StableValue.map(Set.of(1, 2, 4, 8, 16), i -> StrictMath.sqrt(i));
 
     /**...*/
     public NonEvictingCache() {}

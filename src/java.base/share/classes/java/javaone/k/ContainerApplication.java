@@ -35,7 +35,7 @@ public final class ContainerApplication {
      */
     void main() {
         // Eligible for constant folding by the JIT
-        COMPONENTS.get(OrderControllerImpl.class)
+        COMPONENTS.get(OrderController.class)
                 // Devirtualizable
                 .submitOrder(new UserImpl(), List.of(new ProductImpl()));
     }

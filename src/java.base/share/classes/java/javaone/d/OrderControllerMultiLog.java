@@ -50,7 +50,7 @@ final class OrderControllerMultiLog {
 
     void submitOrder(User user, List<Product> products) {
         getLogger(1).info("order started");
-
+        // ...
         getLogger(1).info("order submitted");
     }
 

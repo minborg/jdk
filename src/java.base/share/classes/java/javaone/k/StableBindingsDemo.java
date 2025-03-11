@@ -38,7 +38,7 @@ public class StableBindingsDemo {
     );
 
     /**...*/
-    void main() {
+    void main() throws Throwable {
 
         try (var arena = Arena.ofConfined()) {
 
@@ -53,8 +53,6 @@ public class StableBindingsDemo {
             MemorySegment r = (MemorySegment) STABLE_BINDINGS.get("strcat").invokeExact(dest, cJavaOne);
             System.out.println(dest.getString(0));
 
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
         }
 
     }
