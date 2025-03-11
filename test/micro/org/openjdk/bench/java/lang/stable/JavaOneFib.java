@@ -34,9 +34,10 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.LockSupport;
-import java.util.function.Supplier;
 
 /**
  * Benchmark measuring custom stable value types
@@ -44,45 +45,52 @@ import java.util.function.Supplier;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark) // Share the same state instance (for contention)
-@Warmup(iterations = 5, time = 1)
-@Measurement(iterations = 5, time = 2)
+@Warmup(iterations = 1, time = 1)
+@Measurement(iterations = 1, time = 1)
 @Fork(value = 2, jvmArgsAppend = {
         "--enable-preview"
 })
 @Threads(Threads.MAX)   // Benchmark under contention
-public class CustomStableLazyBenchmark {
+public class JavaOneFib {
 
-    interface Lazy<T> extends Supplier<T> {
+    private static final int MAX = 46; // fib(46) just about fits in an `int`
 
-        static <T> Lazy<T> of(Supplier<? extends T> original) {
-            return StableValue.supplier(original)::get;
-        }
+    private static final List<Integer> STABLE_LIST =
+            StableValue.list(MAX, JavaOneFib::stableFib);
 
-    }
-
-    private static final Integer VALUE = 42;
-    private static final Supplier<Integer> ORIGINAL = () -> {
-        LockSupport.parkNanos(10);
-        return VALUE;
-    };
-
-    private static final Lazy<Integer> LAZY = Lazy.of(ORIGINAL);
-
-    private final Lazy<Integer> lazy = Lazy.of(ORIGINAL);
-
-    @Benchmark
-    public int original() {
-        return ORIGINAL.get();
+    /**
+     * {@return Fibonacci element of i}
+     * @param i element
+     */
+    public static int stableFib(int i) { // `i` positive
+        return (i < 2)
+                ? i
+                : STABLE_LIST.get(i - 1) + STABLE_LIST.get(i - 2);
     }
 
     @Benchmark
-    public int staticLazy() {
-        return LAZY.get();
+    public int stable() {
+        return STABLE_LIST.get(10);
     }
 
+
+
+
+
+
+    private static final Map<Integer, Integer> CONCURRENT_MAP = new ConcurrentHashMap<>();
+
     @Benchmark
-    public int lazy() {
-        return lazy.get();
+    public int map() {
+        return CONCURRENT_MAP.computeIfAbsent(10, JavaOneFib::mapFib);
     }
+
+    public static int mapFib(int i) { // `i` positive
+        return (i < 2)
+                ? i
+                : CONCURRENT_MAP.computeIfAbsent(i - 1, JavaOneFib::mapFib) +
+                  CONCURRENT_MAP.computeIfAbsent(i - 2, JavaOneFib::mapFib);
+    }
+
 
 }
