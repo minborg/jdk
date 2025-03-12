@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-// Java 25
+/** JDK 25
+ * @param logger to use
+ * */
 public record OrderControllerImpl(Supplier<Logger> logger)
         implements OrderController {
 
@@ -20,6 +22,7 @@ public record OrderControllerImpl(Supplier<Logger> logger)
         logger.get().info("order submitted");
     }
 
+    /** {@return a new OrderController} */
     public static OrderController create() {
         return new OrderControllerImpl(
                 () -> Logger.create(OrderControllerImpl.class));
