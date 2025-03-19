@@ -112,25 +112,25 @@ public class JavaOneLazyBench {
 
     // Slow
     @Benchmark
-    public int stable() {
+    public int instanceStable() {
         return stable.get();
     }
 
     // Slow
     @Benchmark
-    public int lazy() {
+    public int instanceLazy() {
         return lazy.get();
     }
 
     // Fast (record)
     @Benchmark
-    public int staticRecordHolder() {
+    public int holderRecord() {
         return RECORD_HOLDER.stable().get();
     }
 
     // Slow (normal class instance field)
     @Benchmark
-    public int staticClassHolder() {
+    public int holderClass() {
         return CLASS_HOLDER.stable().get();
     }
 
@@ -145,14 +145,14 @@ public class JavaOneLazyBench {
 
 /*
 
-Benchmark                            Mode  Cnt     Score   Error  Units
-JavaOneLazyBench.lazy                avgt    2     2.343          ns/op
-JavaOneLazyBench.stable              avgt    2     2.050          ns/op
-JavaOneLazyBench.staticClassHolder   avgt    2     2.163          ns/op
-JavaOneLazyBench.staticLazy          avgt    2     0.692          ns/op
-JavaOneLazyBench.staticOriginal      avgt    2  6503.419          ns/op
-JavaOneLazyBench.staticRecordHolder  avgt    2     0.693          ns/op
-JavaOneLazyBench.staticStable        avgt    2     0.734          ns/op
+Benchmark                        Mode  Cnt     Score   Error  Units
+JavaOneLazyBench.holderClass     avgt    2     2.047          ns/op
+JavaOneLazyBench.holderRecord    avgt    2     0.701          ns/op
+JavaOneLazyBench.instanceLazy    avgt    2     2.354          ns/op
+JavaOneLazyBench.instanceStable  avgt    2     1.997          ns/op
+JavaOneLazyBench.staticLazy      avgt    2     0.684          ns/op
+JavaOneLazyBench.staticOriginal  avgt    2  6467.829          ns/op
+JavaOneLazyBench.staticStable    avgt    2     0.688          ns/op
 
  */
 

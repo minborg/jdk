@@ -81,8 +81,8 @@ public class StableBindingsDemo {
                 Linker linker = Linker.nativeLinker();
                 MemorySegment symbol = linker.defaultLookup().findOrThrow(name);
                 @SuppressWarnings("restricted") // Outside Java's safetynet
-                MethodHandle strlen = linker.downcallHandle(symbol, descriptor);
-                return strlen;
+                MethodHandle handle = linker.downcallHandle(symbol, descriptor);
+                return handle;
             }
 
         }

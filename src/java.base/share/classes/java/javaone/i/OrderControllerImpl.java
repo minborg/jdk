@@ -11,18 +11,15 @@ import java.util.function.Supplier;
 // +1
 final class OrderControllerImpl implements OrderController {
 
-    private final int id;
     private final Supplier<Logger> logger =
             StableValue.supplier( () -> Logger.create(OrderControllerImpl.class) );
 
-    public OrderControllerImpl(int id) {
-        this.id = id;
-    }
+    public OrderControllerImpl() {}
 
     @Override
     public void submitOrder(User user, List<Product> products) {
-        logger.get().info("order started via " + id);
+        logger.get().info("order started");
         // ...
-        logger.get().info("order submitted via " + id);
+        logger.get().info("order submitted");
     }
 }

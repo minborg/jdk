@@ -25,7 +25,8 @@ public record OrderControllerImpl(Supplier<Logger> logger)
     /** {@return a new OrderController} */
     public static OrderController create() {
         return new OrderControllerImpl(
-                () -> Logger.create(OrderControllerImpl.class));
+                StableValue.supplier(
+                        () -> Logger.create(OrderControllerImpl.class)));
     }
 
 }

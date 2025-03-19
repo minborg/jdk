@@ -93,4 +93,13 @@ public class JavaOneFib {
     }
 
 
+
+
+    /*
+    Benchmark          Mode  Cnt  Score   Error  Units
+    JavaOneFib.map     avgt    2  5.991          ns/op
+    JavaOneFib.stable  avgt    2  0.689          ns/op
+     */
+
+
 }

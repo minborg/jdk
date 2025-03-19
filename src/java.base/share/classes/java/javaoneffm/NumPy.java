@@ -26,7 +26,8 @@ public class NumPy {
                 MemoryLayout.PathElement.sequenceElement(),
                 MemoryLayout.PathElement.sequenceElement());
 
-        println("elementHandle = " + elementHandle); // (MemorySegment, long, long, long)float
+        // (MemorySegment, long, long, long)float
+        println("elementHandle = " + elementHandle);
 
         try (var arena = Arena.ofConfined()) {
             var segment = arena.allocate(FLOAT_MATRIX_3x4);

@@ -24,7 +24,7 @@ public final class TrustUtil {
           are backed by `@Stable` fields.
 
     Examples for JDK 25 where
-      - `a` though `f` are `final` instance fields declared in a `record` or a hidden class
+      - `b` though `f` are `final` instance fields declared in a `record` or a hidden class
       - `x` is a `final` instance field in a normal or anonymous class)
 
     A.b.c.d.e.f    Trusted

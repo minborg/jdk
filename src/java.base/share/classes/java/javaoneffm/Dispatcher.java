@@ -51,11 +51,12 @@ public class Dispatcher {
 
     /** ... */
     void main() {
-        String text = "JavaOne!";
         int pid = SYSTEM_CALL_DISPATCHER.pid();
-        long len = SYSTEM_CALL_DISPATCHER.strlen(Arena.ofAuto().allocateFrom(text));
-
         println("pid = " + pid);
+
+        String text = "JavaOne!";
+        MemorySegment cText = Arena.ofAuto().allocateFrom(text);
+        long len = SYSTEM_CALL_DISPATCHER.strlen(cText);
         println("The length of the text '" + text + "' is " + len);
     }
 

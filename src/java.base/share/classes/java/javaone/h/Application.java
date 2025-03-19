@@ -12,9 +12,14 @@ import java.util.function.Supplier;
  * Test app
  */
 public final class Application {
-    static final Supplier<OrderController>   ORDERS   = StableValue.supplier(OrderControllerImpl::new);
-    static final Supplier<ProductRepository> PRODUCTS = StableValue.supplier(ProductRepositoryImpl::new);
-    static final Supplier<UserService>       USERS    = StableValue.supplier(UserServiceImpl::new);
+    static final Supplier<OrderController>   ORDERS   =
+            StableValue.supplier(OrderControllerImpl::new);
+
+    static final Supplier<ProductRepository> PRODUCTS =
+            StableValue.supplier(ProductRepositoryImpl::new);
+
+    static final Supplier<UserService>       USERS    =
+            StableValue.supplier(UserServiceImpl::new);
 
     /**...*/
     public Application() {}

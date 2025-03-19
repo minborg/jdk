@@ -14,7 +14,8 @@ public class Pid2 {
 
     /** ... */
     void main() {
-        IntSupplier pid = LinkerUtil.link(IntSupplier.class, "getpid", FunctionDescriptor.of(JAVA_INT));
+        IntSupplier pid = LinkerUtil.link(
+                IntSupplier.class, "getpid", FunctionDescriptor.of(JAVA_INT));
         println("pid = " + pid.getAsInt());
     }
 
