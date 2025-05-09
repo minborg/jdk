@@ -16,18 +16,13 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 //import java.util.logging.Level;
 //import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import jdk.internal.org.jline.terminal.Attributes;
 import jdk.internal.org.jline.terminal.Size;
@@ -435,59 +430,124 @@ class CLibrary {
         }
     }
 
-    static MethodHandle ioctl;
-    static MethodHandle isatty;
-    static MethodHandle openpty;
-    static MethodHandle tcsetattr;
-    static MethodHandle tcgetattr;
-    static MethodHandle ttyname_r;
-    static LinkageError openptyError;
+    private static final Linker LINKER = Linker.nativeLinker();
+    private static final SymbolLookup LOOKUP = SymbolLookup.loaderLookup().or(LINKER.defaultLookup());
 
-    static {
-        // methods
-        Linker linker = Linker.nativeLinker();
-        SymbolLookup lookup = SymbolLookup.loaderLookup().or(linker.defaultLookup());
-        // https://man7.org/linux/man-pages/man2/ioctl.2.html
-        ioctl = linker.downcallHandle(
-                lookup.find("ioctl").get(),
-                FunctionDescriptor.of(
-                        ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
-                Linker.Option.firstVariadicArg(2));
-        // https://www.man7.org/linux/man-pages/man3/isatty.3.html
-        isatty = linker.downcallHandle(
-                lookup.find("isatty").get(), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
-        // https://man7.org/linux/man-pages/man3/tcsetattr.3p.html
-        tcsetattr = linker.downcallHandle(
-                lookup.find("tcsetattr").get(),
-                FunctionDescriptor.of(
-                        ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        // https://man7.org/linux/man-pages/man3/tcgetattr.3p.html
-        tcgetattr = linker.downcallHandle(
-                lookup.find("tcgetattr").get(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        // https://man7.org/linux/man-pages/man3/ttyname.3.html
-        ttyname_r = linker.downcallHandle(
-                lookup.find("ttyname_r").get(),
-                FunctionDescriptor.of(
-                        ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-        // https://man7.org/linux/man-pages/man3/openpty.3.html
-        LinkageError error = null;
-        Optional<MemorySegment> openPtyAddr = lookup.find("openpty");
-        if (openPtyAddr.isPresent()) {
-            openpty = linker.downcallHandle(
-                    openPtyAddr.get(),
-                    FunctionDescriptor.of(
-                            ValueLayout.JAVA_INT,
-                            ValueLayout.ADDRESS,
-                            ValueLayout.ADDRESS,
-                            ValueLayout.ADDRESS,
-                            ValueLayout.ADDRESS,
-                            ValueLayout.ADDRESS));
-            openptyError = null;
-        } else {
-            openpty = null;
-            openptyError = error;
+    private static final Function<String, MethodHandle> LAZY_HANDLES = StableValue.function(
+            Set.of("ioctl", "isatty", "tcsetattr", "tcgetattr", "ttyname_r", "openpty"),
+            new Function<>() {
+                @Override
+                public MethodHandle apply(String methodName) {
+                    return switch (methodName) {
+                        case "ioctl"     -> ioctl();
+                        case "isatty"    -> isatty();
+                        case "tcsetattr" -> tcsetattr();
+                        case "tcgetattr" -> tcgetattr();
+                        case "ttyname_r" -> ttyname_r();
+                        case "openpty"   -> openpty();
+                        default -> throw new InternalError(methodName);
+                    };
+                }
+
+                private static MethodHandle ioctl() {
+                    // https://man7.org/linux/man-pages/man2/ioctl.2.html
+                    return LINKER.downcallHandle(
+                            LOOKUP.findOrThrow("ioctl"),
+                            FunctionDescriptor.of(
+                                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
+                            Linker.Option.firstVariadicArg(2));
+                }
+
+                private static MethodHandle isatty() {
+                    // https://www.man7.org/linux/man-pages/man3/isatty.3.html
+                    return LINKER.downcallHandle(
+                            LOOKUP.findOrThrow("isatty"), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
+                }
+
+                private static MethodHandle tcsetattr() {
+                    // https://man7.org/linux/man-pages/man3/tcsetattr.3p.html
+                    return LINKER.downcallHandle(
+                            LOOKUP.findOrThrow("tcsetattr"),
+                            FunctionDescriptor.of(
+                                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                }
+
+                private static MethodHandle tcgetattr() {
+                    // https://man7.org/linux/man-pages/man3/tcgetattr.3p.html
+                    return LINKER.downcallHandle(
+                            LOOKUP.findOrThrow("tcgetattr"),
+                            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                }
+
+                private static MethodHandle ttyname_r() {
+                    // https://man7.org/linux/man-pages/man3/ttyname.3.html
+                    return LINKER.downcallHandle(
+                            LOOKUP.findOrThrow("ttyname_r"),
+                            FunctionDescriptor.of(
+                                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+                }
+
+                private static MethodHandle openpty() {
+                    // https://man7.org/linux/man-pages/man3/openpty.3.html
+                    Optional<MemorySegment> openPtyAddr = LOOKUP.find("openpty");
+                    if (openPtyAddr.isPresent()) {
+                        return LINKER.downcallHandle(
+                                openPtyAddr.get(),
+                                FunctionDescriptor.of(
+                                        ValueLayout.JAVA_INT,
+                                        ValueLayout.ADDRESS,
+                                        ValueLayout.ADDRESS,
+                                        ValueLayout.ADDRESS,
+                                        ValueLayout.ADDRESS,
+                                        ValueLayout.ADDRESS));
+                    } else {
+                        return null;
+                    }
+                }
+            });
+
+    private static int ioctl(int fd, long op, MemorySegment argp) {
+        try {
+            return (int) LAZY_HANDLES.apply("ioctl").invoke(fd, op, argp);
+        } catch (Throwable e) {
+            throw unableToCall("ioctl", e);
         }
+    }
+
+    private static int tcgetattr(int fildes, MemorySegment termios_p) {
+        try {
+            return (int) LAZY_HANDLES.apply("tcgetattr").invoke(fildes, termios_p);
+        } catch (Throwable e) {
+            throw unableToCall("tcgetattr", e);
+        }
+    }
+
+    private static int tcsetattr(int fildes, int optional_actions, MemorySegment termios_p) {
+        try {
+            return (int) LAZY_HANDLES.apply("tcsetattr").invoke(fildes, optional_actions, termios_p);
+        } catch (Throwable e) {
+            throw unableToCall("tcsetattr", e);
+        }
+    }
+
+    private static int isatty(int fd) {
+        try {
+            return (int) LAZY_HANDLES.apply("isatty").invoke(fd);
+        } catch (Throwable e) {
+            throw unableToCall("isatty", e);
+        }
+    }
+
+    private static int ttyname_r(int fd, MemorySegment buff, long buff_size) {
+        try {
+            return (int) LAZY_HANDLES.apply("ttyname_r").invoke(fd, buff, buff_size);
+        } catch (Throwable e) {
+            throw unableToCall("ttyname_r", e);
+        }
+    }
+
+    private static RuntimeException unableToCall(String methodName, Throwable throwable) {
+        return new RuntimeException("Unable to call " + methodName, throwable);
     }
 
     private static String readFully(InputStream in) throws IOException {
@@ -501,58 +561,38 @@ class CLibrary {
     }
 
     static Size getTerminalSize(int fd) {
-        try {
-            winsize ws = new winsize();
-            int res = (int) ioctl.invoke(fd, (long) TIOCGWINSZ, ws.segment());
-            return new Size(ws.ws_col(), ws.ws_row());
-        } catch (Throwable e) {
-            throw new RuntimeException("Unable to call ioctl(TIOCGWINSZ)", e);
-        }
+        winsize ws = new winsize();
+        int res = ioctl(fd, TIOCGWINSZ, ws.segment());
+        return new Size(ws.ws_col(), ws.ws_row());
     }
 
     static void setTerminalSize(int fd, Size size) {
-        try {
-            winsize ws = new winsize();
-            ws.ws_row((short) size.getRows());
-            ws.ws_col((short) size.getColumns());
-            int res = (int) ioctl.invoke(fd, TIOCSWINSZ, ws.segment());
-        } catch (Throwable e) {
-            throw new RuntimeException("Unable to call ioctl(TIOCSWINSZ)", e);
-        }
+        winsize ws = new winsize();
+        ws.ws_row((short) size.getRows());
+        ws.ws_col((short) size.getColumns());
+        int res = ioctl(fd, TIOCSWINSZ, ws.segment());
     }
 
     static Attributes getAttributes(int fd) {
-        try {
-            termios t = new termios();
-            int res = (int) tcgetattr.invoke(fd, t.segment());
-            return t.asAttributes();
-        } catch (Throwable e) {
-            throw new RuntimeException("Unable to call tcgetattr()", e);
-        }
+        termios t = new termios();
+        int res = tcgetattr(fd, t.segment());
+        return t.asAttributes();
     }
 
     static void setAttributes(int fd, Attributes attr) {
-        try {
-            termios t = new termios(attr);
-            int res = (int) tcsetattr.invoke(fd, TCSANOW, t.segment());
-        } catch (Throwable e) {
-            throw new RuntimeException("Unable to call tcsetattr()", e);
-        }
+        termios t = new termios(attr);
+        int res = tcsetattr(fd, TCSANOW, t.segment());
     }
 
     static boolean isTty(int fd) {
-        try {
-            return (int) isatty.invoke(fd) == 1;
-        } catch (Throwable e) {
-            throw new RuntimeException("Unable to call isatty()", e);
-        }
+        return isatty(fd) == 1;
     }
 
     static String ttyName(int fd) {
         try {
             java.lang.foreign.MemorySegment buf =
                     java.lang.foreign.Arena.ofAuto().allocate(64);
-            int res = (int) ttyname_r.invoke(fd, buf, buf.byteSize());
+            int res = ttyname_r(fd, buf, buf.byteSize());
             byte[] data = buf.toArray(ValueLayout.JAVA_BYTE);
             int len = 0;
             while (data[len] != 0) {
@@ -565,8 +605,9 @@ class CLibrary {
     }
 
     static Pty openpty(TerminalProvider provider, Attributes attr, Size size) {
-        if (openptyError != null) {
-            throw openptyError;
+        MethodHandle openpty = LAZY_HANDLES.apply("openpty");
+        if (openpty != null) {
+            throw new LinkageError();
         }
         try {
             java.lang.foreign.MemorySegment buf =
