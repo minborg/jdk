@@ -33,6 +33,7 @@ import jdk.internal.javac.Restricted;
 import jdk.internal.reflect.CallerSensitive;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleProxies;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -609,6 +610,43 @@ public sealed interface Linker permits AbstractLinker {
     MethodHandle downcallHandle(MemorySegment address,
                                 FunctionDescriptor function,
                                 Option... options);
+
+
+    /**
+     * Creates a method handle that is used to call a foreign function with
+     * the given signature and address.
+     * <p>
+     * Calling this method is equivalent to the following code:
+     * {@snippet lang=java :
+     * linker.downcallHandle(function, options).bindTo(address);
+     * }
+     *
+     * @param type     to return an implementation of
+     * @param address  the native memory segment whose
+     *                 {@linkplain MemorySegment#address() base address} is the address
+     *                 of the target foreign function
+     * @param function the function descriptor of the target foreign function
+     * @param options  the linker options associated with this linkage request
+     * @return a downcall method handle
+     * @throws IllegalArgumentException if the provided function descriptor is not
+     *         supported by this linker
+     * @throws IllegalArgumentException if {@code !address.isNative()}, or if
+     *         {@code address.equals(MemorySegment.NULL)}
+     * @throws IllegalArgumentException if an invalid combination of linker options
+     *         is given
+     * @throws IllegalCallerException if the caller is in a module that does not have
+     *         native access enabled
+     *
+     * @see SymbolLookup
+     */
+    @CallerSensitive
+    @Restricted
+    default <T> T downcallHandle(Class<T> type,
+                                 MemorySegment address,
+                                 FunctionDescriptor function,
+                                 Option... options) {
+        return MethodHandleProxies.asInterfaceInstance(type, downcallHandle(address, function, options));
+    }
 
     /**
      * Creates a method handle that is used to call a foreign function with

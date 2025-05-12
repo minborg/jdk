@@ -18,9 +18,10 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 //import java.util.logging.Level;
 //import java.util.logging.Logger;
 
@@ -433,125 +434,160 @@ class CLibrary {
     private static final Linker LINKER = Linker.nativeLinker();
     private static final SymbolLookup LOOKUP = SymbolLookup.loaderLookup().or(LINKER.defaultLookup());
 
-    private static final Function<String, MethodHandle> LAZY_HANDLES = null;
-/*
-            StableValue.function(
-            Set.of("ioctl", "isatty", "tcsetattr", "tcgetattr", "ttyname_r", "openpty"),
-            new Function<>() {
+    @FunctionalInterface
+    private interface Ioctl {
+        int ioctl(int fd, long op, MemorySegment argp);
+    }
+
+    @FunctionalInterface
+    private interface TcGetAttr {
+        int tcgetattr(int fildes, MemorySegment termios_p);
+    }
+
+    @FunctionalInterface
+    private interface TcSetAttr {
+        int tcsetattr(int fildes, int optional_actions, MemorySegment termios_p);
+    }
+
+    @FunctionalInterface
+    private interface IsATty {
+        int isatty(int fd);
+    }
+
+    @FunctionalInterface
+    private interface TtyNameR {
+        int ttyname_r(int fd, MemorySegment buff, long buff_size);
+    }
+
+    private static Supplier<Ioctl> IO_CTL = StableValue.supplier(() -> LINKER.downcallHandle(
+            Ioctl.class, LOOKUP.findOrThrow("ooctl"),
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
+            Linker.Option.firstVariadicArg(2)
+    ));
+
+
+
+
+
+
+
+    private interface Downcalls {
+
+        int ioctl(int fd, long op, MemorySegment argp);
+
+        int tcgetattr(int fildes, MemorySegment termios_p);
+
+        int tcsetattr(int fildes, int optional_actions, MemorySegment termios_p);
+
+        int isatty(int fd);
+
+        int ttyname_r(int fd, MemorySegment buff, long buff_size);
+    }
+
+    public static abstract class AbstractDowncallMapper {
+
+        protected final Linker linker;
+        protected final SymbolLookup lookup;
+        protected final Map<String, List<Linker.Option>> options;
+        protected final Map<String, FunctionDescriptor> descriptions;
+        protected final Function<String, MethodHandle> lazyHandles;
+
+        protected AbstractDowncallMapper(Linker linker,
+                                         SymbolLookup lookup,
+                                         Map<String, FunctionDescriptor> descriptions,
+                                         Map<String, List<Linker.Option>> options) {
+            this.linker = linker;
+            this.lookup = lookup;
+            this.descriptions = Map.copyOf(descriptions);
+            this.options = Map.copyOf(options);
+            this.lazyHandles = StableValue.function(descriptions.keySet(), new Function<String, MethodHandle>() {
                 @Override
-                public MethodHandle apply(String methodName) {
-                    return switch (methodName) {
-                        case "ioctl"     -> ioctl();
-                        case "isatty"    -> isatty();
-                        case "tcsetattr" -> tcsetattr();
-                        case "tcgetattr" -> tcgetattr();
-                        case "ttyname_r" -> ttyname_r();
-                        case "openpty"   -> openpty();
-                        default -> throw new InternalError(methodName);
-                    };
-                }
-
-                private static MethodHandle ioctl() {
-                    // https://man7.org/linux/man-pages/man2/ioctl.2.html
-                    return LINKER.downcallHandle(
-                            LOOKUP.findOrThrow("ioctl"),
-                            FunctionDescriptor.of(
-                                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
-                            Linker.Option.firstVariadicArg(2));
-                }
-
-                private static MethodHandle isatty() {
-                    // https://www.man7.org/linux/man-pages/man3/isatty.3.html
-                    return LINKER.downcallHandle(
-                            LOOKUP.findOrThrow("isatty"), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
-                }
-
-                private static MethodHandle tcsetattr() {
-                    // https://man7.org/linux/man-pages/man3/tcsetattr.3p.html
-                    return LINKER.downcallHandle(
-                            LOOKUP.findOrThrow("tcsetattr"),
-                            FunctionDescriptor.of(
-                                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-                }
-
-                private static MethodHandle tcgetattr() {
-                    // https://man7.org/linux/man-pages/man3/tcgetattr.3p.html
-                    return LINKER.downcallHandle(
-                            LOOKUP.findOrThrow("tcgetattr"),
-                            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-                }
-
-                private static MethodHandle ttyname_r() {
-                    // https://man7.org/linux/man-pages/man3/ttyname.3.html
-                    return LINKER.downcallHandle(
-                            LOOKUP.findOrThrow("ttyname_r"),
-                            FunctionDescriptor.of(
-                                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-                }
-
-                private static MethodHandle openpty() {
-                    // https://man7.org/linux/man-pages/man3/openpty.3.html
-                    Optional<MemorySegment> openPtyAddr = LOOKUP.find("openpty");
-                    if (openPtyAddr.isPresent()) {
-                        return LINKER.downcallHandle(
-                                openPtyAddr.get(),
-                                FunctionDescriptor.of(
-                                        ValueLayout.JAVA_INT,
-                                        ValueLayout.ADDRESS,
-                                        ValueLayout.ADDRESS,
-                                        ValueLayout.ADDRESS,
-                                        ValueLayout.ADDRESS,
-                                        ValueLayout.ADDRESS));
-                    } else {
-                        return null;
-                    }
+                public MethodHandle apply(String name) {
+                    return __makeHandle(name);
                 }
             });
-*/
+        }
 
-    private static int ioctl(int fd, long op, MemorySegment argp) {
-        try {
-            return (int) LAZY_HANDLES.apply("ioctl").invoke(fd, op, argp);
-        } catch (Throwable e) {
-            throw unableToCall("ioctl", e);
+        private MethodHandle __makeHandle(String name) {
+            return linker.downcallHandle(lookup.findOrThrow(name),
+                    descriptions.get(name),
+                    options.getOrDefault(name, List.of())
+                            .toArray(Linker.Option[]::new));
+        }
+
+        protected static RuntimeException __unableToCall(String methodName, Throwable throwable) {
+            return new RuntimeException("Unable to call " + methodName, throwable);
+        }
+
+    }
+
+    private static final class GeneratedHiddenDowncalls
+            extends AbstractDowncallMapper
+            implements Downcalls {
+
+        public GeneratedHiddenDowncalls(Linker linker,
+                                        SymbolLookup lookup,
+                                        Map<String, List<Linker.Option>> options) {
+            super(linker, lookup, Map.ofEntries(
+                    Map.entry("ioctl", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)),
+                    Map.entry("isatty", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT)),
+                    Map.entry("tcsetattr", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS)),
+                    Map.entry("tcgetattr", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS)),
+                    Map.entry("ttyname_r", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG))
+            ), options);
+        }
+
+        @Override
+        public int ioctl(int fd, long op, MemorySegment argp) {
+            try {
+                return (int) lazyHandles.apply("ioctl").invoke(fd, op, argp);
+            } catch (Throwable e) {
+                throw __unableToCall("ioctl", e);
+            }
+        }
+
+        @Override
+        public int tcgetattr(int fildes, MemorySegment termios_p) {
+            try {
+                return (int) lazyHandles.apply("tcgetattr").invoke(fildes, termios_p);
+            } catch (Throwable e) {
+                throw __unableToCall("tcgetattr", e);
+            }
+        }
+
+        @Override
+        public int tcsetattr(int fildes, int optional_actions, MemorySegment termios_p) {
+            try {
+                return (int) lazyHandles.apply("tcsetattr").invoke(fildes, optional_actions, termios_p);
+            } catch (Throwable e) {
+                throw __unableToCall("tcsetattr", e);
+            }
+        }
+
+        @Override
+        public int isatty(int fd) {
+            try {
+                return (int) lazyHandles.apply("isatty").invoke(fd);
+            } catch (Throwable e) {
+                throw __unableToCall("isatty", e);
+            }
+        }
+
+        @Override
+        public int ttyname_r(int fd, MemorySegment buff, long buff_size) {
+            try {
+                return (int) lazyHandles.apply("ttyname_r").invoke(fd, buff, buff_size);
+            } catch (Throwable e) {
+                throw __unableToCall("ttyname_r", e);
+            }
         }
     }
 
-    private static int tcgetattr(int fildes, MemorySegment termios_p) {
-        try {
-            return (int) LAZY_HANDLES.apply("tcgetattr").invoke(fildes, termios_p);
-        } catch (Throwable e) {
-            throw unableToCall("tcgetattr", e);
-        }
-    }
 
-    private static int tcsetattr(int fildes, int optional_actions, MemorySegment termios_p) {
-        try {
-            return (int) LAZY_HANDLES.apply("tcsetattr").invoke(fildes, optional_actions, termios_p);
-        } catch (Throwable e) {
-            throw unableToCall("tcsetattr", e);
-        }
-    }
+    private static final Downcalls DOWNCALLS = new GeneratedHiddenDowncalls(LINKER, LOOKUP, Map.ofEntries(
+            Map.entry("ioctl", List.of(Linker.Option.firstVariadicArg(2)))
+    ));
 
-    private static int isatty(int fd) {
-        try {
-            return (int) LAZY_HANDLES.apply("isatty").invoke(fd);
-        } catch (Throwable e) {
-            throw unableToCall("isatty", e);
-        }
-    }
-
-    private static int ttyname_r(int fd, MemorySegment buff, long buff_size) {
-        try {
-            return (int) LAZY_HANDLES.apply("ttyname_r").invoke(fd, buff, buff_size);
-        } catch (Throwable e) {
-            throw unableToCall("ttyname_r", e);
-        }
-    }
-
-    private static RuntimeException unableToCall(String methodName, Throwable throwable) {
-        return new RuntimeException("Unable to call " + methodName, throwable);
-    }
 
     private static String readFully(InputStream in) throws IOException {
         int readLen = 0;
@@ -565,7 +601,7 @@ class CLibrary {
 
     static Size getTerminalSize(int fd) {
         winsize ws = new winsize();
-        int res = ioctl(fd, TIOCGWINSZ, ws.segment());
+        int res = IO_CTL.get().ioctl(fd, TIOCGWINSZ, ws.segment());
         return new Size(ws.ws_col(), ws.ws_row());
     }
 
@@ -573,29 +609,29 @@ class CLibrary {
         winsize ws = new winsize();
         ws.ws_row((short) size.getRows());
         ws.ws_col((short) size.getColumns());
-        int res = ioctl(fd, TIOCSWINSZ, ws.segment());
+        int res = DOWNCALLS.ioctl(fd, TIOCSWINSZ, ws.segment());
     }
 
     static Attributes getAttributes(int fd) {
         termios t = new termios();
-        int res = tcgetattr(fd, t.segment());
+        int res = DOWNCALLS.tcgetattr(fd, t.segment());
         return t.asAttributes();
     }
 
     static void setAttributes(int fd, Attributes attr) {
         termios t = new termios(attr);
-        int res = tcsetattr(fd, TCSANOW, t.segment());
+        int res = DOWNCALLS.tcsetattr(fd, TCSANOW, t.segment());
     }
 
     static boolean isTty(int fd) {
-        return isatty(fd) == 1;
+        return DOWNCALLS.isatty(fd) == 1;
     }
 
     static String ttyName(int fd) {
         try {
             java.lang.foreign.MemorySegment buf =
                     java.lang.foreign.Arena.ofAuto().allocate(64);
-            int res = ttyname_r(fd, buf, buf.byteSize());
+            int res = DOWNCALLS.ttyname_r(fd, buf, buf.byteSize());
             byte[] data = buf.toArray(ValueLayout.JAVA_BYTE);
             int len = 0;
             while (data[len] != 0) {
