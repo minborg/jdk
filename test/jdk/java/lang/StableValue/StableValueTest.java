@@ -27,6 +27,7 @@
  * @run junit StableValueTest
  */
 
+import jdk.internal.lang.stable.StableUtil;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -351,6 +352,23 @@ final class StableValueTest {
             case 1 -> SET_OR_THROW.test(s, i);
             default -> fail("should not reach here");
         });
+    }
+
+    @Test
+    void staticMethodLookup() {
+        class Foo {
+            static Integer one() {
+                return 1;
+            }
+            static int two() {
+                return 2;
+            }
+        }
+
+        Function<String, Integer> lookup = StableUtil.staticMethodLookup(int.class, Foo.class);
+
+        Integer one = lookup.apply("one");
+        Integer two = lookup.apply("two");
     }
 
     void race(BiPredicate<StableValue<Integer>, Integer> winnerPredicate) {

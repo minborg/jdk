@@ -25,10 +25,14 @@
 
 package jdk.internal.lang.stable;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.function.Function;
 
 public final class StableUtil {
 
@@ -100,6 +104,33 @@ public final class StableUtil {
         if (size < 0) {
             throw new IllegalArgumentException("size can not be negative: " + size);
         }
+    }
+
+    public static <T> Function<String, T> staticMethodLookup(Class<T> returnType,
+                                                             Class<?> declaringClass) {
+        final Map<String, Method> candidates = new HashMap<>();
+        for (Method method: declaringClass.getDeclaredMethods()) {
+            if (Modifier.isStatic(method.getModifiers())
+                    && method.getParameterCount() == 0
+                    && returnType.isAssignableFrom(method.getReturnType())) {
+                candidates.put(method.getName(), method);
+            }
+        }
+        return StableValue.function(candidates.keySet(), new Function<String, T>() {
+            @Override
+            public T apply(String methodName) {
+                Method method = candidates.get(methodName);
+                if (method == null) {
+                    throw new IllegalArgumentException("There is no static method '" +
+                            methodName + "' that returns a " + returnType + " declared in " + declaringClass);
+                }
+                try {
+                    return returnType.cast(method.invoke(null));
+                } catch (ReflectiveOperationException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
     }
 
 }

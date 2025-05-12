@@ -433,7 +433,9 @@ class CLibrary {
     private static final Linker LINKER = Linker.nativeLinker();
     private static final SymbolLookup LOOKUP = SymbolLookup.loaderLookup().or(LINKER.defaultLookup());
 
-    private static final Function<String, MethodHandle> LAZY_HANDLES = StableValue.function(
+    private static final Function<String, MethodHandle> LAZY_HANDLES = null;
+/*
+            StableValue.function(
             Set.of("ioctl", "isatty", "tcsetattr", "tcgetattr", "ttyname_r", "openpty"),
             new Function<>() {
                 @Override
@@ -505,6 +507,7 @@ class CLibrary {
                     }
                 }
             });
+*/
 
     private static int ioctl(int fd, long op, MemorySegment argp) {
         try {
