@@ -33,6 +33,8 @@ import jdk.internal.javac.Restricted;
 import jdk.internal.reflect.CallerSensitive;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleProxies;
+import java.lang.invoke.WrongMethodTypeException;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -580,7 +582,7 @@ public sealed interface Linker permits AbstractLinker {
 
     /**
      * Creates a method handle that is used to call a foreign function with
-     * the given signature and address.
+     * the given signature, address, and options.
      * <p>
      * Calling this method is equivalent to the following code:
      * {@snippet lang=java :
@@ -609,6 +611,52 @@ public sealed interface Linker permits AbstractLinker {
     MethodHandle downcallHandle(MemorySegment address,
                                 FunctionDescriptor function,
                                 Option... options);
+    /**
+     * Creates an implementation of the given (single-method interface) type that is used
+     * to call a foreign function with the given signature, address, and options.
+     * <p>
+     * Calling this method is equivalent to the following code:
+     * {@snippet lang = java:
+     * MethodHandleProxies.asInterfaceInstance(type,
+     *         linker.downcallHandle(address, function, options));
+     *}
+     * <p>
+     * The {@code type} must be a <em>valid argument</em> as specified by
+     * {@linkplain MethodHandleProxies#asInterfaceInstance(Class, MethodHandle)}.
+     * <p>
+     * While this method provides better ergonomics compared to working directly with
+     * method handles, there is likely some performance overhead associated with
+     * the returned interface implementation.
+     *
+     * @param <T>      the desired type of the returned implementation
+     * @param type     a class object representing a single-method interface {@code T}
+     * @param address  the native memory segment whose
+     *                 {@linkplain MemorySegment#address() base address} is the address
+     *                 of the target foreign function
+     * @param function the function descriptor of the target foreign function
+     * @param options  the linker options associated with this linkage request
+     * @return a downcall method handle
+     * @throws IllegalArgumentException if the {@code type} is not a
+     *         <em>valid argument</em> to this method
+     * @throws WrongMethodTypeException if the foreign function cannot
+     *         be converted to the {@code type} required by the requested interface
+     * @throws IllegalArgumentException if the provided function descriptor is not
+     *         supported by this linker
+     * @throws IllegalArgumentException if {@code !address.isNative()}, or if
+     *         {@code address.equals(MemorySegment.NULL)}
+     * @throws IllegalArgumentException if an invalid combination of linker options
+     *         is given
+     * @throws IllegalCallerException if the caller is in a module that does not have
+     *         native access enabled
+     *
+     * @see SymbolLookup
+     */
+    @CallerSensitive
+    @Restricted
+    <T> T downcallHandle(Class<T> type,
+                         MemorySegment address,
+                         FunctionDescriptor function,
+                         Option... options);
 
     /**
      * Creates a method handle that is used to call a foreign function with

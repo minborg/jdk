@@ -54,6 +54,7 @@ import java.lang.foreign.StructLayout;
 import java.lang.foreign.UnionLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodType;
 import java.util.HashSet;
 import java.util.List;
@@ -91,10 +92,16 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
 
     @Override
     @CallerSensitive
-    public final MethodHandle downcallHandle(MemorySegment symbol, FunctionDescriptor function, Option... options) {
+    public final MethodHandle downcallHandle(MemorySegment address, FunctionDescriptor function, Option... options) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), Linker.class, "downcallHandle", false);
-        SharedUtils.checkSymbol(symbol);
-        return downcallHandle0(function, options).bindTo(symbol);
+        SharedUtils.checkSymbol(address);
+        return downcallHandle0(function, options).bindTo(address);
+    }
+
+    @Override
+    @CallerSensitive
+    public final <T> T downcallHandle(Class<T> type, MemorySegment address, FunctionDescriptor function, Option... options) {
+        return MethodHandleProxies.asInterfaceInstance(type, downcallHandle(address, function, options));
     }
 
     @Override
