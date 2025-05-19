@@ -34,6 +34,8 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.StructLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
@@ -49,8 +51,7 @@ import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.lang.foreign.ValueLayout.JAVA_INT;
-import static java.lang.foreign.ValueLayout.JAVA_LONG;
+import static java.lang.foreign.ValueLayout.*;
 import static org.testng.Assert.*;
 
 public class StdLibInterfaceTest extends NativeTestHelper {
@@ -109,6 +110,18 @@ public class StdLibInterfaceTest extends NativeTestHelper {
     void test_strlen_std_function(String s) {
         assertEquals(FunctionalStdLibHelper.STR_LEN.strlen(s), s.length());
     }
+
+    @Test(dataProvider = "strings")
+    void test_strlen_std_function2(String s) {
+
+    }
+
+    static MemorySegment heapSegment(MemoryLayout layout) {
+        byte[] arr = new byte[(int) layout.byteSize() * (int)layout.byteAlignment()];
+        SegmentAllocator allocator = SegmentAllocator.slicingAllocator(MemorySegment.ofArray(arr));
+        return allocator.allocate(layout);
+    }
+
 
     @Test(dataProvider = "instants")
     void test_time(Instant instant) {
