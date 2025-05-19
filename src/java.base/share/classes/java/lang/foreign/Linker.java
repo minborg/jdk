@@ -105,6 +105,38 @@ import java.util.function.Consumer;
  *     long len = (long) strlen.invokeExact(str);  // 5
  * }
  *}
+ *
+ * Clients who prefers working with more high-level invocation abstractions can use
+ * existing {@linkplain FunctionalInterface functional interfaces} or specify custom
+ * functional interfaces that can be directly linked to native functions:
+ *
+ * {@snippet lang = java:
+ * @FunctionalInterface
+ * public interface StrLen {
+ *
+ *     // The single abstract method to be linked
+ *     // to the native `strlen` function.
+ *     long strlen(MemorySegment s);
+ *
+ *     // A default convenience method
+ *     default long strlen(String s) {
+ *         try (var arena = Arena.ofConfined()) {
+ *             return strlen(arena.allocateFrom(s));
+ *         }
+ *     }
+ * }
+ *
+ * Linker linker = Linker.nativeLinker();
+ * StrLen strlen = linker.downcallHandle(
+ *     StrLen.class,
+ *     linker.defaultLookup().findOrThrow("strlen"),
+ *     FunctionDescriptor.of(JAVA_LONG, ADDRESS)
+ * );
+ *
+ * long len = strlen.strlen("Hello");  // 5
+ *
+ * }
+ *
  * <h3 id="describing-c-sigs">Describing C signatures</h3>
  *
  * When interacting with the native linker, clients must provide a platform-dependent
@@ -622,7 +654,11 @@ public sealed interface Linker permits AbstractLinker {
      *}
      * <p>
      * The {@code type} must be a <em>valid argument</em> as specified by
-     * {@linkplain MethodHandleProxies#asInterfaceInstance(Class, MethodHandle)}.
+     * {@linkplain MethodHandleProxies#asInterfaceInstance(Class, MethodHandle)} where
+     * the single-method interface is an interface which declares a uniquely named method.
+     * When determining the uniquely named method of a single-method interface,
+     * the public {@code Object} methods ({@code toString}, {@code equals}, {@code hashCode})
+     * are disregarded as are any default (non-abstract) methods.
      * <p>
      * While this method provides better ergonomics compared to working directly with
      * method handles, there is likely some performance overhead associated with
@@ -650,6 +686,7 @@ public sealed interface Linker permits AbstractLinker {
      *         native access enabled
      *
      * @see SymbolLookup
+     * @see MethodHandleProxies#asInterfaceInstance(Class, MethodHandle)
      */
     @CallerSensitive
     @Restricted

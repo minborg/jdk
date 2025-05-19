@@ -45,9 +45,11 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 import static org.testng.Assert.*;
 
@@ -101,6 +103,11 @@ public class StdLibInterfaceTest extends NativeTestHelper {
     @Test(dataProvider = "strings")
     void test_strlen(String s) {
         assertEquals(HELPER.strlen(s), s.length());
+    }
+
+    @Test(dataProvider = "strings")
+    void test_strlen_std_function(String s) {
+        assertEquals(FunctionalStdLibHelper.STR_LEN.strlen(s), s.length());
     }
 
     @Test(dataProvider = "instants")
@@ -161,10 +168,23 @@ public class StdLibInterfaceTest extends NativeTestHelper {
         static final PutS PUT_S = ABI.downcallHandle(PutS.class, ABI.defaultLookup().findOrThrow("puts"),
                 FunctionDescriptor.of(C_INT, C_POINTER));
 
-        @FunctionalInterface public interface StrLen {  int strlen(MemorySegment s); }
+        @FunctionalInterface
+        public interface StrLen {
+
+            // The single abstract method to be linked
+            // to the native `strlen` function.
+            int strlen(MemorySegment s);
+
+            // A default convenience method
+            default int strlen(String s) {
+                try (var arena = Arena.ofConfined()) {
+                    return strlen(arena.allocateFrom(s));
+                }
+            }
+        }
 
         static final StrLen STR_LEN = ABI.downcallHandle(StrLen.class, ABI.defaultLookup().findOrThrow("strlen"),
-                FunctionDescriptor.of(C_INT, C_POINTER));
+                FunctionDescriptor.of(JAVA_INT, C_POINTER));
 
         @FunctionalInterface public interface GmTime {  MemorySegment gmtime(MemorySegment timer); }
 
