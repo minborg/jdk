@@ -768,7 +768,11 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * returned segment is deallocated only when this segment's arena is closed.
      * This might lead to <em>use-after-free</em> issues, as the returned segment can be
      * accessed <em>after</em> its region of memory has been deallocated via this
-     * segment's arena.
+     * segment's arena. If this segment is originally allocated from an
+     * {@linkplain Arena#ofAuto() automatic arena}, the returned reinterpreted segment
+     * will hold a strong reference to this segment. Hence, as long as the returned
+     * reinterpreted segment is strongly reachable, the original automatic arena will
+     * not be collected.
      * <p>
      * Clients can specify an optional cleanup action that should be executed when the
      * provided arena's scope becomes invalid. This cleanup action receives a fresh memory
@@ -824,7 +828,11 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * returned segment is deallocated only when this segment's arena is closed.
      * This might lead to <em>use-after-free</em> issues, as the returned segment can be
      * accessed <em>after</em> its region of memory has been deallocated via this
-     * segment's arena.
+     * segment's arena. If this segment is originally allocated from an
+     * {@linkplain Arena#ofAuto() automatic arena}, the returned reinterpreted segment
+     * will hold a strong reference to this segment. Hence, as long as the returned
+     * reinterpreted segment is strongly reachable, the original automatic arena will
+     * not be collected.
      * <p>
      * Clients can specify an optional cleanup action that should be executed when the
      * provided arena's scope becomes invalid. This cleanup action receives a fresh memory

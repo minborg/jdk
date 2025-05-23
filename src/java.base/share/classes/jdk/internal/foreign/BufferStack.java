@@ -102,8 +102,7 @@ public final class BufferStack {
 
     private record PerThread(ReentrantLock lock,
                              Arena arena,
-                             SlicingAllocator stack,
-                             CleanupAction cleanupAction) {
+                             SlicingAllocator stack) {
 
         @ForceInline
         public Arena pushFrame(long size, long byteAlignment) {
@@ -123,15 +122,7 @@ public final class BufferStack {
             final Arena arena = Arena.ofAuto();
             return new PerThread(new ReentrantLock(),
                     arena,
-                    new SlicingAllocator(arena.allocate(byteSize, byteAlignment)),
-                    new CleanupAction(arena));
-        }
-
-        private record CleanupAction(Arena arena) implements Consumer<MemorySegment> {
-            @Override
-            public void accept(MemorySegment memorySegment) {
-                Reference.reachabilityFence(arena);
-            }
+                    new SlicingAllocator(arena.allocate(byteSize, byteAlignment)));
         }
 
         private final class Frame implements Arena {
@@ -153,7 +144,7 @@ public final class BufferStack {
                 // The cleanup action will keep the original automatic `arena` (from which
                 // the reusable segment is first allocated) alive even if this Frame
                 // becomes unreachable but there are reachable segments still alive.
-                this.frame = new SlicingAllocator(frameSegment.reinterpret(confinedArena, cleanupAction));
+                this.frame = new SlicingAllocator(frameSegment.reinterpret(confinedArena, null));
             }
 
             @ForceInline

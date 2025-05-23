@@ -76,9 +76,11 @@ public abstract sealed class AbstractMemorySegmentImpl
     final long length;
     final boolean readOnly;
     final MemorySessionImpl scope;
+    final Object base;
 
     @ForceInline
-    AbstractMemorySegmentImpl(long length, boolean readOnly, MemorySessionImpl scope) {
+    AbstractMemorySegmentImpl(Object base, long length, boolean readOnly, MemorySessionImpl scope) {
+        this.base = base;
         this.length = length;
         this.readOnly = readOnly;
         this.scope = scope;
@@ -157,7 +159,14 @@ public abstract sealed class AbstractMemorySegmentImpl
         Utils.checkNonNegativeArgument(newSize, "newSize");
         if (!isNative()) throw new UnsupportedOperationException("Not a native segment");
         Runnable action = cleanupAction(address(), newSize, cleanup);
-        return SegmentFactories.makeNativeSegmentUnchecked(address(), newSize, scope, readOnly, action);
+        // If the scope is reassigned, strongly reference this segment in the returned
+        // segment if this segment's scope is an implicit session so that the underlying
+        // automatic arena will not be collected while the returned segment is
+        // strongly reachable.
+        final Object base = scope != this.scope && this.scope instanceof ImplicitSession
+                ? this
+                : null;
+        return SegmentFactories.makeNativeSegmentUnchecked(base, address(), newSize, scope, readOnly, action);
     }
 
     // Using a static helper method ensures there is no unintended lambda capturing of `this`
@@ -553,7 +562,7 @@ public abstract sealed class AbstractMemorySegmentImpl
     private static AbstractMemorySegmentImpl ofBuffer(Buffer b, long offset, long length) {
         final Object base = NIO_ACCESS.getBufferBase(b);
         return (base == null)
-                ? nativeSegment(b, offset, length)
+                ? nativeSegment(null, b, offset, length)
                 : NIO_ACCESS.heapSegment(b, base, offset, length, b.isReadOnly(), bufferScope(b));
     }
 
@@ -569,14 +578,14 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @ForceInline
-    private static NativeMemorySegmentImpl nativeSegment(Buffer b, long offset, long length) {
+    private static NativeMemorySegmentImpl nativeSegment(Object base, Buffer b, long offset, long length) {
         if (!b.isDirect()) {
             throw new IllegalArgumentException("The provided heap buffer is not backed by an array.");
         }
         final UnmapperProxy unmapper = NIO_ACCESS.unmapper(b);
         return unmapper == null
-                ? new NativeMemorySegmentImpl(offset, length, b.isReadOnly(), bufferScope(b))
-                : new MappedMemorySegmentImpl(offset, unmapper, length, b.isReadOnly(), bufferScope(b));
+                ? new NativeMemorySegmentImpl(base, offset, length, b.isReadOnly(), bufferScope(b))
+                : new MappedMemorySegmentImpl(base, offset, unmapper, length, b.isReadOnly(), bufferScope(b));
     }
 
     @ForceInline

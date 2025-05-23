@@ -56,7 +56,6 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
     private static final long MAX_ALIGN_LONG_ARRAY = ValueLayout.JAVA_LONG.byteAlignment();
 
     final long offset;
-    final Object base;
 
     @Override
     public Optional<Object> heapBase() {
@@ -66,10 +65,9 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
     }
 
     @ForceInline
-    HeapMemorySegmentImpl(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-        super(length, readOnly, session);
+    HeapMemorySegmentImpl(Object base, long offset, long length, boolean readOnly, MemorySessionImpl session) {
+        super(base, length, readOnly, session);
         this.offset = offset;
-        this.base = base;
     }
 
     @Override
@@ -100,13 +98,13 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
     public static final class OfByte extends HeapMemorySegmentImpl {
 
-        OfByte(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        OfByte(Object base, long offset, long length, boolean readOnly, MemorySessionImpl session) {
+            super(base, offset, length, readOnly, session);
         }
 
         @Override
         OfByte dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
-            return new OfByte(this.offset + offset, base, size, readOnly, scope);
+            return new OfByte(base, this.offset + offset, size, readOnly, scope);
         }
 
         @Override
@@ -127,13 +125,13 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
     public static final class OfChar extends HeapMemorySegmentImpl {
 
-        OfChar(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        OfChar(Object base, long offset, long length, boolean readOnly, MemorySessionImpl session) {
+            super(base, offset, length, readOnly, session);
         }
 
         @Override
         OfChar dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
-            return new OfChar(this.offset + offset, base, size, readOnly, scope);
+            return new OfChar(base, this.offset + offset, size, readOnly, scope);
         }
 
         @Override
@@ -154,13 +152,13 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
     public static final class OfShort extends HeapMemorySegmentImpl {
 
-        OfShort(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        OfShort(Object base, long offset, long length, boolean readOnly, MemorySessionImpl session) {
+            super(base, offset, length, readOnly, session);
         }
 
         @Override
         OfShort dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
-            return new OfShort(this.offset + offset, base, size, readOnly, scope);
+            return new OfShort(base, this.offset + offset, size, readOnly, scope);
         }
 
         @Override
@@ -181,13 +179,13 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
     public static final class OfInt extends HeapMemorySegmentImpl {
 
-        OfInt(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        OfInt(Object base, long offset, long length, boolean readOnly, MemorySessionImpl session) {
+            super(base, offset, length, readOnly, session);
         }
 
         @Override
         OfInt dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
-            return new OfInt(this.offset + offset, base, size, readOnly, scope);
+            return new OfInt(base, this.offset + offset, size, readOnly, scope);
         }
 
         @Override
@@ -208,13 +206,13 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
     public static final class OfLong extends HeapMemorySegmentImpl {
 
-        OfLong(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        OfLong(Object base, long offset, long length, boolean readOnly, MemorySessionImpl session) {
+            super(base, offset, length, readOnly, session);
         }
 
         @Override
         OfLong dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
-            return new OfLong(this.offset + offset, base, size, readOnly, scope);
+            return new OfLong(base, this.offset + offset, size, readOnly, scope);
         }
 
         @Override
@@ -235,13 +233,13 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
     public static final class OfFloat extends HeapMemorySegmentImpl {
 
-        OfFloat(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        OfFloat(Object base, long offset, long length, boolean readOnly, MemorySessionImpl session) {
+            super(base, offset, length, readOnly, session);
         }
 
         @Override
         OfFloat dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
-            return new OfFloat(this.offset + offset, base, size, readOnly, scope);
+            return new OfFloat(base, this.offset + offset, size, readOnly, scope);
         }
 
         @Override
@@ -262,13 +260,13 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
     public static final class OfDouble extends HeapMemorySegmentImpl {
 
-        OfDouble(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        OfDouble(Object base, long offset, long length, boolean readOnly, MemorySessionImpl session) {
+            super(base, offset, length, readOnly, session);
         }
 
         @Override
         OfDouble dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
-            return new OfDouble(this.offset + offset, base, size, readOnly, scope);
+            return new OfDouble(base, this.offset + offset, size, readOnly, scope);
         }
 
         @Override

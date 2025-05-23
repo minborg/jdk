@@ -41,8 +41,8 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
     final long min;
 
     @ForceInline
-    NativeMemorySegmentImpl(long min, long length, boolean readOnly, MemorySessionImpl scope) {
-        super(length, readOnly, scope);
+    NativeMemorySegmentImpl(Object base, long min, long length, boolean readOnly, MemorySessionImpl scope) {
+        super(base, length, readOnly, scope);
         this.min = (Unsafe.getUnsafe().addressSize() == 4)
                 // On 32-bit systems, normalize the upper unused 32-bits to zero
                 ? min & 0x0000_0000_FFFF_FFFFL
@@ -69,7 +69,7 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
     @ForceInline
     @Override
     NativeMemorySegmentImpl dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
-        return new NativeMemorySegmentImpl(min + offset, size, readOnly, scope);
+        return new NativeMemorySegmentImpl(base, min + offset, size, readOnly, scope);
     }
 
     @Override

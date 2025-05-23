@@ -35,7 +35,6 @@ import jdk.internal.foreign.HeapMemorySegmentImpl.OfLong;
 import jdk.internal.foreign.HeapMemorySegmentImpl.OfShort;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
-import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.MemorySegment;
@@ -46,7 +45,9 @@ import java.util.Objects;
  * are initialized in the right order (that is, that {@code MemorySegment} is always initialized first).
  * See {@link SegmentFactories#ensureInitialized()}.
  */
-public class SegmentFactories {
+public final class SegmentFactories {
+
+    private SegmentFactories() {}
 
     // The maximum alignment supported by malloc - typically 16 bytes on
     // 64-bit platforms and 8 bytes on 32-bit platforms.
@@ -58,7 +59,7 @@ public class SegmentFactories {
     // associated with MemorySegment::ofAddress.
 
     @ForceInline
-    public static NativeMemorySegmentImpl makeNativeSegmentUnchecked(long min, long byteSize,
+    public static NativeMemorySegmentImpl makeNativeSegmentUnchecked(Object base, long min, long byteSize,
                                                                      MemorySessionImpl sessionImpl,
                                                                      boolean readOnly, Runnable action) {
         ensureInitialized();
@@ -67,27 +68,27 @@ public class SegmentFactories {
         } else {
             sessionImpl.addCloseAction(action);
         }
-        return new NativeMemorySegmentImpl(min, byteSize, readOnly, sessionImpl);
+        return new NativeMemorySegmentImpl(base, min, byteSize, readOnly, sessionImpl);
     }
 
     @ForceInline
     public static NativeMemorySegmentImpl makeNativeSegmentUnchecked(long min, long byteSize, MemorySessionImpl sessionImpl) {
         ensureInitialized();
         sessionImpl.checkValidState();
-        return new NativeMemorySegmentImpl(min, byteSize, false, sessionImpl);
+        return new NativeMemorySegmentImpl(null, min, byteSize, false, sessionImpl);
     }
 
     @ForceInline
     public static NativeMemorySegmentImpl makeNativeSegmentUnchecked(long min, long byteSize) {
         ensureInitialized();
-        return new NativeMemorySegmentImpl(min, byteSize, false, MemorySessionImpl.GLOBAL_SESSION);
+        return new NativeMemorySegmentImpl(null, min, byteSize, false, MemorySessionImpl.GLOBAL_SESSION);
     }
 
     public static OfByte fromArray(byte[] arr) {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.BYTE.scale();
-        return new OfByte(Utils.BaseAndScale.BYTE.base(), arr, byteSize, false,
+        return new OfByte(arr, Utils.BaseAndScale.BYTE.base(), byteSize, false,
                 MemorySessionImpl.createHeap(arr));
     }
 
@@ -95,7 +96,7 @@ public class SegmentFactories {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.SHORT.scale();
-        return new OfShort(Utils.BaseAndScale.SHORT.base(), arr, byteSize, false,
+        return new OfShort(arr, Utils.BaseAndScale.SHORT.base(), byteSize, false,
                 MemorySessionImpl.createHeap(arr));
     }
 
@@ -103,7 +104,7 @@ public class SegmentFactories {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.INT.scale();
-        return new OfInt(Utils.BaseAndScale.INT.base(), arr, byteSize, false,
+        return new OfInt(arr, Utils.BaseAndScale.INT.base(), byteSize, false,
                 MemorySessionImpl.createHeap(arr));
     }
 
@@ -111,7 +112,7 @@ public class SegmentFactories {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.CHAR.scale();
-        return new OfChar(Utils.BaseAndScale.CHAR.base(), arr, byteSize, false,
+        return new OfChar(arr, Utils.BaseAndScale.CHAR.base(), byteSize, false,
                 MemorySessionImpl.createHeap(arr));
     }
 
@@ -119,7 +120,7 @@ public class SegmentFactories {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.FLOAT.scale();
-        return new OfFloat(Utils.BaseAndScale.FLOAT.base(), arr, byteSize, false,
+        return new OfFloat(arr, Utils.BaseAndScale.FLOAT.base(), byteSize, false,
                 MemorySessionImpl.createHeap(arr));
     }
 
@@ -127,7 +128,7 @@ public class SegmentFactories {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.DOUBLE.scale();
-        return new OfDouble(Utils.BaseAndScale.DOUBLE.base(), arr, byteSize, false,
+        return new OfDouble(arr, Utils.BaseAndScale.DOUBLE.base(), byteSize, false,
                 MemorySessionImpl.createHeap(arr));
     }
 
@@ -135,7 +136,7 @@ public class SegmentFactories {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.LONG.scale();
-        return new OfLong(Utils.BaseAndScale.LONG.base(), arr, byteSize, false,
+        return new OfLong(arr, Utils.BaseAndScale.LONG.base(), byteSize, false,
                 MemorySessionImpl.createHeap(arr));
     }
 
@@ -143,43 +144,43 @@ public class SegmentFactories {
 
     public static OfByte arrayOfByteSegment(Object base, long offset, long length,
                                             boolean readOnly, MemorySessionImpl bufferScope) {
-        return new OfByte(offset, base, length, readOnly, bufferScope);
+        return new OfByte(base, offset, length, readOnly, bufferScope);
     }
 
     public static OfShort arrayOfShortSegment(Object base, long offset, long length,
                                               boolean readOnly, MemorySessionImpl bufferScope) {
-        return new OfShort(offset, base, length, readOnly, bufferScope);
+        return new OfShort(base, offset, length, readOnly, bufferScope);
     }
 
     public static OfChar arrayOfCharSegment(Object base, long offset, long length,
                                             boolean readOnly, MemorySessionImpl bufferScope) {
-        return new OfChar(offset, base, length, readOnly, bufferScope);
+        return new OfChar(base, offset, length, readOnly, bufferScope);
     }
 
     public static OfInt arrayOfIntSegment(Object base, long offset, long length,
                                           boolean readOnly, MemorySessionImpl bufferScope) {
-        return new OfInt(offset, base, length, readOnly, bufferScope);
+        return new OfInt(base, offset, length, readOnly, bufferScope);
     }
 
     public static OfFloat arrayOfFloatSegment(Object base, long offset, long length,
                                               boolean readOnly, MemorySessionImpl bufferScope) {
-        return new OfFloat(offset, base, length, readOnly, bufferScope);
+        return new OfFloat(base, offset, length, readOnly, bufferScope);
     }
 
     public static OfLong arrayOfLongSegment(Object base, long offset, long length,
                                             boolean readOnly, MemorySessionImpl bufferScope) {
-        return new OfLong(offset, base, length, readOnly, bufferScope);
+        return new OfLong(base, offset, length, readOnly, bufferScope);
     }
 
     public static OfDouble arrayOfDoubleSegment(Object base, long offset, long length,
                                                 boolean readOnly, MemorySessionImpl bufferScope) {
-        return new OfDouble(offset, base, length, readOnly, bufferScope);
+        return new OfDouble(base, offset, length, readOnly, bufferScope);
     }
 
     public static NativeMemorySegmentImpl allocateNativeSegment(long byteSize, long byteAlignment, MemorySessionImpl sessionImpl,
                                                                 boolean shouldReserve, boolean init) {
         long address = SegmentFactories.allocateNativeInternal(byteSize, byteAlignment, sessionImpl, shouldReserve, init);
-        return new NativeMemorySegmentImpl(address, byteSize, false, sessionImpl);
+        return new NativeMemorySegmentImpl(null, address, byteSize, false, sessionImpl);
     }
 
     private static long allocateNativeInternal(long byteSize, long byteAlignment, MemorySessionImpl sessionImpl,
@@ -247,7 +248,7 @@ public class SegmentFactories {
         ensureInitialized();
         if (unmapper != null) {
             MappedMemorySegmentImpl segment =
-                    new MappedMemorySegmentImpl(unmapper.address(), unmapper, size,
+                    new MappedMemorySegmentImpl(null, unmapper.address(), unmapper, size,
                             readOnly, sessionImpl);
             MemorySessionImpl.ResourceList.ResourceCleanup resource =
                     new MemorySessionImpl.ResourceList.ResourceCleanup() {
@@ -259,7 +260,7 @@ public class SegmentFactories {
             sessionImpl.addOrCleanupIfFail(resource);
             return segment;
         } else {
-            return new MappedMemorySegmentImpl(0, null, 0, readOnly, sessionImpl);
+            return new MappedMemorySegmentImpl(null,0, null, 0, readOnly, sessionImpl);
         }
     }
 
