@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
 /**
  * File system provider for jrt file systems. Conditionally creates jrt fs on
@@ -54,7 +55,19 @@ import java.util.concurrent.ExecutorService;
  */
 public final class JrtFileSystemProvider extends FileSystemProvider {
 
-    private volatile FileSystem theFileSystem;
+    private final Supplier<FileSystem> theFileSystem = StableValue.supplier(
+            new Supplier<>() {
+                @Override
+                public FileSystem get() {
+                    try {
+                        return new JrtFileSystem(JrtFileSystemProvider.this, null);
+                    } catch (IOException ioe) {
+                        // Wrapping the exception allows for retrying
+                        throw new InternalError(ioe);
+                    }
+                }
+            }
+    );
 
     public JrtFileSystemProvider() {
     }
@@ -202,20 +215,7 @@ public final class JrtFileSystemProvider extends FileSystemProvider {
 
     private FileSystem getTheFileSystem() {
         checkPermission();
-        FileSystem fs = this.theFileSystem;
-        if (fs == null) {
-            synchronized (this) {
-                fs = this.theFileSystem;
-                if (fs == null) {
-                    try {
-                        this.theFileSystem = fs = new JrtFileSystem(this, null);
-                    } catch (IOException ioe) {
-                        throw new InternalError(ioe);
-                    }
-                }
-            }
-        }
-        return fs;
+        return theFileSystem.get();
     }
 
     @Override

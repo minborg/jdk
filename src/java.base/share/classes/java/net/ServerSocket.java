@@ -85,6 +85,7 @@ public class ServerSocket implements java.io.Closeable {
     private volatile boolean bound;
     private volatile boolean closed;
 
+    // This lock controls two functions so hard to convert to SV.
     // used to coordinate creating and closing underlying socket
     private final Object socketLock = new Object();
 

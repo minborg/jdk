@@ -30,6 +30,7 @@ import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.Channel;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.InterruptibleChannel;
+import java.util.function.Supplier;
 
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
@@ -86,6 +87,8 @@ import sun.nio.ch.Interruptible;
 public abstract class AbstractInterruptibleChannel
     implements Channel, InterruptibleChannel
 {
+    // Difficult to convert `closed` to SV as the method implCloseChannel() throws
+
     private final Object closeLock = new Object();
     private volatile boolean closed;
 

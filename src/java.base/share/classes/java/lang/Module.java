@@ -49,6 +49,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.lang.classfile.AccessFlags;
@@ -1536,27 +1537,24 @@ public final class Module implements AnnotatedElement {
     }
 
     // cached class file with annotations
-    private volatile Class<?> moduleInfoClass;
+    private final Supplier<Class<?>> moduleInfoClass = StableValue.supplier(
+            new Supplier<>() {
+                @Override
+                public Class<?> get() {
+                    Class<?> clazz = null;
+                    if (isNamed()) {
+                        clazz = loadModuleInfoClass();
+                    }
+                    if (clazz == null) {
+                        class DummyModuleInfo { }
+                        clazz = DummyModuleInfo.class;
+                    }
+                    return clazz;
+                }
+            });
 
     private Class<?> moduleInfoClass() {
-        Class<?> clazz = this.moduleInfoClass;
-        if (clazz != null)
-            return clazz;
-
-        synchronized (this) {
-            clazz = this.moduleInfoClass;
-            if (clazz == null) {
-                if (isNamed()) {
-                    clazz = loadModuleInfoClass();
-                }
-                if (clazz == null) {
-                    class DummyModuleInfo { }
-                    clazz = DummyModuleInfo.class;
-                }
-                this.moduleInfoClass = clazz;
-            }
-            return clazz;
-        }
+        return moduleInfoClass.get();
     }
 
     private Class<?> loadModuleInfoClass() {

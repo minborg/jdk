@@ -136,6 +136,7 @@ abstract class AsynchronousFileChannelImpl
         if (fileLockTable == null) {
             synchronized (this) {
                 if (fileLockTable == null) {
+                    // Exception
                     fileLockTable = new FileLockTable(this, fdObj);
                 }
             }

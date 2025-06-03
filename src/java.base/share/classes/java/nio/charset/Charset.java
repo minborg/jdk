@@ -40,10 +40,12 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.Supplier;
 
 
 /**
@@ -619,7 +621,14 @@ public abstract class Charset
         return Collections.unmodifiableSortedMap(m);
     }
 
-    private @Stable static Charset defaultCharset;
+    private static final Supplier<Charset> defaultCharset = StableValue.supplier(
+            new Supplier<>() {
+                @Override
+                public Charset get() {
+                    // do not look for providers other than the standard one
+                    return Objects.requireNonNullElse(standardProvider.charsetForName(StaticProperty.fileEncoding()), sun.nio.cs.UTF_8.INSTANCE);
+                }
+            });
 
     /**
      * Returns the default charset of this Java virtual machine.
@@ -640,17 +649,7 @@ public abstract class Charset
      * @since 1.5
      */
     public static Charset defaultCharset() {
-        if (defaultCharset == null) {
-            synchronized (Charset.class) {
-                // do not look for providers other than the standard one
-                Charset cs = standardProvider.charsetForName(StaticProperty.fileEncoding());
-                if (cs != null)
-                    defaultCharset = cs;
-                else
-                    defaultCharset = sun.nio.cs.UTF_8.INSTANCE;
-            }
-        }
-        return defaultCharset;
+        return defaultCharset.get();
     }
 
 

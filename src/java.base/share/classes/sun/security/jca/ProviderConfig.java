@@ -30,6 +30,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import java.security.*;
+import java.util.function.Supplier;
 
 import sun.security.util.PropertyExpander;
 
@@ -66,7 +67,7 @@ final class ProviderConfig {
     private int tries;
 
     // Provider object, if loaded
-    private volatile Provider provider;
+    private final StableValue<Provider> provider = StableValue.of();
 
     // flag indicating if we are currently trying to load the provider
     // used to detect recursion
@@ -87,7 +88,8 @@ final class ProviderConfig {
     ProviderConfig(Provider provider) {
         this.provName = provider.getName();
         this.argument = "";
-        this.provider = provider;
+        // Can be set explicitly so can't use SV.supplier(...)
+        this.provider.trySet(provider);
     }
 
     // check if we should try to load the SunPKCS11-Solaris provider
@@ -149,73 +151,67 @@ final class ProviderConfig {
     /**
      * Get the provider object. Loads the provider if it is not already loaded.
      */
-    Provider getProvider() {
-        // volatile variable load
-        Provider p = provider;
-        if (p != null) {
-            return p;
-        }
-        // DCL
-        synchronized (this) {
-            p = provider;
-            if (p != null) {
-                return p;
-            }
-            if (!shouldLoad()) {
-                return null;
-            }
+    Provider getProvider0() {
+        return provider.orElseSet(this::getProvider1);
+    }
 
-            p = switch (provName) {
-                case "SUN", "sun.security.provider.Sun" ->
-                    new sun.security.provider.Sun();
-                case "SunRsaSign", "sun.security.rsa.SunRsaSign" ->
-                    new sun.security.rsa.SunRsaSign();
-                case "SunJCE", "com.sun.crypto.provider.SunJCE" ->
-                    new com.sun.crypto.provider.SunJCE();
-                case "SunJSSE" -> new sun.security.ssl.SunJSSE();
-                case "SunEC" -> new sun.security.ec.SunEC();
-                case "Apple", "apple.security.AppleProvider" -> {
-                    // Reflection is needed for compile time as the class
-                    // is not available for non-macosx systems
-                    Provider ap = null;
-                    try {
-                        Class<?> c = Class.forName(
-                            "apple.security.AppleProvider");
-                        if (Provider.class.isAssignableFrom(c)) {
-                            @SuppressWarnings("deprecation")
-                            Object tmp = c.newInstance();
-                            ap = (Provider) tmp;
-                        }
-                    } catch (Exception ex) {
-                        if (debug != null) {
-                            debug.println("Error loading provider Apple");
-                            ex.printStackTrace();
-                        }
-                    }
-                    yield ap;
-                }
-                default -> {
-                    if (isLoading) {
-                        // because this method is synchronized, this can only
-                        // happen if there is recursion.
-                        if (debug != null) {
-                            debug.println("Recursion loading provider: " + this);
-                            new Exception("Call trace").printStackTrace();
-                        }
-                        yield null;
-                    }
-                    try {
-                        isLoading = true;
-                        tries++;
-                        yield doLoadProvider();
-                    } finally {
-                        isLoading = false;
-                    }
-                }
-            };
-            provider = p;
+    /**
+     * Get the provider object. Loads the provider if it is not already loaded.
+     */
+    Provider getProvider1() {
+        // If we disallow `null` this can be used to signal "computation failed" just
+        // like Map::computeIfAbsent. As of now, this does not work.
+        if (!shouldLoad()) {
+            return null;
         }
-        return p;
+
+        return switch (provName) {
+            case "SUN", "sun.security.provider.Sun" -> new sun.security.provider.Sun();
+            case "SunRsaSign", "sun.security.rsa.SunRsaSign" ->
+                    new sun.security.rsa.SunRsaSign();
+            case "SunJCE", "com.sun.crypto.provider.SunJCE" ->
+                    new com.sun.crypto.provider.SunJCE();
+            case "SunJSSE" -> new sun.security.ssl.SunJSSE();
+            case "SunEC" -> new sun.security.ec.SunEC();
+            case "Apple", "apple.security.AppleProvider" -> {
+                // Reflection is needed for compile time as the class
+                // is not available for non-macosx systems
+                Provider ap = null;
+                try {
+                    Class<?> c = Class.forName(
+                            "apple.security.AppleProvider");
+                    if (Provider.class.isAssignableFrom(c)) {
+                        @SuppressWarnings("deprecation")
+                        Object tmp = c.newInstance();
+                        ap = (Provider) tmp;
+                    }
+                } catch (Exception ex) {
+                    if (debug != null) {
+                        debug.println("Error loading provider Apple");
+                        ex.printStackTrace();
+                    }
+                }
+                yield ap;
+            }
+            default -> {
+                if (isLoading) {
+                    // because this method is synchronized, this can only
+                    // happen if there is recursion.
+                    if (debug != null) {
+                        debug.println("Recursion loading provider: " + this);
+                        new Exception("Call trace").printStackTrace();
+                    }
+                    yield null;
+                }
+                try {
+                    isLoading = true;
+                    tries++;
+                    yield doLoadProvider();
+                } finally {
+                    isLoading = false;
+                }
+            }
+        };
     }
 
     /**

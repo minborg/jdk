@@ -235,7 +235,15 @@ public final class System {
         setErr0(err);
     }
 
-    private static volatile Console cons;
+    // private static final Supplier<Console> cons = StableValue.supplier(SharedSecrets.getJavaIOAccess()::console);
+    private static final Supplier<Console> cons = StableValue.supplier(
+            new Supplier<Console>() {
+                @Override
+                public Console get() {
+                    return SharedSecrets.getJavaIOAccess().console();
+                }
+            }
+    );
 
     /**
      * Returns the unique {@link java.io.Console Console} object associated
@@ -246,15 +254,7 @@ public final class System {
      * @since   1.6
      */
      public static Console console() {
-         Console c;
-         if ((c = cons) == null) {
-             synchronized (System.class) {
-                 if ((c = cons) == null) {
-                     cons = c = SharedSecrets.getJavaIOAccess().console();
-                 }
-             }
-         }
-         return c;
+         return cons.get();
      }
 
     /**

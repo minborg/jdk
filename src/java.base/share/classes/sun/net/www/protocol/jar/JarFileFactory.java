@@ -138,6 +138,7 @@ class JarFileFactory implements URLJarFile.URLJarFileCloseController {
             return false;
         }
         JarFile cached;
+        // Affects two maps
         synchronized (instance) {
             String key = urlKey(url);
             cached = fileCache.get(key);

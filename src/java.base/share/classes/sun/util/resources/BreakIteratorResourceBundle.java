@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * BreakIteratorResourceBundle is an abstract class for loading BreakIterator
@@ -49,7 +50,18 @@ public abstract class BreakIteratorResourceBundle extends ResourceBundle {
     // those keys must be added to NON_DATA_KEYS.
     private static final Set<String> NON_DATA_KEYS = Set.of("BreakIteratorClasses");
 
-    private volatile Set<String> keys;
+    private final Supplier<Set<String>> keys = StableValue.supplier(
+            new Supplier<Set<String>>() {
+                @Override
+                public Set<String> get() {
+                    ResourceBundle info = getBreakIteratorInfo();
+                    Set<String> k = info.keySet();
+                    k.removeAll(NON_DATA_KEYS);
+                    // copyOf() fixes a concurrency bug in the existing code...
+                    return Set.copyOf(k);
+                }
+            }
+    );
 
     /**
      * Returns an instance of the corresponding {@code BreakIteratorInfo} (basename).
@@ -84,16 +96,6 @@ public abstract class BreakIteratorResourceBundle extends ResourceBundle {
 
     @Override
     protected Set<String> handleKeySet() {
-        if (keys == null) {
-            ResourceBundle info = getBreakIteratorInfo();
-            Set<String> k = info.keySet();
-            k.removeAll(NON_DATA_KEYS);
-            synchronized (this) {
-                if (keys == null) {
-                    keys = k;
-                }
-            }
-        }
-        return keys;
+        return keys.get();
     }
 }

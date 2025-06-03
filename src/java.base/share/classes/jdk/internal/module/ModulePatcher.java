@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
@@ -279,6 +280,7 @@ public final class ModulePatcher {
          * found in a patch location.
          */
         private ModuleReader delegate() throws IOException {
+            // Again, we have the exception problem
             ModuleReader r = delegate;
             if (r == null) {
                 synchronized (this) {

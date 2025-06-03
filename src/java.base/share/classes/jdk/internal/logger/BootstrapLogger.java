@@ -106,6 +106,7 @@ public final class BootstrapLogger implements Logger, PlatformLogger.Bridge,
 
         private static volatile WeakReference<ExecutorService> executorRef;
         private static ExecutorService getExecutor() {
+            // Tricky...
             WeakReference<ExecutorService> ref = executorRef;
             ExecutorService executor = ref == null ? null : ref.get();
             if (executor != null) return executor;

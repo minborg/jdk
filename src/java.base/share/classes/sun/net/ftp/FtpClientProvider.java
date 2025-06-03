@@ -24,7 +24,9 @@
  */
 package sun.net.ftp;
 
+import java.util.Optional;
 import java.util.ServiceConfigurationError;
+import java.util.function.Supplier;
 //import java.util.ServiceLoader;
 
 /**
@@ -43,8 +45,16 @@ public abstract class FtpClientProvider {
      * @return The created {@link FtpClient}.
      */
     public abstract FtpClient createFtpClient();
-    private static final Object lock = new Object();
-    private static FtpClientProvider provider = null;
+    private static final Supplier<FtpClientProvider> provider = StableValue.supplier(
+            new Supplier<FtpClientProvider>() {
+                @Override
+                public FtpClientProvider get() {
+                    return loadProviderFromProperty()
+                            .or(FtpClientProvider::loadProviderAsService)
+                            .orElse(new sun.net.ftp.impl.DefaultFtpClientProvider());
+                }
+            }
+    );
 
     /**
      * Initializes a new instance of this class.
@@ -52,16 +62,15 @@ public abstract class FtpClientProvider {
     protected FtpClientProvider() {
     }
 
-    private static boolean loadProviderFromProperty() {
+    private static Optional<FtpClientProvider> loadProviderFromProperty() {
         String cm = System.getProperty("sun.net.ftpClientProvider");
         if (cm == null) {
-            return false;
+            return Optional.empty();
         }
         try {
             @SuppressWarnings("deprecation")
             Object o = Class.forName(cm, true, null).newInstance();
-            provider = (FtpClientProvider)o;
-            return true;
+            return Optional.ofNullable((FtpClientProvider) o);
         } catch (ClassNotFoundException |
                  IllegalAccessException |
                  InstantiationException x) {
@@ -69,7 +78,7 @@ public abstract class FtpClientProvider {
         }
     }
 
-    private static boolean loadProviderAsService() {
+    private static Optional<FtpClientProvider> loadProviderAsService() {
 //        Iterator<FtpClientProvider> i =
 //                ServiceLoader.load(FtpClientProvider.class,
 //                                   ClassLoader.getSystemClassLoader()).iterator();
@@ -86,7 +95,7 @@ public abstract class FtpClientProvider {
 //                throw sce;
 //            }
 //        }
-        return false;
+        return Optional.empty();
     }
 
     /**
@@ -125,18 +134,6 @@ public abstract class FtpClientProvider {
      * @return  The system-wide default FtpClientProvider
      */
     public static FtpClientProvider provider() {
-        synchronized (lock) {
-            if (provider != null) {
-                return provider;
-            }
-            if (loadProviderFromProperty()) {
-                return provider;
-            }
-            if (loadProviderAsService()) {
-                return provider;
-            }
-            provider = new sun.net.ftp.impl.DefaultFtpClientProvider();
-            return provider;
-        }
+        return provider.get();
     }
 }

@@ -1206,6 +1206,7 @@ public abstract class Signature extends SignatureSpi {
          * initVerify() is not the first method called.
          */
         void chooseFirstProvider() {
+            // This method updates several fields.
             if (sigSpi != null) {
                 return;
             }

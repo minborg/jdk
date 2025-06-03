@@ -183,6 +183,7 @@ import sun.security.jca.GetInstance;
  */
 public abstract class Configuration {
 
+    // This field is settable several times
     private static Configuration configuration;
 
     /**

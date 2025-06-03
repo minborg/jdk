@@ -95,20 +95,10 @@ public class CLDRLocaleProviderAdapter extends JRELocaleProviderAdapter {
         return null;
     }
 
-    @Override
-    public CalendarDataProvider getCalendarDataProvider() {
-        if (calendarDataProvider == null) {
-            CalendarDataProvider provider = new CLDRCalendarDataProviderImpl(
-                        getAdapterType(),
-                        getLanguageTagSet("CalendarData"));
-
-            synchronized (this) {
-                if (calendarDataProvider == null) {
-                    calendarDataProvider = provider;
-                }
-            }
-        }
-        return calendarDataProvider;
+    protected CalendarDataProvider createCalendarDataProvider() {
+        return new CLDRCalendarDataProviderImpl(
+                getAdapterType(),
+                getLanguageTagSet("CalendarData"));
     }
 
     @Override

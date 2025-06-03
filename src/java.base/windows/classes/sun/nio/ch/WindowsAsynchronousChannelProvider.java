@@ -34,6 +34,7 @@ import java.io.IOException;
 public class WindowsAsynchronousChannelProvider
     extends AsynchronousChannelProvider
 {
+    // Could be replaced with StableValue if `Iocp::new` didn't throw
     private static volatile Iocp defaultIocp;
 
     public WindowsAsynchronousChannelProvider() {

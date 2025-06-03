@@ -792,6 +792,7 @@ public class Cipher {
      * is not the first method called.
      */
     void chooseFirstProvider() {
+        // Sets several fields. It seems to be a pattern to select spi.
         if (spi != null) {
             return;
         }

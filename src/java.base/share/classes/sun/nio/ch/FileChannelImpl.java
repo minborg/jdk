@@ -1687,6 +1687,7 @@ public class FileChannelImpl
     // keeps track of locks on this file
     private volatile FileLockTable fileLockTable;
 
+    // Exception
     private FileLockTable fileLockTable() throws IOException {
         if (fileLockTable == null) {
             synchronized (this) {

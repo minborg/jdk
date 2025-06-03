@@ -27,6 +27,8 @@ package java.io;
 
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.function.Supplier;
+
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.event.FileReadEvent;
 import jdk.internal.vm.annotation.Stable;
@@ -76,11 +78,9 @@ public class FileInputStream extends InputStream
      */
     private final String path;
 
-    private volatile FileChannel channel;
+    private final StableValue<FileChannel> channel = StableValue.of();
 
-    private final Object closeLock = new Object();
-
-    private volatile boolean closed;
+    private final StableValue<Boolean> closed = StableValue.of();
 
     // This field indicates whether the file is a regular file as some
     // operations need the current position which requires seeking
@@ -498,28 +498,20 @@ public class FileInputStream extends InputStream
      */
     @Override
     public void close() throws IOException {
-        if (closed) {
-            return;
-        }
-        synchronized (closeLock) {
-            if (closed) {
-                return;
+        if (closed.trySet(true)) {
+
+            if (channel.isSet()) {
+                // possible race with getChannel(), benign since
+                // FileChannel.close is final and idempotent
+                channel.orElseThrow().close();
             }
-            closed = true;
-        }
 
-        FileChannel fc = channel;
-        if (fc != null) {
-            // possible race with getChannel(), benign since
-            // FileChannel.close is final and idempotent
-            fc.close();
+            fd.closeAll(new Closeable() {
+                public void close() throws IOException {
+                    fd.close();
+                }
+            });
         }
-
-        fd.closeAll(new Closeable() {
-            public void close() throws IOException {
-               fd.close();
-           }
-        });
     }
 
     /**
@@ -555,26 +547,22 @@ public class FileInputStream extends InputStream
      * @since 1.4
      */
     public FileChannel getChannel() {
-        FileChannel fc = this.channel;
-        if (fc == null) {
-            synchronized (this) {
-                fc = this.channel;
-                if (fc == null) {
-                    fc = FileChannelImpl.open(fd, path, true, false, false, false, this);
-                    this.channel = fc;
-                    if (closed) {
-                        try {
-                            // possible race with close(), benign since
-                            // FileChannel.close is final and idempotent
-                            fc.close();
-                        } catch (IOException ioe) {
-                            throw new InternalError(ioe); // should not happen
-                        }
+        return channel.orElseSet(new Supplier<>() {
+            @Override
+            public FileChannel get() {
+                FileChannel fc = FileChannelImpl.open(fd, path, true, false, false, false, FileInputStream.this);
+                if (closed.isSet()) {
+                    try {
+                        // possible race with close(), benign since
+                        // FileChannel.close is final and idempotent
+                        fc.close();
+                    } catch (IOException ioe) {
+                        throw new InternalError(ioe); // should not happen
                     }
                 }
+                return fc;
             }
-        }
-        return fc;
+        });
     }
 
     /**

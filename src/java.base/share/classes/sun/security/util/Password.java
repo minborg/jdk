@@ -29,6 +29,8 @@ import java.io.*;
 import java.nio.*;
 import java.nio.charset.*;
 import java.util.Arrays;
+import java.util.function.Supplier;
+
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -139,15 +141,7 @@ public class Password {
      * @return its byte[] format, similar to new String(pass).getBytes()
      */
     private static byte[] convertToBytes(char[] pass) {
-        if (enc == null) {
-            synchronized (Password.class) {
-                enc = System.console()
-                        .charset()
-                        .newEncoder()
-                        .onMalformedInput(CodingErrorAction.REPLACE)
-                        .onUnmappableCharacter(CodingErrorAction.REPLACE);
-            }
-        }
+        CharsetEncoder enc = encoder.get();
         byte[] ba = new byte[(int)(enc.maxBytesPerChar() * pass.length)];
         ByteBuffer bb = ByteBuffer.wrap(ba);
         synchronized (enc) {
@@ -158,5 +152,16 @@ public class Password {
         }
         return ba;
     }
-    private static volatile CharsetEncoder enc;
+    private static final Supplier<CharsetEncoder> encoder = StableValue.supplier(
+            new Supplier<CharsetEncoder>() {
+                @Override
+                public CharsetEncoder get() {
+                    return System.console()
+                            .charset()
+                            .newEncoder()
+                            .onMalformedInput(CodingErrorAction.REPLACE)
+                            .onUnmappableCharacter(CodingErrorAction.REPLACE);
+                }
+            }
+    );
 }

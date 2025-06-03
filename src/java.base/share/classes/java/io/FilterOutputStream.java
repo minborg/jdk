@@ -50,14 +50,9 @@ public class FilterOutputStream extends OutputStream {
     protected OutputStream out;
 
     /**
-     * Whether the stream is closed; implicitly initialized to false.
+     * Whether the stream is closed;
      */
-    private volatile boolean closed;
-
-    /**
-     * Object used to prevent a race on the 'closed' instance variable.
-     */
-    private final Object closeLock = new Object();
+    private final StableValue<Boolean> closed = StableValue.of();
 
     /**
      * Creates an output stream filter built on top of the specified
@@ -169,33 +164,26 @@ public class FilterOutputStream extends OutputStream {
      */
     @Override
     public void close() throws IOException {
-        if (closed) {
-            return;
-        }
-        synchronized (closeLock) {
-            if (closed) {
-                return;
-            }
-            closed = true;
-        }
+        if (closed.trySet(true)) {
 
-        Throwable flushException = null;
-        try {
-            flush();
-        } catch (Throwable e) {
-            flushException = e;
-            throw e;
-        } finally {
-            if (flushException == null) {
-                out.close();
-            } else {
-                try {
+            Throwable flushException = null;
+            try {
+                flush();
+            } catch (Throwable e) {
+                flushException = e;
+                throw e;
+            } finally {
+                if (flushException == null) {
                     out.close();
-                } catch (Throwable closeException) {
-                    if (flushException != closeException) {
-                        closeException.addSuppressed(flushException);
+                } else {
+                    try {
+                        out.close();
+                    } catch (Throwable closeException) {
+                        if (flushException != closeException) {
+                            closeException.addSuppressed(flushException);
+                        }
+                        throw closeException;
                     }
-                    throw closeException;
                 }
             }
         }

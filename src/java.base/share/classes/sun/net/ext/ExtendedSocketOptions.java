@@ -31,6 +31,7 @@ import java.net.SocketOption;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * Defines the infrastructure to support extended socket options, beyond those
@@ -166,37 +167,30 @@ public abstract class ExtendedSocketOptions {
         this.unixDomainClientOptions = Set.copyOf(unixDomainClientOptions);
     }
 
-    private static volatile ExtendedSocketOptions instance;
+    private static final StableValue<ExtendedSocketOptions> instance = StableValue.of();
 
     public static ExtendedSocketOptions getInstance() {
-        ExtendedSocketOptions ext = instance;
-        if (ext != null) {
-            return ext;
-        }
-        try {
-            // If the class is present, it will be initialized which
-            // triggers registration of the extended socket options.
-            Class<?> c = Class.forName("jdk.net.ExtendedSocketOptions");
-            ext = instance;
-        } catch (ClassNotFoundException e) {
-            synchronized (ExtendedSocketOptions.class) {
-                ext = instance;
-                if (ext != null) {
-                    return ext;
+        return instance.orElseSet(new Supplier<ExtendedSocketOptions>() {
+            @Override
+            public ExtendedSocketOptions get() {
+                try {
+                    // If the class is present, it will be initialized which
+                    // triggers registration of the extended socket options.
+                    Class<?> c = Class.forName("jdk.net.ExtendedSocketOptions");
+                    // THIS WILL NOT WORK AS THE SUPPLIER RECURSES (VIA LOADING CLASS c)
+                    return instance.orElseThrow();
+                } catch (ClassNotFoundException e) {
+                    // the jdk.net module is not present => no extended socket options
+                    return new NoExtendedSocketOptions();
                 }
-                // the jdk.net module is not present => no extended socket options
-                ext = instance = new NoExtendedSocketOptions();
             }
-        }
-        return ext;
+        });
     }
 
     /** Registers support for extended socket options. Invoked by the jdk.net module. */
     public static synchronized void register(ExtendedSocketOptions extOptions) {
-        if (instance != null)
+        if (!instance.trySet(extOptions))
             throw new InternalError("Attempting to reregister extended options");
-
-        instance = extOptions;
     }
 
     static final class NoExtendedSocketOptions extends ExtendedSocketOptions {

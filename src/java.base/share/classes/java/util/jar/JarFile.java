@@ -994,6 +994,7 @@ public class JarFile extends ZipFile {
      * and the Multi-Release attribute. A no-op on subsequent calls.
      */
     private void checkForSpecialAttributes() throws IOException {
+        // Sets several fields
         if (hasCheckedSpecialAttributes) {
             return;
         }

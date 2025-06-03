@@ -26,6 +26,7 @@
 package sun.net.dns;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * The configuration of the client resolver.
@@ -39,9 +40,7 @@ import java.util.List;
 
 public abstract sealed class ResolverConfiguration permits ResolverConfigurationImpl {
 
-    private static final Object lock = new Object();
-
-    private static ResolverConfiguration provider;
+    private static final Supplier<ResolverConfiguration> provider = StableValue.supplier(sun.net.dns.ResolverConfigurationImpl::new);
 
     protected ResolverConfiguration() { }
 
@@ -51,12 +50,7 @@ public abstract sealed class ResolverConfiguration permits ResolverConfiguration
      * @return the resolver configuration
      */
     public static ResolverConfiguration open() {
-        synchronized (lock) {
-            if (provider == null) {
-                provider = new sun.net.dns.ResolverConfigurationImpl();
-            }
-            return provider;
-        }
+        return provider.get();
     }
 
     /**

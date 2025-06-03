@@ -67,6 +67,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
 import sun.nio.ch.FileChannelImpl;
 
@@ -108,14 +109,22 @@ import sun.nio.ch.FileChannelImpl;
  */
 
 public abstract class FileSystemProvider {
-    // lock using when loading providers
-    private static final Object lock = new Object();
 
     // installed providers
-    private static volatile List<FileSystemProvider> installedProviders;
+    private static final Supplier<List<FileSystemProvider>> installedProviders = StableValue.supplier(
+            new Supplier<List<FileSystemProvider>>() {
+                @Override
+                public List<FileSystemProvider> get() {
+                    // ensure default provider is initialized
+                    FileSystemProvider defaultProvider = FileSystems.getDefault().provider();
+                    List<FileSystemProvider> list = loadInstalledProviders();
 
-    // used to avoid recursive loading of installed providers
-    private static boolean loadingProviders;
+                    // insert the default provider at the start of the list
+                    list.add(0, defaultProvider);
+
+                    return List.copyOf(list);
+                }
+            });
 
     /**
      * Initializes a new instance of this class.
@@ -171,27 +180,7 @@ public abstract class FileSystemProvider {
      *          When an error occurs while loading a service provider
      */
     public static List<FileSystemProvider> installedProviders() {
-        if (installedProviders == null) {
-            // ensure default provider is initialized
-            FileSystemProvider defaultProvider = FileSystems.getDefault().provider();
-
-            synchronized (lock) {
-                if (installedProviders == null) {
-                    if (loadingProviders) {
-                        throw new Error("Circular loading of installed providers detected");
-                    }
-                    loadingProviders = true;
-
-                    List<FileSystemProvider> list = loadInstalledProviders();
-
-                    // insert the default provider at the start of the list
-                    list.add(0, defaultProvider);
-
-                    installedProviders = Collections.unmodifiableList(list);
-                }
-            }
-        }
-        return installedProviders;
+        return installedProviders.get();
     }
 
     /**

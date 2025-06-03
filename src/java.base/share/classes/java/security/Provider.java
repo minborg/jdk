@@ -1918,6 +1918,7 @@ public abstract class Provider extends Properties {
          * keys defined. Parses the attributes if not yet initialized.
          */
         private boolean hasKeyAttributes() {
+            // This method has side effects updating other fields.
             Boolean b = hasKeyAttributes;
             if (b == null) {
                 synchronized (this) {
