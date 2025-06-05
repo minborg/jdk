@@ -31,10 +31,6 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 3, jvmArgs = {"--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED", "--add-modules=jdk.incubator.vector"})
 public class BinarySearchBench {
 
-    static {
-        System.out.println("SPECIES = " + VectorSpecies.ofPreferred(int.class));
-    }
-
     static final Unsafe unsafe = Utils.unsafe;
 
     final static int CARRIER_SIZE = 4;
@@ -182,7 +178,11 @@ public class BinarySearchBench {
         return check(ret / 4, toFind);
     }
 
-    final static VectorSpecies<Integer> SPECIES = VectorSpecies.of(int.class, VectorShape.forBitSize(32 * 8));
+    final static VectorSpecies<Integer> SPECIES = VectorSpecies.of(int.class, VectorShape.forBitSize(32 * 4));
+
+    static {
+        System.out.println("SPECIES = " + SPECIES);
+    }
 
     @Benchmark
     public long binarySearchBranchlessVectorDirectSegment() {
@@ -194,6 +194,7 @@ public class BinarySearchBench {
         ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 5)) <= toFind ? 4 << 5 : 0;
         ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 4)) <= toFind ? 4 << 4 : 0;
         ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 3)) <= toFind ? 4 << 3 : 0;
+        ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 2)) <= toFind ? 4 << 2 : 0;
         IntVector vector = IntVector.fromMemorySegment(SPECIES, segment, ret, ByteOrder.nativeOrder());
         IntVector expected = IntVector.broadcast(SPECIES, toFind);
         var mask = vector.compare(VectorOperators.EQ, expected);
@@ -211,6 +212,7 @@ public class BinarySearchBench {
         ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 5)) <= toFind ? 4 << 5 : 0;
         ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 4)) <= toFind ? 4 << 4 : 0;
         ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 3)) <= toFind ? 4 << 3 : 0;
+        ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 2)) <= toFind ? 4 << 2 : 0;
         IntVector vector = IntVector.fromMemorySegment(SPECIES, segment, ret, ByteOrder.nativeOrder());
         IntVector expected = IntVector.broadcast(SPECIES, toFind);
         var mask = vector.compare(VectorOperators.EQ, expected);
@@ -228,6 +230,7 @@ public class BinarySearchBench {
         ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 5)) <= toFind ? 4 << 5 : 0;
         ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 4)) <= toFind ? 4 << 4 : 0;
         ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 3)) <= toFind ? 4 << 3 : 0;
+        ret += segment.get(ValueLayout.JAVA_INT_UNALIGNED, ret + (4 << 2)) <= toFind ? 4 << 2 : 0;
         IntVector vector = IntVector.fromMemorySegment(SPECIES, segment, ret, ByteOrder.nativeOrder());
         IntVector expected = IntVector.broadcast(SPECIES, toFind);
         var mask = vector.compare(VectorOperators.EQ, expected);
