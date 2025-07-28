@@ -89,6 +89,7 @@ public final class Utils {
         return (n + alignment - 1) & -alignment;
     }
 
+    @ForceInline
     public static MemorySegment alignUp(MemorySegment ms, long alignment) {
         long offset = ms.address();
         return ms.asSlice(alignUp(offset, alignment) - offset);
