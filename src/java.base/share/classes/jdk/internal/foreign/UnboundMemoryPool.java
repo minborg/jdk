@@ -15,8 +15,8 @@ public final class UnboundMemoryPool implements MemoryPool {
     public UnboundMemoryPool(boolean concurrent) {
         final Arena underlyingArena = Arena.ofAuto();
         this.segmentFifo = concurrent
-                ? new SegmentFifo.Concurrent(underlyingArena, Arena::allocate)
-                : new SegmentFifo.NonConcurrent(underlyingArena, Arena::allocate);
+                ? new SegmentFifo.OfConcurrent(underlyingArena, Arena::allocate)
+                : new SegmentFifo.OfNonConcurrent(underlyingArena, Arena::allocate);
         this.closeAction = new CloseAction(underlyingArena);
     }
 

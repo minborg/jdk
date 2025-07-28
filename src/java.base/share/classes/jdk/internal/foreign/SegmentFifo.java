@@ -111,12 +111,12 @@ abstract class SegmentFifo {
         MemorySegment resolve(Arena arena, long byteSize, long byteAlignment);
     }
 
-    static final class Concurrent extends SegmentFifo {
+    static final class OfConcurrent extends SegmentFifo {
 
         // Locks, one for each region
         private final int[] locks;
 
-        public Concurrent(Arena arena, Resolution resolution) {
+        public OfConcurrent(Arena arena, Resolution resolution) {
             super(arena, resolution);
             this.locks = new int[MAX_INDEX];
         }
@@ -142,11 +142,11 @@ abstract class SegmentFifo {
 
     }
 
-    static final class NonConcurrent extends SegmentFifo {
+    static final class OfNonConcurrent extends SegmentFifo {
 
-        public final Thread owningThread;
+        private final Thread owningThread;
 
-        public NonConcurrent(Arena arena, Resolution resolution) {
+        OfNonConcurrent(Arena arena, Resolution resolution) {
             super(arena, resolution);
             this.owningThread = Thread.currentThread();
         }
@@ -166,11 +166,6 @@ abstract class SegmentFifo {
             if (owningThread != Thread.currentThread()) {
                 throw new WrongThreadException();
             }
-        }
-
-        @ForceInline
-        private long intArrayOffset(int index) {
-            return Unsafe.ARRAY_INT_BASE_OFFSET + (long) Unsafe.ARRAY_INT_INDEX_SCALE * index;
         }
 
     }

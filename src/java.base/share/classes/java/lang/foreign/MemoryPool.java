@@ -38,14 +38,16 @@ public sealed interface MemoryPool
      * <p>
      * Recycled memory in the pool will be returned to the operating system,
      * automatically, by the garbage collector at the earliest once all
-     * arenas emanating from the pool have been closed.
+     * arenas emanating from the pool have been closed and the returned memory pool
+     * is no longer not strongly reachable.
      */
     static MemoryPool ofConcurrentUnbound() {
         return new UnboundMemoryPool(true);
     }
 
     /**
-     * {@return a new unbound memory pool that can only be used by a single thread}
+     * {@return a new unbound memory pool that can only be used by the thread that
+     *          created the memory pool}
      * <p>
      * The returned unbound memory pool will allocate memory on demand and will always
      * recycle any and all memory returned to the pool upon {@linkplain Arena#close()}.
@@ -56,7 +58,8 @@ public sealed interface MemoryPool
      * <p>
      * Recycled memory in the pool will be returned to the operating system,
      * automatically, by the garbage collector at the earliest once all
-     * arenas emanating from the pool have been closed.
+     * arenas emanating from the pool have been closed and the returned memory pool
+     * is no longer not strongly reachable.
      */
     static MemoryPool ofUnbound() {
         return new UnboundMemoryPool(false);
