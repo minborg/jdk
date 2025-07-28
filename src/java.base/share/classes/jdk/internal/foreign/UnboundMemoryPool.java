@@ -1,22 +1,29 @@
 package jdk.internal.foreign;
 
+import jdk.internal.ValueBased;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryPool;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Reference;
+import java.util.function.Consumer;
 
+@ValueBased
 public final class UnboundMemoryPool implements MemoryPool {
 
     private final SegmentFifo segmentFifo;
     private final Runnable closeAction;
 
-    public UnboundMemoryPool(boolean concurrent) {
+    public enum FifoType { CONCURRENT, NON_CONCURRENT, THREAD_LOCAL}
+
+    private UnboundMemoryPool(FifoType fifoType) {
         final Arena underlyingArena = Arena.ofAuto();
-        this.segmentFifo = concurrent
-                ? new SegmentFifo.OfConcurrent(underlyingArena, Arena::allocate)
-                : new SegmentFifo.OfNonConcurrent(underlyingArena, Arena::allocate);
+        this.segmentFifo = switch (fifoType) {
+            case CONCURRENT     -> new SegmentFifo.OfConcurrent(underlyingArena, Arena::allocate);
+            case NON_CONCURRENT -> new SegmentFifo.OfNonConcurrent(underlyingArena, Arena::allocate);
+            case THREAD_LOCAL   -> new SegmentFifo.OfThreadLocal(underlyingArena, Arena::allocate);
+        };
         this.closeAction = new CloseAction(underlyingArena);
     }
 
@@ -37,7 +44,6 @@ public final class UnboundMemoryPool implements MemoryPool {
                                          ArenaImpl arena,
                                          UnboundSegmentStack segments) implements Arena {
 
-        @ForceInline
         private UnboudMemoryPoolArena(SegmentFifo segmentFifo,
                                       Runnable closeAction) {
             this(segmentFifo, closeAction, (ArenaImpl) Arena.ofConfined(), new UnboundSegmentStack());
@@ -74,9 +80,13 @@ public final class UnboundMemoryPool implements MemoryPool {
         @Override
         public void close() {
             arena.close();
-            for (MemorySegment segment : segments) {
-                segmentFifo.release(segment);
+            record Releaser(SegmentFifo segmentFifo) implements Consumer<MemorySegment>{
+                @Override @ForceInline
+                public void accept(MemorySegment segment) {
+                    this.segmentFifo.release(segment);
+                }
             }
+            segments.forEach(new Releaser(segmentFifo));
         }
 
         @ForceInline
@@ -91,6 +101,10 @@ public final class UnboundMemoryPool implements MemoryPool {
         public void run() {
             Reference.reachabilityFence(arena);
         }
+    }
+
+    public static UnboundMemoryPool of(FifoType fifoType) {
+        return new UnboundMemoryPool(fifoType);
     }
 
 }

@@ -1,5 +1,6 @@
 package java.lang.foreign;
 
+import jdk.internal.foreign.ThreadLocalMemoryPool;
 import jdk.internal.foreign.UnboundMemoryPool;
 
 /**
@@ -12,7 +13,7 @@ import jdk.internal.foreign.UnboundMemoryPool;
  * // Global or per-thread
  */
 public sealed interface MemoryPool
-        permits UnboundMemoryPool {
+        permits ThreadLocalMemoryPool, UnboundMemoryPool {
 
     /**
      * {@return a new {@linkplain Arena} that will try to use recycled memory in order
@@ -25,25 +26,6 @@ public sealed interface MemoryPool
      * that created it.
      */
     Arena get();
-
-    /**
-     * {@return a new unbound memory pool that can be used by any thread}
-     * <p>
-     * The returned unbound memory pool will allocate memory on demand and will always
-     * recycle any and all memory returned to the pool upon {@linkplain Arena#close()}.
-     * <p>
-     * Memory segments {@linkplain Arena#allocate(long, long) allocated} via
-     * {@linkplain Arena arenas} obtained from the returned arena pool
-     * are zero-initialized.
-     * <p>
-     * Recycled memory in the pool will be returned to the operating system,
-     * automatically, by the garbage collector at the earliest once all
-     * arenas emanating from the pool have been closed and the returned memory pool
-     * is no longer not strongly reachable.
-     */
-    static MemoryPool ofConcurrentUnbound() {
-        return new UnboundMemoryPool(true);
-    }
 
     /**
      * {@return a new unbound memory pool that can only be used by the thread that
@@ -62,7 +44,49 @@ public sealed interface MemoryPool
      * is no longer not strongly reachable.
      */
     static MemoryPool ofUnbound() {
-        return new UnboundMemoryPool(false);
+        return UnboundMemoryPool.of(UnboundMemoryPool.FifoType.NON_CONCURRENT);
+    }
+
+    /**
+     * {@return a new unbound memory pool that can be used by any thread}
+     * <p>
+     * The returned unbound memory pool will allocate memory on demand and will always
+     * recycle any and all memory returned to the pool upon {@linkplain Arena#close()}.
+     * <p>
+     * Memory segments {@linkplain Arena#allocate(long, long) allocated} via
+     * {@linkplain Arena arenas} obtained from the returned arena pool
+     * are zero-initialized.
+     * <p>
+     * Recycled memory in the pool will be returned to the operating system,
+     * automatically, by the garbage collector at the earliest once all
+     * arenas emanating from the pool have been closed and the returned memory pool
+     * is no longer not strongly reachable.
+     * <p>
+     * This memory pool is memory efficient across threads but susceptible to
+     * thread contention.
+     */
+    static MemoryPool ofConcurrentUnbound() {
+        return UnboundMemoryPool.of(UnboundMemoryPool.FifoType.CONCURRENT);
+    }
+
+    /**
+     * {@return a new unbound memory pool that can be used by any thread}
+     * <p>
+     * The returned unbound memory pool will allocate memory on demand and will always
+     * recycle any and all memory returned to the pool upon {@linkplain Arena#close()}.
+     * <p>
+     * Memory segments {@linkplain Arena#allocate(long, long) allocated} via
+     * {@linkplain Arena arenas} obtained from the returned arena pool
+     * are zero-initialized.
+     * <p>
+     * Recycled memory in the pool will be returned to the operating system,
+     * automatically, by the garbage collector at the earliest once all
+     * arenas emanating from the pool have been closed and the allocating thread has died.
+     * <p>
+     * This memory pool is less memory efficient but totally immune to thread contention.
+     */
+    static MemoryPool ofThreadLocal() {
+        return ThreadLocalMemoryPool.of();
     }
 
 }

@@ -27,12 +27,13 @@
  * @run junit/othervm --enable-native-access=ALL-UNNAMED TestUnboundMemoryPoolStress
  */
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.lang.foreign.MemoryPool;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -45,34 +46,37 @@ final class TestUnboundMemoryPoolStress {
     private static final int ITERATIONS = 1_000;
     private static final int ALLOCATIONS = 100;
 
-    private MemoryPool pool;
+    @ParameterizedTest
+    @MethodSource("concurrentPools")
+    void multiThreadAccess(MemoryPool pool) throws InterruptedException {
 
-    @BeforeEach
-    void init() {
-        pool = MemoryPool.ofConcurrentUnbound();
-    }
+        for (var threadFactory : List.of(Thread.ofPlatform(), Thread.ofVirtual())) {
 
-    @Test
-    void multiThreadAccess() throws InterruptedException {
-        var actions = Stream.generate(Action::new)
-                .limit(Math.min(16, Runtime.getRuntime().availableProcessors()))
-                .toList();
+            var actions = Stream.generate(() -> new Action(pool))
+                    .limit(Math.min(16, Runtime.getRuntime().availableProcessors()))
+                    .toList();
 
-        var threads = actions.stream()
-                .map(Thread.ofPlatform()::start)
-                .toList();
+            var threads = actions.stream()
+                    .map(threadFactory::start)
+                    .toList();
 
-        for (var thread : threads) {
-            thread.join();
+            for (var thread : threads) {
+                thread.join();
+            }
+
+            // Make sure there are no errors in any of the actions.
+            assertTrue(actions.stream().allMatch(action -> action.errors.get() == 0));
         }
-
-        // Make sure there are no errors in any of the actions.
-        assertTrue(actions.stream().allMatch(action -> action.errors.get() == 0));
     }
 
-    private final class Action implements Runnable {
+    private static final class Action implements Runnable {
 
+        private final MemoryPool pool;
         private final AtomicInteger errors = new AtomicInteger();
+
+        public Action(MemoryPool pool) {
+            this.pool = pool;
+        }
 
         @Override
         public void run() {
@@ -104,6 +108,13 @@ final class TestUnboundMemoryPoolStress {
             return true;
         }
 
+    }
+
+    private static Stream<MemoryPool> concurrentPools() {
+        return Stream.of(
+                MemoryPool.ofConcurrentUnbound(),
+                MemoryPool.ofThreadLocal()
+        );
     }
 
 }

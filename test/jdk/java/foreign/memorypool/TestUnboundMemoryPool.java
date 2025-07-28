@@ -166,6 +166,10 @@ final class TestUnboundMemoryPool {
     @ParameterizedTest
     @MethodSource("pools")
     void toStringTest(MemoryPool pool) {
+        if (pool.getClass().getSimpleName().startsWith("ThreadLocal")) {
+            // Thread local pools don't have a useful toString() method.
+            return;
+        }
         assertEquals("UnboundMemoryPool(segmentFifo=SegmentFifo(0 bytes in 0 segments))", pool.toString());
         try (var arena = pool.get()) {
             var firstSegment = arena.allocate(SMALL_ALLOC_SIZE);
@@ -222,7 +226,8 @@ final class TestUnboundMemoryPool {
     private static Stream<MemoryPool> pools() {
         return Stream.of(
                 MemoryPool.ofUnbound(),
-                MemoryPool.ofConcurrentUnbound()
+                MemoryPool.ofConcurrentUnbound(),
+                MemoryPool.ofThreadLocal()
         );
     }
 

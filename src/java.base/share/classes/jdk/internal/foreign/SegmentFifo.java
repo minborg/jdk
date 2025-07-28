@@ -170,4 +170,22 @@ abstract class SegmentFifo {
 
     }
 
+    static final class OfThreadLocal extends SegmentFifo {
+
+        OfThreadLocal(Arena arena, Resolution resolution) {
+            super(arena, resolution);
+        }
+
+        @ForceInline
+        void acquireLock(int index) {
+            // Do nothing
+        }
+
+        @ForceInline
+        void releaseLock(int index) {
+            // Do nothing
+        }
+
+    }
+
 }

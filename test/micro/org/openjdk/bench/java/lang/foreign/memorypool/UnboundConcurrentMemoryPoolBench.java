@@ -40,54 +40,46 @@ import java.lang.foreign.MemoryPool;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
-@Warmup(iterations = 3, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 3, time = 1000, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
 @State(Scope.Benchmark)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @Fork(value = 3, jvmArgs = {"--add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED",
         "--enable-native-access=ALL-UNNAMED"})
 public class UnboundConcurrentMemoryPoolBench {
 
-    public static final MemoryPool POOL = MemoryPool.ofConcurrentUnbound();
+    public static final MemoryPool CONCURRENT_POOL = MemoryPool.ofConcurrentUnbound();
+    public static final MemoryPool THREAD_LOCAL_POOL = MemoryPool.ofThreadLocal();
 
     @Param({"5", "20", "100", "451"})
     public int size;
 
     @Benchmark
-    public long confinedSingleAllocation() {
+    public long confined() {
         try (var arena = Arena.ofConfined()) {
             return arena.allocate(size).address();
         }
     }
 
     @Benchmark
-    public long poolSingleAllocation() {
-        try (var arena = POOL.get()) {
+    public long concurrentPool() {
+        try (var arena = CONCURRENT_POOL.get()) {
             return arena.allocate(size).address();
         }
     }
 
-/*    @Benchmark
-    public long confinedQuadAllocation() {
-        try (var arena = Arena.ofConfined()) {
-            return arena.allocate(size).address() +
-                    arena.allocate(size).address() +
-                    arena.allocate(size).address() +
-                    arena.allocate(size).address();
+    @Benchmark
+    public long threadLocalPool() {
+        try (var arena = THREAD_LOCAL_POOL.get()) {
+            return arena.allocate(size).address();
         }
     }
 
-    @Benchmark
-    public long poolQuadAllocation() {
-        try (var arena = POOL.get()) {
-            return arena.allocate(size).address() +
-                    arena.allocate(size).address() +
-                    arena.allocate(size).address() +
-                    arena.allocate(size).address();
-        }
-    }*/
+    @Threads(8)   // Benchmark under contention
+    public static class Contention8Threads extends UnboundConcurrentMemoryPoolBench {}
 
-    @Threads(Threads.MAX)   // Benchmark under contention
-    public static class Contention extends UnboundConcurrentMemoryPoolBench {}
+    @Fork(jvmArgsAppend = "-Djmh.executor=VIRTUAL")
+    @Threads(8)   // Benchmark under contention with virtual threads
+    public static class Contention8VirtualThreads extends UnboundConcurrentMemoryPoolBench {}
 
 }
