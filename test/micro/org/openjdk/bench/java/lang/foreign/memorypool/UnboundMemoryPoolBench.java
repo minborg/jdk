@@ -23,6 +23,7 @@
 
 package org.openjdk.bench.java.lang.foreign.memorypool;
 
+import jdk.internal.foreign.BufferStack;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -31,11 +32,13 @@ import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryPool;
+import java.lang.foreign.SegmentAllocator;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -52,6 +55,13 @@ public class UnboundMemoryPoolBench {
     @Param({"5", "20", "100", "451"})
     public int size;
 
+    private SegmentAllocator allocator;
+
+    @Setup
+    public void setup() {
+        allocator = SegmentAllocator.prefixAllocator(Arena.ofAuto().allocate(size));
+    }
+
     @Benchmark
     public long confinedSingleAllocation() {
         try (var arena = Arena.ofConfined()) {
@@ -64,6 +74,12 @@ public class UnboundMemoryPoolBench {
         try (var arena = POOL.get()) {
             return arena.allocate(size).address();
         }
+    }
+
+    @Benchmark
+    public long prefix() {
+         return allocator.allocate(size)
+                 .fill((byte)0).address();
     }
 
 }

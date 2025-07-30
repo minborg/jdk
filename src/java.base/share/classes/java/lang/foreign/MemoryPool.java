@@ -1,5 +1,7 @@
 package java.lang.foreign;
 
+import jdk.internal.foreign.BufferStack;
+import jdk.internal.foreign.StackMemoryPool;
 import jdk.internal.foreign.ThreadLocalMemoryPool;
 import jdk.internal.foreign.UnboundMemoryPool;
 
@@ -11,9 +13,10 @@ import jdk.internal.foreign.UnboundMemoryPool;
  * // confined or shared *use* (e.g. even though memory is always confined, #threads using)
  * // Bound or unbound
  * // Global or per-thread
+ * // Zeroing or not
  */
 public sealed interface MemoryPool
-        permits ThreadLocalMemoryPool, UnboundMemoryPool {
+        permits BufferStack.StackedMemoryPool, StackMemoryPool, StackMemoryPool.PerPlatformThread, ThreadLocalMemoryPool, UnboundMemoryPool {
 
     /**
      * {@return a new {@linkplain Arena} that will try to use recycled memory in order
@@ -26,6 +29,32 @@ public sealed interface MemoryPool
      * that created it.
      */
     Arena get();
+
+    /**
+     * {@return a new bound memory pool of a certain {@code size} in byte
+     *          that can be used by any thread}
+     * <p>
+     * The returned unbound memory pool will allocate memory on demand and will always
+     * recycle any and all memory returned to the pool upon {@linkplain Arena#close()}.
+     * <p>
+     * Memory segments {@linkplain Arena#allocate(long, long) allocated} via
+     * {@linkplain Arena arenas} obtained from the returned arena pool
+     * are zero-initialized.
+     * <p>
+     * Recycled memory in the pool will be returned to the operating system,
+     * automatically, by the garbage collector at the earliest once all
+     * arenas emanating from the pool have been closed and the allocating thread has died.
+     *
+     * @param size the size in bytes the memory pool shall hold per thread
+     * @throws IllegalArgumentException if the provided {@code size} is negative
+     */
+    static MemoryPool ofStack(long size) {
+        if (size < 0) {
+            throw new IllegalArgumentException();
+        }
+/*        return BufferStack.StackedMemoryPool.of(size);*/
+        return StackMemoryPool.of(size);
+    }
 
     /**
      * {@return a new unbound memory pool that can only be used by the thread that

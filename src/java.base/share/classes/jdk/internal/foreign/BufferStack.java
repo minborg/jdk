@@ -25,11 +25,13 @@
 
 package jdk.internal.foreign;
 
+import jdk.internal.ValueBased;
 import jdk.internal.misc.CarrierThreadLocal;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemoryPool;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Reference;
@@ -211,4 +213,23 @@ public final class BufferStack {
         // Implicit null check
         return of(layout.byteSize(), layout.byteAlignment());
     }
+
+    public record StackedMemoryPool(long size, BufferStack bufferStack) implements MemoryPool {
+
+        public StackedMemoryPool(long size) {
+            this(size, BufferStack.of(size));
+        }
+
+        @ForceInline
+        @Override
+        public Arena get() {
+            return bufferStack.pushFrame(size);
+        }
+
+        public static StackedMemoryPool of(long size) {
+            return new StackedMemoryPool(size);
+        }
+
+    }
+
 }

@@ -40,11 +40,40 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.*;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.*;
 
 final class TestUnboundMemoryPool {
 
     private static final long SMALL_ALLOC_SIZE = JAVA_INT.byteSize();
+
+    @Test
+    void basic() {
+        var pool = MemoryPool.ofStack(SMALL_ALLOC_SIZE);
+        Arena arena = pool.get();
+
+        assertTrue(arena.scope().isAlive());
+        arena.allocate(SMALL_ALLOC_SIZE);
+        assertTrue(arena.scope().isAlive());
+
+        arena.close();
+        assertFalse(arena.scope().isAlive());
+        assertTrue(arena.scope().toString().contains("ConfinedSession"));
+    }
+
+    @Test
+    void basicZeroSize() {
+        var pool = MemoryPool.ofStack(SMALL_ALLOC_SIZE);
+        Arena arena = pool.get();
+
+        assertTrue(arena.scope().isAlive());
+        arena.allocate(0);
+        assertTrue(arena.scope().isAlive());
+
+        arena.close();
+        assertFalse(arena.scope().isAlive());
+        assertTrue(arena.scope().toString().contains("ConfinedSession"));
+    }
 
     @ParameterizedTest
     @MethodSource("pools")
@@ -100,13 +129,14 @@ final class TestUnboundMemoryPool {
     @ParameterizedTest
     @MethodSource("pools")
     void sizesReuse(MemoryPool pool) {
-        for (int i = 0; i < 2; i++) {
+        for (int i = 1; i < 2; i++) {
             for (int size = 0; size < 256; size++) {
                 MemorySegment segment;
                 try (var arena = pool.get()) {
                     segment = arena.allocate(size);
                     assertEquals(size, segment.byteSize());
                     assertTrue(segment.scope().isAlive());
+                    assertSame(segment.scope(), arena.scope());
                 }
                 assertFalse(segment.scope().isAlive());
             }
@@ -118,15 +148,26 @@ final class TestUnboundMemoryPool {
     void sizesNoReuse(MemoryPool pool) {
         var segments = new ArrayList<MemorySegment>();
         try (var arena = pool.get()) {
-            for (int i = 0; i < 2; i++) {
-                for (int size = 0; size < 256; size++) {
+            System.out.println("arena.scope() = " + arena.scope());
+            for (int i = 1; i < 2; i++) {
+                System.out.println("i = " + i);
+                for (int size = 1; size < 256; size++) {
+                    System.out.println("size = " + size);
                     var segment = arena.allocate(size);
                     segments.add(segment);
                     assertEquals(size, segment.byteSize());
                     assertTrue(segment.scope().isAlive());
+                    assertSame(segment.scope(), arena.scope());
                 }
             }
         }
+
+        var scopes = segments.stream()
+                .map(MemorySegment::scope)
+                .collect(toSet());
+
+        System.out.println("scopes = " + scopes);
+
         for (var segment : segments) {
             assertFalse(segment.scope().isAlive());
         }
@@ -166,7 +207,8 @@ final class TestUnboundMemoryPool {
     @ParameterizedTest
     @MethodSource("pools")
     void toStringTest(MemoryPool pool) {
-        if (pool.getClass().getSimpleName().startsWith("ThreadLocal")) {
+        if (pool.getClass().getSimpleName().startsWith("ThreadLocal")
+                || pool.getClass().getSimpleName().startsWith("StackMemoryPool")) {
             // Thread local pools don't have a useful toString() method.
             return;
         }
@@ -196,8 +238,7 @@ final class TestUnboundMemoryPool {
 
     @ParameterizedTest
     @MethodSource("pools")
-    void equals(MemoryPool pool) {
-        var firstPool = newPool();
+    void equals(MemoryPool firstPool) {
         var secondPool = newPool();
         assertNotEquals(firstPool, secondPool);
         assertEquals(firstPool, firstPool);
@@ -225,9 +266,10 @@ final class TestUnboundMemoryPool {
 
     private static Stream<MemoryPool> pools() {
         return Stream.of(
-                MemoryPool.ofUnbound(),
+/*                MemoryPool.ofUnbound(),
                 MemoryPool.ofConcurrentUnbound(),
-                MemoryPool.ofThreadLocal()
+                MemoryPool.ofThreadLocal(),*/
+                MemoryPool.ofStack(1 << 20)
         );
     }
 

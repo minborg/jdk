@@ -23,6 +23,8 @@
 
 package org.openjdk.bench.java.lang.foreign.memorypool;
 
+import jdk.internal.foreign.BufferStack;
+import jdk.internal.misc.VM;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -31,12 +33,14 @@ import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryPool;
+import java.lang.foreign.SegmentAllocator;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -51,10 +55,23 @@ public class UnboundConcurrentMemoryPoolBench {
     public static final MemoryPool CONCURRENT_POOL = MemoryPool.ofConcurrentUnbound();
     public static final MemoryPool THREAD_LOCAL_POOL = MemoryPool.ofThreadLocal();
 
-    @Param({"5", "20", "100", "451"})
+    //@Param({"5", "20", "100", "451"})
+    @Param({"20"})
     public int size;
 
-    @Benchmark
+    private BufferStack bufferStack;
+    private MemoryPool stackPool;
+    private ThreadLocal<SegmentAllocator> tlAllocator;
+
+    @Setup
+    public void setup() {
+        bufferStack = BufferStack.of(size + 16);
+        stackPool = MemoryPool.ofStack(size + 16);
+        tlAllocator = ThreadLocal.withInitial(
+                () -> SegmentAllocator.prefixAllocator(Arena.ofAuto().allocate(size)));
+    }
+
+/*    @Benchmark
     public long confined() {
         try (var arena = Arena.ofConfined()) {
             return arena.allocate(size).address();
@@ -73,13 +90,39 @@ public class UnboundConcurrentMemoryPoolBench {
         try (var arena = THREAD_LOCAL_POOL.get()) {
             return arena.allocate(size).address();
         }
+    }*/
+
+    @Benchmark
+    public long bufferStack() {
+        try (var arena = bufferStack.pushFrame(size)) {
+            return arena.allocate(size)
+                    .fill((byte) 0)
+                    .address();
+        }
     }
 
+    @Benchmark
+    public long stackPool() {
+        try (var arena = stackPool.get()) {
+            return arena.allocate(size)
+                    .address();
+        }
+    }
+
+/*    @Benchmark
+    public long tlPrefix() {
+        return tlAllocator.get().allocate(size)
+                .fill((byte) 0)
+                .address();
+    }*/
+
+/*
     @Threads(8)   // Benchmark under contention
     public static class Contention8Threads extends UnboundConcurrentMemoryPoolBench {}
 
     @Fork(jvmArgsAppend = "-Djmh.executor=VIRTUAL")
     @Threads(8)   // Benchmark under contention with virtual threads
     public static class Contention8VirtualThreads extends UnboundConcurrentMemoryPoolBench {}
+*/
 
 }
