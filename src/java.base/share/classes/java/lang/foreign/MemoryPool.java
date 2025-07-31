@@ -8,7 +8,7 @@ import jdk.internal.foreign.UnboundMemoryPool;
 /**
  * A memory pool ...
  *
- * @implNote All implementations of the MemoryPool interface are thread safe.
+ * Todo: Maybe not: @implNote All implementations of the MemoryPool interface are thread safe.
  * Todo: Properties
  * // confined or shared *use* (e.g. even though memory is always confined, #threads using)
  * // Bound or unbound
@@ -16,7 +16,13 @@ import jdk.internal.foreign.UnboundMemoryPool;
  * // Zeroing or not
  */
 public sealed interface MemoryPool
-        permits BufferStack.StackedMemoryPool, StackMemoryPool, StackMemoryPool.PerPlatformThread, ThreadLocalMemoryPool, UnboundMemoryPool {
+        permits
+        StackMemoryPool,
+        StackMemoryPool.PerPlatformThread,
+        StackMemoryPool.PerVirtualThread,
+        BufferStack.StackedMemoryPool,
+        ThreadLocalMemoryPool,
+        UnboundMemoryPool {
 
     /**
      * {@return a new {@linkplain Arena} that will try to use recycled memory in order

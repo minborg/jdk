@@ -24,7 +24,6 @@
 package org.openjdk.bench.java.lang.foreign.memorypool;
 
 import jdk.internal.foreign.BufferStack;
-import jdk.internal.misc.VM;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -55,8 +54,8 @@ public class UnboundConcurrentMemoryPoolBench {
     public static final MemoryPool CONCURRENT_POOL = MemoryPool.ofConcurrentUnbound();
     public static final MemoryPool THREAD_LOCAL_POOL = MemoryPool.ofThreadLocal();
 
-    //@Param({"5", "20", "100", "451"})
-    @Param({"20"})
+    @Param({"5", "20", "100", "451"})
+    //@Param({"20"})
     public int size;
 
     private BufferStack bufferStack;
@@ -71,14 +70,14 @@ public class UnboundConcurrentMemoryPoolBench {
                 () -> SegmentAllocator.prefixAllocator(Arena.ofAuto().allocate(size)));
     }
 
-/*    @Benchmark
+    @Benchmark
     public long confined() {
         try (var arena = Arena.ofConfined()) {
             return arena.allocate(size).address();
         }
     }
 
-    @Benchmark
+ /*   @Benchmark
     public long concurrentPool() {
         try (var arena = CONCURRENT_POOL.get()) {
             return arena.allocate(size).address();
@@ -116,13 +115,11 @@ public class UnboundConcurrentMemoryPoolBench {
                 .address();
     }*/
 
-/*
     @Threads(8)   // Benchmark under contention
     public static class Contention8Threads extends UnboundConcurrentMemoryPoolBench {}
 
     @Fork(jvmArgsAppend = "-Djmh.executor=VIRTUAL")
     @Threads(8)   // Benchmark under contention with virtual threads
     public static class Contention8VirtualThreads extends UnboundConcurrentMemoryPoolBench {}
-*/
 
 }

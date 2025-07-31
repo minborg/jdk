@@ -50,7 +50,7 @@ import java.util.concurrent.TimeUnit;
         "--enable-native-access=ALL-UNNAMED"})
 public class UnboundMemoryPoolBench {
 
-    public static final MemoryPool POOL = MemoryPool.ofUnbound();
+    public static final MemoryPool POOL = MemoryPool.ofStack(1 << 10);
 
     @Param({"5", "20", "100", "451"})
     public int size;
@@ -63,14 +63,14 @@ public class UnboundMemoryPoolBench {
     }
 
     @Benchmark
-    public long confinedSingleAllocation() {
+    public long confined() {
         try (var arena = Arena.ofConfined()) {
             return arena.allocate(size).address();
         }
     }
 
     @Benchmark
-    public long poolSingleAllocation() {
+    public long pool() {
         try (var arena = POOL.get()) {
             return arena.allocate(size).address();
         }
@@ -81,5 +81,8 @@ public class UnboundMemoryPoolBench {
          return allocator.allocate(size)
                  .fill((byte)0).address();
     }
+
+    @Fork(jvmArgsAppend = "-Djmh.executor=VIRTUAL")
+    public static class VirtualThread extends UnboundMemoryPoolBench {}
 
 }
