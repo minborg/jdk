@@ -132,6 +132,15 @@ public abstract sealed class MemorySessionImpl
         // called `ResourceList::cleanup` to run all the cleanup actions. If not, we can still add this resource
         // to the list (and, in case of an add vs. close race, it might happen that the cleanup action will be
         // called immediately after).
+        addInternalUnchecked(resource);
+    }
+
+    // Warning: Only invoke this method if:
+    // * this session is provable live
+    // * the owner thread (if any) is the correct one, and
+    // * the provided `resource` is non-null.
+    @ForceInline
+    void addInternalUnchecked(ResourceList.ResourceCleanup resource) {
         resourceList.add(resource);
     }
 
