@@ -38,6 +38,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryPool;
 import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.ValueLayout;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -56,10 +57,12 @@ public class MemoryPoolBench {
     public int size;
 
     private SegmentAllocator allocator;
+    private byte[] array;
 
     @Setup
     public void setup() {
         allocator = SegmentAllocator.prefixAllocator(Arena.ofAuto().allocate(size));
+        array = new byte[size];
     }
 
     @Benchmark
@@ -70,9 +73,23 @@ public class MemoryPoolBench {
     }
 
     @Benchmark
+    public long confinedFrom() {
+        try (var arena = Arena.ofConfined()) {
+            return arena.allocateFrom(ValueLayout.JAVA_BYTE, array).address();
+        }
+    }
+
+    @Benchmark
     public long pool() {
         try (var arena = POOL.get()) {
             return arena.allocate(size).address();
+        }
+    }
+
+    @Benchmark
+    public long poolFrom() {
+        try (var arena = POOL.get()) {
+            return arena.allocateFrom(ValueLayout.JAVA_BYTE, array).address();
         }
     }
 

@@ -25,10 +25,12 @@
 
 package jdk.internal.foreign;
 
+import jdk.internal.vm.annotation.ForceInline;
+
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 
-public final class SlicingAllocator implements SegmentAllocator {
+public final class SlicingAllocator implements SegmentAllocator, SegmentAllocator.NonZeroable {
 
     private final MemorySegment segment;
 
@@ -62,10 +64,17 @@ public final class SlicingAllocator implements SegmentAllocator {
         return slice;
     }
 
+    @ForceInline
+    @Override
+    public MemorySegment allocateNonZeroing(long byteSize, long byteAlignment) {
+        return allocate(byteSize, byteAlignment);
+    }
+
     @Override
     public MemorySegment allocate(long byteSize, long byteAlignment) {
         Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
         // try to slice from current segment first...
         return trySlice(byteSize, byteAlignment);
+        // Todo: Consider adding zeroing out
     }
 }

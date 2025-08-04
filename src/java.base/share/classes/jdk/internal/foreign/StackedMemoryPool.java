@@ -32,6 +32,7 @@ import jdk.internal.vm.annotation.ForceInline;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryPool;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Reference;
 
 /**
@@ -184,11 +185,11 @@ public record StackedMemoryPool(long byteSize,
     public record ArenaFrame(PerPlatformThread inner,
                              int frameNumber,
                              long initialPos,
-                             Arena arena) implements Arena {
+                             ArenaImpl arena) implements Arena, SegmentAllocator.NonZeroable {
 
         @ForceInline
         private ArenaFrame(PerPlatformThread inner, int frameNumber, long initialPos) {
-            this(inner, frameNumber, initialPos, Arena.ofConfined());
+            this(inner, frameNumber, initialPos, (ArenaImpl) Arena.ofConfined());
             // Attach the cleanup action to the scope of the arena. The scope is then
             // present at every segment allocated from this arena.
             // We know the arena is alive, the thread is the owner thread, and the
@@ -201,8 +202,7 @@ public record StackedMemoryPool(long byteSize,
         @ForceInline
         @Override
         public MemorySegment allocate(long byteSize, long byteAlignment) {
-            final SlicingAllocator allocator = inner.allocator;
-            if (inner.stackCounter != frameNumber) {
+            if (isNotTopFrame()) {
                 // Todo: Harsh but honest
 /*                throw new IllegalStateException("Trying to allocate from arena frame " + frameNumber +
                         " that is not on the top of the stack (" + inner.stackCounter + ")");*/
@@ -210,6 +210,7 @@ public record StackedMemoryPool(long byteSize,
                 return arena.allocate(byteSize, byteAlignment);
             }
 
+            final SlicingAllocator allocator = inner.allocator;
             return (allocator.canAllocate(byteSize, byteAlignment))
                     ? allocator.allocate(byteSize, byteAlignment)
                     .reinterpret(arena, null)
@@ -217,7 +218,20 @@ public record StackedMemoryPool(long byteSize,
                     : arena.allocate(byteSize, byteAlignment);
         }
 
-        // Todo: Fix all allocateFrom implementations
+        @SuppressWarnings("restricted")
+        @ForceInline
+        @Override
+        public MemorySegment allocateNonZeroing(long byteSize, long byteAlignment) {
+            if (isNotTopFrame()) {
+                return arena.allocateNonZeroing(byteSize, byteAlignment);
+            }
+
+            final SlicingAllocator allocator = inner.allocator;
+            return (allocator.canAllocate(byteSize, byteAlignment))
+                    ? allocator.allocateNonZeroing(byteSize, byteAlignment)
+                    .reinterpret(arena, null)
+                    : arena.allocateNonZeroing(byteSize, byteAlignment);
+        }
 
         @ForceInline
         @Override
@@ -228,7 +242,7 @@ public record StackedMemoryPool(long byteSize,
         @ForceInline
         @Override
         public void close() {
-            if (inner.stackCounter != frameNumber) {
+            if (isNotTopFrame()) {
                 throw new IllegalStateException(String.format(
                         "The stacked arena was closed out of sequence. Expected stack frame number %d but got %d."
                         , inner.stackCounter, frameNumber));
@@ -245,6 +259,11 @@ public record StackedMemoryPool(long byteSize,
         @Override
         public int hashCode() {
             return System.identityHashCode(this);
+        }
+
+        @ForceInline
+        private boolean isNotTopFrame() {
+            return inner.stackCounter != frameNumber;
         }
 
     }

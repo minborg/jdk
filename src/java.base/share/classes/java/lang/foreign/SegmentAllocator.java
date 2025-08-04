@@ -26,7 +26,6 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
-import jdk.internal.foreign.ArenaImpl;
 import jdk.internal.foreign.SlicingAllocator;
 import jdk.internal.foreign.StringSupport;
 import jdk.internal.vm.annotation.ForceInline;
@@ -720,22 +719,72 @@ public interface SegmentAllocator {
 
     @ForceInline
     private MemorySegment allocateNoInit(long byteSize) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(byteSize, 1) :
-                allocate(byteSize);
+        return this instanceof NonZeroable nonZeroable
+                ? nonZeroable.allocateNonZeroing(byteSize)
+                : allocate(byteSize);
     }
 
     @ForceInline
     private MemorySegment allocateNoInit(MemoryLayout layout) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(layout.byteSize(), layout.byteAlignment()) :
-                allocate(layout);
+        return this instanceof NonZeroable nonZeroable
+                ? nonZeroable.allocateNonZeroing(layout)
+                : allocate(layout);
     }
 
     @ForceInline
     private MemorySegment allocateNoInit(MemoryLayout layout, long size) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(layout.byteSize() * size, layout.byteAlignment()) :
-                allocate(layout, size);
+        return this instanceof NonZeroable nonZeroable
+                ? nonZeroable.allocateNonZeroing(layout.byteSize() * size, layout.byteAlignment())
+                : allocate(layout, size);
     }
+
+    /**
+     * Todo: Add documentation
+     * Todo: consider "extends SegmentAllocator"
+     */
+    interface NonZeroable {
+
+        /**
+         * {@return a new non-zeroed-out memory segment with the given {@code byteSize}}
+         *
+         * @implSpec The default implementation for this method calls
+         *           {@code this.allocateNonZeroing(byteSize, 1)}.
+         *
+         * @param byteSize the size (in bytes) of the block of memory to be allocated
+         * @throws IllegalArgumentException if {@code byteSize < 0}
+         */
+        @ForceInline
+        default MemorySegment allocateNonZeroing(long byteSize) {
+            return allocateNonZeroing(byteSize, 1);
+        }
+
+        /**
+         * {@return a new non-zeroed-out memory segment with the given layout}
+         *
+         * @implSpec The default implementation for this method calls
+         *           {@code this.allocateNonZeroing(layout.byteSize(), layout.byteAlignment())}.
+         *
+         * @param layout the layout of the block of memory to be allocated
+         */
+        @ForceInline
+        default MemorySegment allocateNonZeroing(MemoryLayout layout) {
+            return allocateNonZeroing(layout.byteSize(), layout.byteAlignment());
+        }
+
+        /**
+         * {@return a new non-zeroed-out memory segment with the given {@code byteSize}
+         *          and {@code byteAlignment}}
+         *
+         * @param byteSize      the size (in bytes) of the block of memory
+         *                      to be allocated
+         * @param byteAlignment the alignment (in bytes) of the block of memory
+         *                      to be allocated
+         * @throws IllegalArgumentException if {@code byteSize < 0},
+         *         {@code byteAlignment <= 0},
+         *         or if {@code byteAlignment} is not a power of 2
+         */
+        MemorySegment allocateNonZeroing(long byteSize, long byteAlignment);
+
+    }
+
 }
