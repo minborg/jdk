@@ -36,22 +36,25 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryPool;
 import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.*;
-import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.*;
 
 final class TestMemoryPool {
 
+    private static final long POOL_SIZE = 1 << 20;
     private static final long SMALL_ALLOC_SIZE = JAVA_INT.byteSize();
 
     @Test
     void basic() {
-        var pool = MemoryPool.ofStack(SMALL_ALLOC_SIZE);
+        var pool = MemoryPool.ofStacked(SMALL_ALLOC_SIZE);
         Arena arena = pool.get();
 
         assertTrue(arena.scope().isAlive());
@@ -62,10 +65,9 @@ final class TestMemoryPool {
         assertFalse(arena.scope().isAlive());
         assertTrue(arena.scope().toString().contains("ConfinedSession"));
     }
-
     @Test
     void basicZeroSize() {
-        var pool = MemoryPool.ofStack(SMALL_ALLOC_SIZE);
+        var pool = MemoryPool.ofStacked(SMALL_ALLOC_SIZE);
         Arena arena = pool.get();
 
         assertTrue(arena.scope().isAlive());
@@ -123,8 +125,9 @@ final class TestMemoryPool {
     @MethodSource("pools")
     void accessBounds(MemoryPool pool) {
         try (var arena = pool.get()) {
-            var segment = arena.allocate(SMALL_ALLOC_SIZE);
-            assertThrows(IndexOutOfBoundsException.class, () -> segment.get(JAVA_BYTE, SMALL_ALLOC_SIZE));
+            arena.allocate(SMALL_ALLOC_SIZE);
+            // Graceful degradation
+            assertDoesNotThrow(() -> arena.allocate(POOL_SIZE));
         }
     }
 
@@ -150,11 +153,8 @@ final class TestMemoryPool {
     void sizesNoReuse(MemoryPool pool) {
         var segments = new ArrayList<MemorySegment>();
         try (var arena = pool.get()) {
-            System.out.println("arena.scope() = " + arena.scope());
             for (int i = 1; i < 2; i++) {
-                System.out.println("i = " + i);
                 for (int size = 1; size < 256; size++) {
-                    System.out.println("size = " + size);
                     var segment = arena.allocate(size);
                     segments.add(segment);
                     assertEquals(size, segment.byteSize());
@@ -163,12 +163,6 @@ final class TestMemoryPool {
                 }
             }
         }
-
-        var scopes = segments.stream()
-                .map(MemorySegment::scope)
-                .collect(toSet());
-
-        System.out.println("scopes = " + scopes);
 
         for (var segment : segments) {
             assertFalse(segment.scope().isAlive());
@@ -206,49 +200,127 @@ final class TestMemoryPool {
         }
     }
 
+    @SuppressWarnings("restricted")
+    @ParameterizedTest
+    @MethodSource("pools")
+    void stackedArenas(MemoryPool pool) {
+        try (var firstArena = pool.get()) {
+            firstArena.allocate(SMALL_ALLOC_SIZE);
+            try (var secondArena = pool.get()) {
+                secondArena.allocate(SMALL_ALLOC_SIZE);
+                try (var thirdArena = pool.get()) {
+                    thirdArena.allocate(SMALL_ALLOC_SIZE);
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("restricted")
+    @ParameterizedTest
+    @MethodSource("pools")
+    void stackedArenasInterAllocationCheck(MemoryPool pool) {
+        // We are checking for potential illegal sharing of the backing memory here
+        Map<Byte, MemorySegment> segmentMap = new HashMap<>();
+        AtomicInteger color = new AtomicInteger();
+        try (var firstArena = pool.get()) {
+            segmentMap.put((byte) color.get(), firstArena.allocate(SMALL_ALLOC_SIZE).fill((byte) color.get()));
+            color.getAndIncrement();
+            try (var secondArena = pool.get()) {
+                segmentMap.put((byte) color.get(), secondArena.allocate(SMALL_ALLOC_SIZE).fill((byte) color.get()));
+                color.getAndIncrement();
+                segmentMap.put((byte) color.get(), firstArena.allocate(SMALL_ALLOC_SIZE).fill((byte) color.get()));
+                color.getAndIncrement();
+                segmentMap.put((byte) color.get(), secondArena.allocate(SMALL_ALLOC_SIZE).fill((byte) color.get()));
+                color.getAndIncrement();
+                try (var thirdArena = pool.get()) {
+                    segmentMap.put((byte) color.get(), thirdArena.allocate(SMALL_ALLOC_SIZE).fill((byte) color.get()));
+                    color.getAndIncrement();
+                    segmentMap.put((byte) color.get(), firstArena.allocate(SMALL_ALLOC_SIZE).fill((byte) color.get()));
+                    color.getAndIncrement();
+                    segmentMap.put((byte) color.get(), thirdArena.allocate(SMALL_ALLOC_SIZE).fill((byte) color.get()));
+                    color.getAndIncrement();
+                }
+            }
+            segmentMap.put((byte) color.get(), firstArena.allocate(SMALL_ALLOC_SIZE).fill((byte) color.get()));
+            color.getAndIncrement();
+        }
+        segmentMap.forEach(TestMemoryPool::checkSegment);
+    }
+
+    static void checkSegment(Byte val, MemorySegment segment) {
+        try {
+            segment.get(JAVA_BYTE, 0);
+            for (int i = 0; i < segment.byteSize(); i++) {
+                assertEquals(val, segment.get(JAVA_BYTE, i), "Mismatch at " + i);
+            }
+        } catch (IllegalStateException ise) {
+            // We will end up here for segments that are closed.
+            // If they are, we should not check against mismatch as they are not accessible.
+        }
+    }
+    @ParameterizedTest
+    @MethodSource("pools")
+    void outOfSequenceClose(MemoryPool pool) {
+        var firstArena = pool.get();
+        var segmentFromFirst = firstArena.allocate(SMALL_ALLOC_SIZE);
+        var secondArena = pool.get();
+        var segmentFromSecond = secondArena.allocate(SMALL_ALLOC_SIZE);
+
+        var x = assertThrows(IllegalStateException.class, firstArena::close);
+        assertEquals(
+                "The stacked arena was closed out of sequence. Expected stack frame number 2 but got 1.",
+                x.getMessage());
+        assertDoesNotThrow(() -> segmentFromFirst.get(JAVA_BYTE, 0));
+        assertDoesNotThrow(() -> segmentFromSecond.get(JAVA_BYTE, 0));
+
+        secondArena.close();
+        assertDoesNotThrow(() -> segmentFromFirst.get(JAVA_BYTE, 0));
+        assertThrows(IllegalStateException.class, () -> segmentFromSecond.get(JAVA_BYTE, 0));
+
+        firstArena.close();
+        assertThrows(IllegalStateException.class, () -> segmentFromFirst.get(JAVA_BYTE, 0));
+        assertThrows(IllegalStateException.class, () -> segmentFromSecond.get(JAVA_BYTE, 0));
+    }
+
     @ParameterizedTest
     @MethodSource("pools")
     void toStringTest(MemoryPool pool) {
-        if (pool.getClass().getSimpleName().startsWith("ThreadLocal")
-                || pool.getClass().getSimpleName().startsWith("StackMemoryPool")) {
-            // Thread local pools don't have a useful toString() method.
-            return;
-        }
-        assertEquals("UnboundMemoryPool(segmentFifo=SegmentFifo(0 bytes in 0 segments))", pool.toString());
+        assertEquals("StackedMemoryPool[byteSize=" + POOL_SIZE + "]", pool.toString());
         try (var arena = pool.get()) {
-            var firstSegment = arena.allocate(SMALL_ALLOC_SIZE);
-            // Nothing has been returned to the pool yet
-            assertEquals("UnboundMemoryPool(segmentFifo=SegmentFifo(0 bytes in 0 segments))", pool.toString());
+            var arenaToString = arena.toString();
+            assertTrue(arenaToString.startsWith("ArenaFrame"));
         }
-        // The first allocation has now been returned to the pool
-        assertEquals("UnboundMemoryPool(segmentFifo=SegmentFifo(4 bytes in 1 segments))", pool.toString());
-
-        try (var arena = pool.get()) {
-            var secondSegment = arena.allocate(SMALL_ALLOC_SIZE);
-            // Nothing has been returned to the pool yet
-            assertEquals("UnboundMemoryPool(segmentFifo=SegmentFifo(0 bytes in 0 segments))", pool.toString());
-        }
-        // The second allocation has now been returned to the pool
-        assertEquals("UnboundMemoryPool(segmentFifo=SegmentFifo(4 bytes in 1 segments))", pool.toString());
     }
 
     @ParameterizedTest
     @MethodSource("pools")
     void hashCodeTest(MemoryPool pool) {
-        assertEquals(System.identityHashCode(pool), pool.hashCode());
+        assertIdentityHashCode(pool);
+        try (var arena = pool.get()) {
+            assertIdentityHashCode(arena);
+        }
+    }
+
+    static void assertIdentityHashCode(Object o) {
+        assertEquals(System.identityHashCode(o), o.hashCode());
     }
 
     @ParameterizedTest
     @MethodSource("pools")
     void equals(MemoryPool firstPool) {
-        var secondPool = MemoryPool.ofStack(4);
-        assertNotEquals(firstPool, secondPool);
-        assertEquals(firstPool, firstPool);
+        var secondPool = MemoryPool.ofStacked(SMALL_ALLOC_SIZE);
+        maybeDefaultEquals(firstPool, secondPool);
+        try (var firstArena = firstPool.get()){
+            try (var secondArena = firstPool.get()) {
+                maybeDefaultEquals(firstArena, secondArena);
+            }
+        }
+    }
 
-        var firstArena = firstPool.get();
-        var secondArena = firstPool.get();
-        assertNotEquals(firstArena, secondArena);
-        assertEquals(firstArena, firstArena);
+    static void maybeDefaultEquals(Object o, Object notO) {
+        assertNotEquals(o, notO);
+        assertNotEquals(notO, o);
+        assertEquals(o, o);
     }
 
     static void doInTwoStackedArenas(MemoryPool pool,
@@ -264,7 +336,7 @@ final class TestMemoryPool {
 
     private static Stream<MemoryPool> pools() {
         return Stream.of(
-                MemoryPool.ofStack(1 << 20)
+                MemoryPool.ofStacked(POOL_SIZE)
         );
     }
 
