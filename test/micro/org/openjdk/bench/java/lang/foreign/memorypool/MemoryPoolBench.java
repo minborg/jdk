@@ -65,7 +65,7 @@ public class MemoryPoolBench {
         array = new byte[size];
     }
 
-    @Benchmark
+/*    @Benchmark
     public long confined() {
         try (var arena = Arena.ofConfined()) {
             return arena.allocate(size).address();
@@ -77,7 +77,7 @@ public class MemoryPoolBench {
         try (var arena = Arena.ofConfined()) {
             return arena.allocateFrom(ValueLayout.JAVA_BYTE, array).address();
         }
-    }
+    }*/
 
     @Benchmark
     public long pool() {
@@ -93,20 +93,22 @@ public class MemoryPoolBench {
         }
     }
 
-    @Benchmark
+/*    @Benchmark
     public long poolSingleThreaded() {
         try (var arena = POOL_SINGLE_THREADED.get()) {
             return arena.allocate(size).address();
         }
-    }
+    }*/
 
-    @Benchmark
+/*    @Benchmark
     public long prefix() {
         return allocator.allocate(size)
                 .fill((byte)0).address();
-    }
+    }*/
 
+/*
     @Fork(jvmArgsAppend = "-Djmh.executor=VIRTUAL")
     public static class VirtualThread extends MemoryPoolBench {}
+*/
 
 }

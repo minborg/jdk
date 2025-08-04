@@ -79,7 +79,7 @@ public record StackedMemoryPool(long byteSize,
 
         private final SlicingAllocator allocator;
         final CleanupAction cleanupAction;
-        private int stackCounter;
+        private int topFrameNumber;
 
         private PerPlatformThread(long byteSize) {
             final Arena arena = Arena.ofAuto();
@@ -90,14 +90,14 @@ public record StackedMemoryPool(long byteSize,
         @ForceInline
         @Override
         public Arena get() {
-            return new ArenaFrame(this, ++stackCounter, allocator.currentOffset());
+            return new ArenaFrame(this, ++topFrameNumber, allocator.currentOffset());
         }
 
         @ForceInline
-        void pop(int frameNumber, long initialPosOfThisFrame) {
-            allocator.resetTo(initialPosOfThisFrame);
-            // This is the next position to expect a close from
-            stackCounter--;
+        void pop(int frameNumber, long initialPos) {
+            allocator.resetTo(initialPos);
+            // This is the next stack frame number to expect a close from
+            topFrameNumber--;
         }
 
         static PerPlatformThread ofPlatformThread(long byteSize) {
@@ -133,8 +133,8 @@ public record StackedMemoryPool(long byteSize,
 
         @ForceInline
         @Override
-        void pop(int frameNumber, long initialPosOfThisFrame) {
-            super.pop(frameNumber, initialPosOfThisFrame);
+        void pop(int frameNumber, long initialPosOfFrame) {
+            super.pop(frameNumber, initialPosOfFrame);
             if (frameNumber == 1) {
                 // All allocations have been returned. Release the lock so that other
                 // VT can use the pool.
@@ -165,9 +165,9 @@ public record StackedMemoryPool(long byteSize,
 
         @ForceInline
         @Override
-        void pop(int frameNumber, long initialPosOfThisFrame) {
+        void pop(int frameNumber, long initialPosOfFrame) {
             checkThread();
-            super.pop(frameNumber, initialPosOfThisFrame);
+            super.pop(frameNumber, initialPosOfFrame);
         }
 
         private void checkThread() {
@@ -245,7 +245,7 @@ public record StackedMemoryPool(long byteSize,
             if (isNotTopFrame()) {
                 throw new IllegalStateException(String.format(
                         "The stacked arena was closed out of sequence. Expected stack frame number %d but got %d."
-                        , inner.stackCounter, frameNumber));
+                        , inner.topFrameNumber, frameNumber));
             }
             arena.close();
             inner.pop(frameNumber, initialPos);
@@ -263,7 +263,7 @@ public record StackedMemoryPool(long byteSize,
 
         @ForceInline
         private boolean isNotTopFrame() {
-            return inner.stackCounter != frameNumber;
+            return inner.topFrameNumber != frameNumber;
         }
 
     }
@@ -301,6 +301,7 @@ public record StackedMemoryPool(long byteSize,
 
         @ForceInline
         void unlock() {
+            // Unconditionally release the lock
             UNSAFE.putLongRelease(this, THREAD_ID_OFFSET, RELEASED);
         }
 
