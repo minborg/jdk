@@ -43,7 +43,7 @@ Symbol* fieldDescriptor::generic_signature() const {
 
 bool fieldDescriptor::is_trusted_final() const {
   InstanceKlass* ik = field_holder();
-  return is_final() && (is_static() || ik->is_hidden() || ik->is_record());
+  return is_final() && (is_static() || ik->is_hidden() || ik->is_record() || is_synthetic());
 }
 
 AnnotationArray* fieldDescriptor::annotations() const {

@@ -902,6 +902,9 @@ public final class Unsafe {
         if (declaringClass.isRecord()) {
             throw new UnsupportedOperationException("can't get field offset on a record class: " + f);
         }
+        if (f.isSynthetic()) {
+            throw new UnsupportedOperationException("can't get field offset on a synthetic field: " + f);
+        }
         beforeMemoryAccess();
         return theInternalUnsafe.objectFieldOffset(f);
     }
@@ -942,6 +945,9 @@ public final class Unsafe {
         if (declaringClass.isRecord()) {
             throw new UnsupportedOperationException("can't get field offset on a record class: " + f);
         }
+        if (f.isSynthetic()) {
+            throw new UnsupportedOperationException("can't get field offset on a synthetic field: " + f);
+        }
         beforeMemoryAccess();
         return theInternalUnsafe.staticFieldOffset(f);
     }
@@ -973,6 +979,9 @@ public final class Unsafe {
         }
         if (declaringClass.isRecord()) {
             throw new UnsupportedOperationException("can't get base address on a record class: " + f);
+        }
+        if (f.isSynthetic()) {
+            throw new UnsupportedOperationException("can't get base address on a synthetic field: " + f);
         }
         beforeMemoryAccess();
         return theInternalUnsafe.staticFieldBase(f);
