@@ -154,8 +154,9 @@ final class StableValueTest {
     }
 
     @ParameterizedTest
-    @MethodSource("stableValues")
-    void recursiveCall(StableValue<Integer> stable) {
+    @MethodSource("factories")
+    void recursiveCall(Supplier<StableValue<Integer>> stableSupplier) {
+        var stable = stableSupplier.get();
         AtomicReference<StableValue<Integer>> ref = new AtomicReference<>(stable);
         assertThrows(IllegalStateException.class, () ->
                 stable.orElseSet(() -> {

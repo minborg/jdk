@@ -24,11 +24,12 @@ public class StandardStableList<E>
 
     @Stable
     private final Object[] elements;
-    private final Object[] mutexes;
+    @Stable
+    private final DenseLocks locks;
 
-    private StandardStableList(int length) {
-        this.elements = new Object[length];
-        this.mutexes = new Object[length];
+    private StandardStableList(int size) {
+        this.elements = new Object[size];
+        this.locks = new DenseLocks(size);
         super();
     }
 
@@ -36,7 +37,7 @@ public class StandardStableList<E>
     @Override
     public ElementStableValue<E> get(int index) {
         Objects.checkIndex(index, elements.length);
-        return new ElementStableValue<>(elements, mutexes, offsetFor(index));
+        return new ElementStableValue<>(elements, locks, index, offsetFor(index));
     }
 
     @Override
@@ -47,11 +48,10 @@ public class StandardStableList<E>
     // Todo: Views
     // Todo: Consider having just a StandardStableList field and an offset
     public record ElementStableValue<T>(@Stable Object[] elements,
-                                        Object[] mutexes,
+                                        DenseLocks locks,
+                                        int index,
                                         long offset)
             implements StableValue<T> {
-
-        private static final Object TOMB_STONE = new Object();
 
         @ForceInline
         @Override
@@ -60,19 +60,16 @@ public class StandardStableList<E>
             if (contentsAcquire() != null) {
                 return false;
             }
-            // Prevent reentry via an orElseSet(supplier)
-            preventReentry();
             // Mutual exclusion is required here as `orElseSet` might also
-            // attempt to modify `this.contents`
-            final Object mutex = acquireMutex();
-            if (mutex == TOMB_STONE) {
-                return false;
+            // attempt to modify the element
+            if (locks.lock(index)) {
+                try {
+                    return set(contents);
+                } finally {
+                    locks.unlock(index);
+                }
             }
-            synchronized (mutex) {
-                final boolean outcome = set(contents);
-                disposeOfMutex();
-                return outcome;
-            }
+            return false;
         }
 
         @SuppressWarnings("unchecked")
@@ -110,22 +107,18 @@ public class StandardStableList<E>
 
         @SuppressWarnings("unchecked")
         private T orElseSetSlowPath(Supplier<? extends T> supplier) {
-            preventReentry();
-            final Object mutex = acquireMutex();
-            if (mutex == TOMB_STONE) {
-                return (T) contentsAcquire();
-            }
-            synchronized (mutex) {
-                final Object t = UNSAFE.getReference(elements, offset);  // Plain semantics suffice here
-                if (t == null) {
-                     final T newValue = supplier.get();
+            if (locks.lock(index)) {
+                try {
+                    final T newValue = supplier.get();
                     Objects.requireNonNull(newValue);
                     // The mutex is not reentrant so we know newValue should be returned
                     set(newValue);
                     return newValue;
+                } finally {
+                    locks.unlock(index);
                 }
-                return (T) t;
             }
+            return (T) contentsAcquire();
         }
 
         // Object methods
@@ -143,33 +136,6 @@ public class StandardStableList<E>
             return UNSAFE.getReferenceAcquire(elements, offset);
         }
 
-        @ForceInline
-        private Object acquireMutex() {
-            final Object candidate = new Object();
-            final Object witness = UNSAFE.compareAndExchangeReference(mutexes, offset, null, candidate);
-            return witness == null ? candidate : witness;
-        }
-
-        @ForceInline
-        private void disposeOfMutex() {
-            UNSAFE.putReferenceVolatile(mutexes, offset, TOMB_STONE);
-        }
-
-        @ForceInline
-        private Object mutexVolatile() {
-            // Can be plain semantics?
-            return UNSAFE.getReferenceVolatile(mutexes, offset);
-        }
-
-        // This method is not annotated with @ForceInline as it is always called
-        // in a slow path.
-        private void preventReentry() {
-            final Object mutex = mutexVolatile();
-            if (mutex != null && Thread.holdsLock(mutexVolatile())) {
-                throw new IllegalStateException("Recursive initialization of a stable value is illegal. Index: " + indexFor(offset));
-            }
-        }
-
         /**
          * Tries to set the contents at the provided {@code index} to {@code newValue}.
          * <p>
@@ -180,17 +146,12 @@ public class StandardStableList<E>
          */
         @ForceInline
         private boolean set(T newValue) {
-            assert Thread.holdsLock(mutexVolatile());
-            // We know we hold the monitor here so plain semantic is enough
+            // We know we hold the lock here so plain semantic is enough
             if (UNSAFE.getReference(elements, offset) == null) {
                 UNSAFE.putReferenceRelease(elements, offset, newValue);
                 return true;
             }
             return false;
-        }
-
-        private long indexFor(long offset) {
-            return (offset - Unsafe.ARRAY_OBJECT_BASE_OFFSET) / Unsafe.ARRAY_OBJECT_INDEX_SCALE;
         }
 
     }
