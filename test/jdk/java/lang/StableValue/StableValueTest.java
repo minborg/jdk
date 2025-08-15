@@ -27,6 +27,7 @@
  * @run junit StableValueTest
  */
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -34,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -153,23 +153,54 @@ final class StableValueTest {
         assertDoesNotThrow((() -> stable.equals(stable)));
     }
 
+    @Test
+    void recursiveCall2() {
+        var stable = StableValue.<Integer>ofList(6).getFirst();
+        AtomicReference<StableValue<Integer>> ref = new AtomicReference<>(stable);
+        try {
+            stable.orElseSet(() -> {
+                ref.get().trySet(1);
+                return 2;
+            });
+        } catch (IllegalStateException ise) {
+            // Happy path
+        }
+    }
+
     @ParameterizedTest
     @MethodSource("factories")
-    void recursiveCall(Supplier<StableValue<Integer>> stableSupplier) {
+    void recursiveCallTrySet(Supplier<StableValue<Integer>> stableSupplier) {
         var stable = stableSupplier.get();
         AtomicReference<StableValue<Integer>> ref = new AtomicReference<>(stable);
-        assertThrows(IllegalStateException.class, () ->
-                stable.orElseSet(() -> {
-                    ref.get().trySet(1);
-                    return 1;
-                })
-        );
-        assertThrows(IllegalStateException.class, () ->
-                stable.orElseSet(() -> {
-                    ref.get().orElseSet(() -> 1);
-                    return 1;
-                })
-        );
+        final Supplier<Integer> supplier = () -> {
+            ref.get().trySet(1);
+            return 1;
+        };
+        recursiveCall(stable, supplier);
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void recursiveCallOrElseSet(Supplier<StableValue<Integer>> stableSupplier) {
+        var stable = stableSupplier.get();
+        AtomicReference<StableValue<Integer>> ref = new AtomicReference<>(stable);
+
+        final Supplier<Integer> supplier = () -> {
+            ref.get().orElseSet(() -> 1);
+            return 1;
+        };
+        recursiveCall(stable, supplier);
+    }
+
+    void recursiveCall(StableValue<Integer> stable, Supplier<Integer> supplier) {
+        for (int i = 0; i < 2; i++) {
+            var x = assertThrows(IllegalStateException.class, () -> stable.orElseSet(supplier));
+            assertTrue(x.getMessage().startsWith("Recursive initialization of a stable value is illegal"), x.getMessage());
+            assertFalse(stable.isSet());
+        }
+
+        stable.trySet(VALUE);
+        assertDoesNotThrow(() -> stable.orElseSet(supplier));
     }
 
     @ParameterizedTest
@@ -179,7 +210,7 @@ final class StableValueTest {
         assertEquals(pair.l().get(), pair.r().get());
     }
 
-    private static final BiPredicate<StableValue<Integer>, Integer> TRY_SET = StableValue::trySet;
+
 
     @ParameterizedTest
     @MethodSource("factories")
@@ -195,7 +226,7 @@ final class StableValueTest {
                         // ... set ...
                         starter.await();
                         // Here we go!
-                        winners.put(i, TRY_SET.test(stable, i));
+                        winners.put(i, stable.trySet(i));
                     } catch (Throwable t) {
                         fail(t);
                     }
@@ -243,10 +274,13 @@ final class StableValueTest {
         );
     }
 
+    // The factory returns a SV that emanates from the same source upon
+    // successive calls.
     private static Stream<Supplier<StableValue<Integer>>> factories() {
+        final StableValue<Integer> stableValue = StableValue.of();
         final List<StableValue<Integer>> list = StableValue.ofList(LIST_SIZE);
         return Stream.of(
-                supplier("StableValue.of()", StableValue::of),
+                supplier("StableValue.of()", () -> stableValue),
                 supplier("list::getFirst", list::getFirst),
                 supplier("() -> list.get(LIST_MID)", () -> list.get(LIST_MID)),
                 supplier("list::getLast", list::getLast)
@@ -267,7 +301,7 @@ final class StableValueTest {
         };
     }
 
-    record Pair<L, R>(L l, R r) {}
+    record Pair<L, R>(L l, R r) { }
 
     private static Stream<Pair<StableValue<Integer>, StableValue<Integer>>> aliasStableValues() {
         final StableValue<Integer> stable = StableValue.of();

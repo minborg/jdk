@@ -37,7 +37,7 @@ public class StandardStableList<E>
     @Override
     public ElementStableValue<E> get(int index) {
         Objects.checkIndex(index, elements.length);
-        return new ElementStableValue<>(elements, locks, index, offsetFor(index));
+        return new ElementStableValue<>(elements, locks, offsetFor(index));
     }
 
     @Override
@@ -49,7 +49,6 @@ public class StandardStableList<E>
     // Todo: Consider having just a StandardStableList field and an offset
     public record ElementStableValue<T>(@Stable Object[] elements,
                                         DenseLocks locks,
-                                        int index,
                                         long offset)
             implements StableValue<T> {
 
@@ -62,11 +61,15 @@ public class StandardStableList<E>
             }
             // Mutual exclusion is required here as `orElseSet` might also
             // attempt to modify the element
-            if (locks.lock(index)) {
+            if (lock()) {
+                boolean rollback = false;
                 try {
                     return set(contents);
+                } catch (Throwable t) {
+                    rollback = true;
+                    throw t;
                 } finally {
-                    locks.unlock(index);
+                    if (rollback) rollback(); else unlock();
                 }
             }
             return false;
@@ -107,15 +110,21 @@ public class StandardStableList<E>
 
         @SuppressWarnings("unchecked")
         private T orElseSetSlowPath(Supplier<? extends T> supplier) {
-            if (locks.lock(index)) {
+            if (lock()) {
+                boolean rollback = false;
                 try {
                     final T newValue = supplier.get();
                     Objects.requireNonNull(newValue);
                     // The mutex is not reentrant so we know newValue should be returned
                     set(newValue);
                     return newValue;
+                } catch (Throwable t) {
+                    // Something bad happened.
+                    // We need to back out and allow for future retries.
+                    rollback = true;
+                    throw t;
                 } finally {
-                    locks.unlock(index);
+                    if (rollback) rollback(); else unlock();
                 }
             }
             return (T) contentsAcquire();
@@ -134,6 +143,22 @@ public class StandardStableList<E>
         @ForceInline
         private Object contentsAcquire() {
             return UNSAFE.getReferenceAcquire(elements, offset);
+        }
+
+        private boolean lock() {
+            return locks.lock(index());
+        }
+
+        private void unlock() {
+            locks.unlock(index());
+        }
+
+        private void rollback() {
+            locks.rollBack(index());
+        }
+
+        private int index() {
+            return (int) (offset - Unsafe.ARRAY_OBJECT_BASE_OFFSET) / Unsafe.ARRAY_OBJECT_INDEX_SCALE;
         }
 
         /**
