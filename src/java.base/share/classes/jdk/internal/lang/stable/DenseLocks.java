@@ -3,7 +3,9 @@ package jdk.internal.lang.stable;
 import jdk.internal.misc.Unsafe;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -19,25 +21,34 @@ record DenseLocks(byte[] flags, ConcurrentHashMap<Integer, State> locks) {
 
     record State(long threadId, Lock lock) {}
 
+    private static final int BITS_PER_FLAG = 2; // Must be a power of two
+    private static final int FLAGS_PER_BYTE = Byte.SIZE / BITS_PER_FLAG;
+    private static final int BIT_MASK = ~-(BITS_PER_FLAG << 1); // 0b0000_0011
+    private static final int ACQUIRE_BIT = 0;
+    private static final int TOMB_STONE_BIT = 1;
+
+    private static final byte AVAILABLE = 0;
+    private static final byte ACQUIRED = 1 << ACQUIRE_BIT;
+    private static final byte TOMB_STONE = 1 << TOMB_STONE_BIT;
+
     // Only two bits are used per component in the `flags` array. The transition from:
     //   AVAILABLE -> ACQUIRED   sets bit 0
     //   ACQUIRED  -> AVAILABLE  clears bit 0  Used to back out from setting contents (e.g., Exception)
     //   ACQUIRED  -> TOMB_STONE sets bit 1    The contents has been set
-    private static final byte AVAILABLE =  0x00;
+/*    private static final byte AVAILABLE =  0x00;
     private static final byte ACQUIRED =   AVAILABLE | 0b0000_0001;  // 0x01
-    private static final byte TOMB_STONE = ACQUIRED  | 0b0000_0010;  // 0x03
+    private static final byte TOMB_STONE = ACQUIRED  | 0b0000_0010;  // 0x03*/
 
     // Todo: Consider using a sharded linked list instead of a CHM
     DenseLocks(int size) {
-        this(new byte[size], new ConcurrentHashMap<>(4));
+        this(new byte[(size + FLAGS_PER_BYTE - 1) / FLAGS_PER_BYTE], new ConcurrentHashMap<>(4));
     }
-
 
     // Returns `true` to the winning thread, eventually `false` to everyone else.
     boolean lock(int index) {
         final long currentTid = Thread.currentThread().threadId();
-        final byte witness = caeFlags(index, AVAILABLE, ACQUIRED);
-        if (witness == AVAILABLE) {
+        final byte witness = caeFlag(index, ACQUIRE_BIT);
+        if (witness == ACQUIRED) {
             // We got the lock!
             // Todo: Find a less expensive construct than ReentrantLock
             final Lock underlyingLock = new ReentrantLock();
@@ -50,13 +61,13 @@ record DenseLocks(byte[] flags, ConcurrentHashMap<Integer, State> locks) {
             // The lock was already acquired, either by another thread or by the current thread
             State state;
             // Wait for states to be visible
-            while ((state = locks.get(index)) == null && flags(index) != TOMB_STONE) {
+            while ((state = locks.get(index)) == null && flag(index, TOMB_STONE)) {
                 // Either the lock is not visible yet or someone raced before us
                 Thread.onSpinWait();
             }
             // Recheck the flag as the state might be available even though there is
             // a `TOMB_STONE`.
-            if (flags(index) == TOMB_STONE) {
+            if ((flag(index, TOMB_STONE))) {
                 // The lock was already unlocked so no need to wait
                 return false;
             }
@@ -75,19 +86,22 @@ record DenseLocks(byte[] flags, ConcurrentHashMap<Integer, State> locks) {
     }
 
     void rollBack(int index) {
-        unlock0(index, AVAILABLE);
+        unlock0(index, true);
     }
 
     void unlock(int index) {
-        unlock0(index, TOMB_STONE);
+        unlock0(index, false);
     }
 
-    void unlock0(int index, byte newFlags) {
+    void unlock0(int index, boolean clear) {
         final long threadId = Thread.currentThread().threadId();
         assert locks.get(index).threadId() == threadId; // Make sure we own the lock
-        // Announce that operations for this index are completed
         // This has to be done before the state is removed
-        flags(index, newFlags);
+        if (clear) {
+            clearFlags(index);
+        } else {
+            caeFlag(index, TOMB_STONE_BIT);
+        }
         // The state is not needed anymore
         State state = locks.remove(index);
         // Release the lock
@@ -96,20 +110,117 @@ record DenseLocks(byte[] flags, ConcurrentHashMap<Integer, State> locks) {
 
     // Support methods for Unsafe access
 
-    private byte caeFlags(int index, byte expected, byte value) {
-        return UNSAFE.compareAndExchangeByte(flags, offsetFor(index), expected, value);
+    private byte caeFlag(int index, int bit) {
+        final byte b = UNSAFE.getAndBitwiseOrByte(flags, offsetFor(index), maskFor(index, bit));
+        return maskOutFlags(index, b);
     }
 
-    private long flags(int index) {
-        return UNSAFE.getByteVolatile(flags, offsetFor(index));
+/*    private long flags(int index) {
+        final byte b = UNSAFE.getByteVolatile(flags, offsetFor(index));
+        return maskOutFlags(index, b);
+    }*/
+
+    private boolean flag(int index, int mask) {
+        final byte b = UNSAFE.getByteVolatile(flags, offsetFor(index));
+        return (maskOutFlags(index, b) & mask) == mask;
     }
 
-    private void flags(int index, byte value) {
-        UNSAFE.putByteVolatile(flags, offsetFor(index), value);
+    private void clearFlags(int index) {
+        final long offset = offsetFor(index);
+        final int shifts = shiftsFor(index);
+        // Clear the flags without touching flags for other indices
+        UNSAFE.getAndBitwiseAndByte(flags, offset, (byte) (BIT_MASK << shifts));
     }
 
-    private static long offsetFor(long index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * index;
+    private static long offsetFor(int index) {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * index / FLAGS_PER_BYTE;
+    }
+
+    private static byte maskFor(int index, int bit) {
+        assert bit > 0 && bit < BITS_PER_FLAG;
+        return (byte) (1 << (shiftsFor(index) + bit));
+    }
+
+    private static int shiftsFor(int index) {
+        return (index % Byte.SIZE) * BITS_PER_FLAG;
+    }
+
+    private static byte maskOutFlags(int index, byte b) {
+        return (byte) ((b >>> shiftsFor(index)) & BIT_MASK);
+    }
+
+    @FunctionalInterface
+    interface BackoffStrategy {
+
+        void backoff();
+
+        default BackoffStrategy andThen(BackoffStrategy next) {
+            return new BackoffStrategy() {
+                @Override
+                public void backoff() {
+                    backoff();
+                    next.backoff();
+                }
+            };
+        }
+
+        static BackoffStrategy ofBusy(int iterations) {
+            return new OfBusy(iterations);
+        }
+
+        static BackoffStrategy ofYield(int iterations) {
+            return new OfYield(iterations);
+        }
+
+        static BackoffStrategy ofProgressiveSleep(long initialSleepNs) {
+            return new OfProgressiveSleep(initialSleepNs);
+        }
+
+        final class OfBusy implements BackoffStrategy {
+            int iteration;
+
+            OfBusy(int iterations) {
+                this.iteration = iterations;
+            }
+
+            @Override
+            public void backoff() {
+                if (iteration-- != 0)
+                    Thread.onSpinWait();
+            }
+        }
+
+        final class OfYield implements BackoffStrategy {
+            int iteration;
+
+            OfYield(int iteration) {
+                this.iteration = iteration;
+            }
+
+            @Override
+            public void backoff() {
+                if (iteration-- != 0) {
+                    Thread.yield();
+                }
+            }
+        }
+
+        // Truncated exponential backoff
+        final class OfProgressiveSleep implements BackoffStrategy {
+            private static final long MAX_SLEEP_TIME_NS = TimeUnit.MILLISECONDS.toNanos(7);
+            long sleepTimeNs;
+
+            OfProgressiveSleep(long sleepTimeNs) {
+                this.sleepTimeNs = sleepTimeNs;
+            }
+
+            @Override
+            public void backoff() {
+                LockSupport.parkNanos(sleepTimeNs);
+                sleepTimeNs = Math.min(MAX_SLEEP_TIME_NS, sleepTimeNs << 1);
+            }
+        }
+
     }
 
 }
