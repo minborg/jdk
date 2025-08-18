@@ -39,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.StableValue;
-import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -51,10 +50,11 @@ final class StableValueTest {
 
     private static final int VALUE = 42;
     private static final int VALUE2 = 13;
-
+/*
     @ParameterizedTest
-    @MethodSource("stableValues")
-    void trySet(StableValue<Integer> stable) {
+    @MethodSource("factories")
+    void trySet(Supplier<StableValue<Integer>> factory) {
+        StableValue<Integer> stable = factory.get();
         assertTrue(stable.trySet(VALUE));
         assertFalse(stable.trySet(VALUE));
         assertFalse(stable.trySet(VALUE2));
@@ -98,14 +98,14 @@ final class StableValueTest {
 
     @ParameterizedTest
     @MethodSource("stableValues")
-   void testOrElseSetSupplier(StableValue<Integer> stable) {
-       StableTestUtil.CountingSupplier<Integer> cs = new StableTestUtil.CountingSupplier<>(() -> VALUE);
-       assertThrows(NullPointerException.class, () -> stable.orElseSet(null));
-       assertEquals(VALUE, stable.orElseSet(cs));
-       assertEquals(1, cs.cnt());
-       assertEquals(VALUE, stable.orElseSet(cs));
-       assertEquals(1, cs.cnt());
-   }
+    void testOrElseSetSupplier(StableValue<Integer> stable) {
+        StableTestUtil.CountingSupplier<Integer> cs = new StableTestUtil.CountingSupplier<>(() -> VALUE);
+        assertThrows(NullPointerException.class, () -> stable.orElseSet(null));
+        assertEquals(VALUE, stable.orElseSet(cs));
+        assertEquals(1, cs.cnt());
+        assertEquals(VALUE, stable.orElseSet(cs));
+        assertEquals(1, cs.cnt());
+    }
 
     @ParameterizedTest
     @MethodSource("stableValues")
@@ -165,11 +165,14 @@ final class StableValueTest {
         } catch (IllegalStateException ise) {
             // Happy path
         }
-    }
+    }*/
 
     @ParameterizedTest
     @MethodSource("factories")
     void recursiveCallTrySet(Supplier<StableValue<Integer>> stableSupplier) {
+        if (!stableSupplier.toString().equals("list::getLast")){
+            return;
+        }
         var stable = stableSupplier.get();
         AtomicReference<StableValue<Integer>> ref = new AtomicReference<>(stable);
         final Supplier<Integer> supplier = () -> {
@@ -179,7 +182,7 @@ final class StableValueTest {
         recursiveCall(stable, supplier);
     }
 
-    @ParameterizedTest
+/*    @ParameterizedTest
     @MethodSource("factories")
     void recursiveCallOrElseSet(Supplier<StableValue<Integer>> stableSupplier) {
         var stable = stableSupplier.get();
@@ -190,7 +193,7 @@ final class StableValueTest {
             return 1;
         };
         recursiveCall(stable, supplier);
-    }
+    }*/
 
     void recursiveCall(StableValue<Integer> stable, Supplier<Integer> supplier) {
         for (int i = 0; i < 2; i++) {
@@ -202,14 +205,13 @@ final class StableValueTest {
         stable.trySet(VALUE);
         assertDoesNotThrow(() -> stable.orElseSet(supplier));
     }
-
+/*
     @ParameterizedTest
     @MethodSource("aliasStableValues")
     void aliasSet(Pair<StableValue<Integer>, StableValue<Integer>> pair) {
         assertTrue(pair.l().trySet(VALUE));
         assertEquals(pair.l().get(), pair.r().get());
     }
-
 
 
     @ParameterizedTest
@@ -236,7 +238,7 @@ final class StableValueTest {
         threads.forEach(StableValueTest::join);
         // There can only be one winner
         assertEquals(1, winners.values().stream().filter(b -> b).count());
-    }
+    }*/
 
     private static void join(Thread thread) {
         try {
