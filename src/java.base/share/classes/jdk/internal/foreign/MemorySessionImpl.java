@@ -79,6 +79,7 @@ public abstract sealed class MemorySessionImpl
 
     final ResourceList resourceList;
     final Thread owner;
+    final long accessToken;
 
     @Stable
     int state;
@@ -96,8 +97,9 @@ public abstract sealed class MemorySessionImpl
 
     public final boolean isCloseableBy(Thread thread) {
         Objects.requireNonNull(thread);
+        final long accessToken = this.accessToken;
         return isCloseable() &&
-                (owner == null || owner == thread);
+                (accessToken == 0 || accessToken == thread.accessToken());
     }
 
     public void addCloseAction(Runnable runnable) {
@@ -135,8 +137,9 @@ public abstract sealed class MemorySessionImpl
         resourceList.add(resource);
     }
 
-    protected MemorySessionImpl(Thread owner, ResourceList resourceList) {
+    protected MemorySessionImpl(Thread owner, long accessToken, ResourceList resourceList) {
         this.owner = owner;
+        this.accessToken = accessToken;
         this.resourceList = resourceList;
     }
 
@@ -171,12 +174,13 @@ public abstract sealed class MemorySessionImpl
     }
 
     public final Thread ownerThread() {
-        return owner;
+        return owner; // The thread that *created* the session
     }
 
     public final boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
-        return owner == null || owner == thread;
+        final long accessToken = this.accessToken;
+        return accessToken == 0 || accessToken == thread.accessToken();
     }
 
     /**
@@ -197,7 +201,8 @@ public abstract sealed class MemorySessionImpl
      */
     @ForceInline
     public void checkValidStateRaw() {
-        if (owner != null && owner != Thread.currentThread()) {
+        final long accessToken = this.accessToken;
+        if (accessToken != 0 && accessToken != Thread.currentThread().accessToken()) {
             throw WRONG_THREAD;
         }
         if (state < OPEN) {

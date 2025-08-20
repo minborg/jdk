@@ -44,7 +44,7 @@ final class ConfinedSession extends MemorySessionImpl {
     static final VarHandle ASYNC_RELEASE_COUNT= MhUtil.findVarHandle(MethodHandles.lookup(), "asyncReleaseCount", int.class);
 
     public ConfinedSession(Thread owner) {
-        super(owner, new ConfinedResourceList());
+        super(owner, owner.accessToken(), new ConfinedResourceList());
     }
 
     @Override
@@ -60,7 +60,7 @@ final class ConfinedSession extends MemorySessionImpl {
     @Override
     @ForceInline
     public void release0() {
-        if (Thread.currentThread() == owner) {
+        if (Thread.currentThread().accessToken() == accessToken) {
             acquireCount--;
         } else {
             // It is possible to end up here in two cases: this session was kept alive by some other confined session

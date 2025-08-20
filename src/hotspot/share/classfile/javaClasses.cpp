@@ -1685,6 +1685,7 @@ int java_lang_Thread::_jvmti_is_in_VTMS_transition_offset;
 int java_lang_Thread::_interrupted_offset;
 int java_lang_Thread::_interruptLock_offset;
 int java_lang_Thread::_tid_offset;
+int java_lang_Thread::_access_token_offset;
 int java_lang_Thread::_continuation_offset;
 int java_lang_Thread::_park_blocker_offset;
 int java_lang_Thread::_scopedValueBindings_offset;
@@ -1698,6 +1699,7 @@ JFR_ONLY(int java_lang_Thread::_jfr_epoch_offset;)
   macro(_interrupted_offset,   k, "interrupted", bool_signature, false); \
   macro(_interruptLock_offset, k, "interruptLock", object_signature, false); \
   macro(_tid_offset,           k, "tid", long_signature, false); \
+  macro(_access_token_offset,  k, "accessToken", long_signature, false); \
   macro(_park_blocker_offset,  k, "parkBlocker", object_signature, false); \
   macro(_continuation_offset,  k, "cont", continuation_signature, false); \
   macro(_scopedValueBindings_offset, k, "scopedValueBindings", object_signature, false);
@@ -1893,6 +1895,10 @@ JavaThreadStatus java_lang_Thread::get_thread_status(oop java_thread) {
 
 ByteSize java_lang_Thread::thread_id_offset() {
   return in_ByteSize(_tid_offset);
+}
+
+ByteSize java_lang_Thread::access_token_offset() {
+  return in_ByteSize(_access_token_offset);
 }
 
 oop java_lang_Thread::park_blocker(oop java_thread) {

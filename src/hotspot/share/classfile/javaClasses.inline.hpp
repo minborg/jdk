@@ -215,6 +215,10 @@ inline int64_t java_lang_Thread::thread_id(oop java_thread) {
   return java_thread->long_field(_tid_offset);
 }
 
+inline int64_t java_lang_Thread::access_token(oop java_thread) {
+  return java_thread->long_field(_access_token_offset);
+}
+
 inline oop java_lang_VirtualThread::vthread_scope() {
   oop base = vmClasses::VirtualThread_klass()->static_field_base_raw();
   return base->obj_field(static_vthread_scope_offset);

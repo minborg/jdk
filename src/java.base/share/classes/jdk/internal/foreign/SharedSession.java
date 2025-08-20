@@ -48,7 +48,7 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
     private static final int CLOSED_ACQUIRE_COUNT = -1;
 
     SharedSession() {
-        super(null, new SharedResourceList());
+        super(null, 0, new SharedResourceList());
     }
 
     @Override

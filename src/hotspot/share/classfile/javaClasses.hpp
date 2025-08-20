@@ -393,6 +393,7 @@ class java_lang_Thread : AllStatic {
   static int _interrupted_offset;
   static int _interruptLock_offset;
   static int _tid_offset;
+  static int _access_token_offset;
   static int _continuation_offset;
   static int _park_blocker_offset;
   static int _scopedValueBindings_offset;
@@ -437,6 +438,9 @@ class java_lang_Thread : AllStatic {
   // Thread ID
   static int64_t thread_id(oop java_thread);
   static ByteSize thread_id_offset();
+  // Access token
+  static int64_t access_token(oop java_thread);
+  static ByteSize access_token_offset();
   // Continuation
   static inline oop continuation(oop java_thread);
 

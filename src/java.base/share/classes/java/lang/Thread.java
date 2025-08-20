@@ -234,6 +234,10 @@ public class Thread implements Runnable {
     // context ClassLoader
     private volatile ClassLoader contextClassLoader;
 
+    // Used for FFM access validation. By default, equals `-tid` if not specified
+    @Stable
+    private final long accessToken;
+
     // Additional fields for platform threads.
     // All fields, except task and terminatingThreadLocals, are accessed directly by the VM.
     private static class FieldHolder {
@@ -683,7 +687,7 @@ public class Thread implements Runnable {
      * @param stackSize the desired stack size for the new thread, or
      *        zero to indicate that this parameter is to be ignored.
      */
-    Thread(ThreadGroup g, String name, int characteristics, Runnable task, long stackSize) {
+    Thread(ThreadGroup g, String name, int characteristics, Runnable task, long stackSize, long accessToken) {
 
         Thread parent = currentThread();
         boolean attached = (parent == this);   // primordial or JNI attached
@@ -709,6 +713,7 @@ public class Thread implements Runnable {
         }
 
         this.name = (name != null) ? name : genThreadName();
+        this.accessToken = accessTokenOrDefault(accessToken, tid);
 
         // thread locals
         if (!attached) {
@@ -738,9 +743,10 @@ public class Thread implements Runnable {
      * @param characteristics thread characteristics
      * @param bound true when bound to an OS thread
      */
-    Thread(String name, int characteristics, boolean bound) {
+    Thread(String name, int characteristics, boolean bound, long accessToken) {
         this.tid = ThreadIdentifiers.next();
         this.name = (name != null) ? name : "";
+        this.accessToken = accessTokenOrDefault(accessToken, tid);
 
         // thread locals
         if ((characteristics & NO_INHERIT_THREAD_LOCALS) == 0) {
@@ -766,6 +772,10 @@ public class Thread implements Runnable {
         } else {
             this.holder = null;
         }
+    }
+
+    private static long accessTokenOrDefault(long accessToken, long tid) {
+        return accessToken == 0 ? -tid : accessToken;
     }
 
     /**
@@ -893,6 +903,13 @@ public class Thread implements Runnable {
          * @return this builder
          */
         Builder uncaughtExceptionHandler(UncaughtExceptionHandler ueh);
+
+        /**
+         * Sets the FFM access token.
+         * @param accessToken for confined FFM access
+         * @return this builder
+         */
+        Builder accessToken(long accessToken);
 
         /**
          * Creates a new {@code Thread} from the current state of the builder to
@@ -1091,7 +1108,7 @@ public class Thread implements Runnable {
      * @see <a href="#inheritance">Inheritance when creating threads</a>
      */
     public Thread() {
-        this(null, null, 0, null, 0);
+        this(null, null, 0, null, 0, 0);
     }
 
     /**
@@ -1112,7 +1129,7 @@ public class Thread implements Runnable {
      * @see <a href="#inheritance">Inheritance when creating threads</a>
      */
     public Thread(Runnable task) {
-        this(null, null, 0, task, 0);
+        this(null, null, 0, task, 0, 0);
     }
 
     /**
@@ -1137,7 +1154,7 @@ public class Thread implements Runnable {
      * @see <a href="#inheritance">Inheritance when creating threads</a>
      */
     public Thread(ThreadGroup group, Runnable task) {
-        this(group, null, 0, task, 0);
+        this(group, null, 0, task, 0, 0);
     }
 
     /**
@@ -1154,7 +1171,7 @@ public class Thread implements Runnable {
      * @see <a href="#inheritance">Inheritance when creating threads</a>
      */
     public Thread(String name) {
-        this(null, checkName(name), 0, null, 0);
+        this(null, checkName(name), 0, null, 0, 0);
     }
 
     /**
@@ -1175,7 +1192,7 @@ public class Thread implements Runnable {
      * @see <a href="#inheritance">Inheritance when creating threads</a>
      */
     public Thread(ThreadGroup group, String name) {
-        this(group, checkName(name), 0, null, 0);
+        this(group, checkName(name), 0, null, 0, 0);
     }
 
     /**
@@ -1197,7 +1214,7 @@ public class Thread implements Runnable {
      * @see <a href="#inheritance">Inheritance when creating threads</a>
      */
     public Thread(Runnable task, String name) {
-        this(null, checkName(name), 0, task, 0);
+        this(null, checkName(name), 0, task, 0, 0);
     }
 
     /**
@@ -1233,7 +1250,7 @@ public class Thread implements Runnable {
      * @see <a href="#inheritance">Inheritance when creating threads</a>
      */
     public Thread(ThreadGroup group, Runnable task, String name) {
-        this(group, checkName(name), 0, task, 0);
+        this(group, checkName(name), 0, task, 0, 0);
     }
 
     /**
@@ -1307,7 +1324,7 @@ public class Thread implements Runnable {
      * @see <a href="#inheritance">Inheritance when creating threads</a>
      */
     public Thread(ThreadGroup group, Runnable task, String name, long stackSize) {
-        this(group, checkName(name), 0, task, stackSize);
+        this(group, checkName(name), 0, task, stackSize, 0);
     }
 
     /**
@@ -1367,7 +1384,7 @@ public class Thread implements Runnable {
                   long stackSize, boolean inheritInheritableThreadLocals) {
         this(group, checkName(name),
                 (inheritInheritableThreadLocals ? 0 : NO_INHERIT_THREAD_LOCALS),
-                task, stackSize);
+                task, stackSize, 0);
     }
 
     /**
@@ -1383,7 +1400,7 @@ public class Thread implements Runnable {
      */
     public static Thread startVirtualThread(Runnable task) {
         Objects.requireNonNull(task);
-        var thread = ThreadBuilders.newVirtualThread(null, null, 0, task);
+        var thread = ThreadBuilders.newVirtualThread(null, null, 0, task, 0);
         thread.start();
         return thread;
     }
@@ -2292,6 +2309,14 @@ public class Thread implements Runnable {
      */
     public final long threadId() {
         return tid;
+    }
+
+    /**
+     * {@return the FFM access token for this Thread}
+     * @since 26
+     */
+    public final long accessToken() {
+        return accessToken;
     }
 
     /**

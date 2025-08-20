@@ -37,7 +37,7 @@ import java.util.Objects;
 non-sealed class GlobalSession extends MemorySessionImpl {
 
     public GlobalSession() {
-        super(null, null);
+        super(null, 0, null);
         this.state = NONCLOSEABLE;
     }
 

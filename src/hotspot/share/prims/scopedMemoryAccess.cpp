@@ -140,6 +140,12 @@ public:
   void do_thread(Thread* thread) {
     JavaThread* jt = JavaThread::cast(thread);
 
+/*
+    if (java_lang_Thread::access_token(jt) != ... ) {
+        return;
+    }
+*/
+
     if (!jt->has_last_Java_frame()) {
       // No frames; not in a scoped memory access
       return;

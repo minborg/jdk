@@ -37,8 +37,8 @@ abstract sealed class BaseVirtualThread extends Thread
      * @param characteristics thread characteristics
      * @param bound true when bound to an OS thread
      */
-    BaseVirtualThread(String name, int characteristics, boolean bound) {
-        super(name, characteristics, bound);
+    BaseVirtualThread(String name, int characteristics, boolean bound, long accessToken) {
+        super(name, characteristics, bound, accessToken);
     }
 
     /**

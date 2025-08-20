@@ -33,6 +33,8 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
+
+import jdk.internal.foreign.Utils;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.vm.ContinuationSupport;
@@ -51,6 +53,7 @@ class ThreadBuilders {
         private long counter;
         private int characteristics;
         private UncaughtExceptionHandler uhe;
+        private long accessToken;
 
         String name() {
             return name;
@@ -62,6 +65,10 @@ class ThreadBuilders {
 
         int characteristics() {
             return characteristics;
+        }
+
+        long accessToken() {
+            return accessToken;
         }
 
         UncaughtExceptionHandler uncaughtExceptionHandler() {
@@ -100,6 +107,14 @@ class ThreadBuilders {
         void setUncaughtExceptionHandler(UncaughtExceptionHandler ueh) {
             this.uhe = Objects.requireNonNull(ueh);
         }
+
+        void setAccessToken(long accessToken) {
+            if (accessToken < 1) {
+                throw new IllegalArgumentException("An access token must be positive: " + accessToken);
+            }
+            this.accessToken = accessToken;
+        }
+
     }
 
     /**
@@ -147,6 +162,12 @@ class ThreadBuilders {
         }
 
         @Override
+        public Thread.Builder accessToken(long accessToken) {
+            setAccessToken(accessToken);
+            return this;
+        }
+
+        @Override
         public OfPlatform group(ThreadGroup group) {
             this.group = Objects.requireNonNull(group);
             return this;
@@ -179,7 +200,7 @@ class ThreadBuilders {
         public Thread unstarted(Runnable task) {
             Objects.requireNonNull(task);
             String name = nextThreadName();
-            var thread = new Thread(group, name, characteristics(), task, stackSize);
+            var thread = new Thread(group, name, characteristics(), task, stackSize, accessToken());
             if (daemonChanged)
                 thread.daemon(daemon);
             if (priority != 0)
@@ -200,7 +221,7 @@ class ThreadBuilders {
         @Override
         public ThreadFactory factory() {
             return new PlatformThreadFactory(group, name(), counter(), characteristics(),
-                    daemonChanged, daemon, priority, stackSize, uncaughtExceptionHandler());
+                    daemonChanged, daemon, priority, stackSize, uncaughtExceptionHandler(), accessToken());
         }
 
     }
@@ -247,9 +268,15 @@ class ThreadBuilders {
         }
 
         @Override
+        public Thread.Builder accessToken(long accessToken) {
+            setAccessToken(accessToken);
+            return this;
+        }
+
+        @Override
         public Thread unstarted(Runnable task) {
             Objects.requireNonNull(task);
-            var thread = newVirtualThread(scheduler, nextThreadName(), characteristics(), task);
+            var thread = newVirtualThread(scheduler, nextThreadName(), characteristics(), task, accessToken());
             UncaughtExceptionHandler uhe = uncaughtExceptionHandler();
             if (uhe != null)
                 thread.uncaughtExceptionHandler(uhe);
@@ -266,7 +293,7 @@ class ThreadBuilders {
         @Override
         public ThreadFactory factory() {
             return new VirtualThreadFactory(scheduler, name(), counter(), characteristics(),
-                    uncaughtExceptionHandler());
+                    uncaughtExceptionHandler(), accessToken());
         }
     }
 
@@ -280,6 +307,7 @@ class ThreadBuilders {
         private final String name;
         private final int characteristics;
         private final UncaughtExceptionHandler uhe;
+        private final long accessToken;
 
         private final boolean hasCounter;
         private volatile long count;
@@ -287,7 +315,8 @@ class ThreadBuilders {
         BaseThreadFactory(String name,
                           long start,
                           int characteristics,
-                          UncaughtExceptionHandler uhe)  {
+                          UncaughtExceptionHandler uhe,
+                          long accessToken)  {
             this.name = name;
             if (name != null && start >= 0) {
                 this.hasCounter = true;
@@ -297,6 +326,7 @@ class ThreadBuilders {
             }
             this.characteristics = characteristics;
             this.uhe = uhe;
+            this.accessToken = accessToken;
         }
 
         int characteristics() {
@@ -305,6 +335,10 @@ class ThreadBuilders {
 
         UncaughtExceptionHandler uncaughtExceptionHandler() {
             return uhe;
+        }
+
+        long accessToken() {
+            return accessToken;
         }
 
         String nextThreadName() {
@@ -334,8 +368,9 @@ class ThreadBuilders {
                               boolean daemon,
                               int priority,
                               long stackSize,
-                              UncaughtExceptionHandler uhe) {
-            super(name, start, characteristics, uhe);
+                              UncaughtExceptionHandler uhe,
+                              long accessToken) {
+            super(name, start, characteristics, uhe, accessToken);
             this.group = group;
             this.daemonChanged = daemonChanged;
             this.daemon = daemon;
@@ -353,7 +388,7 @@ class ThreadBuilders {
         public Thread newThread(Runnable task) {
             Objects.requireNonNull(task);
             String name = nextThreadName();
-            Thread thread = new Thread(group, name, characteristics(), task, stackSize);
+            Thread thread = new Thread(group, name, characteristics(), task, stackSize, accessToken());
             if (daemonChanged)
                 thread.daemon(daemon);
             if (priority != 0)
@@ -375,8 +410,9 @@ class ThreadBuilders {
                              String name,
                              long start,
                              int characteristics,
-                             UncaughtExceptionHandler uhe) {
-            super(name, start, characteristics, uhe);
+                             UncaughtExceptionHandler uhe,
+                             long accessToken) {
+            super(name, start, characteristics, uhe, accessToken);
             this.scheduler = scheduler;
         }
 
@@ -384,7 +420,7 @@ class ThreadBuilders {
         public Thread newThread(Runnable task) {
             Objects.requireNonNull(task);
             String name = nextThreadName();
-            Thread thread = newVirtualThread(scheduler, name, characteristics(), task);
+            Thread thread = newVirtualThread(scheduler, name, characteristics(), task, accessToken());
             UncaughtExceptionHandler uhe = uncaughtExceptionHandler();
             if (uhe != null)
                 thread.uncaughtExceptionHandler(uhe);
@@ -398,13 +434,14 @@ class ThreadBuilders {
     static Thread newVirtualThread(Executor scheduler,
                                    String name,
                                    int characteristics,
-                                   Runnable task) {
+                                   Runnable task,
+                                   long accessToken) {
         if (ContinuationSupport.isSupported()) {
-            return new VirtualThread(scheduler, name, characteristics, task);
+            return new VirtualThread(scheduler, name, characteristics, task, accessToken);
         } else {
             if (scheduler != null)
                 throw new UnsupportedOperationException();
-            return new BoundVirtualThread(name, characteristics, task);
+            return new BoundVirtualThread(name, characteristics, task, accessToken);
         }
     }
 
@@ -418,8 +455,8 @@ class ThreadBuilders {
         private final Runnable task;
         private boolean runInvoked;
 
-        BoundVirtualThread(String name, int characteristics, Runnable task) {
-            super(name, characteristics, true);
+        BoundVirtualThread(String name, int characteristics, Runnable task, long accessToken) {
+            super(name, characteristics, true, accessToken);
             this.task = task;
         }
 
