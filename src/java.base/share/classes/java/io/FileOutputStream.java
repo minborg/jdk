@@ -26,6 +26,9 @@
 package java.io;
 
 import java.nio.channels.FileChannel;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
@@ -83,7 +86,22 @@ public class FileOutputStream extends OutputStream
     /**
      * The associated channel, initialized lazily.
      */
-    private volatile FileChannel channel;
+    private final ComputedConstant<FileChannel> channel = ComputedConstant.of(new Supplier<>() {
+        @Override
+        public FileChannel get() {
+            final FileChannel fc = FileChannelImpl.open(fd, path, false, true, false, false, FileOutputStream.this);
+            if (closed.get()) {
+                try {
+                    // possible race with close(), benign since
+                    // FileChannel.close is final and idempotent
+                    fc.close();
+                } catch (IOException ioe) {
+                    throw new InternalError(ioe); // should not happen
+                }
+            }
+            return fc;
+        }
+    });
 
     /**
      * The path of the referenced file
@@ -91,9 +109,9 @@ public class FileOutputStream extends OutputStream
      */
     private final String path;
 
-    private final Object closeLock = new Object();
-
-    private volatile boolean closed;
+    // Unable to use CC in a clever way here.
+    // We could use an AtomicIntegerFieldUpdater as well if we want zero overhead per instance.
+    private final AtomicBoolean closed = new AtomicBoolean();
 
     /**
      * Creates a file output stream to write to the file with the
@@ -377,28 +395,19 @@ public class FileOutputStream extends OutputStream
      */
     @Override
     public void close() throws IOException {
-        if (closed) {
-            return;
-        }
-        synchronized (closeLock) {
-            if (closed) {
-                return;
+        if (closed.compareAndSet(false, true)) {
+            if (channel.isSet()) {
+                // possible race with getChannel(), benign since
+                // FileChannel.close is final and idempotent
+                channel.get().close();
             }
-            closed = true;
-        }
 
-        FileChannel fc = channel;
-        if (fc != null) {
-            // possible race with getChannel(), benign since
-            // FileChannel.close is final and idempotent
-            fc.close();
+            fd.closeAll(new Closeable() {
+                public void close() throws IOException {
+                    fd.close();
+                }
+            });
         }
-
-        fd.closeAll(new Closeable() {
-            public void close() throws IOException {
-               fd.close();
-           }
-        });
     }
 
     /**
@@ -435,26 +444,7 @@ public class FileOutputStream extends OutputStream
      * @since 1.4
      */
     public FileChannel getChannel() {
-        FileChannel fc = this.channel;
-        if (fc == null) {
-            synchronized (this) {
-                fc = this.channel;
-                if (fc == null) {
-                    fc = FileChannelImpl.open(fd, path, false, true, false, false, this);
-                    this.channel = fc;
-                    if (closed) {
-                        try {
-                            // possible race with close(), benign since
-                            // FileChannel.close is final and idempotent
-                            fc.close();
-                        } catch (IOException ioe) {
-                            throw new InternalError(ioe); // should not happen
-                        }
-                    }
-                }
-            }
-        }
-        return fc;
+        return channel.get();
     }
 
     private static native void initIDs();

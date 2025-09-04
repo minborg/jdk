@@ -26,6 +26,7 @@
 package java.io;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This class is the superclass of all classes that filter output
@@ -52,12 +53,9 @@ public class FilterOutputStream extends OutputStream {
     /**
      * Whether the stream is closed; implicitly initialized to false.
      */
-    private volatile boolean closed;
-
-    /**
-     * Object used to prevent a race on the 'closed' instance variable.
-     */
-    private final Object closeLock = new Object();
+    // Unable to use CC in a clever way here.
+    // We could use an AtomicIntegerFieldUpdater as well if we want zero overhead per instance.
+    private final AtomicBoolean closed = new AtomicBoolean();
 
     /**
      * Creates an output stream filter built on top of the specified
@@ -169,33 +167,25 @@ public class FilterOutputStream extends OutputStream {
      */
     @Override
     public void close() throws IOException {
-        if (closed) {
-            return;
-        }
-        synchronized (closeLock) {
-            if (closed) {
-                return;
-            }
-            closed = true;
-        }
-
-        Throwable flushException = null;
-        try {
-            flush();
-        } catch (Throwable e) {
-            flushException = e;
-            throw e;
-        } finally {
-            if (flushException == null) {
-                out.close();
-            } else {
-                try {
+        if (closed.compareAndSet(false, true)) {
+            Throwable flushException = null;
+            try {
+                flush();
+            } catch (Throwable e) {
+                flushException = e;
+                throw e;
+            } finally {
+                if (flushException == null) {
                     out.close();
-                } catch (Throwable closeException) {
-                    if (flushException != closeException) {
-                        closeException.addSuppressed(flushException);
+                } else {
+                    try {
+                        out.close();
+                    } catch (Throwable closeException) {
+                        if (flushException != closeException) {
+                            closeException.addSuppressed(flushException);
+                        }
+                        throw closeException;
                     }
-                    throw closeException;
                 }
             }
         }

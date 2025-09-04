@@ -32,6 +32,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -175,7 +176,7 @@ import java.util.function.Supplier;
  * @since 26
  */
 @PreviewFeature(feature = PreviewFeature.Feature.STABLE_VALUES)
-public sealed interface ComputedConstant<T> permits ComputedConstantImpl {
+public sealed interface ComputedConstant<T> permits ComputedConstant.OfDeferred, ComputedConstantImpl {
 
     /**
      * {@return the set constant. If not set, first computes and sets the constant}
@@ -205,6 +206,94 @@ public sealed interface ComputedConstant<T> permits ComputedConstantImpl {
      *          {@code this} object}
      */
     int hashCode();
+
+    /**
+     * TBW
+     * @param <T> type of the constant
+     */
+    sealed interface OfDeferred<T> extends ComputedConstant<T> permits ComputedConstantImpl {
+
+        /**
+         * {@return the constant; if unset, first attempts to compute and set the
+         *          constant using the provided {@code supplier}}
+         * <p>
+         * The provided {@code supplier} is guaranteed to be invoked at most once if it
+         * completes without throwing an exception. If this method is invoked several times
+         * with different suppliers, only one of them will be invoked provided it completes
+         * without throwing an exception.
+         * <p>
+         * If the supplier throws an (unchecked) exception, the exception is rethrown and
+         * the constant is not set. The most common usage is to construct a new object
+         * serving as a lazily computed value or memoized result, as in:
+         *
+         * {@snippet lang=java:
+         * Value v = ofDeferred.orElseSet(Value::new);
+         * }
+         * <p>
+         * When this method returns successfully, the constant is always set.
+         * <p>
+         * The provided {@code supplier} will only be invoked once even if invoked from
+         * several threads unless the {@code supplier} throws an exception.
+         * <p>
+         * If the provided {@code supplier} returns {@code null},
+         * a {@linkplain NullPointerException} is thrown.
+         *
+         * @param  supplier to be used for computing the constant, if not previously set
+         * @throws IllegalStateException if the provided {@code supplier} recursively
+         *                               attempts to set this constant
+         */
+        T orElseSet(Supplier<? extends T> supplier);
+
+        /**
+         * {@return the constant; if unset, first attempts to compute and set the
+         *          constant using the provided {@code input} and {@code mapper}}
+         * <p>
+         * The provided {@code mapper} is guaranteed to be invoked at most once if it
+         * completes without throwing an exception. If this method is invoked several times
+         * with different mappers, only one of them will be invoked provided it completes
+         * without throwing an exception.
+         * <p>
+         * If the mapper throws an (unchecked) exception, the exception is rethrown and
+         * the constant is not set. The most common usage is to construct a new object
+         * serving as a lazily computed value or memoized result, as in:
+         *
+         * {@snippet lang=java:
+         * Value v = ofDeferred.orElseSet(this, t -> new Value(t));
+         * }
+         * <p>
+         * When this method returns successfully, the constant is always set.
+         * <p>
+         * The provided {@code mapper} will only be invoked once even if invoked from
+         * several threads unless the {@code mapper} throws an exception.
+         * <p>
+         * If the provided {@code mapper} returns {@code null},
+         * a {@linkplain NullPointerException} is thrown.
+         *
+         * @param  input to be used by the mapper
+         * @param  mapper to be used for computing the constant, if not previously set
+         * @param <I> input type
+         * @throws IllegalStateException if the provided {@code supplier} recursively
+         *                               attempts to set this constant
+         */
+        <I> T orElseSet(I input, Function<? super I, ? extends T> mapper);
+
+        /**
+         * Tries to set the constant to the provided {@code value}.
+         * The constant can only be set once, implying this method only
+         * returns {@code true} once.
+         * <p>
+         * When this method returns, the constant is always set.
+         *
+         * @return {@code true} if the constant was set to the
+         *         provided {@code value}, {@code false} otherwise
+         * @param value to set
+         * @throws IllegalStateException if a supplier invoked by {@link #orElseSet(Supplier)}
+         *         recursively attempts to set this stable value by calling this method
+         *         directly or indirectly
+         * @throws NullPointerException if the provided {@code content} is {@code null}
+         */
+        boolean trySet(T value);
+    }
 
     // Factories
 
@@ -266,6 +355,23 @@ public sealed interface ComputedConstant<T> permits ComputedConstantImpl {
     static <T> ComputedConstant<T> ofPreset(T constant) {
         Objects.requireNonNull(constant);
         return ComputedConstantImpl.ofPreset(constant);
+    }
+
+    /**
+     * {@return a new computed constant where the supplier for computing the constant
+     *          will be provided later.}
+     * <p>
+     * As the returned computed constant is a stable constant, it confers certain
+     * performance optimization opportunities to the VM.
+     *
+     * @param <T>      type of the constant
+     *
+     * @see StableValue
+     * @since 26
+     */
+    @PreviewFeature(feature = PreviewFeature.Feature.STABLE_VALUES)
+    static <T> ComputedConstant.OfDeferred<T> ofDeferred() {
+        return ComputedConstantImpl.ofDeferred();
     }
 
 }

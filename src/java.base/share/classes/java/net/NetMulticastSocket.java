@@ -31,6 +31,8 @@ import java.util.Enumeration;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /**
  * A multicast datagram socket that delegates socket operations to a
@@ -44,9 +46,13 @@ final class NetMulticastSocket extends MulticastSocket {
      * Various states of this socket.
      */
     private boolean bound = false;
-    private boolean closed = false;
+    private final ComputedConstant.OfDeferred<Boolean> closed = ComputedConstant.ofDeferred();
+    // Other alternative
+    private final AtomicBoolean created = new AtomicBoolean();
+
+    /*private boolean closed = false;
     private volatile boolean created;
-    private final Object closeLock = new Object();
+    private final Object closeLock = new Object();*/
 
     /*
      * The implementation of this DatagramSocket.
@@ -142,13 +148,8 @@ final class NetMulticastSocket extends MulticastSocket {
      * @since 1.4
      */
     final DatagramSocketImpl getImpl() throws SocketException {
-        if (!created) {
-            synchronized (this) {
-                if (!created)  {
-                    impl.create();
-                    created = true;
-                }
-            }
+        if (!created.compareAndSet(false, true)) {
+            impl.create();
         }
         return impl;
     }
@@ -502,19 +503,14 @@ final class NetMulticastSocket extends MulticastSocket {
 
     @Override
     public void close() {
-        synchronized (closeLock) {
-            if (isClosed())
-                return;
+        if (closed.trySet(true)) {
             impl.close();
-            closed = true;
         }
     }
 
     @Override
     public boolean isClosed() {
-        synchronized (closeLock) {
-            return closed;
-        }
+        return closed.isSet();
     }
 
     @Override
@@ -536,27 +532,22 @@ final class NetMulticastSocket extends MulticastSocket {
         return getImpl().getOption(name);
     }
 
-    private volatile Set<SocketOption<?>> options;
-    private final Object optionsLock = new Object();
-
+    private final ComputedConstant<Set<SocketOption<?>>> options = ComputedConstant.of(
+            new Supplier<>() {
+                @Override
+                public Set<SocketOption<?>> get() {
+                    try {
+                        DatagramSocketImpl impl = getImpl();
+                        return Collections.unmodifiableSet(impl.supportedOptions());
+                    } catch (IOException e) {
+                        return Collections.emptySet();
+                    }
+                }
+            }
+    );
     @Override
     public Set<SocketOption<?>> supportedOptions() {
-        Set<SocketOption<?>> options = this.options;
-        if (options != null)
-            return options;
-        synchronized (optionsLock) {
-            options = this.options;
-            if (options != null) {
-                return options;
-            }
-            try {
-                DatagramSocketImpl impl = getImpl();
-                options = Collections.unmodifiableSet(impl.supportedOptions());
-            } catch (IOException e) {
-                options = Collections.emptySet();
-            }
-            return this.options = options;
-        }
+        return options.get();
     }
 
     // Multicast socket support

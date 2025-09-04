@@ -24,6 +24,8 @@
  */
 package jdk.internal.classfile.impl;
 
+import jdk.internal.vm.annotation.Stable;
+
 import java.lang.classfile.*;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.constant.MethodTypeDesc;
@@ -38,7 +40,10 @@ public final class MethodImpl
 
     private final ClassReader reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
+    private final ComputedConstant.OfDeferred<List<Attribute<?>>> attributes;
+
+    // We could use a CC.OD<List<Integer>> here also
+    @Stable
     private int[] parameterSlots;
 
     public MethodImpl(ClassReader reader, int startPos, int endPos, int attrStart) {
@@ -46,6 +51,7 @@ public final class MethodImpl
         this.startPos = startPos;
         this.endPos = endPos;
         this.attributesPos = attrStart;
+        this.attributes = ComputedConstant.ofDeferred();
     }
 
     @Override
@@ -90,10 +96,11 @@ public final class MethodImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes.orElseSet(this, MethodImpl::attributes0);
+    }
+
+    private List<Attribute<?>> attributes0() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

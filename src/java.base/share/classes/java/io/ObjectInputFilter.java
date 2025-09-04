@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -561,10 +563,6 @@ public interface ObjectInputFilter {
      * @since 9
      */
     final class Config {
-        /**
-         * Lock object for filter and filter factory.
-         */
-        private static final Object serialFilterLock = new Object();
 
         /**
          * The property name for the filter.
@@ -581,7 +579,9 @@ public interface ObjectInputFilter {
         /**
          * Current static filter.
          */
-        private static volatile ObjectInputFilter serialFilter;
+        // Here I try to use OfDeferred. Not that smooth it must be said.
+        private static final ComputedConstant.OfDeferred<ObjectInputFilter> serialFilter =
+                ComputedConstant.ofDeferred();
 
         /**
          * Saved message if the jdk.serialFilter property is invalid.
@@ -592,7 +592,9 @@ public interface ObjectInputFilter {
          * Current serial filter factory.
          * @see Config#setSerialFilterFactory(BinaryOperator)
          */
-        private static volatile BinaryOperator<ObjectInputFilter> serialFilterFactory;
+
+        private static final ComputedConstant.OfDeferred<BinaryOperator<ObjectInputFilter>> serialFilterFactory
+                = ComputedConstant.ofDeferred();
 
         /**
          * Saved message if the jdk.serialFilterFactory property is invalid.
@@ -642,7 +644,8 @@ public interface ObjectInputFilter {
                 configLog.log(DEBUG,
                         "Creating deserialization filter from {0}", filterString);
                 try {
-                    serialFilter = createFilter(filterString);
+                    // A trySet() would be useful here
+                    serialFilter.orElseSet(() -> createFilter(filterString));
                 } catch (RuntimeException re) {
                     configLog.log(ERROR,
                             "Error configuring filter: {0}", (Object) re);
@@ -656,7 +659,7 @@ public interface ObjectInputFilter {
             // otherwise use the builtin filter factory.
             String factoryMessage = null;
             if (factoryClassName == null) {
-                serialFilterFactory = new BuiltinFilterFactory();
+                serialFilterFactory.trySet(new BuiltinFilterFactory());
             } else {
                 try {
                     // Load using the system class loader, the named class may be an application class.
@@ -673,7 +676,7 @@ public interface ObjectInputFilter {
                             factoryClass.getConstructor().newInstance(new Object[0]);
                     configLog.log(DEBUG,
                             "Creating deserialization filter factory for {0}", factoryClassName);
-                    serialFilterFactory = factory;
+                    serialFilterFactory.trySet(factory);
                 } catch (RuntimeException | ClassNotFoundException | NoSuchMethodException |
                         IllegalAccessException | InstantiationException | InvocationTargetException ex) {
                     Throwable th = (ex instanceof InvocationTargetException ite) ? ite.getCause() : ex;
@@ -715,7 +718,10 @@ public interface ObjectInputFilter {
             if (invalidFilterMessage != null) {
                 throw new IllegalStateException(invalidFilterMessage);
             }
-            return serialFilter;
+            // An imperative SV with orElse would be better here
+            return serialFilter.isSet()
+                    ? serialFilter.get()
+                    : null;
         }
 
         /**
@@ -731,11 +737,14 @@ public interface ObjectInputFilter {
             if (invalidFilterMessage != null) {
                 throw new IllegalStateException(invalidFilterMessage);
             }
-            synchronized (serialFilterLock) {
-                if (serialFilter != null) {
-                    throw new IllegalStateException("Serial filter can only be set once");
-                }
-                serialFilter = filter;
+            // Again, a trySet would be much better here.
+            final var called = new AtomicBoolean();
+            serialFilter.orElseSet(() -> {
+                called.set(true);
+                return filter;
+            });
+            if (called.get()) {
+                throw new IllegalStateException("Serial filter can only be set once");
             }
         }
 
@@ -764,11 +773,11 @@ public interface ObjectInputFilter {
          * @since 17
          */
         public static BinaryOperator<ObjectInputFilter> getSerialFilterFactory() {
-            if (serialFilterFactory == null) {
+            if (!serialFilter.isSet()) {
                 // If initializing the factory failed or not yet complete, throw with the message
                 throw new IllegalStateException(invalidFilterFactoryMessage());
             }
-            return serialFilterFactory;
+            return serialFilterFactory.get();
         }
 
         /**
@@ -821,14 +830,14 @@ public interface ObjectInputFilter {
         public static void setSerialFilterFactory(BinaryOperator<ObjectInputFilter> filterFactory) {
             Objects.requireNonNull(filterFactory, "filterFactory");
             if (filterFactoryNoReplace.getAndSet(true)) {
-                final String msg = serialFilterFactory != null
+                final String msg = serialFilterFactory.isSet()
                         ? "Cannot replace filter factory: " + serialFilterFactory.getClass().getName()
                         : invalidFilterFactoryMessage();
                 throw new IllegalStateException(msg);
             }
             configLog.log(DEBUG,
                     "Setting deserialization filter factory to {0}", filterFactory.getClass().getName());
-            serialFilterFactory = filterFactory;
+            serialFilterFactory.trySet(filterFactory);
         }
 
         /*
@@ -836,7 +845,7 @@ public interface ObjectInputFilter {
          * It can be called before the static initializer is complete and has set the message/null.
          */
         private static String invalidFilterFactoryMessage() {
-            assert serialFilterFactory == null;     // undefined if a filter factory has been set
+            assert !serialFilterFactory.isSet();     // undefined if a filter factory has been set
             return (invalidFactoryMessage != null)
                 ? invalidFactoryMessage
                 : "Serial filter factory initialization incomplete";

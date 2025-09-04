@@ -391,7 +391,7 @@ public sealed interface ConstantPoolBuilder
             case INTERFACE_STATIC, INTERFACE_VIRTUAL, INTERFACE_SPECIAL -> interfaceMethodRefEntry(owner, nat);
             case STATIC, VIRTUAL, SPECIAL, CONSTRUCTOR -> methodRefEntry(owner, nat);
         });
-        ((AbstractPoolEntry.MethodHandleEntryImpl) ret).sym = descriptor;
+        ((AbstractPoolEntry.MethodHandleEntryImpl) ret).sym.trySet(descriptor);
         return ret;
     }
 

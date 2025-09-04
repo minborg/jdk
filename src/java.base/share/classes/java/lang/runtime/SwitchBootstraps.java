@@ -63,6 +63,8 @@ import static java.lang.invoke.MethodHandles.Lookup.ClassOption.STRONG;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
+
 import static java.util.Objects.requireNonNull;
 import static jdk.internal.constant.ConstantUtils.classDesc;
 import static jdk.internal.constant.ConstantUtils.referenceClassDesc;
@@ -349,57 +351,47 @@ public final class SwitchBootstraps {
         }
 
         if (restartIndex != 0) {
-            MethodHandle generatedSwitch = enumCache.generatedSwitch;
-            if (generatedSwitch == null) {
-                synchronized (enumCache) {
-                    generatedSwitch = enumCache.generatedSwitch;
-
-                    if (generatedSwitch == null) {
-                        generatedSwitch =
-                                generateTypeSwitch(lookup, enumClass, labels)
-                                        .asType(MethodType.methodType(int.class,
-                                                                      Enum.class,
-                                                                      int.class));
-                        enumCache.generatedSwitch = generatedSwitch;
-                    }
-                }
-            }
-
-            return (int) generatedSwitch.invokeExact(value, restartIndex);
-        }
-
-        int[] constantsMap = enumCache.constantsMap;
-
-        if (constantsMap == null) {
-            synchronized (enumCache) {
-                constantsMap = enumCache.constantsMap;
-
-                if (constantsMap == null) {
-                    T[] constants = SharedSecrets.getJavaLangAccess()
-                                                 .getEnumConstantsShared(enumClass);
-                    constantsMap = new int[constants.length];
-                    int ordinal = 0;
-
-                    for (T constant : constants) {
-                        constantsMap[ordinal] = labels.length;
-
-                        for (int i = 0; i < labels.length; i++) {
-                            if (Objects.equals(labels[i].constantName(),
-                                               constant.name())) {
-                                constantsMap[ordinal] = i;
-                                break;
-                            }
+            final MethodHandle gs = enumCache.generatedSwitch.orElseSet(
+                    new Supplier<>() {
+                        @Override
+                        public MethodHandle get() {
+                            return generateTypeSwitch(lookup, enumClass, labels)
+                                    .asType(MethodType.methodType(int.class,
+                                            Enum.class,
+                                            int.class));
                         }
-
-                        ordinal++;
                     }
-
-                    enumCache.constantsMap = constantsMap;
-                }
-            }
+            );
+            return (int) gs.invokeExact(value, restartIndex);
         }
 
-        return constantsMap[value.ordinal()];
+        final List<Integer> constantsMap = enumCache.constantsMap.orElseSet(
+                new Supplier<>() {
+                    @Override
+                    public List<Integer> get() {
+                        T[] constants = SharedSecrets.getJavaLangAccess()
+                                .getEnumConstantsShared(enumClass);
+                        Integer[] cm = new Integer[constants.length];
+                        int ordinal = 0;
+
+                        for (T constant : constants) {
+                            cm[ordinal] = labels.length;
+
+                            for (int i = 0; i < labels.length; i++) {
+                                if (Objects.equals(labels[i].constantName(),
+                                        constant.name())) {
+                                    cm[ordinal] = i;
+                                    break;
+                                }
+                            }
+
+                            ordinal++;
+                        }
+                        return List.of(cm);
+                    }
+                }
+        );
+        return constantsMap.get(value.ordinal());
     }
 
     private static final class ResolvedEnumLabels implements BiPredicate<Integer, Object> {
@@ -446,9 +438,9 @@ public final class SwitchBootstraps {
 
     private static final class MappedEnumCache {
         @Stable
-        public int[] constantsMap;
+        public ComputedConstant.OfDeferred<List<Integer>> constantsMap = ComputedConstant.ofDeferred();
         @Stable
-        public MethodHandle generatedSwitch;
+        public ComputedConstant.OfDeferred<MethodHandle> generatedSwitch = ComputedConstant.ofDeferred();
     }
 
     /**

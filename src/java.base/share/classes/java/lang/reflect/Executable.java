@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jdk.internal.access.SharedSecrets;
@@ -654,29 +655,24 @@ public abstract sealed class Executable extends AccessibleObject
         return AnnotationParser.toArray(declaredAnnotations());
     }
 
-    private transient volatile Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
+    private transient final ComputedConstant<Map<Class<? extends Annotation>, Annotation>> declaredAnnotations
+            = ComputedConstant.of(
+            new Supplier<>() {
+                @Override
+                public Map<Class<? extends Annotation>, Annotation> get() {
+                    Executable root = (Executable) getRoot();
+                    return (root != null)
+                            ? root.declaredAnnotations()
+                            : AnnotationParser.parseAnnotations(
+                            getAnnotationBytes(),
+                            SharedSecrets.getJavaLangAccess().
+                                    getConstantPool(getDeclaringClass()),
+                            getDeclaringClass());
+                }
+            });
 
     private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
-        Map<Class<? extends Annotation>, Annotation> declAnnos;
-        if ((declAnnos = declaredAnnotations) == null) {
-            synchronized (this) {
-                if ((declAnnos = declaredAnnotations) == null) {
-                    Executable root = (Executable)getRoot();
-                    if (root != null) {
-                        declAnnos = root.declaredAnnotations();
-                    } else {
-                        declAnnos = AnnotationParser.parseAnnotations(
-                                getAnnotationBytes(),
-                                SharedSecrets.getJavaLangAccess().
-                                        getConstantPool(getDeclaringClass()),
-                                getDeclaringClass()
-                        );
-                    }
-                    declaredAnnotations = declAnnos;
-                }
-            }
-        }
-        return declAnnos;
+        return declaredAnnotations.get();
     }
 
     /**

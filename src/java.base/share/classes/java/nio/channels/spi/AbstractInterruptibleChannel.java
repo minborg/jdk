@@ -87,6 +87,7 @@ public abstract class AbstractInterruptibleChannel
     implements Channel, InterruptibleChannel
 {
     private final Object closeLock = new Object();
+    // Difficult to convert `closed` to SV as the method implCloseChannel() throws
     private volatile boolean closed;
 
     // invoked if a Thread is interrupted when blocked in an I/O op

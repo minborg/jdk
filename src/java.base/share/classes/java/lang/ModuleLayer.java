@@ -41,6 +41,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -915,25 +916,20 @@ public final class ModuleLayer {
      * already created.
      */
     ServicesCatalog getServicesCatalog() {
-        ServicesCatalog servicesCatalog = this.servicesCatalog;
-        if (servicesCatalog != null)
-            return servicesCatalog;
-
-        synchronized (this) {
-            servicesCatalog = this.servicesCatalog;
-            if (servicesCatalog == null) {
-                servicesCatalog = ServicesCatalog.create();
-                for (Module m : nameToModule.values()) {
-                    servicesCatalog.register(m);
-                }
-                this.servicesCatalog = servicesCatalog;
-            }
-        }
-
-        return servicesCatalog;
+        return servicesCatalog.get();
     }
 
-    private volatile ServicesCatalog servicesCatalog;
+    private final ComputedConstant<ServicesCatalog> servicesCatalog = ComputedConstant.of(
+            new Supplier<>() {
+                @Override
+                public ServicesCatalog get() {
+                    ServicesCatalog sc = ServicesCatalog.create();
+                    for (Module m : nameToModule.values()) {
+                        sc.register(m);
+                    }
+                    return sc;
+                }
+            });
 
 
     /**

@@ -36,6 +36,7 @@ import sun.reflect.generics.scope.ClassScope;
 import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * A {@code RecordComponent} provides information about, and dynamic access to, a
@@ -183,28 +184,23 @@ public final class RecordComponent implements AnnotatedElement {
         return annotationClass.cast(declaredAnnotations().get(annotationClass));
     }
 
-    private transient volatile Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
+    private transient final ComputedConstant<Map<Class<? extends Annotation>, Annotation>> declaredAnnotations = ComputedConstant.of(
+            new Supplier<>() {
+                @Override
+                public Map<Class<? extends Annotation>, Annotation> get() {
+                    RecordComponent root = RecordComponent.this.root;
+                    return (root != null)
+                            ? root.declaredAnnotations()
+                            : AnnotationParser.parseAnnotations(
+                            annotations,
+                            SharedSecrets.getJavaLangAccess()
+                                    .getConstantPool(getDeclaringRecord()),
+                            getDeclaringRecord());
+                }
+            });
 
     private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
-        Map<Class<? extends Annotation>, Annotation> declAnnos;
-        if ((declAnnos = declaredAnnotations) == null) {
-            synchronized (this) {
-                if ((declAnnos = declaredAnnotations) == null) {
-                    RecordComponent root = this.root;
-                    if (root != null) {
-                        declAnnos = root.declaredAnnotations();
-                    } else {
-                        declAnnos = AnnotationParser.parseAnnotations(
-                                annotations,
-                                SharedSecrets.getJavaLangAccess()
-                                        .getConstantPool(getDeclaringRecord()),
-                                getDeclaringRecord());
-                    }
-                    declaredAnnotations = declAnnos;
-                }
-            }
-        }
-        return declAnnos;
+        return declaredAnnotations.get();
     }
 
     /**

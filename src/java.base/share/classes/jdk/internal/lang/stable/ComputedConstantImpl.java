@@ -27,6 +27,9 @@ package jdk.internal.lang.stable;
 
 import jdk.internal.vm.annotation.ForceInline;
 
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -38,17 +41,27 @@ import java.util.function.Supplier;
  * @param <T> the type of the constant
  */
 public record ComputedConstantImpl<T>(StandardStableValue<T> delegate,
-                                      FunctionHolder<Supplier<? extends T>> mapperHolder) implements ComputedConstant<T> {
+                                      FunctionHolder<Supplier<? extends T>> mapperHolder) implements ComputedConstant<T>, ComputedConstant.OfDeferred<T> {
 
     @ForceInline
     @Override public T get() { return delegate.orElseSet(null, mapperHolder); }
     @Override public boolean isSet() { return delegate.isSet(); }
 
-    T orElseSet(Supplier<? extends T> supplier) {
-        if (mapperHolder != null) {
-            throw new UnsupportedOperationException();
-        }
+    @Override
+    public boolean trySet(T value) {
+        return delegate.trySet(value);
+    }
+
+    @ForceInline
+    @Override
+    public T orElseSet(Supplier<? extends T> supplier) {
+        Objects.requireNonNull(supplier);
         return delegate.orElseSet(supplier);
+    }
+
+    @Override
+    public <I> T orElseSet(I input, Function<? super I, ? extends T> mapper) {
+        return delegate.orElseSet(input, new FunctionHolder<>(mapper, 1));
     }
 
     // Object methods
@@ -65,6 +78,24 @@ public record ComputedConstantImpl<T>(StandardStableValue<T> delegate,
 
     public static <T> ComputedConstantImpl<T> of(Supplier<? extends T> original) {
         return new ComputedConstantImpl<>(StandardStableValue.of(), new FunctionHolder<>(original, 1));
+    }
+
+    public static <T> ComputedConstantImpl<T> ofDeferred() {
+        return new ComputedConstantImpl<>(StandardStableValue.of(), throwingHolder());
+    }
+
+    // Support members
+
+    @SuppressWarnings("unchecked")
+    public static <T> FunctionHolder<Supplier<? extends T>> throwingHolder() {
+        return (FunctionHolder<Supplier<? extends T>>) (FunctionHolder<?>) THROWING_HOLDER;
+    }
+
+    private static final FunctionHolder<Supplier<?>> THROWING_HOLDER = new FunctionHolder<>(new Supplier<>() {
+        @Override  public Supplier<?> get() { return new ThrowingSupplier<>(); }}, 1);
+
+    private static class ThrowingSupplier<T> implements Supplier<T> {
+        @Override  public T get() { throw new NoSuchElementException(); }
     }
 
 }

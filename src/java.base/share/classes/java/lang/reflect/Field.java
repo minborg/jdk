@@ -39,6 +39,8 @@ import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
+import java.util.function.Supplier;
+
 import sun.reflect.annotation.AnnotationParser;
 import sun.reflect.annotation.AnnotationSupport;
 import sun.reflect.annotation.TypeAnnotation;
@@ -1262,28 +1264,25 @@ class Field extends AccessibleObject implements Member {
         return AnnotationParser.toArray(declaredAnnotations());
     }
 
-    private transient volatile Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
-
-    private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
-        Map<Class<? extends Annotation>, Annotation> declAnnos;
-        if ((declAnnos = declaredAnnotations) == null) {
-            synchronized (this) {
-                if ((declAnnos = declaredAnnotations) == null) {
-                    Field root = this.root;
-                    if (root != null) {
-                        declAnnos = root.declaredAnnotations();
-                    } else {
-                        declAnnos = AnnotationParser.parseAnnotations(
-                                annotations,
-                                SharedSecrets.getJavaLangAccess()
-                                        .getConstantPool(getDeclaringClass()),
-                                getDeclaringClass());
-                    }
-                    declaredAnnotations = declAnnos;
+    private transient final ComputedConstant<Map<Class<? extends Annotation>, Annotation>> declaredAnnotations
+            = ComputedConstant.of(
+            new Supplier<>() {
+                @Override
+                public Map<Class<? extends Annotation>, Annotation> get() {
+                    Field root = Field.this.root;
+                    return (root != null)
+                            ? root.declaredAnnotations()
+                            : AnnotationParser.parseAnnotations(
+                            annotations,
+                            SharedSecrets.getJavaLangAccess()
+                                    .getConstantPool(getDeclaringClass()),
+                            getDeclaringClass());
                 }
             }
-        }
-        return declAnnos;
+    );
+
+    private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
+        return declaredAnnotations.get();
     }
 
     private native byte[] getTypeAnnotationBytes0();

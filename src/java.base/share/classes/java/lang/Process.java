@@ -37,6 +37,8 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -141,14 +143,17 @@ import java.util.stream.Stream;
  */
 public abstract class Process {
 
-    // Readers and Writers created for this process; so repeated calls return the same object
-    // All updates must be done while synchronized on this Process.
-    private BufferedWriter outputWriter;
-    private Charset outputCharset;
-    private BufferedReader inputReader;
-    private Charset inputCharset;
-    private BufferedReader errorReader;
-    private Charset errorCharset;
+    record Buffered<T>(T buffered, Charset charset){
+        public T buffered(Charset givenCharset) {
+            if (!charset.equals(givenCharset))
+                throw new IllegalStateException(buffered.getClass().getSimpleName()+ " was created with charset: " + charset);
+            return buffered;
+        }
+    }
+
+    private final ComputedConstant.OfDeferred<Buffered<BufferedWriter>> output = ComputedConstant.ofDeferred();
+    private final ComputedConstant.OfDeferred<Buffered<BufferedReader>> input = ComputedConstant.ofDeferred();
+    private final ComputedConstant.OfDeferred<Buffered<BufferedReader>> error = ComputedConstant.ofDeferred();
 
     /**
      * Default constructor for Process.
@@ -330,16 +335,13 @@ public abstract class Process {
      */
     public final BufferedReader inputReader(Charset charset) {
         Objects.requireNonNull(charset, "charset");
-        synchronized (this) {
-            if (inputReader == null) {
-                inputCharset = charset;
-                inputReader = new BufferedReader(new InputStreamReader(getInputStream(), charset));
-            } else {
-                if (!inputCharset.equals(charset))
-                    throw new IllegalStateException("BufferedReader was created with charset: " + inputCharset);
-            }
-            return inputReader;
-        }
+        return input.orElseSet(
+                new Supplier<>() {
+                    @Override
+                    public Buffered<BufferedReader> get() {
+                        return new Buffered<>(new BufferedReader(new InputStreamReader(getInputStream(), charset)), charset);
+                    }
+                }).buffered(charset);
     }
 
     /**
@@ -415,16 +417,14 @@ public abstract class Process {
      */
     public final BufferedReader errorReader(Charset charset) {
         Objects.requireNonNull(charset, "charset");
-        synchronized (this) {
-            if (errorReader == null) {
-                errorCharset = charset;
-                errorReader = new BufferedReader(new InputStreamReader(getErrorStream(), charset));
-            } else {
-                if (!errorCharset.equals(charset))
-                    throw new IllegalStateException("BufferedReader was created with charset: " + errorCharset);
-            }
-            return errorReader;
-        }
+        return error.orElseSet(
+                new Supplier<>() {
+                    @Override
+                    public Buffered<BufferedReader> get() {
+                        return new Buffered<>(new BufferedReader(new InputStreamReader(getErrorStream(), charset)), charset);
+                    }
+                }
+        ).buffered(charset);
     }
 
     /**
@@ -492,16 +492,12 @@ public abstract class Process {
      */
     public final BufferedWriter outputWriter(Charset charset) {
         Objects.requireNonNull(charset, "charset");
-        synchronized (this) {
-            if (outputWriter == null) {
-                outputCharset = charset;
-                outputWriter = new BufferedWriter(new OutputStreamWriter(getOutputStream(), charset));
-            } else {
-                if (!outputCharset.equals(charset))
-                    throw new IllegalStateException("BufferedWriter was created with charset: " + outputCharset);
+        return output.orElseSet(new Supplier<>() {
+            @Override
+            public Buffered<BufferedWriter> get() {
+                return new Buffered<>(new BufferedWriter(new OutputStreamWriter(getOutputStream(), charset)), charset);
             }
-            return outputWriter;
-        }
+        }).buffered(charset);
     }
 
     /**
