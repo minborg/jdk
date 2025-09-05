@@ -25,6 +25,7 @@
 
 package java.lang.foreign;
 
+import jdk.internal.foreign.SharedMemoryPool;
 import jdk.internal.foreign.StackedMemoryPool;
 
 /**
@@ -33,11 +34,7 @@ import jdk.internal.foreign.StackedMemoryPool;
  * @implNote All implementations of the MemoryPool interface are thread safe.
  */
 public sealed interface MemoryPool
-        permits
-        StackedMemoryPool,
-        StackedMemoryPool.PerPlatformThread,
-        StackedMemoryPool.PerVirtualThread,
-        StackedMemoryPool.SingleThreaded {
+        permits SharedMemoryPool, StackedMemoryPool, StackedMemoryPool.PerPlatformThread, StackedMemoryPool.PerVirtualThread, StackedMemoryPool.SingleThreaded {
 
     /**
      * {@return a new confined {@linkplain Arena} that will try to use recycled memory in
@@ -156,6 +153,21 @@ public sealed interface MemoryPool
     // Todo: Keep this?
     static MemoryPool ofStackedSingleThreadedOrWhateverItShallBeCalled(long byteSize) {
         return StackedMemoryPool.SingleThreaded.ofSingleThreaded(byteSize);
+    }
+
+    /**
+     * {@return a new bound, single-threaded, and shared memory pool of a certain
+     *          {@code byteSize} and {@code byteAlignment}}
+     *
+     * Todo: Write docs
+     *
+     * @param byteSize in bytes of the <em>recyclable memory</em> the memory pool shall hold
+     *                 per platform/carrier thread
+     * @param byteAlignment in bytes ... TBW
+     * @throws IllegalArgumentException if the provided {@code byteSize} is negative
+     */
+    static MemoryPool ofShared(long byteSize, long byteAlignment) {
+        return SharedMemoryPool.of(byteSize, byteAlignment);
     }
 
 }

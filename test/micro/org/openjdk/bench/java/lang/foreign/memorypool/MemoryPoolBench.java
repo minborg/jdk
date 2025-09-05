@@ -50,7 +50,9 @@ import java.util.concurrent.TimeUnit;
         "--enable-native-access=ALL-UNNAMED"})
 public class MemoryPoolBench {
 
-    public static final MemoryPool POOL = MemoryPool.ofStacked(1 << 10);
+    public static final MemoryPool STACKED_POOL = MemoryPool.ofStacked(1 << 10);
+    public static final MemoryPool SHARED_POOL = MemoryPool.ofShared(1 << 10, 1);
+    public static final MemoryPool TAINTED_SHARED_POOL = MemoryPool.ofShared(1 << 10, 1);
     public static final MemoryPool POOL_SINGLE_THREADED = MemoryPool.ofStackedSingleThreadedOrWhateverItShallBeCalled(1 << 10);
 
     @Param({"5", "20", "100", "451"})
@@ -63,32 +65,72 @@ public class MemoryPoolBench {
     public void setup() {
         allocator = SegmentAllocator.prefixAllocator(Arena.ofAuto().allocate(size));
         array = new byte[size];
+        Thread tainter = Thread.startVirtualThread(() -> {
+            try (var arena = TAINTED_SHARED_POOL.get()) {
+                arena.allocate(1);
+            }
+        });
+        try {
+            tainter.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-/*    @Benchmark
+    @Benchmark
     public long confined() {
         try (var arena = Arena.ofConfined()) {
             return arena.allocate(size).address();
         }
     }
 
+
     @Benchmark
     public long confinedFrom() {
         try (var arena = Arena.ofConfined()) {
             return arena.allocateFrom(ValueLayout.JAVA_BYTE, array).address();
         }
-    }*/
+    }
 
     @Benchmark
-    public long pool() {
-        try (var arena = POOL.get()) {
+    public long stackedPool() {
+        try (var arena = STACKED_POOL.get()) {
             return arena.allocate(size).address();
         }
     }
 
     @Benchmark
-    public long poolFrom() {
-        try (var arena = POOL.get()) {
+    public long sharedPool() {
+        try (var arena = SHARED_POOL.get()) {
+            return arena.allocate(size).address();
+        }
+    }
+
+    @Benchmark
+    public long sharedPoolUnbiased() {
+        try (var arena = TAINTED_SHARED_POOL.get()) {
+            return arena.allocate(size).address();
+        }
+    }
+
+
+    @Benchmark
+    public long stackedPoolFrom() {
+        try (var arena = STACKED_POOL.get()) {
+            return arena.allocateFrom(ValueLayout.JAVA_BYTE, array).address();
+        }
+    }
+
+    @Benchmark
+    public long sharedPoolFrom() {
+        try (var arena = SHARED_POOL.get()) {
+            return arena.allocateFrom(ValueLayout.JAVA_BYTE, array).address();
+        }
+    }
+
+    @Benchmark
+    public long sharedPoolUnbiasedFrom() {
+        try (var arena = TAINTED_SHARED_POOL.get()) {
             return arena.allocateFrom(ValueLayout.JAVA_BYTE, array).address();
         }
     }

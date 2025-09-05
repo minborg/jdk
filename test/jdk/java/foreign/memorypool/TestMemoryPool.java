@@ -126,8 +126,13 @@ final class TestMemoryPool {
     void accessBounds(MemoryPool pool) {
         try (var arena = pool.get()) {
             arena.allocate(SMALL_ALLOC_SIZE);
-            // Graceful degradation
-            assertDoesNotThrow(() -> arena.allocate(POOL_SIZE));
+            if (isStackedPool(pool)) {
+                // Graceful degradation
+                assertDoesNotThrow(() -> arena.allocate(POOL_SIZE));
+            } else {
+                var x = assertThrows(OutOfMemoryError.class, () -> arena.allocate(POOL_SIZE));
+                assertTrue(x.getMessage().startsWith("Unable to allocate from "));
+            }
         }
     }
 
@@ -261,6 +266,9 @@ final class TestMemoryPool {
     @ParameterizedTest
     @MethodSource("pools")
     void outOfSequenceClose(MemoryPool pool) {
+        if (!isStackedPool(pool)) {
+            return;
+        }
         var firstArena = pool.get();
         var segmentFromFirst = firstArena.allocate(SMALL_ALLOC_SIZE);
         var secondArena = pool.get();
@@ -285,10 +293,14 @@ final class TestMemoryPool {
     @ParameterizedTest
     @MethodSource("pools")
     void toStringTest(MemoryPool pool) {
-        assertEquals("StackedMemoryPool[byteSize=" + POOL_SIZE + "]", pool.toString());
+        var toString = pool.toString();
+        assertTrue(toString.contains("MemoryPool"), toString);
+        assertTrue(toString.contains("[byteSize=" + POOL_SIZE), toString);
+        assertTrue(toString.endsWith("]"));
         try (var arena = pool.get()) {
             var arenaToString = arena.toString();
-            assertTrue(arenaToString.startsWith("ArenaFrame"));
+            var initialPart = isStackedPool(pool) ? "ArenaFrame" : "PooledArena";
+            assertTrue(arenaToString.startsWith(initialPart), arenaToString + " did not start with " + initialPart);
         }
     }
 
@@ -336,8 +348,13 @@ final class TestMemoryPool {
 
     private static Stream<MemoryPool> pools() {
         return Stream.of(
-                MemoryPool.ofStacked(POOL_SIZE)
+                MemoryPool.ofStacked(POOL_SIZE),
+                MemoryPool.ofShared(POOL_SIZE, 1)
         );
+    }
+
+    static boolean isStackedPool(MemoryPool pool) {
+        return pool.getClass().getSimpleName().equals("StackedMemoryPool");
     }
 
 }
