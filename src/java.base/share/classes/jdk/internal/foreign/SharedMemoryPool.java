@@ -128,8 +128,6 @@ public record SharedMemoryPool(long byteSize,
 
         @Stable
         private long biasedTid;
-        // Updated reflectively
-        private T biasedT;
         // Plain memory semantics
         private Node<T> biasedFirst;
 
