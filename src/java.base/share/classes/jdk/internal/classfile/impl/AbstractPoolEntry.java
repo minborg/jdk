@@ -29,6 +29,7 @@ import java.lang.constant.*;
 import java.lang.invoke.TypeDescriptor;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.function.Function;
 
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
@@ -1058,7 +1059,12 @@ public abstract sealed class AbstractPoolEntry {
 
         @Override
         public DirectMethodHandleDesc asSymbol() {
-            return sym.orElseSet(this, MethodHandleEntryImpl::computeSymbol);
+            return sym.orElseSet(this, new Function<MethodHandleEntryImpl, DirectMethodHandleDesc>() {
+                @Override
+                public DirectMethodHandleDesc apply(MethodHandleEntryImpl methodHandleEntry) {
+                    return methodHandleEntry.computeSymbol();
+                }
+            });
         }
 
         private DirectMethodHandleDesc computeSymbol() {

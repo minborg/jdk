@@ -32,6 +32,8 @@ import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import jdk.internal.access.SharedSecrets;
 
@@ -116,7 +118,12 @@ public final class ClassImpl
     @Override
     public List<ClassEntry> interfaces() {
         // Here we are relying on EA to elide captured lambdas
-        return interfaces.orElseSet(this::interfaces0);
+        return interfaces.orElseSet(this, new Function<ClassImpl, List<ClassEntry>>() {
+            @Override
+            public List<ClassEntry> apply(ClassImpl classElements) {
+                return classElements.interfaces0();
+            }
+        });
     }
 
     private List<ClassEntry> interfaces0() {
@@ -134,7 +141,12 @@ public final class ClassImpl
     @Override
     public List<Attribute<?>> attributes() {
         // If we add this overload, we could guarantee a lambda is only created once
-        return attributes.orElseSet(this, ClassImpl::attributes0);
+        return attributes.orElseSet(this, new Function<ClassImpl, List<Attribute<?>>>() {
+            @Override
+            public List<Attribute<?>> apply(ClassImpl classElements) {
+                return classElements.attributes0();
+            }
+        });
     }
 
     private List<Attribute<?>> attributes0() {

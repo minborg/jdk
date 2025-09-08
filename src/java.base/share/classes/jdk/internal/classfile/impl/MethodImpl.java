@@ -33,6 +33,7 @@ import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public final class MethodImpl
         extends AbstractElement
@@ -96,7 +97,12 @@ public final class MethodImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.orElseSet(this, MethodImpl::attributes0);
+        return attributes.orElseSet(this, new Function<MethodImpl, List<Attribute<?>>>() {
+            @Override
+            public List<Attribute<?>> apply(MethodImpl methodElements) {
+                return methodElements.attributes0();
+            }
+        });
     }
 
     private List<Attribute<?>> attributes0() {

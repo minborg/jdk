@@ -234,14 +234,16 @@ public final class System {
         setErr0(err);
     }
 
-    private static final ComputedConstant<Console> cons = ComputedConstant.of(
+
+    // Cannot use CC here as System is loaded so early
+/*    private static final ComputedConstant<Console> cons = ComputedConstant.of(
             new Supplier<Console>() {
                 @Override
                 public Console get() {
                     return SharedSecrets.getJavaIOAccess().console();
                 }
             }
-    );
+    );*/
 
     /**
      * Returns the unique {@link Console Console} object associated
@@ -253,7 +255,10 @@ public final class System {
      * @since   1.6
      */
      public static Console console() {
-         return cons.get();
+         final class Holder {
+             private static final Console CONSOLE = SharedSecrets.getJavaIOAccess().console();
+         }
+         return Holder.CONSOLE;
      }
 
     /**
