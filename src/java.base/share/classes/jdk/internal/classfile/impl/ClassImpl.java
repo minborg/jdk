@@ -32,6 +32,7 @@ import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import jdk.internal.access.SharedSecrets;
 
@@ -42,8 +43,8 @@ public final class ClassImpl
     private final int attributesPos;
     private final List<MethodModel> methods;
     private final List<FieldModel> fields;
-    private List<Attribute<?>> attributes;
-    private List<ClassEntry> interfaces;
+    private final StableValue<List<Attribute<?>>> attributes;
+    private final StableValue<List<ClassEntry>> interfaces;
 
     public ClassImpl(byte[] cfbytes, ClassFileImpl context) {
         this.reader = new ClassReaderImpl(cfbytes, context);
@@ -72,6 +73,8 @@ public final class ClassImpl
         this.methods = List.of(methods);
         this.attributesPos = p;
         reader.setContainedClass(this);
+        this.attributes = StableValue.of();
+        this.interfaces = StableValue.of();
     }
 
     public int classfileLength() {
@@ -108,28 +111,45 @@ public final class ClassImpl
         return reader.superclassEntry();
     }
 
+    private static final Function<ClassImpl, List<ClassEntry>> IF_MAPPER = new Function<ClassImpl, List<ClassEntry>>() {
+        @Override
+        public List<ClassEntry> apply(ClassImpl classElements) {
+            return classElements.interfaces0();
+        }
+    };
+
     @Override
     public List<ClassEntry> interfaces() {
-        if (interfaces == null) {
-            int pos = reader.thisClassPos() + 4;
-            int cnt = reader.readU2(pos);
-            pos += 2;
-            var arr = new Object[cnt];
-            for (int i = 0; i < cnt; ++i) {
-                arr[i] = reader.readEntry(pos, ClassEntry.class);
-                pos += 2;
-            }
-            this.interfaces = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
-        }
-        return interfaces;
+        return interfaces.orElseSet(this, IF_MAPPER);
     }
+
+    private List<ClassEntry> interfaces0() {
+        int pos = reader.thisClassPos() + 4;
+        int cnt = reader.readU2(pos);
+        pos += 2;
+        var arr = new Object[cnt];
+        for (int i = 0; i < cnt; ++i) {
+            arr[i] = reader.readEntry(pos, ClassEntry.class);
+            pos += 2;
+        }
+        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
+    }
+
+    private static final Function<ClassImpl, List<Attribute<?>>> AT_MAPPER = new Function<ClassImpl, List<Attribute<?>>>() {
+        @Override
+        public List<Attribute<?>> apply(ClassImpl classElements) {
+            return classElements.attributes0();
+        }
+    };
 
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        // If we add this overload, we could guarantee a lambda is only created once
+        return attributes.orElseSet(this, AT_MAPPER);
+    }
+
+    private List<Attribute<?>> attributes0() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     // ClassModel

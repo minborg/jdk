@@ -31,6 +31,7 @@ import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public final class MethodImpl
         extends AbstractElement
@@ -38,7 +39,7 @@ public final class MethodImpl
 
     private final ClassReader reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
+    private final StableValue<List<Attribute<?>>> attributes;
     private int[] parameterSlots;
 
     public MethodImpl(ClassReader reader, int startPos, int endPos, int attrStart) {
@@ -46,6 +47,7 @@ public final class MethodImpl
         this.startPos = startPos;
         this.endPos = endPos;
         this.attributesPos = attrStart;
+        this.attributes = StableValue.of();
     }
 
     @Override
@@ -88,12 +90,20 @@ public final class MethodImpl
         return parameterSlots[paramNo];
     }
 
+    private static final Function<MethodImpl, List<Attribute<?>>> AT_MAPPER = new Function<MethodImpl, List<Attribute<?>>>() {
+        @Override
+        public List<Attribute<?>> apply(MethodImpl methodElements) {
+            return methodElements.attributes0();
+        }
+    };
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes.orElseSet(this, AT_MAPPER);
+    }
+
+    private List<Attribute<?>> attributes0() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

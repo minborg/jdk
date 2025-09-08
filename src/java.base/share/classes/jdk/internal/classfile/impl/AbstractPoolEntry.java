@@ -29,6 +29,8 @@ import java.lang.constant.*;
 import java.lang.invoke.TypeDescriptor;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
@@ -1023,13 +1025,14 @@ public abstract sealed class AbstractPoolEntry {
 
         private final int refKind;
         private final AbstractPoolEntry.AbstractMemberRefEntry reference;
-        public @Stable DirectMethodHandleDesc sym;
+        public final StableValue<DirectMethodHandleDesc> sym;
 
         MethodHandleEntryImpl(ConstantPool cpm, int index, int hash, int refKind, AbstractPoolEntry.AbstractMemberRefEntry
                 reference) {
             super(cpm, index, hash);
             this.refKind = refKind;
             this.reference = reference;
+            this.sym = StableValue.of();
         }
 
         MethodHandleEntryImpl(ConstantPool cpm, int index, int refKind, AbstractPoolEntry.AbstractMemberRefEntry
@@ -1037,6 +1040,7 @@ public abstract sealed class AbstractPoolEntry {
             super(cpm, index, hash2(TAG_METHOD_HANDLE, refKind, reference.index()));
             this.refKind = refKind;
             this.reference = reference;
+            this.sym = StableValue.of();
         }
 
         @Override
@@ -1054,16 +1058,21 @@ public abstract sealed class AbstractPoolEntry {
             return reference;
         }
 
+        private static final Function<MethodHandleEntryImpl, DirectMethodHandleDesc> AS_MAPPER
+                = new Function<MethodHandleEntryImpl, DirectMethodHandleDesc>() {
+            @Override
+            public DirectMethodHandleDesc apply(MethodHandleEntryImpl methodHandleEntry) {
+                return methodHandleEntry.computeSymbol();
+            }
+        };
+
         @Override
         public DirectMethodHandleDesc asSymbol() {
-            var cache = this.sym;
-            if (cache != null)
-                return cache;
-            return computeSymbol();
+            return sym.orElseSet(this, AS_MAPPER);
         }
 
         private DirectMethodHandleDesc computeSymbol() {
-            return this.sym = MethodHandleDesc.of(
+            return MethodHandleDesc.of(
                     DirectMethodHandleDesc.Kind.valueOf(kind(), reference() instanceof InterfaceMethodRefEntry),
                     ((MemberRefEntry) reference()).owner().asSymbol(),
                     ((MemberRefEntry) reference()).nameAndType().name().stringValue(),
@@ -1079,8 +1088,9 @@ public abstract sealed class AbstractPoolEntry {
         public MethodHandleEntry clone(ConstantPoolBuilder cp) {
             var ret = (MethodHandleEntryImpl) cp.methodHandleEntry(refKind, reference);
             var mySym = this.sym;
-            if (ret.sym == null && mySym != null)
-                ret.sym = mySym;
+            if (mySym.isSet()) {
+                ret.sym.trySet(mySym.get());
+            }
             return ret;
         }
 

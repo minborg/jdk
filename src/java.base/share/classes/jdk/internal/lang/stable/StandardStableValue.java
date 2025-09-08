@@ -31,6 +31,7 @@ import jdk.internal.vm.annotation.Stable;
 
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -135,6 +136,16 @@ public final class StandardStableValue<T> implements InternalStableValue<T> {
             return t;
         }
         return orElseSetSlowPath(this, input, functionHolder);
+    }
+
+    @ForceInline
+    @Override
+    public <I> T orElseSet(I i, Function<? super I, ? extends T> mapper) {
+        final T t = contentsAcquire();
+        if (t != null) {
+            return t;
+        }
+        return orElseSetSlowPath(this, i, mapper);
     }
 
     @ForceInline

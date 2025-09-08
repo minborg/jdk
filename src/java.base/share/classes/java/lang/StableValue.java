@@ -453,6 +453,14 @@ public sealed interface StableValue<T>
      */
     T orElseSet(Supplier<? extends T> supplier);
 
+    /**
+     * {@return f}
+     * @param i input
+     * @param mapper m
+     * @param <I> input type
+     */
+    <I> T orElseSet(I i, Function<? super I, ? extends T> mapper);
+
     // Object methods
 
     /**

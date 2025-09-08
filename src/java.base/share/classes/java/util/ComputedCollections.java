@@ -273,6 +273,19 @@ final class ComputedCollections {
                 return orElseSetSlowPath(mutex, input, functionHolder);
             }
 
+            @Override
+            public <I> T orElseSet(I i, Function<? super I, ? extends T> mapper) {
+                final T t = contentsAcquire();
+                if (t != null) {
+                    return t;
+                }
+                final Object mutex = acquireMutex();
+                if (mutex == Mutexes.TOMB_STONE) {
+                    return contentsAcquire();
+                }
+                return orElseSetSlowPath(mutex, i, mapper);
+            }
+
             // Object methods
 
             // The equals() method crucially returns true if two ESV refer to the same element
