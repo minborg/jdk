@@ -349,7 +349,8 @@ final class TestMemoryPool {
     private static Stream<MemoryPool> pools() {
         return Stream.of(
                 MemoryPool.ofStacked(POOL_SIZE),
-                MemoryPool.ofShared(POOL_SIZE, 1)
+                MemoryPool.ofShared(POOL_SIZE, 1, 0),
+                MemoryPool.ofShared(POOL_SIZE, 1, 1)
         );
     }
 

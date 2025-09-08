@@ -28,10 +28,12 @@
 
 // Todo: Also run with the main thread as a virtual thread (avoids using VThreadRunner for all test)
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryPool;
+import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,9 +42,9 @@ final class TestSharedMemoryPool {
 
     private static final long SMALL_ALLOC_SIZE = JAVA_INT.byteSize();
 
-    @Test
-    void f() {
-        var pool = MemoryPool.ofShared(SMALL_ALLOC_SIZE, 1);
+    @ParameterizedTest
+    @MethodSource("pools")
+    void basic(MemoryPool pool) {
         Arena arena = pool.get();
 
         assertTrue(arena.scope().isAlive());
@@ -52,38 +54,11 @@ final class TestSharedMemoryPool {
         arena.close();
         assertFalse(arena.scope().isAlive());
         assertTrue(arena.scope().toString().contains("ConfinedSession"));
-
-        //
-
-        Arena arena2 = pool.get();
-        assertTrue(arena.scope().isAlive());
-        arena.allocate(SMALL_ALLOC_SIZE);
-        assertTrue(arena.scope().isAlive());
-
-        arena.close();
-        assertFalse(arena.scope().isAlive());
-        assertTrue(arena.scope().toString().contains("ConfinedSession"));
-
-        fail();
     }
 
-/*    @Test
-    void basic() {
-        var pool = MemoryPool.ofShared(SMALL_ALLOC_SIZE, 1);
-        Arena arena = pool.get();
-
-        assertTrue(arena.scope().isAlive());
-        arena.allocate(SMALL_ALLOC_SIZE);
-        assertTrue(arena.scope().isAlive());
-
-        arena.close();
-        assertFalse(arena.scope().isAlive());
-        assertTrue(arena.scope().toString().contains("ConfinedSession"));
-    }*/
-/*
-    @Test
-    void basicZeroSize() {
-        var pool = MemoryPool.ofShared(SMALL_ALLOC_SIZE, 1);
+    @ParameterizedTest
+    @MethodSource("pools")
+    void basicZeroSize(MemoryPool pool) {
         Arena arena = pool.get();
 
         assertTrue(arena.scope().isAlive());
@@ -93,7 +68,14 @@ final class TestSharedMemoryPool {
         arena.close();
         assertFalse(arena.scope().isAlive());
         assertTrue(arena.scope().toString().contains("ConfinedSession"));
-    }*/
+    }
 
+
+    private static Stream<MemoryPool> pools() {
+        return Stream.of(
+                MemoryPool.ofShared(SMALL_ALLOC_SIZE, 1, 0),
+                MemoryPool.ofShared(SMALL_ALLOC_SIZE, 1, 1)
+        );
+    }
 
 }

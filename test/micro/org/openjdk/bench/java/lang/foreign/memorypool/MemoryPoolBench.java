@@ -51,8 +51,8 @@ import java.util.concurrent.TimeUnit;
 public class MemoryPoolBench {
 
     public static final MemoryPool STACKED_POOL = MemoryPool.ofStacked(1 << 10);
-    public static final MemoryPool SHARED_POOL = MemoryPool.ofShared(1 << 10, 1);
-    public static final MemoryPool TAINTED_SHARED_POOL = MemoryPool.ofShared(1 << 10, 1);
+    public static final MemoryPool BIASED_SHARED_POOL = MemoryPool.ofShared(1 << 10, 1, 1);
+    public static final MemoryPool SHARED_POOL = MemoryPool.ofShared(1 << 10, 1, 0);
     public static final MemoryPool POOL_SINGLE_THREADED = MemoryPool.ofStackedSingleThreadedOrWhateverItShallBeCalled(1 << 10);
 
     @Param({"5", "20", "100", "451"})
@@ -65,16 +65,6 @@ public class MemoryPoolBench {
     public void setup() {
         allocator = SegmentAllocator.prefixAllocator(Arena.ofAuto().allocate(size));
         array = new byte[size];
-        Thread tainter = Thread.startVirtualThread(() -> {
-            try (var arena = TAINTED_SHARED_POOL.get()) {
-                arena.allocate(1);
-            }
-        });
-        try {
-            tainter.join();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @Benchmark
@@ -107,8 +97,8 @@ public class MemoryPoolBench {
     }
 
     @Benchmark
-    public long sharedPoolUnbiased() {
-        try (var arena = TAINTED_SHARED_POOL.get()) {
+    public long sharedPoolBiased() {
+        try (var arena = BIASED_SHARED_POOL.get()) {
             return arena.allocate(size).address();
         }
     }
@@ -129,8 +119,8 @@ public class MemoryPoolBench {
     }
 
     @Benchmark
-    public long sharedPoolUnbiasedFrom() {
-        try (var arena = TAINTED_SHARED_POOL.get()) {
+    public long sharedPoolBiasedFrom() {
+        try (var arena = BIASED_SHARED_POOL.get()) {
             return arena.allocateFrom(ValueLayout.JAVA_BYTE, array).address();
         }
     }

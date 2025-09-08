@@ -27,6 +27,7 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.SharedMemoryPool;
 import jdk.internal.foreign.StackedMemoryPool;
+import jdk.internal.foreign.Utils;
 
 /**
  * A memory pool that may recycle {@linkplain MemorySegment}.
@@ -156,18 +157,26 @@ public sealed interface MemoryPool
     }
 
     /**
-     * {@return a new bound, single-threaded, and shared memory pool of a certain
-     *          {@code byteSize} and {@code byteAlignment}}
+     * {@return a new bound and shared memory pool of a certain
+     *          {@code byteSize}, {@code byteAlignment}, and {@code maxBiasedThreads}}
      *
      * Todo: Write docs
      *
      * @param byteSize in bytes of the <em>recyclable memory</em> the memory pool shall hold
      *                 per platform/carrier thread
      * @param byteAlignment in bytes ... TBW
-     * @throws IllegalArgumentException if the provided {@code byteSize} is negative
+     * @param maxBiasedThreads the upper limit of how many threads that should get
+     *                         preferential treatment ... TBW
+     * @throws IllegalArgumentException if {@code byteSize < 0},
+     *         {@code byteAlignment <= 0},
+     *         or if {@code byteAlignment} is not a power of 2
+     * @throws IllegalArgumentException if {@code maxBiasedThreads < 0}
      */
-    static MemoryPool ofShared(long byteSize, long byteAlignment) {
-        return SharedMemoryPool.of(byteSize, byteAlignment);
+    static MemoryPool ofShared(long byteSize, long byteAlignment, int maxBiasedThreads) {
+        Utils.checkNonNegativeArgument(byteSize, "byteSize");
+        Utils.checkAlign(byteAlignment);
+        Utils.checkNonNegativeArgument(maxBiasedThreads, "maxBiasedThreads");
+        return SharedMemoryPool.of(byteSize, byteAlignment, maxBiasedThreads);
     }
 
 }

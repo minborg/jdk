@@ -11,7 +11,6 @@ import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Reference;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntBinaryOperator;
-import java.util.function.IntFunction;
 
 // Todo: explore an underlying shared arena
 
@@ -106,7 +105,7 @@ public record SharedMemoryPool(long byteSize,
 
     }
 
-    public static MemoryPool of(long byteSize, long byteAlignment) {
+    public static MemoryPool of(long byteSize, long byteAlignment, int maxBiasedThreads) {
         final Arena underlying = Arena.ofAuto();
         record CloseAction(Arena arena) implements Runnable {
             @Override
@@ -114,58 +113,34 @@ public record SharedMemoryPool(long byteSize,
                 Reference.reachabilityFence(arena);
             }
         }
-        return new SharedMemoryPool(byteSize, byteAlignment, underlying, new CloseAction(underlying), new LinkedStack<>());
+        final LinkedStack<SlicingAllocator> stack = (maxBiasedThreads == 0)
+                ? new LinkedStack<>()
+                : new BiasedLinkedStack<>(maxBiasedThreads);
+        return new SharedMemoryPool(byteSize, byteAlignment, underlying, new CloseAction(underlying), stack);
     }
 
-    private static final class LinkedStack<T> {
+    private static sealed class LinkedStack<T> {
 
-        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+        static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long FIRST_OFFSET = UNSAFE.objectFieldOffset(LinkedStack.class, "first");
-        private static final long BIASED_TID_OFFSET = UNSAFE.objectFieldOffset(LinkedStack.class, "biasedTid");
 
         // Updated reflectively
         private volatile Node<T> first;
-
-        @Stable
-        private long biasedTid;
-        // Plain memory semantics
-        private Node<T> biasedFirst;
 
         record Node<T>(T t, Node<T> next) { }
 
         @ForceInline
         void push(T t) {
-            final long tid = Thread.currentThread().threadId();
-            if (biasedTid == 0) {
-                // The first thread will acquire biased performance
-                UNSAFE.compareAndSetLong(this, BIASED_TID_OFFSET, 0, tid);
-                // The current thread will see this update if it succeeds
-            }
-            if (biasedTid == tid) {
-                // Preferential treatment
-                biasedFirst = new Node<>(t, biasedFirst);
-            } else {
-                Node<T> snapshot;
-                Node<T> candidate;
-                do {
-                    snapshot = first;
-                    candidate = new Node<>(t, snapshot);
-                } while (!UNSAFE.compareAndSetReference(this, FIRST_OFFSET, snapshot, candidate));
-            }
+            Node<T> snapshot;
+            Node<T> candidate;
+            do {
+                snapshot = first;
+                candidate = new Node<>(t, snapshot);
+            } while (!UNSAFE.compareAndSetReference(this, FIRST_OFFSET, snapshot, candidate));
         }
 
         @ForceInline
         T pop() {
-            final long tid = Thread.currentThread().threadId();
-            if (biasedTid == tid) {
-                // Preferential treatment
-                var bf = biasedFirst;
-                if (bf == null) {
-                    return null;
-                }
-                biasedFirst = bf.next();
-                return bf.t();
-            }
             Node<T> candidate;
             do {
                 candidate = first;
@@ -174,6 +149,64 @@ public record SharedMemoryPool(long byteSize,
                 }
             } while (!UNSAFE.compareAndSetReference(this, FIRST_OFFSET, candidate, candidate.next()));
             return candidate.t();
+        }
+
+    }
+
+    private static final class BiasedLinkedStack<T> extends LinkedStack<T> {
+
+        @Stable
+        private final int maxBiasedThreads;
+        @Stable
+        // Components are accessed reflectively
+        private final long[] biasedTids;
+        @Stable
+        // This array can be accessed using plain memory semantics
+        private final Node<T>[] biasedFirsts;
+
+        @SuppressWarnings("unchecked")
+        public BiasedLinkedStack(int maxBiasedThreads) {
+            this.maxBiasedThreads = maxBiasedThreads;
+            this.biasedTids = new long[maxBiasedThreads];
+            this.biasedFirsts = (Node<T>[]) new Node<?>[maxBiasedThreads];
+        }
+
+        @ForceInline
+        void push(T t) {
+            final long tid = Thread.currentThread().threadId();
+            final int bucket = bucket(tid);
+            if (biasedTids[bucket] == 0) {
+                // The first thread for this bucket will acquire biased performance
+                UNSAFE.compareAndSetLong(biasedTids, Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_LONG_INDEX_SCALE * (long) bucket, 0, tid);
+                // The current thread will see this update even using plain semantics if it succeeds
+            }
+            if (biasedTids[bucket] == tid) {
+                // Preferential treatment
+                biasedFirsts[bucket] = new Node<>(t, biasedFirsts[bucket]);
+            } else {
+                super.push(t);
+            }
+        }
+
+        @ForceInline
+        T pop() {
+            final long tid = Thread.currentThread().threadId();
+            final int bucket = bucket(tid);
+            if (biasedTids[bucket] == tid) {
+                // Preferential treatment
+                var bf = biasedFirsts[bucket];
+                if (bf == null) {
+                    return null;
+                }
+                biasedFirsts[bucket] = bf.next();
+                return bf.t();
+            }
+            return super.pop();
+        }
+
+        @ForceInline
+        private int bucket(long tid) {
+            return (int) ((tid % maxBiasedThreads)) & 0x7FFF_FFFF;
         }
 
     }
