@@ -24,6 +24,8 @@
  */
 package jdk.internal.classfile.impl;
 
+import jdk.internal.lang.stable.ComputedConstantImpl;
+
 import java.lang.classfile.*;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.constant.MethodTypeDesc;
@@ -31,6 +33,7 @@ import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class MethodImpl
         extends AbstractElement
@@ -38,7 +41,7 @@ public final class MethodImpl
 
     private final ClassReader reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
+    private final ComputedConstant<List<Attribute<?>>> attributes;
     private int[] parameterSlots;
 
     public MethodImpl(ClassReader reader, int startPos, int endPos, int attrStart) {
@@ -46,6 +49,14 @@ public final class MethodImpl
         this.startPos = startPos;
         this.endPos = endPos;
         this.attributesPos = attrStart;
+        this.attributes = ComputedConstant.of(
+                new Supplier<List<Attribute<?>>>() {
+                    @Override
+                    public List<Attribute<?>> get() {
+                        return BoundAttribute.readAttributes(MethodImpl.this, reader, attributesPos, reader.customAttributes());
+                    }
+                }
+        );
     }
 
     @Override
@@ -90,10 +101,7 @@ public final class MethodImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes.get();
     }
 
     @Override

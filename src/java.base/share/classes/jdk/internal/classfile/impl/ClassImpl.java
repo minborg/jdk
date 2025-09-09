@@ -32,6 +32,7 @@ import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import jdk.internal.access.SharedSecrets;
 
@@ -42,8 +43,8 @@ public final class ClassImpl
     private final int attributesPos;
     private final List<MethodModel> methods;
     private final List<FieldModel> fields;
-    private List<Attribute<?>> attributes;
-    private List<ClassEntry> interfaces;
+    private final ComputedConstant<List<Attribute<?>>> attributes;
+    private final ComputedConstant<List<ClassEntry>> interfaces;
 
     public ClassImpl(byte[] cfbytes, ClassFileImpl context) {
         this.reader = new ClassReaderImpl(cfbytes, context);
@@ -72,6 +73,21 @@ public final class ClassImpl
         this.methods = List.of(methods);
         this.attributesPos = p;
         reader.setContainedClass(this);
+        this.attributes = ComputedConstant.of(
+                new Supplier<List<Attribute<?>>>() {
+                    @Override
+                    public List<Attribute<?>> get() {
+                        return BoundAttribute.readAttributes(ClassImpl.this, reader, attributesPos, reader.customAttributes());
+                    }
+                });
+        this.interfaces = ComputedConstant.of(
+                new Supplier<List<ClassEntry>>() {
+                    @Override
+                    public List<ClassEntry> get() {
+                        return interfaces0();
+                    }
+                }
+        );
     }
 
     public int classfileLength() {
@@ -110,26 +126,24 @@ public final class ClassImpl
 
     @Override
     public List<ClassEntry> interfaces() {
-        if (interfaces == null) {
-            int pos = reader.thisClassPos() + 4;
-            int cnt = reader.readU2(pos);
+        return interfaces.get();
+    }
+
+    public List<ClassEntry> interfaces0() {
+        int pos = reader.thisClassPos() + 4;
+        int cnt = reader.readU2(pos);
+        pos += 2;
+        var arr = new Object[cnt];
+        for (int i = 0; i < cnt; ++i) {
+            arr[i] = reader.readEntry(pos, ClassEntry.class);
             pos += 2;
-            var arr = new Object[cnt];
-            for (int i = 0; i < cnt; ++i) {
-                arr[i] = reader.readEntry(pos, ClassEntry.class);
-                pos += 2;
-            }
-            this.interfaces = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
         }
-        return interfaces;
+        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
     }
 
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes.get();
     }
 
     // ClassModel
