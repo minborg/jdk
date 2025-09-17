@@ -9,6 +9,8 @@ import java.lang.foreign.MemoryPool;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Reference;
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntBinaryOperator;
 
@@ -18,7 +20,7 @@ public record SharedMemoryPool(long byteSize,
                                long byteAlignment,
                                Arena underlying,
                                Runnable closeAction,
-                               LinkedStack<SlicingAllocator> stack) implements MemoryPool {
+                               Stack<SlicingAllocator> stack) implements MemoryPool {
 
     @Override
     public Arena get() {
@@ -51,7 +53,7 @@ public record SharedMemoryPool(long byteSize,
 
     private record PooledArena(Arena arena,
                                SlicingAllocator allocator,
-                               LinkedStack<SlicingAllocator> stack)
+                               Stack<SlicingAllocator> stack)
             implements Arena, SegmentAllocator.NonZeroable {
 
         @ForceInline
@@ -113,13 +115,13 @@ public record SharedMemoryPool(long byteSize,
                 Reference.reachabilityFence(arena);
             }
         }
-        final LinkedStack<SlicingAllocator> stack = (maxBiasedThreads == 0)
-                ? new LinkedStack<>()
-                : new BiasedLinkedStack<>(maxBiasedThreads);
+        final Stack<SlicingAllocator> stack = (maxBiasedThreads == 0)
+                ? new ArrayStack<>()
+                : new BiasedArrayStack<>(maxBiasedThreads);
         return new SharedMemoryPool(byteSize, byteAlignment, underlying, new CloseAction(underlying), stack);
     }
 
-    private static sealed class LinkedStack<T> {
+    private static sealed class LinkedStack<T> implements Stack<T> {
 
         static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long FIRST_OFFSET = UNSAFE.objectFieldOffset(LinkedStack.class, "first");
@@ -130,7 +132,7 @@ public record SharedMemoryPool(long byteSize,
         record Node<T>(T t, Node<T> next) { }
 
         @ForceInline
-        void push(T t) {
+        public void push(T t) {
             Node<T> snapshot;
             Node<T> candidate;
             do {
@@ -140,7 +142,7 @@ public record SharedMemoryPool(long byteSize,
         }
 
         @ForceInline
-        T pop() {
+        public T pop() {
             Node<T> candidate;
             do {
                 candidate = first;
@@ -172,7 +174,7 @@ public record SharedMemoryPool(long byteSize,
         }
 
         @ForceInline
-        void push(T t) {
+        public void push(T t) {
             final long tid = Thread.currentThread().threadId();
             final int bucket = bucket(tid);
             if (biasedTids[bucket] == 0) {
@@ -189,7 +191,7 @@ public record SharedMemoryPool(long byteSize,
         }
 
         @ForceInline
-        T pop() {
+        public T pop() {
             final long tid = Thread.currentThread().threadId();
             final int bucket = bucket(tid);
             if (biasedTids[bucket] == tid) {
@@ -212,10 +214,10 @@ public record SharedMemoryPool(long byteSize,
     }
 
     // This is slightly faster but is bound to a preset size
-    private static final class ArrayStack<T> {
+    private static sealed class ArrayStack<T> implements Stack<T> {
 
-        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-        private static final int SIZE = 128;
+        static final Unsafe UNSAFE = Unsafe.getUnsafe();
+        static final int SIZE = 128;
 
         @SuppressWarnings("unchecked")
         private final T[] elements = (T[]) new Object[SIZE];
@@ -232,7 +234,7 @@ public record SharedMemoryPool(long byteSize,
         };
 
         @ForceInline
-        void push(T t) {
+        public void push(T t) {
             final int i = index.getAndAccumulate(1, INCREMENT_THROWING_AT_SIZE);
             UNSAFE.putReferenceVolatile(elements, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * (long) i, t);
         }
@@ -245,13 +247,81 @@ public record SharedMemoryPool(long byteSize,
 
         @SuppressWarnings("unchecked")
         @ForceInline
-        T pop() {
+        public T pop() {
             final int i = index.getAndAccumulate(-1, DECREMENT_STOPPING_AT_ZERO);
             return i <= 0
                     ? null
                     : (T) UNSAFE.getReferenceVolatile(elements, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * (long) (i - 1));
         }
 
+    }
+
+    // This is slightly faster but is bound to a preset size
+    private static final class BiasedArrayStack<T> extends ArrayStack<T> {
+
+        @Stable
+        private final int maxBiasedThreads;
+        @Stable
+        // Components are accessed reflectively
+        private final long[] biasedTids;
+        @Stable
+        // This array can be accessed using plain memory semantics
+        private final T[][] biasedArrays;
+        private final int[] indices;
+
+        @SuppressWarnings("unchecked")
+        public BiasedArrayStack(int maxBiasedThreads) {
+            this.maxBiasedThreads = maxBiasedThreads;
+            this.biasedTids = new long[maxBiasedThreads];
+            this.biasedArrays = (T[][]) Array.newInstance(Object.class, maxBiasedThreads, SIZE);
+            this.indices = new int[maxBiasedThreads];
+        }
+
+        @ForceInline
+        public void push(T t) {
+            final long tid = Thread.currentThread().threadId();
+            final int bucket = bucket(tid);
+            if (biasedTids[bucket] == 0) {
+                // The first thread for this bucket will acquire biased performance
+                UNSAFE.compareAndSetLong(biasedTids, Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_LONG_INDEX_SCALE * (long) bucket, 0, tid);
+                // The current thread will see this update even using plain semantics if it succeeds
+            }
+            if (biasedTids[bucket] == tid) {
+                // Preferential treatment
+                final T[] elements = biasedArrays[bucket];
+                elements[indices[bucket]++] = t;
+            } else {
+                super.push(t);
+            }
+        }
+
+        @ForceInline
+        public T pop() {
+            final long tid = Thread.currentThread().threadId();
+            final int bucket = bucket(tid);
+            if (biasedTids[bucket] == tid) {
+                // Preferential treatment
+                final T[] elements = biasedArrays[bucket];
+                final int index = indices[bucket];
+                if (index <= 0) {
+                    return null;
+                } else {
+                    return elements[--indices[bucket]];
+                }
+            }
+            return super.pop();
+        }
+
+        @ForceInline
+        private int bucket(long tid) {
+            return (int) ((tid % maxBiasedThreads)) & 0x7FFF_FFFF;
+        }
+
+    }
+
+    interface Stack<T> {
+        void push(T t);
+        T pop();
     }
 
 }

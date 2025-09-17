@@ -67,6 +67,7 @@ public class MemoryPoolBench {
         array = new byte[size];
     }
 
+/*
     @Benchmark
     public long confined() {
         try (var arena = Arena.ofConfined()) {
@@ -88,6 +89,7 @@ public class MemoryPoolBench {
             return arena.allocate(size).address();
         }
     }
+*/
 
     @Benchmark
     public long sharedPool() {
@@ -103,6 +105,7 @@ public class MemoryPoolBench {
         }
     }
 
+/*
 
     @Benchmark
     public long stackedPoolFrom() {
@@ -110,6 +113,7 @@ public class MemoryPoolBench {
             return arena.allocateFrom(ValueLayout.JAVA_BYTE, array).address();
         }
     }
+*/
 
     @Benchmark
     public long sharedPoolFrom() {
