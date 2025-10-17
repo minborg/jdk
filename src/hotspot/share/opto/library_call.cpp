@@ -358,6 +358,8 @@ bool LibraryCallKit::try_to_inline(int predicate) {
   case vmIntrinsics::_putFloatVolatile:         return inline_unsafe_access( is_store, T_FLOAT,    Volatile, false);
   case vmIntrinsics::_putDoubleVolatile:        return inline_unsafe_access( is_store, T_DOUBLE,   Volatile, false);
 
+  case vmIntrinsics::_getReferenceStable:       return inline_unsafe_access(!is_store, T_OBJECT,   Stable,  false);
+
   case vmIntrinsics::_getShortUnaligned:        return inline_unsafe_access(!is_store, T_SHORT,    Relaxed, true);
   case vmIntrinsics::_getCharUnaligned:         return inline_unsafe_access(!is_store, T_CHAR,     Relaxed, true);
   case vmIntrinsics::_getIntUnaligned:          return inline_unsafe_access(!is_store, T_INT,      Relaxed, true);
@@ -2372,6 +2374,7 @@ const TypeOopPtr* LibraryCallKit::sharpen_unsafe_type(Compile::AliasType* alias_
 DecoratorSet LibraryCallKit::mo_decorator_for_access_kind(AccessKind kind) {
   switch (kind) {
       case Relaxed:
+      case Stable:
         return MO_UNORDERED;
       case Opaque:
         return MO_RELAXED;
@@ -2491,7 +2494,7 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
   // Save state and restore on bailout
   SavedState old_state(this);
 
-  Node* adr = make_unsafe_address(base, offset, type, kind == Relaxed);
+  Node* adr = make_unsafe_address(base, offset, type, (kind == Relaxed || kind == Stable));
   assert(!stopped(), "Inlining of unsafe access failed: address construction stopped unexpectedly");
 
   if (_gvn.type(base->uncast())->isa_ptr() == TypePtr::NULL_PTR) {
@@ -2582,9 +2585,9 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
     Node* p = nullptr;
     // Try to constant fold a load from a constant field
     ciField* field = alias_type->field();
-    if (heap_base_oop != top() && field != nullptr && field->is_constant() && !mismatched) {
+    if (heap_base_oop != top() && field != nullptr && (field->is_constant() || kind == Stable) && !mismatched) {
       // final or stable field
-      p = make_constant_from_field(field, heap_base_oop);
+      p = make_constant_from_field(field, heap_base_oop, kind == Stable);
     }
 
     if (p == nullptr) { // Could not constant fold the load

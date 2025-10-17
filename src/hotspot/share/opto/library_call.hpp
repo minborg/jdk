@@ -253,7 +253,7 @@ class LibraryCallKit : public GraphKit {
   int classify_unsafe_addr(Node* &base, Node* &offset, BasicType type);
   Node* make_unsafe_address(Node*& base, Node* offset, BasicType type = T_ILLEGAL, bool can_cast = false);
 
-  typedef enum { Relaxed, Opaque, Volatile, Acquire, Release } AccessKind;
+  typedef enum { Relaxed, Opaque, Volatile, Acquire, Release, Stable } AccessKind;
   DecoratorSet mo_decorator_for_access_kind(AccessKind kind);
   bool inline_unsafe_access(bool is_store, BasicType type, AccessKind kind, bool is_unaligned);
   static bool klass_needs_init_guard(Node* kls);

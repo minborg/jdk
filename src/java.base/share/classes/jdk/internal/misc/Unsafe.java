@@ -3514,6 +3514,15 @@ public final class Unsafe {
     }
 
     /**
+     * Fetches a reference value from a given Java variable.
+     * @see #getInt(Object, long)
+     */
+    @IntrinsicCandidate
+    public Object getReferenceStable(Object o, long offset) {
+        return getReference(o, offset);
+    }
+
+    /**
      * @return Returns true if the native byte ordering of this
      * platform is big-endian, false if it is little-endian.
      */

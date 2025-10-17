@@ -301,8 +301,8 @@ void ciField::initialize_from(fieldDescriptor* fd) {
 // ------------------------------------------------------------------
 // ciField::constant_value
 // Get the constant value of a this static field.
-ciConstant ciField::constant_value() {
-  assert(is_static() && is_constant(), "illegal call to constant_value()");
+ciConstant ciField::constant_value(bool stable_access) {
+  assert(is_static() && (is_constant() || stable_access), "illegal call to constant_value()");
   if (!_holder->is_initialized()) {
     return ciConstant(); // Not initialized yet
   }
@@ -311,7 +311,7 @@ ciConstant ciField::constant_value() {
     ciInstance* mirror = _holder->java_mirror();
     _constant_value = mirror->field_value_impl(type()->basic_type(), offset_in_bytes());
   }
-  if (FoldStableValues && is_stable() && _constant_value.is_null_or_zero()) {
+  if (FoldStableValues && (is_stable() || stable_access) && _constant_value.is_null_or_zero()) {
     return ciConstant();
   }
   return _constant_value;
@@ -320,11 +320,11 @@ ciConstant ciField::constant_value() {
 // ------------------------------------------------------------------
 // ciField::constant_value_of
 // Get the constant value of non-static final field in the given object.
-ciConstant ciField::constant_value_of(ciObject* object) {
-  assert(!is_static() && is_constant(), "only if field is non-static constant");
+ciConstant ciField::constant_value_of(ciObject* object, bool stable_access) {
+  assert(!is_static() && (is_constant() || stable_access), "only if field is non-static constant");
   assert(object->is_instance(), "must be instance");
   ciConstant field_value = object->as_instance()->field_value(this);
-  if (FoldStableValues && is_stable() && field_value.is_null_or_zero()) {
+  if (FoldStableValues && (is_stable() || stable_access) && field_value.is_null_or_zero()) {
     return ciConstant();
   }
   return field_value;

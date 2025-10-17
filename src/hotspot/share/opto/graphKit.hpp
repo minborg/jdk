@@ -868,7 +868,7 @@ class GraphKit : public Phase {
   void add_parse_predicates(int nargs = 0);
   void add_parse_predicate(Deoptimization::DeoptReason reason, int nargs);
 
-  Node* make_constant_from_field(ciField* field, Node* obj);
+  Node* make_constant_from_field(ciField* field, Node* obj, bool stable_access = false);
 
   // Vector API support (implemented in vectorIntrinsics.cpp)
   Node* box_vector(Node* in, const TypeInstPtr* vbox_type, BasicType elem_bt, int num_elem, bool deoptimize_on_exception = false);

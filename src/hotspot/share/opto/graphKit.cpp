@@ -4242,8 +4242,8 @@ void GraphKit::inflate_string_slow(Node* src, Node* dst, Node* start, Node* coun
   set_memory(st, TypeAryPtr::BYTES);
 }
 
-Node* GraphKit::make_constant_from_field(ciField* field, Node* obj) {
-  if (!field->is_constant()) {
+Node* GraphKit::make_constant_from_field(ciField* field, Node* obj, bool stable_access) {
+  if (!field->is_constant() && !stable_access) {
     return nullptr; // Field not marked as constant.
   }
   ciInstance* holder = nullptr;
@@ -4254,7 +4254,7 @@ Node* GraphKit::make_constant_from_field(ciField* field, Node* obj) {
     }
   }
   const Type* con_type = Type::make_constant_from_field(field, holder, field->layout_type(),
-                                                        /*is_unsigned_load=*/false);
+                                                        /*is_unsigned_load=*/false, stable_access);
   if (con_type != nullptr) {
     return makecon(con_type);
   }

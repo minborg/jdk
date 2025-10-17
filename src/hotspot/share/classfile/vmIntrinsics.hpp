@@ -845,6 +845,10 @@ class methodHandle;
   do_intrinsic(_putFloatRelease,         jdk_internal_misc_Unsafe,        putFloatRelease_name, putFloat_signature,         F_R)  \
   do_intrinsic(_putDoubleRelease,        jdk_internal_misc_Unsafe,        putDoubleRelease_name, putDouble_signature,       F_R)  \
                                                                                                                         \
+  do_name(getReferenceStable_name,"getReferenceStable")                                                                 \
+                                                                                                                        \
+  do_intrinsic(_getReferenceStable,        jdk_internal_misc_Unsafe,    getReferenceStable_name, getReference_signature, F_R)  \
+                                                                                                                        \
   do_name(getShortUnaligned_name,"getShortUnaligned")     do_name(putShortUnaligned_name,"putShortUnaligned")           \
   do_name(getCharUnaligned_name,"getCharUnaligned")       do_name(putCharUnaligned_name,"putCharUnaligned")             \
   do_name(getIntUnaligned_name,"getIntUnaligned")         do_name(putIntUnaligned_name,"putIntUnaligned")               \
