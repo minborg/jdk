@@ -358,7 +358,15 @@ bool LibraryCallKit::try_to_inline(int predicate) {
   case vmIntrinsics::_putFloatVolatile:         return inline_unsafe_access( is_store, T_FLOAT,    Volatile, false);
   case vmIntrinsics::_putDoubleVolatile:        return inline_unsafe_access( is_store, T_DOUBLE,   Volatile, false);
 
-  case vmIntrinsics::_getReferenceStable:       return inline_unsafe_access(!is_store, T_OBJECT,   Stable,  false);
+  case vmIntrinsics::_getReferenceStable:       return inline_unsafe_access(!is_store, T_OBJECT,   Stable, false);
+  case vmIntrinsics::_getBooleanStable:         return inline_unsafe_access(!is_store, T_BOOLEAN,  Stable, false);
+  case vmIntrinsics::_getByteStable:            return inline_unsafe_access(!is_store, T_BYTE,     Stable, false);
+  case vmIntrinsics::_getShortStable:           return inline_unsafe_access(!is_store, T_SHORT,    Stable, false);
+  case vmIntrinsics::_getCharStable:            return inline_unsafe_access(!is_store, T_CHAR,     Stable, false);
+  case vmIntrinsics::_getIntStable:             return inline_unsafe_access(!is_store, T_INT,      Stable, false);
+  case vmIntrinsics::_getLongStable:            return inline_unsafe_access(!is_store, T_LONG,     Stable, false);
+  case vmIntrinsics::_getFloatStable:           return inline_unsafe_access(!is_store, T_FLOAT,    Stable, false);
+  case vmIntrinsics::_getDoubleStable:          return inline_unsafe_access(!is_store, T_DOUBLE,   Stable, false);
 
   case vmIntrinsics::_getShortUnaligned:        return inline_unsafe_access(!is_store, T_SHORT,    Relaxed, true);
   case vmIntrinsics::_getCharUnaligned:         return inline_unsafe_access(!is_store, T_CHAR,     Relaxed, true);
