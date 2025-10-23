@@ -26,6 +26,9 @@ package org.openjdk.bench.java.lang.stable;
 import jdk.internal.misc.Unsafe;
 import org.openjdk.jmh.annotations.*;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -36,10 +39,24 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark) // Share the same state instance (for contention)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 2)
-@Fork(value = 3, jvmArgs = { "--enable-native-access=ALL-UNNAMED", "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED" })
+@Fork(value = 3, jvmArgs = {
+        "--enable-native-access=ALL-UNNAMED",
+        "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED"})
 public class UnsafeStableSemanticsBenchmark {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+
+    private static final MethodHandle INT_IDENTITY_MH;
+    private static final long INT_IDENTITY_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "intIdentityMH");
+    static {
+        try {
+            INT_IDENTITY_MH = LOOKUP.findStatic(UnsafeStableSemanticsBenchmark.class, "identity", MethodType.methodType(int.class, int.class));
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static final long REFERENCE_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aReference");
     private static final long BYTE_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aByte");
     private static final long SHORT_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aShort");
@@ -54,6 +71,7 @@ public class UnsafeStableSemanticsBenchmark {
     public static class Foo {}
 
     Object aReference = new Foo();
+    MethodHandle intIdentityMH = INT_IDENTITY_MH;
     byte aByte = 1;
     short aShort = 1;
     char aChar = 'a';
@@ -75,6 +93,21 @@ public class UnsafeStableSemanticsBenchmark {
 
     @Benchmark public double intHolder() { return INT_HOLDER.getStable(); }
 
+    @Benchmark
+    public int intMh() throws Throwable {
+        return (int) intIdentityMH.invokeExact(42);
+    }
+
+    @Benchmark
+    public int intMhStable() throws Throwable {
+        return (int) ((MethodHandle) UNSAFE.getReferenceStable(this, INT_IDENTITY_OFFSET)).invokeExact(42);
+    }
+
+    @Benchmark
+    public int intMhStatic() throws Throwable {
+        return (int) INT_IDENTITY_MH.invokeExact(42);
+    }
+
 
     final static class IntHolder {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
@@ -85,6 +118,10 @@ public class UnsafeStableSemanticsBenchmark {
             return UNSAFE.getIntStable(this, OFFSET);
         }
 
+    }
+
+    static int identity(int value) {
+        return value;
     }
 
 }
