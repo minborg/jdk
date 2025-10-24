@@ -29,6 +29,7 @@ import org.openjdk.jmh.annotations.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -48,7 +49,7 @@ public class UnsafeStableSemanticsBenchmark {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     private static final MethodHandle INT_IDENTITY_MH;
-    private static final long INT_IDENTITY_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "intIdentityMH");
+
     static {
         try {
             INT_IDENTITY_MH = LOOKUP.findStatic(UnsafeStableSemanticsBenchmark.class, "identity", MethodType.methodType(int.class, int.class));
@@ -57,67 +58,169 @@ public class UnsafeStableSemanticsBenchmark {
         }
     }
 
-    private static final long REFERENCE_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aReference");
-    private static final long BYTE_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aByte");
-    private static final long SHORT_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aShort");
-    private static final long CHAR_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aChar");
-    private static final long INT_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "anInt");
-    private static final long LONG_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aLong");
-    private static final long FLOAT_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aFloat");
-    private static final long DOUBLE_OFFSET = UNSAFE.objectFieldOffset(UnsafeStableSemanticsBenchmark.class, "aDouble");
+    private static final MethodHandlerHolder INT_MH_HOLDER = new MethodHandlerHolder(INT_IDENTITY_MH);
+
+    private static final ByteHolder BYTE_HOLDER = new ByteHolder();
+    private static final StableByteHolder STABLE_BYTE_HOLDER = new StableByteHolder();
+    private static final Map<ByteHolder, Byte> BYTE_MAP = Map.of(STABLE_BYTE_HOLDER, STABLE_BYTE_HOLDER.value);
+
+    private static final ShortHolder SHORT_HOLDER = new ShortHolder();
+    private static final StableShortHolder STABLE_SHORT_HOLDER = new StableShortHolder();
+    private static final Map<ShortHolder, Short> SHORT_MAP = Map.of(STABLE_SHORT_HOLDER, STABLE_SHORT_HOLDER.value);
+
+    private static final CharHolder CHAR_HOLDER = new CharHolder();
+    private static final StableCharHolder STABLE_CHAR_HOLDER = new StableCharHolder();
+    private static final Map<CharHolder, Character> CHAR_MAP = Map.of(STABLE_CHAR_HOLDER, STABLE_CHAR_HOLDER.value);
 
     private static final IntHolder INT_HOLDER = new IntHolder();
+    private static final StableIntHolder STABLE_INT_HOLDER = new StableIntHolder();
+    private static final Map<IntHolder, Integer> INT_MAP = Map.of(STABLE_INT_HOLDER, STABLE_INT_HOLDER.value);
 
-    public static class Foo {}
+    private static final LongHolder LONG_HOLDER = new LongHolder();
+    private static final StableLongHolder STABLE_LONG_HOLDER = new StableLongHolder();
+    private static final Map<LongHolder, Long> LONG_MAP = Map.of(STABLE_LONG_HOLDER, STABLE_LONG_HOLDER.value);
 
-    Object aReference = new Foo();
+    private static final FloatHolder FLOAT_HOLDER = new FloatHolder();
+    private static final StableFloatHolder STABLE_FLOAT_HOLDER = new StableFloatHolder();
+    private static final Map<FloatHolder, Float> FLOAT_MAP = Map.of(STABLE_FLOAT_HOLDER, STABLE_FLOAT_HOLDER.value);
+
+    private static final DoubleHolder DOUBLE_HOLDER = new DoubleHolder();
+    private static final StableDoubleHolder STABLE_DOUBLE_HOLDER = new StableDoubleHolder();
+    private static final Map<DoubleHolder, Double> DOUBLE_MAP = Map.of(STABLE_DOUBLE_HOLDER, STABLE_DOUBLE_HOLDER.value);
+
     MethodHandle intIdentityMH = INT_IDENTITY_MH;
-    byte aByte = 1;
-    short aShort = 1;
-    char aChar = 'a';
-    int anInt = 1;
-    long aLong = 1;
-    float aFloat = 1;
-    double aDouble = 1;
-
-    @Benchmark public Object getReference() { return aReference; }
-    @Benchmark public Object getReferenceStable() { return UNSAFE.getReferenceStable(this, REFERENCE_OFFSET); }
-    @Benchmark public byte getByteStable() { return UNSAFE.getByteStable(this, BYTE_OFFSET); }
-    @Benchmark public short getShortStable() { return UNSAFE.getShortStable(this, SHORT_OFFSET); }
-    @Benchmark public char getCharStable() { return UNSAFE.getCharStable(this, CHAR_OFFSET); }
-    @Benchmark public int getInt() { return anInt; }
-    @Benchmark public int getIntStable() { return UNSAFE.getIntStable(this, INT_OFFSET); }
-    @Benchmark public long getLongStable() { return UNSAFE.getLongStable(this, LONG_OFFSET); }
-    @Benchmark public float getFloatStable() { return UNSAFE.getFloatStable(this, FLOAT_OFFSET); }
-    @Benchmark public double getDoubleStable() { return UNSAFE.getDoubleStable(this, DOUBLE_OFFSET); }
-
-    @Benchmark public double intHolder() { return INT_HOLDER.getStable(); }
 
     @Benchmark
-    public int intMh() throws Throwable {
+    public int mh() throws Throwable {
         return (int) intIdentityMH.invokeExact(42);
     }
 
     @Benchmark
-    public int intMhStable() throws Throwable {
-        return (int) ((MethodHandle) UNSAFE.getReferenceStable(this, INT_IDENTITY_OFFSET)).invokeExact(42);
+    public int mhStable() throws Throwable {
+        return (int) INT_MH_HOLDER.getStable().invokeExact(42);
     }
 
     @Benchmark
-    public int intMhStatic() throws Throwable {
+    public int mhStatic() throws Throwable {
         return (int) INT_IDENTITY_MH.invokeExact(42);
     }
 
+    @Benchmark public byte   byteMap()        { return BYTE_MAP.get(BYTE_HOLDER); }
+    @Benchmark public byte   byteMapStable()  { return BYTE_MAP.get(STABLE_BYTE_HOLDER); }
+    @Benchmark public short  shortMap()       { return SHORT_MAP.get(SHORT_HOLDER); }
+    @Benchmark public short  shortMapStable() { return SHORT_MAP.get(STABLE_SHORT_HOLDER); }
+    @Benchmark public char   charMap()         { return CHAR_MAP.get(CHAR_HOLDER); }
+    @Benchmark public char   charMapStable()   { return CHAR_MAP.get(STABLE_CHAR_HOLDER); }
+    @Benchmark public int    intMap()          { return INT_MAP.get(INT_HOLDER); }
+    @Benchmark public int    intMapStable()    { return INT_MAP.get(STABLE_INT_HOLDER); }
+    @Benchmark public long   longMap()         { return LONG_MAP.get(LONG_HOLDER); }
+    @Benchmark public long   longMapStable()   { return LONG_MAP.get(STABLE_LONG_HOLDER); }
+    @Benchmark public float  floatMap()        { return FLOAT_MAP.get(FLOAT_HOLDER); }
+    @Benchmark public float  floatMapStable()  { return FLOAT_MAP.get(STABLE_FLOAT_HOLDER); }
+    @Benchmark public double doubleMap()       { return DOUBLE_MAP.get(DOUBLE_HOLDER); }
+    @Benchmark public double doubleMapStable() { return DOUBLE_MAP.get(STABLE_DOUBLE_HOLDER); }
 
-    final static class IntHolder {
+    final static class MethodHandlerHolder {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-        private static final long OFFSET = UNSAFE.objectFieldOffset(IntHolder.class, "value");
-        int value = 1;
+        private static final long OFFSET = UNSAFE.objectFieldOffset(MethodHandlerHolder.class, "methodHandle");
 
-        int getStable() {
-            return UNSAFE.getIntStable(this, OFFSET);
+        MethodHandle methodHandle;
+
+        public MethodHandlerHolder(MethodHandle methodHandle) {
+            this.methodHandle = methodHandle;
         }
 
+        MethodHandle getStable() {
+            return (MethodHandle) UNSAFE.getReferenceStable(this, OFFSET);
+        }
+    }
+
+    static sealed class ByteHolder {
+        byte value = 1;
+        @Override public final boolean equals(Object obj) { return obj instanceof ByteHolder that  && this.value == that.value; }
+        @Override public int hashCode() { return value; }
+    }
+
+    final static class StableByteHolder extends ByteHolder {
+        private static final long OFFSET = valueOffset(ByteHolder.class);
+        int getStable() { return UNSAFE.getByteStable(this, OFFSET); }
+        @Override public int hashCode() { return getStable(); }
+    }
+
+    static sealed class ShortHolder {
+        short value = 1;
+        @Override public final boolean equals(Object obj) { return obj instanceof ShortHolder that  && this.value == that.value; }
+        @Override public int hashCode() { return value; }
+    }
+
+    final static class StableShortHolder extends ShortHolder {
+        private static final long OFFSET = valueOffset(ShortHolder.class);
+        short getStable() { return UNSAFE.getShortStable(this, OFFSET); }
+        @Override public int hashCode() { return getStable(); }
+    }
+
+    static sealed class CharHolder {
+        char value = 1;
+        @Override public final boolean equals(Object obj) { return obj instanceof CharHolder that  && this.value == that.value; }
+        @Override public int hashCode() { return value; }
+    }
+
+    final static class StableCharHolder extends CharHolder {
+        private static final long OFFSET = valueOffset(CharHolder.class);
+        char getStable() { return UNSAFE.getCharStable(this, OFFSET); }
+        @Override public int hashCode() { return getStable(); }
+    }
+
+    static sealed class IntHolder {
+        int value = 1;
+        @Override public final boolean equals(Object obj) { return obj instanceof IntHolder that  && this.value == that.value; }
+        @Override public int hashCode() { return value; }
+    }
+
+    final static class StableIntHolder extends IntHolder {
+        private static final long OFFSET = valueOffset(IntHolder.class);
+        int getStable() { return UNSAFE.getIntStable(this, OFFSET); }
+        @Override public int hashCode() { return getStable(); }
+    }
+
+    static sealed class LongHolder {
+        long value = 1;
+        @Override public final boolean equals(Object obj) { return obj instanceof LongHolder that  && this.value == that.value; }
+        @Override public int hashCode() { return (int) value; }
+    }
+
+    final static class StableLongHolder extends LongHolder {
+        private static final long OFFSET = valueOffset(LongHolder.class);
+        long getStable() { return UNSAFE.getLongStable(this, OFFSET); }
+        @Override public int hashCode() { return (int) getStable(); }
+    }
+
+    static sealed class FloatHolder {
+        float value = 1;
+        @Override public final boolean equals(Object obj) { return obj instanceof FloatHolder that  && this.value == that.value; }
+        @Override public int hashCode() { return (int) value; }
+    }
+
+    final static class StableFloatHolder extends FloatHolder {
+        private static final long OFFSET = valueOffset(FloatHolder.class);
+        float getStable() { return UNSAFE.getFloatStable(this, OFFSET); }
+        @Override public int hashCode() { return Float.floatToRawIntBits(getStable()); }
+    }
+
+    static sealed class DoubleHolder {
+        double value = 1;
+        @Override public final boolean equals(Object obj) { return obj instanceof DoubleHolder that  && this.value == that.value; }
+        @Override public int hashCode() { return (int) value; }
+    }
+
+    final static class StableDoubleHolder extends DoubleHolder {
+        private static final long OFFSET = valueOffset(DoubleHolder.class);
+        double getStable() { return UNSAFE.getDoubleStable(this, OFFSET); }
+        @Override public int hashCode() { return (int) Double.doubleToRawLongBits(getStable()); }
+    }
+
+    private static long valueOffset(Class<?> declaredIn) {
+        return UNSAFE.objectFieldOffset(declaredIn, "value");
     }
 
     static int identity(int value) {
