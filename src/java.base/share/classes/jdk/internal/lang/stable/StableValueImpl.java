@@ -30,6 +30,7 @@ import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
+import java.lang.invoke.VarHandle;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Supplier;

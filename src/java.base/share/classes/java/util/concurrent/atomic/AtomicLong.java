@@ -457,6 +457,17 @@ public class AtomicLong extends Number implements java.io.Serializable {
     }
 
     /**
+     * Returns the current value,
+     * with memory effects as specified by {@link VarHandle#getStable}.
+     *
+     * @return the value
+     * @since 26
+     */
+    public final long getStable() {
+        return U.getLongStable(this, VALUE);
+    }
+
+    /**
      * Atomically sets the value to {@code newValue} if the current value,
      * referred to as the <em>witness value</em>, {@code == expectedValue},
      * with memory effects as specified by

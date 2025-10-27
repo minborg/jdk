@@ -420,6 +420,19 @@ public class AtomicReferenceArray<E> implements java.io.Serializable {
     }
 
     /**
+     * Returns the current value of the element at index {@code i},
+     * with memory effects as specified by {@link VarHandle#getStable}.
+     *
+     * @param i the index
+     * @return the value
+     * @since 26
+     */
+    @SuppressWarnings("unchecked")
+    public final E getStable(int i) {
+        return (E)AA.getStable(array, i);
+    }
+
+    /**
      * Atomically sets the element at index {@code i} to {@code newValue}
      * if the element's current value, referred to as the <em>witness
      * value</em>, {@code == expectedValue},

@@ -24,13 +24,20 @@
 package org.openjdk.bench.java.lang.stable;
 
 import jdk.internal.misc.Unsafe;
+import org.openjdk.bench.java.util.concurrent.Atomic;
 import org.openjdk.jmh.annotations.*;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.*;
+
+import static java.lang.foreign.ValueLayout.JAVA_INT;
 
 /**
  * Benchmark measuring StableValue performance
@@ -88,40 +95,66 @@ public class UnsafeStableSemanticsBenchmark {
     private static final StableDoubleHolder STABLE_DOUBLE_HOLDER = new StableDoubleHolder();
     private static final Map<DoubleHolder, Double> DOUBLE_MAP = Map.of(STABLE_DOUBLE_HOLDER, STABLE_DOUBLE_HOLDER.value);
 
+
+    private static final SegmentIntHolder SEGMENT_INT_HOLDER = new SegmentIntHolder();
+    private static final StableSegmentIntHolder STABLE_SEGMENT_INT_HOLDER = new StableSegmentIntHolder();
+    private static final Map<SegmentIntHolder, Integer> SEGMENT_INT_MAP = Map.of(STABLE_SEGMENT_INT_HOLDER, STABLE_SEGMENT_INT_HOLDER.value());
+
     MethodHandle intIdentityMH = INT_IDENTITY_MH;
 
-    @Benchmark
-    public int mh() throws Throwable {
-        return (int) intIdentityMH.invokeExact(42);
-    }
+    private static final AtomicReference<?> ATOMIC_REFERENCE = new AtomicReference<>(new Object());
+    private static final AtomicBoolean ATOMIC_BOOLEAN = new AtomicBoolean(true);
+    private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger(1);
+    private static final AtomicLong ATOMIC_LONG = new AtomicLong(1L);
 
-    @Benchmark
-    public int mhStable() throws Throwable {
-        return (int) INT_MH_HOLDER.getStable().invokeExact(42);
-    }
+    private static final AtomicReferenceArray<?> ATOMIC_REFERENCE_ARRAY = new AtomicReferenceArray<>(new Object[]{new Object()});
+    private static final AtomicIntegerArray ATOMIC_INTEGER_ARRAY = new AtomicIntegerArray(new int[]{1});
+    private static final AtomicLongArray ATOMIC_LONG_ARRAY = new AtomicLongArray(new long[]{1L});
 
-    @Benchmark
-    public int mhStatic() throws Throwable {
-        return (int) INT_IDENTITY_MH.invokeExact(42);
-    }
+    // Method handle to amplify constant folding effects
+    @Benchmark public int     mh()       throws Throwable { return (int) intIdentityMH.invokeExact(42); }
+    @Benchmark public int     mhStable() throws Throwable { return (int) INT_MH_HOLDER.getStable().invokeExact(42); }
+    @Benchmark public int     mhStatic() throws Throwable { return (int) INT_IDENTITY_MH.invokeExact(42); }
 
-    @Benchmark public byte   byteMap()        { return BYTE_MAP.get(BYTE_HOLDER); }
-    @Benchmark public byte   byteMapStable()  { return BYTE_MAP.get(STABLE_BYTE_HOLDER); }
-    @Benchmark public short  shortMap()       { return SHORT_MAP.get(SHORT_HOLDER); }
-    @Benchmark public short  shortMapStable() { return SHORT_MAP.get(STABLE_SHORT_HOLDER); }
-    @Benchmark public char   charMap()         { return CHAR_MAP.get(CHAR_HOLDER); }
-    @Benchmark public char   charMapStable()   { return CHAR_MAP.get(STABLE_CHAR_HOLDER); }
-    @Benchmark public int    intMap()          { return INT_MAP.get(INT_HOLDER); }
-    @Benchmark public int    intMapStable()    { return INT_MAP.get(STABLE_INT_HOLDER); }
-    @Benchmark public long   longMap()         { return LONG_MAP.get(LONG_HOLDER); }
-    @Benchmark public long   longMapStable()   { return LONG_MAP.get(STABLE_LONG_HOLDER); }
-    @Benchmark public float  floatMap()        { return FLOAT_MAP.get(FLOAT_HOLDER); }
-    @Benchmark public float  floatMapStable()  { return FLOAT_MAP.get(STABLE_FLOAT_HOLDER); }
-    @Benchmark public double doubleMap()       { return DOUBLE_MAP.get(DOUBLE_HOLDER); }
-    @Benchmark public double doubleMapStable() { return DOUBLE_MAP.get(STABLE_DOUBLE_HOLDER); }
+    // Atomics
+    @Benchmark public Object  atomicReference()       { return ATOMIC_REFERENCE.get(); }
+    @Benchmark public Object  atomicReferenceStable() { return ATOMIC_REFERENCE.getStable(); }
+    @Benchmark public boolean atomicBoolean()         { return ATOMIC_BOOLEAN.get(); }
+    @Benchmark public boolean atomicBooleanStable()   { return ATOMIC_BOOLEAN.getStable(); }
+    @Benchmark public int     atomicInteger()         { return ATOMIC_INTEGER.get(); }
+    @Benchmark public int     atomicIntegerStable()   { return ATOMIC_INTEGER.getStable(); }
+    @Benchmark public long    atomicLong()            { return ATOMIC_LONG.get(); }
+    @Benchmark public long    atomicLongStable()      { return ATOMIC_LONG.getStable(); }
+
+    // AtomicArrays
+    @Benchmark public Object  arrayAtomicReference()       { return ATOMIC_REFERENCE_ARRAY.get(0); }
+    @Benchmark public Object  arrayAtomicReferenceStable() { return ATOMIC_REFERENCE_ARRAY.getStable(0); }
+    @Benchmark public int     arrayAtomicInteger()         { return ATOMIC_INTEGER_ARRAY.get(0); }
+    @Benchmark public int     arrayAtomicIntegerStable()   { return ATOMIC_INTEGER_ARRAY.getStable(0); }
+    @Benchmark public long    arrayAtomicLong()            { return ATOMIC_LONG_ARRAY.get(0); }
+    @Benchmark public long    arrayAtomicLongStable()      { return ATOMIC_LONG_ARRAY.getStable(0); }
+
+    // Primitives (via Map to amplify constant folding effects)
+    @Benchmark public byte    byteMap()         { return BYTE_MAP.get(BYTE_HOLDER); }
+    @Benchmark public byte    byteMapStable()   { return BYTE_MAP.get(STABLE_BYTE_HOLDER); }
+    @Benchmark public short   shortMap()        { return SHORT_MAP.get(SHORT_HOLDER); }
+    @Benchmark public short   shortMapStable()  { return SHORT_MAP.get(STABLE_SHORT_HOLDER); }
+    @Benchmark public char    charMap()         { return CHAR_MAP.get(CHAR_HOLDER); }
+    @Benchmark public char    charMapStable()   { return CHAR_MAP.get(STABLE_CHAR_HOLDER); }
+    @Benchmark public int     intMap()          { return INT_MAP.get(INT_HOLDER); }
+    @Benchmark public int     intMapStable()    { return INT_MAP.get(STABLE_INT_HOLDER); }
+    @Benchmark public long    longMap()         { return LONG_MAP.get(LONG_HOLDER); }
+    @Benchmark public long    longMapStable()   { return LONG_MAP.get(STABLE_LONG_HOLDER); }
+    @Benchmark public float   floatMap()        { return FLOAT_MAP.get(FLOAT_HOLDER); }
+    @Benchmark public float   floatMapStable()  { return FLOAT_MAP.get(STABLE_FLOAT_HOLDER); }
+    @Benchmark public double  doubleMap()       { return DOUBLE_MAP.get(DOUBLE_HOLDER); }
+    @Benchmark public double  doubleMapStable() { return DOUBLE_MAP.get(STABLE_DOUBLE_HOLDER); }
+
+    // Segment primitives (via Map to amplify constant folding effects)
+    @Benchmark public int     segmentIntMap()          { return SEGMENT_INT_MAP.get(SEGMENT_INT_HOLDER); }
+    @Benchmark public int     segmentIntMapStable()    { return SEGMENT_INT_MAP.get(STABLE_SEGMENT_INT_HOLDER); }
 
     final static class MethodHandlerHolder {
-        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long OFFSET = UNSAFE.objectFieldOffset(MethodHandlerHolder.class, "methodHandle");
 
         MethodHandle methodHandle;
@@ -218,6 +251,27 @@ public class UnsafeStableSemanticsBenchmark {
         double getStable() { return UNSAFE.getDoubleStable(this, OFFSET); }
         @Override public int hashCode() { return (int) Double.doubleToRawLongBits(getStable()); }
     }
+
+    // Segment access via VarHandle
+
+    static sealed class SegmentIntHolder {
+        MemorySegment segment;
+
+        public SegmentIntHolder() {
+            segment = Arena.global().allocate(JAVA_INT);
+            segment.set(JAVA_INT, 0, 1);
+        }
+        int value() { return segment.get(JAVA_INT, 0); }
+        @Override public final boolean equals(Object obj) { return obj instanceof SegmentIntHolder that  && this.value() == that.value(); }
+        @Override public int hashCode() { return value(); }
+    }
+
+    final static class StableSegmentIntHolder extends SegmentIntHolder {
+        private static final VarHandle VAR_HANDLE = JAVA_INT.varHandle();
+        int getStable() { return (int)VAR_HANDLE.getStable(segment, 0); }
+        @Override public int hashCode() { return getStable(); }
+    }
+
 
     private static long valueOffset(Class<?> declaredIn) {
         return UNSAFE.objectFieldOffset(declaredIn, "value");
