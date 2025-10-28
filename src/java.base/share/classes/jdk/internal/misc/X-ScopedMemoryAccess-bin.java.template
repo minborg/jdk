@@ -221,20 +221,14 @@
     @ForceInline @Scoped
     private $type$ get$Type$StableInternal(MemorySessionImpl session, Object base, long offset) {
         try {
-            if (session == MemorySessionImpl.GLOBAL_SESSION) {
-                return UNSAFE.get$Type$Stable(base, offset);
-            }
             if (session != null) {
                 session.checkValidStateRaw();
             }
-            // Fall back to plain semantics
-            return UNSAFE.get$Type$(base, offset);
+            return UNSAFE.get$Type$Stable(base, offset);
         } finally {
             Reference.reachabilityFence(session);
         }
     }
-
-
 #if[CAS]
     @ForceInline
     public boolean compareAndSet$Type$(MemorySessionImpl session, Object base, long offset, $type$ expected, $type$ value) {
