@@ -798,28 +798,29 @@ public abstract sealed class VarHandle implements Constable
 
     /**
      * Returns the value of a variable, with memory semantics of reading as
-     * if the variable was declared non-{@code volatile}.  Commonly referred to
+     * if the variable was declared non-{@code volatile}. Commonly referred to
      * as plain read access but, giving the VM the opportunity to elide further reads
-     * on the same variable if a non-default value is observed.
-     *
-     * <p>The method signature is of the form {@code (CT1 ct1, ..., CTn ctn)T}.
-     *
-     * <p>The symbolic type descriptor at the call site of {@code getStable}
+     * on the same variable if a non-default value is observed and if there is a trusted
+     * chain starting from a VM constant and ending with the variable.
+     *<p>
+     * The method signature is of the form {@code (CT1 ct1, ..., CTn ctn)T}.
+     *<p>
+     * The symbolic type descriptor at the call site of {@code getStable}
      * must match the access mode type that is the result of calling
      * {@code accessModeType(VarHandle.AccessMode.GET_STABLE)} on this VarHandle.
      *
      * @param args the signature-polymorphic parameter list of the form
-     * {@code (CT1 ct1, ..., CTn)}
-     * , statically represented using varargs.
+     *             {@code (CT1 ct1, ..., CTn)} , statically represented using varargs.
      * @return the signature-polymorphic result that is the value of the
-     * variable
-     * , statically represented using {@code Object}.
+     *         variable, statically represented using {@code Object}.
      * @throws UnsupportedOperationException if the access mode is unsupported
-     * for this VarHandle.
+     *         for this VarHandle.
      * @throws WrongMethodTypeException if the access mode type does not
-     * match the caller's symbolic type descriptor.
+     *         match the caller's symbolic type descriptor.
      * @throws ClassCastException if the access mode type matches the caller's
-     * symbolic type descriptor, but a reference cast fails.
+     *         symbolic type descriptor, but a reference cast fails.
+     *
+     * @since 99
      */
     public final native
     @MethodHandle.PolymorphicSignature

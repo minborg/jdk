@@ -466,7 +466,7 @@ public class AtomicLongArray implements java.io.Serializable {
      *
      * @param i the index
      * @return the value
-     * @since 26
+     * @since 99
      */
     public final long getStable(int i) {
         return (long)AA.getStable(array, i);

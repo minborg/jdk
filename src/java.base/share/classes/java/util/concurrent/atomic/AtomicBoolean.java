@@ -252,7 +252,7 @@ public class AtomicBoolean implements java.io.Serializable {
      * with memory effects as specified by {@link VarHandle#getStable}.
      *
      * @return the value
-     * @since 26
+     * @since 99
      */
     public final boolean getStable() {
         return (int)VALUE.getStable(this) != 0;

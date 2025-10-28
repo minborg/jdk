@@ -3521,37 +3521,39 @@ public final class Unsafe {
      * <p>
      * Stable semantics means, if the VM observes a non-default value,
      * (i.e, a non-{@code null} value), the VM is free to reuse said value indefinitely
-     * and elide subsequent reads using this method.
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
      * <p>
-     * Buy adding various memory fences after an access, other memory semantics
+     * By adding various memory fences after a plain stable access, other memory semantics
      * can be emulated.
      *
      * @see #getInt(Object, long)
+     * @since 99
      */
     @IntrinsicCandidate
     public Object getReferenceStable(Object o, long offset) {
         return getReference(o, offset);
     }
 
-    /** @see #getIntStable(Object, long) */
+    /** @see #getIntStable(Object, long) @since 99 */
     @IntrinsicCandidate
     public boolean getBooleanStable(Object o, long offset) {
         return getBoolean(o, offset);
     }
 
-    /** @see #getIntStable(Object, long) */
+    /** @see #getIntStable(Object, long) @since 99 */
     @IntrinsicCandidate
     public byte getByteStable(Object o, long offset) {
         return getByte(o, offset);
     }
 
-    /** @see #getIntStable(Object, long) */
+    /** @see #getIntStable(Object, long) @since 99 */
     @IntrinsicCandidate
     public short getShortStable(Object o, long offset) {
         return getShort(o, offset);
     }
 
-    /** @see #getIntStable(Object, long) */
+    /** @see #getIntStable(Object, long) @since 99 */
     @IntrinsicCandidate
     public char getCharStable(Object o, long offset) {
         return getChar(o, offset);
@@ -3563,9 +3565,10 @@ public final class Unsafe {
      * <p>
      * Stable semantics means, if the VM observes a non-default value,
      * (i.e, a non-zero value), the VM is free to reuse said value indefinitely
-     * and elide subsequent reads using this method.
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
      * <p>
-     * Buy adding various memory fences after an access, other memory semantics
+     * By adding various memory fences after a plain stable access, other memory semantics
      * can be emulated.
      *
      * @param o Java heap object in which the variable resides, if any, else
@@ -3579,161 +3582,30 @@ public final class Unsafe {
      *         {@link NullPointerException}
      *
      * @see #getInt(Object, long)
+     * @since 99
      */
     @IntrinsicCandidate
     public int getIntStable(Object o, long offset) {
         return getInt(o, offset);
     }
 
-    /** @see #getIntStable(Object, long) */
+    /** @see #getIntStable(Object, long) @since 99 */
     @IntrinsicCandidate
     public long getLongStable(Object o, long offset){
         return getLong(0, offset);
     }
 
-    /** @see #getIntStable(Object, long) */
+    /** @see #getIntStable(Object, long) @since 99 */
     @IntrinsicCandidate
     public float getFloatStable(Object o, long offset) {
         return getFloat(o, offset);
     }
 
-    /** @see #getIntStable(Object, long) */
+    /** @see #getIntStable(Object, long) @since 99 */
     @IntrinsicCandidate
     public double getDoubleStable(Object o, long offset) {
         return getDouble(0, offset);
     }
-
-//     /**
-//     * Fetches a reference value from a given Java variable using volatile <em>stable</em>
-//     * semantics.
-//     * <p>
-//     * Stable semantics means, if the VM observes a non-default value,
-//     * (i.e, a non-{@code null} value), the VM is free to reuse said value indefinitely
-//     * and elide subsequent reads using this method.
-//     *
-//     * @see #getInt(Object, long)
-//     */
-/*
-
-    @IntrinsicCandidate
-    public Object getReferenceVolatileStable(Object o, long offset) {
-        return getReferenceVolatile(o, offset);
-    }
-*/
-
-//     /**
-//     * Fetches a value from a given Java variable using volatile <em>stable</em>
-//     * semantics.
-//     * <p>
-//     * Stable semantics means, if the VM observes a non-default value,
-//     * (i.e, a non-zero value), the VM is free to reuse said value indefinitely
-//     * and elide subsequent reads using this method.
-//     *
-//     * @param o Java heap object in which the variable resides, if any, else
- //    *        null
-//     * @param offset indication of where the variable resides in a Java heap
-//     *        object, if any, else a memory address locating the variable
-//     *        statically
- //    * @return the value fetched from the indicated Java variable using plain
-//     *         stable semantics
-//     * @throws RuntimeException No defined exceptions are thrown, not even
-//     *         {@link NullPointerException}
-//     *
-//     * @see #getInt(Object, long)
-//     */
-
-    /*
-    @IntrinsicCandidate
-    public int getIntVolatileStable(Object o, long offset) {
-        return getIntVolatile(o, offset);
-    }
-
-    @IntrinsicCandidate
-    // BS: withStableSemantics()
-    public Object asStable(Object input) {
-        return input;
-    }
-
-    @IntrinsicCandidate
-    public int asStable(int input) {
-        return input;
-    }
-
-    @IntrinsicCandidate
-    public int asResettable(int input) {
-        return input;
-    }
-
-    */
-//     /**
-//     * Ensures that stable loads before the fence will not be reordered with stable
-//     * loads after the fence; all previous stable loads are invalidated and any and
-//     * all code that relies on constant-folded stable reads is deoptimized.
-//     *
-//     * @since 27
-//     */
-/*
-    @IntrinsicCandidate
-    public void stableStableFence() {}
-
-    */
-//     /**
-//     * Ensures that stable loads for the given {@code type} and {@code offset} before
-//     * the fence will not be reordered with stable loads for the given {@code type} and
-//     * {@code offset} after the fence; stable loads for the provided {@code type} and
-//     * {@code offset} are invalidated and related code that relies on constant-folded
-//     * stable read is deoptimized.
-//     *
-//     * Note: We could have a read on a page that we just unmap which generated a trap.
-//     *       Perhaps there should be a way to opt in for this feature.
- //    *
-//     * @since 27*/
-//     */
-/*
-    @IntrinsicCandidate
-    public void stableStableFence(Class<?> type, long offset) {}
-
-    static final class MyClass {
-
-        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-        private static final long X_OFFSET = UNSAFE.objectFieldOffset(MyClass.class, "x");
-        private static final long RESETTABLE_OFFSET = UNSAFE.objectFieldOffset(MyClass.class, "resettable");
-
-        private int x;
-        private int resettable;
-
-        static void main() {
-            MyClass myClass = new MyClass();
-            myClass.x = 42;
-            myClass.resettable = 100;
-
-            // When analyzing the IR graph, determines that stable semantics can be
-            // applied after the wrapped unsafe load (with arbitrarily semantics) has been
-            // invoked.
-            int myX = UNSAFE.asStable(UNSAFE.getIntVolatile(myClass, X_OFFSET));
-            IO.println(Integer.toString(myX)); // Prints "42"
-
-            // Installs an uncommon trap
-            int myResettable = UNSAFE.asResettable(UNSAFE.asStable(UNSAFE.getIntVolatile(myClass, RESETTABLE_OFFSET)));
-            IO.println(Integer.toString(myResettable)); // Prints "100"
-            // Deptimizes
-            UNSAFE.stableStableFence(MyClass.class, RESETTABLE_OFFSET);
-            myClass.resettable = 200;
-            myResettable = UNSAFE.asResettable(UNSAFE.asStable(UNSAFE.getIntVolatile(myClass, RESETTABLE_OFFSET)));
-            IO.println(Integer.toString(myResettable)); // Prints "200"
-
-            // What if one path is resettable and another not...
-
-
-            // This could trigger an uncommon trap for constant folded paths
-            // related to any code for the class+offset (i.e., all instances are
-            // deoptimized).
-            // UNSAFE.putIntRelease(myClass, 13, getUnsafe().reset(13));
-
-        }
-    }
-
-*/
 
     /**
      * @return Returns true if the native byte ordering of this

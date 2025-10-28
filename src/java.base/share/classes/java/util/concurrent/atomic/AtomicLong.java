@@ -461,7 +461,7 @@ public class AtomicLong extends Number implements java.io.Serializable {
      * with memory effects as specified by {@link VarHandle#getStable}.
      *
      * @return the value
-     * @since 26
+     * @since 99
      */
     public final long getStable() {
         return U.getLongStable(this, VALUE);

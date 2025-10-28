@@ -348,7 +348,7 @@ public class AtomicReference<V> implements java.io.Serializable {
      * with memory effects as specified by {@link VarHandle#getStable}.
      *
      * @return the value
-     * @since 26
+     * @since 99
      */
     @SuppressWarnings("unchecked")
     public final V getStable() {

@@ -466,7 +466,7 @@ public class AtomicIntegerArray implements java.io.Serializable {
      *
      * @param i the index
      * @return the value
-     * @since 26
+     * @since 99
      */
     public final int getStable(int i) {
         return (int)AA.getStable(array, i);

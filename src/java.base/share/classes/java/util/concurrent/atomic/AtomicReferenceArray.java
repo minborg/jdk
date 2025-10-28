@@ -425,7 +425,7 @@ public class AtomicReferenceArray<E> implements java.io.Serializable {
      *
      * @param i the index
      * @return the value
-     * @since 26
+     * @since 99
      */
     @SuppressWarnings("unchecked")
     public final E getStable(int i) {

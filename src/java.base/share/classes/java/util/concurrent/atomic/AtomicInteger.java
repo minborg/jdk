@@ -451,7 +451,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
      * with memory effects as specified by {@link VarHandle#getStable}.
      *
      * @return the value
-     * @since 26
+     * @since 99
      */
     public final int getStable() {
         return U.getIntStable(this, VALUE);
