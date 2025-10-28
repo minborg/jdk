@@ -3592,7 +3592,7 @@ public final class Unsafe {
     /** @see #getIntStable(Object, long) @since 99 */
     @IntrinsicCandidate
     public long getLongStable(Object o, long offset){
-        return getLong(0, offset);
+        return getLong(o, offset);
     }
 
     /** @see #getIntStable(Object, long) @since 99 */
@@ -3604,7 +3604,7 @@ public final class Unsafe {
     /** @see #getIntStable(Object, long) @since 99 */
     @IntrinsicCandidate
     public double getDoubleStable(Object o, long offset) {
-        return getDouble(0, offset);
+        return getDouble(o, offset);
     }
 
     /**
