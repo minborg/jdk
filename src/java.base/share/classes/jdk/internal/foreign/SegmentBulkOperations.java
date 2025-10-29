@@ -67,9 +67,11 @@ public final class SegmentBulkOperations {
             // 0 <= length < FILL_NATIVE_LIMIT : 0...0X...XXXX
 
             // Handle smaller segments directly without transitioning to native code
-            final long u = Byte.toUnsignedLong(value);
-            final long longValue = u << 56 | u << 48 | u << 40 | u << 32 | u << 24 | u << 16 | u << 8 | u;
 
+            /* The code below is faster but equivalent to:
+               final long u = Byte.toUnsignedLong(value);
+               final long longValue = u << 56 | u << 48 | u << 40 | u << 32 | u << 24 | u << 16 | u << 8 | u; */
+            final long longValue = 0x01010101_01010101L * Byte.toUnsignedLong(value);
             int offset = 0;
             // 0...0X...X000
             final int limit = (int) (dst.length & (NATIVE_THRESHOLD_FILL - 8));
