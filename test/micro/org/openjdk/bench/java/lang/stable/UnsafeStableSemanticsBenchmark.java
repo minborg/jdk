@@ -65,6 +65,9 @@ public class UnsafeStableSemanticsBenchmark {
         }
     }
 
+    private static final int[] INT_ARRAY = new int[]{1};
+    private static final long[] LONG_ARRAY = new long[]{1L};
+
     private static final MethodHandlerHolder INT_MH_HOLDER = new MethodHandlerHolder(INT_IDENTITY_MH);
 
     private static final ByteHolder BYTE_HOLDER = new ByteHolder();
@@ -133,6 +136,12 @@ public class UnsafeStableSemanticsBenchmark {
     @Benchmark public int     arrayAtomicIntegerStable()   { return ATOMIC_INTEGER_ARRAY.getStable(0); }
     @Benchmark public long    arrayAtomicLong()            { return ATOMIC_LONG_ARRAY.get(0); }
     @Benchmark public long    arrayAtomicLongStable()      { return ATOMIC_LONG_ARRAY.getStable(0); }
+
+    // Arrays
+    @Benchmark public int     arraysInteger()         { return UNSAFE.getInt(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+    @Benchmark public int     arraysIntegerStable()   { return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+    @Benchmark public long    arraysLong()            { return UNSAFE.getLong(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
+    @Benchmark public long    arraysLongStable()      { return UNSAFE.getLongStable(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
 
     // Primitives (via Map to amplify constant folding effects)
     @Benchmark public byte    byteMap()         { return BYTE_MAP.get(BYTE_HOLDER); }
