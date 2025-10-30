@@ -739,6 +739,15 @@ bool C2Compiler::is_intrinsic_supported(vmIntrinsics::ID id) {
   case vmIntrinsics::_getLongStable:
   case vmIntrinsics::_getFloatStable:
   case vmIntrinsics::_getDoubleStable:
+  case vmIntrinsics::_getReferenceStableVolatile:
+  case vmIntrinsics::_getBooleanStableVolatile:
+  case vmIntrinsics::_getByteStableVolatile:
+  case vmIntrinsics::_getShortStableVolatile:
+  case vmIntrinsics::_getCharStableVolatile:
+  case vmIntrinsics::_getIntStableVolatile:
+  case vmIntrinsics::_getLongStableVolatile:
+  case vmIntrinsics::_getFloatStableVolatile:
+  case vmIntrinsics::_getDoubleStableVolatile:
   case vmIntrinsics::_getShortUnaligned:
   case vmIntrinsics::_getCharUnaligned:
   case vmIntrinsics::_getIntUnaligned:

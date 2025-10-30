@@ -3523,11 +3523,8 @@ public final class Unsafe {
      * (i.e, a non-{@code null} value), the VM is free to reuse said value indefinitely
      * and elide subsequent reads using this method. This is only true if there is a
      * trusted path from a VM constant to the targeted reference value.
-     * <p>
-     * By adding various memory fences after a plain stable access, other memory semantics
-     * can be emulated.
      *
-     * @see #getInt(Object, long)
+     * @see #getReference(Object, long)
      * @since 99
      */
     @IntrinsicCandidate
@@ -3605,6 +3602,95 @@ public final class Unsafe {
     @IntrinsicCandidate
     public double getDoubleStable(Object o, long offset) {
         return getDouble(o, offset);
+    }
+
+    /**
+     * Fetches a reference value from a given Java variable using volatile <em>stable</em>
+     * semantics.
+     * <p>
+     * Stable semantics means, if the VM observes a non-default value,
+     * (i.e, a non-{@code null} value), the VM is free to reuse said value indefinitely
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
+     *
+     * @see #getReferenceVolatile(Object, long)
+     * @since 99
+     */
+    @IntrinsicCandidate
+    public Object getReferenceStableVolatile(Object o, long offset) {
+        return getReferenceVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public boolean getBooleanStableVolatile(Object o, long offset) {
+        return getBooleanVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public byte getByteStableVolatile(Object o, long offset) {
+        return getByteVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public short getShortStableVolatile(Object o, long offset) {
+        return getShortVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public char getCharStableVolatile(Object o, long offset) {
+        return getCharVolatile(o, offset);
+    }
+
+    /**
+     * Fetches a value from a given Java variable using volatile <em>stable</em>
+     * semantics.
+     * <p>
+     * Stable semantics means, if the VM observes a non-default value,
+     * (i.e, a non-zero value), the VM is free to reuse said value indefinitely
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
+     * <p>
+     * By adding various memory fences after a plain stable access, other memory semantics
+     * can be emulated.
+     *
+     * @param o Java heap object in which the variable resides, if any, else
+     *        null
+     * @param offset indication of where the variable resides in a Java heap
+     *        object, if any, else a memory address locating the variable
+     *        statically
+     * @return the value fetched from the indicated Java variable using plain
+     *         stable semantics
+     * @throws RuntimeException No defined exceptions are thrown, not even
+     *         {@link NullPointerException}
+     *
+     * @see #getIntVolatile(Object, long)
+     * @since 99
+     */
+    @IntrinsicCandidate
+    public int getIntStableVolatile(Object o, long offset) {
+        return getIntVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public long getLongStableVolatile(Object o, long offset){
+        return getLongVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public float getFloatStableVolatile(Object o, long offset) {
+        return getFloatVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public double getDoubleStableVolatile(Object o, long offset) {
+        return getDoubleVolatile(o, offset);
     }
 
     /**
