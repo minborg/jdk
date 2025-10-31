@@ -40,14 +40,14 @@ import java.util.concurrent.atomic.*;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 
 /**
- * Benchmark measuring StableValue performance
+ * Benchmark measuring stable semantics access performance
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark) // Share the same state instance (for contention)
 @Warmup(iterations = 5, time = 1)
-@Measurement(iterations = 5, time = 2)
-@Fork(value = 3, jvmArgs = {
+@Measurement(iterations = 5, time = 1)
+@Fork(value = 2, jvmArgs = {
         "--enable-native-access=ALL-UNNAMED",
         "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED"})
 public class UnsafeStableSemanticsBenchmark {
@@ -114,6 +114,9 @@ public class UnsafeStableSemanticsBenchmark {
     private static final AtomicIntegerArray ATOMIC_INTEGER_ARRAY = new AtomicIntegerArray(new int[]{1});
     private static final AtomicLongArray ATOMIC_LONG_ARRAY = new AtomicLongArray(new long[]{1L});
 
+    private static final VarHandle INT_ARRAY_VH = MethodHandles.arrayElementVarHandle(int[].class);
+    private static final VarHandle LONG_ARRAY_VH = MethodHandles.arrayElementVarHandle(long[].class);
+
     // Method handle to amplify constant folding effects
     @Benchmark public int     mh()       throws Throwable { return (int) intIdentityMH.invokeExact(42); }
     @Benchmark public int     mhStable() throws Throwable { return (int) INT_MH_HOLDER.getStable().invokeExact(42); }
@@ -144,13 +147,21 @@ public class UnsafeStableSemanticsBenchmark {
     @Benchmark public long    arrayAtomicLongStable()              { return ATOMIC_LONG_ARRAY.getStable(0); }
     @Benchmark public long    arrayAtomicLongStableVolatile()      { return ATOMIC_LONG_ARRAY.getStableVolatile(0); }
 
-    // Arrays
-    @Benchmark public int     arraysInteger()                 { return UNSAFE.getInt(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
-    @Benchmark public int     arraysIntegerStable()           { return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
-    @Benchmark public int     arraysIntegerStableVolatile()   { return UNSAFE.getIntStableVolatile(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
-    @Benchmark public long    arraysLong()                    { return UNSAFE.getLong(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
-    @Benchmark public long    arraysLongStable()              { return UNSAFE.getLongStable(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
-    @Benchmark public long    arraysLongStableVolatile()      { return UNSAFE.getLongStableVolatile(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
+    // Arrays via Unsafe
+    @Benchmark public int     unsafeArrayInteger()                 { return UNSAFE.getInt(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+    @Benchmark public int     unsafeArrayIntegerStable()           { return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+    @Benchmark public int     unsafeArrayIntegerStableVolatile()   { return UNSAFE.getIntStableVolatile(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+    @Benchmark public long    unsafeArrayLong()                    { return UNSAFE.getLong(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
+    @Benchmark public long    unsafeArrayLongStable()              { return UNSAFE.getLongStable(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
+    @Benchmark public long    unsafeArrayLongStableVolatile()      { return UNSAFE.getLongStableVolatile(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
+
+    // Arrays via VarHandle
+    @Benchmark public int     varHandleArrayInteger()                 { return (int) INT_ARRAY_VH.get(INT_ARRAY, 0); }
+    @Benchmark public int     varHandleArrayIntegerStable()           { return (int) INT_ARRAY_VH.getStable(INT_ARRAY, 0); }
+    @Benchmark public int     varHandleArrayIntegerStableVolatile()   { return (int) INT_ARRAY_VH.getStableVolatile(INT_ARRAY, 0); }
+    @Benchmark public long    varHandleArrayLong()                    { return (long) LONG_ARRAY_VH.get(LONG_ARRAY, 0); }
+    @Benchmark public long    varHandleArrayLongStable()              { return (long) LONG_ARRAY_VH.getStable(LONG_ARRAY, 0); }
+    @Benchmark public long    varHandleArrayLongStableVolatile()      { return (long) LONG_ARRAY_VH.getStableVolatile(LONG_ARRAY, 0); }
 
     // Primitives (via Map to amplify constant folding effects)
     @Benchmark public byte    byteMap()         { return BYTE_MAP.get(BYTE_HOLDER); }
