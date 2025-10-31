@@ -66,6 +66,38 @@ final class AtomicStables {
         assertEquals(ab.get(), ab.getStable());
     }
 
+    @Test
+    void atomicReferenceVolatile() {
+        var ab = new AtomicReference<Integer>();
+        assertEquals(ab.get(), ab.getStableVolatile());
+        ab.set(1);
+        assertEquals(ab.get(), ab.getStableVolatile());
+    }
+
+    @Test
+    void atomicBooleanVolatile() {
+        var ab = new AtomicBoolean();
+        assertEquals(ab.get(), ab.getStableVolatile());
+        ab.set(true);
+        assertEquals(ab.get(), ab.getStableVolatile());
+    }
+
+    @Test
+    void atomicIntegerVolatile() {
+        var ab = new AtomicInteger();
+        assertEquals(ab.get(), ab.getStableVolatile());
+        ab.set(1);
+        assertEquals(ab.get(), ab.getStableVolatile());
+    }
+
+    @Test
+    void atomicLongVolatile() {
+        var ab = new AtomicLong();
+        assertEquals(ab.get(), ab.getStableVolatile());
+        ab.set(1L);
+        assertEquals(ab.get(), ab.getStableVolatile());
+    }
+
     // Arrays
 
     @Test
@@ -90,6 +122,30 @@ final class AtomicStables {
         assertEquals(ab.get(0), ab.getStable(0));
         ab.set(0, 1L);
         assertEquals(ab.get(0), ab.getStable(0));
+    }
+
+    @Test
+    void atomicReferenceArrayVolatile() {
+        var ab = new AtomicReferenceArray<Integer>(new Integer[1]);
+        assertEquals(ab.get(0), ab.getStableVolatile(0));
+        ab.set(0, 1);
+        assertEquals(ab.get(0), ab.getStableVolatile(0));
+    }
+
+    @Test
+    void atomicIntegerArrayVolatile() {
+        var ab = new AtomicIntegerArray(new int[1]);
+        assertEquals(ab.get(0), ab.getStableVolatile(0));
+        ab.set(0, 1);
+        assertEquals(ab.get(0), ab.getStableVolatile(0));
+    }
+
+    @Test
+    void atomicLongArrayVolatile() {
+        var ab = new AtomicLongArray(new long[1]);
+        assertEquals(ab.get(0), ab.getStableVolatile(0));
+        ab.set(0, 1L);
+        assertEquals(ab.get(0), ab.getStableVolatile(0));
     }
 
 }

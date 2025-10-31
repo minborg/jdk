@@ -473,6 +473,18 @@ public class AtomicLongArray implements java.io.Serializable {
     }
 
     /**
+     * Returns the current value of the element at index {@code i},
+     * with memory effects as specified by {@link VarHandle#getStableVolatile}.
+     *
+     * @param i the index
+     * @return the value
+     * @since 99
+     */
+    public final long getStableVolatile(int i) {
+        return (long)AA.getStableVolatile(array, i);
+    }
+
+    /**
      * Atomically sets the element at index {@code i} to {@code newValue}
      * if the element's current value, referred to as the <em>witness
      * value</em>, {@code == expectedValue},

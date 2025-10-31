@@ -229,6 +229,27 @@
             Reference.reachabilityFence(session);
         }
     }
+
+    @ForceInline
+    public $type$ get$Type$StableVolatile(MemorySessionImpl session, Object base, long offset) {
+        try {
+            return get$Type$StableVolatileInternal(session, base, offset);
+        } catch (ScopedAccessError ex) {
+            throw ex.newRuntimeException();
+        }
+    }
+
+    @ForceInline @Scoped
+    private $type$ get$Type$StableVolatileInternal(MemorySessionImpl session, Object base, long offset) {
+        try {
+            if (session != null) {
+                session.checkValidStateRaw();
+            }
+            return UNSAFE.get$Type$StableVolatile(base, offset);
+        } finally {
+            Reference.reachabilityFence(session);
+        }
+    }
 #if[CAS]
     @ForceInline
     public boolean compareAndSet$Type$(MemorySessionImpl session, Object base, long offset, $type$ expected, $type$ value) {

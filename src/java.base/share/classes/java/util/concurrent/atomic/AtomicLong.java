@@ -468,6 +468,17 @@ public class AtomicLong extends Number implements java.io.Serializable {
     }
 
     /**
+     * Returns the current value,
+     * with memory effects as specified by {@link VarHandle#getStableVolatile}.
+     *
+     * @return the value
+     * @since 99
+     */
+    public final long getStableVolatile() {
+        return U.getLongStableVolatile(this, VALUE);
+    }
+
+    /**
      * Atomically sets the value to {@code newValue} if the current value,
      * referred to as the <em>witness value</em>, {@code == expectedValue},
      * with memory effects as specified by

@@ -356,6 +356,18 @@ public class AtomicReference<V> implements java.io.Serializable {
     }
 
     /**
+     * Returns the current value,
+     * with memory effects as specified by {@link VarHandle#getStableVolatile}.
+     *
+     * @return the value
+     * @since 99
+     */
+    @SuppressWarnings("unchecked")
+    public final V getStableVolatile() {
+        return (V)VALUE.getStableVolatile(this);
+    }
+
+    /**
      * Atomically sets the value to {@code newValue} if the current value,
      * referred to as the <em>witness value</em>, {@code == expectedValue},
      * with memory effects as specified by

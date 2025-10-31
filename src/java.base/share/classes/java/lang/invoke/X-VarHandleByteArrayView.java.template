@@ -327,6 +327,16 @@ final class VarHandleByteArrayAs$Type$s extends VarHandleByteArrayBase {
                                       checkNullHeapBase(UNSAFE.getReference(bb, BYTE_BUFFER_HB)),
                                       address(bb, index(bb, index))));
         }
+
+        @ForceInline
+        static $type$ getStableVolatile(VarHandle ob, Object obb, int index) {
+            ByteBufferHandle handle = (ByteBufferHandle)ob;
+            ByteBuffer bb = (ByteBuffer) Objects.requireNonNull(obb);
+            return convEndian(handle.be,
+                              SCOPED_MEMORY_ACCESS.get$RawType$StableVolatile(session(bb),
+                                      checkNullHeapBase(UNSAFE.getReference(bb, BYTE_BUFFER_HB)),
+                                      address(bb, index(bb, index))));
+        }
 #if[CAS]
 
         @ForceInline

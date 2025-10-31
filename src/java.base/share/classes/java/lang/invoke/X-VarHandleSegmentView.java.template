@@ -243,7 +243,7 @@ final class VarHandleSegmentAs$Type$sAligned extends VarHandleSegmentAs$Type$s {
 
     @ForceInline
     static $type$ getStable(VarHandle ob, Object obb, long base) {
-        return getAcquire(ob, obb, base, ((SegmentVarHandle) ob).offset);
+        return getStable(ob, obb, base, ((SegmentVarHandle) ob).offset);
     }
 
     @ForceInline
@@ -256,6 +256,20 @@ final class VarHandleSegmentAs$Type$sAligned extends VarHandleSegmentAs$Type$s {
                                   offset(bb, base, offset)));
     }
 
+    @ForceInline
+    static $type$ getStableVolatile(VarHandle ob, Object obb, long base) {
+        return getStableVolatile(ob, obb, base, ((SegmentVarHandle) ob).offset);
+    }
+
+    @ForceInline
+    static $type$ getStableVolatile(VarHandle ob, Object obb, long base, long offset) {
+        SegmentVarHandle handle = (SegmentVarHandle)ob;
+        AbstractMemorySegmentImpl bb = handle.checkSegment(obb, base, true);
+        return convEndian(handle.be,
+                          SCOPED_MEMORY_ACCESS.get$RawType$StableVolatile(bb.sessionImpl(),
+                                  bb.unsafeGetBase(),
+                                  offset(bb, base, offset)));
+    }
 #if[CAS]
 
     @ForceInline

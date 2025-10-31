@@ -458,6 +458,17 @@ public class AtomicInteger extends Number implements java.io.Serializable {
     }
 
     /**
+     * Returns the current value,
+     * with memory effects as specified by {@link VarHandle#getStableVolatile}.
+     *
+     * @return the value
+     * @since 99
+     */
+    public final int getStableVolatile() {
+        return U.getIntStableVolatile(this, VALUE);
+    }
+
+    /**
      * Sets the value to {@code newValue},
      * with memory effects as specified by {@link VarHandle#setRelease}.
      *

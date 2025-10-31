@@ -120,28 +120,37 @@ public class UnsafeStableSemanticsBenchmark {
     @Benchmark public int     mhStatic() throws Throwable { return (int) INT_IDENTITY_MH.invokeExact(42); }
 
     // Atomics
-    @Benchmark public Object  atomicReference()       { return ATOMIC_REFERENCE.get(); }
-    @Benchmark public Object  atomicReferenceStable() { return ATOMIC_REFERENCE.getStable(); }
-    @Benchmark public boolean atomicBoolean()         { return ATOMIC_BOOLEAN.get(); }
-    @Benchmark public boolean atomicBooleanStable()   { return ATOMIC_BOOLEAN.getStable(); }
-    @Benchmark public int     atomicInteger()         { return ATOMIC_INTEGER.get(); }
-    @Benchmark public int     atomicIntegerStable()   { return ATOMIC_INTEGER.getStable(); }
-    @Benchmark public long    atomicLong()            { return ATOMIC_LONG.get(); }
-    @Benchmark public long    atomicLongStable()      { return ATOMIC_LONG.getStable(); }
+    @Benchmark public Object  atomicReference()               { return ATOMIC_REFERENCE.get(); }
+    @Benchmark public Object  atomicReferenceStable()         { return ATOMIC_REFERENCE.getStable(); }
+    @Benchmark public Object  atomicReferenceStableVolatile() { return ATOMIC_REFERENCE.getStableVolatile(); }
+    @Benchmark public boolean atomicBoolean()                 { return ATOMIC_BOOLEAN.get(); }
+    @Benchmark public boolean atomicBooleanStable()           { return ATOMIC_BOOLEAN.getStable(); }
+    @Benchmark public boolean atomicBooleanStableVolatile()   { return ATOMIC_BOOLEAN.getStableVolatile(); }
+    @Benchmark public int     atomicInteger()                 { return ATOMIC_INTEGER.get(); }
+    @Benchmark public int     atomicIntegerStable()           { return ATOMIC_INTEGER.getStable(); }
+    @Benchmark public int     atomicIntegerStableVolatile()   { return ATOMIC_INTEGER.getStableVolatile(); }
+    @Benchmark public long    atomicLong()                    { return ATOMIC_LONG.get(); }
+    @Benchmark public long    atomicLongStable()              { return ATOMIC_LONG.getStable(); }
+    @Benchmark public long    atomicLongStableVolatile()      { return ATOMIC_LONG.getStableVolatile(); }
 
     // AtomicArrays
-    @Benchmark public Object  arrayAtomicReference()       { return ATOMIC_REFERENCE_ARRAY.get(0); }
-    @Benchmark public Object  arrayAtomicReferenceStable() { return ATOMIC_REFERENCE_ARRAY.getStable(0); }
-    @Benchmark public int     arrayAtomicInteger()         { return ATOMIC_INTEGER_ARRAY.get(0); }
-    @Benchmark public int     arrayAtomicIntegerStable()   { return ATOMIC_INTEGER_ARRAY.getStable(0); }
-    @Benchmark public long    arrayAtomicLong()            { return ATOMIC_LONG_ARRAY.get(0); }
-    @Benchmark public long    arrayAtomicLongStable()      { return ATOMIC_LONG_ARRAY.getStable(0); }
+    @Benchmark public Object  arrayAtomicReference()               { return ATOMIC_REFERENCE_ARRAY.get(0); }
+    @Benchmark public Object  arrayAtomicReferenceStable()         { return ATOMIC_REFERENCE_ARRAY.getStable(0); }
+    @Benchmark public Object  arrayAtomicReferenceStableVolatile() { return ATOMIC_REFERENCE_ARRAY.getStableVolatile(0); }
+    @Benchmark public int     arrayAtomicInteger()                 { return ATOMIC_INTEGER_ARRAY.get(0); }
+    @Benchmark public int     arrayAtomicIntegerStable()           { return ATOMIC_INTEGER_ARRAY.getStable(0); }
+    @Benchmark public int     arrayAtomicIntegerStableVolatile()   { return ATOMIC_INTEGER_ARRAY.getStableVolatile(0); }
+    @Benchmark public long    arrayAtomicLong()                    { return ATOMIC_LONG_ARRAY.get(0); }
+    @Benchmark public long    arrayAtomicLongStable()              { return ATOMIC_LONG_ARRAY.getStable(0); }
+    @Benchmark public long    arrayAtomicLongStableVolatile()      { return ATOMIC_LONG_ARRAY.getStableVolatile(0); }
 
     // Arrays
-    @Benchmark public int     arraysInteger()         { return UNSAFE.getInt(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
-    @Benchmark public int     arraysIntegerStable()   { return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
-    @Benchmark public long    arraysLong()            { return UNSAFE.getLong(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
-    @Benchmark public long    arraysLongStable()      { return UNSAFE.getLongStable(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
+    @Benchmark public int     arraysInteger()                 { return UNSAFE.getInt(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+    @Benchmark public int     arraysIntegerStable()           { return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+    @Benchmark public int     arraysIntegerStableVolatile()   { return UNSAFE.getIntStableVolatile(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+    @Benchmark public long    arraysLong()                    { return UNSAFE.getLong(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
+    @Benchmark public long    arraysLongStable()              { return UNSAFE.getLongStable(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
+    @Benchmark public long    arraysLongStableVolatile()      { return UNSAFE.getLongStableVolatile(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
 
     // Primitives (via Map to amplify constant folding effects)
     @Benchmark public byte    byteMap()         { return BYTE_MAP.get(BYTE_HOLDER); }

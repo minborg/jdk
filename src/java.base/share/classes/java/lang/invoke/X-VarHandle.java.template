@@ -125,6 +125,13 @@ final class VarHandle$Type$s {
                                  handle.fieldOffset);
         }
 
+        @ForceInline
+        static $type$ getStableVolatile(VarHandle ob, Object holder) {
+            FieldInstanceReadOnly handle = (FieldInstanceReadOnly)ob;
+            return UNSAFE.get$Type$StableVolatile(Objects.requireNonNull(handle.receiverType.cast(holder)),
+                                 handle.fieldOffset);
+        }
+
         static final VarForm FORM = new VarForm(FieldInstanceReadOnly.class, Object.class, $type$.class);
     }
 
@@ -477,6 +484,13 @@ final class VarHandle$Type$s {
         static $type$ getStable(VarHandle ob) {
             FieldStaticReadOnly handle = (FieldStaticReadOnly) ob.target();
             return UNSAFE.get$Type$Stable(handle.base,
+                                 handle.fieldOffset);
+        }
+
+        @ForceInline
+        static $type$ getStableVolatile(VarHandle ob) {
+            FieldStaticReadOnly handle = (FieldStaticReadOnly) ob.target();
+            return UNSAFE.get$Type$StableVolatile(handle.base,
                                  handle.fieldOffset);
         }
 
@@ -920,7 +934,21 @@ final class VarHandle$Type$s {
 #else[Object]
             $type$[] array = ($type$[]) oarray;
 #end[Object]
+            // Todo: need to read the array.length as stable?
             return UNSAFE.get$Type$Stable(array,
+                    (((long) Preconditions.checkIndex(index, array.length, Preconditions.AIOOBE_FORMATTER)) << handle.ashift) + handle.abase);
+        }
+
+        @ForceInline
+        static $type$ getStableVolatile(VarHandle ob, Object oarray, int index) {
+            Array handle = (Array)ob;
+#if[Object]
+            Object[] array = (Object[]) handle.arrayType.cast(oarray);
+#else[Object]
+            $type$[] array = ($type$[]) oarray;
+#end[Object]
+            // Todo: need to read the array.length as stable?
+            return UNSAFE.get$Type$StableVolatile(array,
                     (((long) Preconditions.checkIndex(index, array.length, Preconditions.AIOOBE_FORMATTER)) << handle.ashift) + handle.abase);
         }
 #if[CAS]
