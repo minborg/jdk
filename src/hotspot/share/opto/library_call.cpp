@@ -2514,6 +2514,9 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
   SavedState old_state(this);
 
   bool is_stable = (kind == Stable) || (kind == Stable_Volatile);
+  if (is_stable) {
+    decorators |= ACCESS_STABLE;
+  }
 
   Node* adr = make_unsafe_address(base, offset, type, (kind == Relaxed || is_stable));
   assert(!stopped(), "Inlining of unsafe access failed: address construction stopped unexpectedly");

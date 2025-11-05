@@ -213,8 +213,13 @@ const DecoratorSet ARRAYCOPY_DECORATOR_MASK       = ARRAYCOPY_CHECKCAST | ARRAYC
 const DecoratorSet ACCESS_READ                    = UCONST64(1) << 28;
 const DecoratorSet ACCESS_WRITE                   = UCONST64(1) << 29;
 
+// == Stable decorator ==
+// * ACCESS_STABLE: Indicate that the access semantics is stable. This allows the VM
+//   to constant fold subsequent accesses regardless of @Stable annotations
+const DecoratorSet ACCESS_STABLE                  = UCONST64(1) << 30;
+
 // Keep track of the last decorator.
-const DecoratorSet DECORATOR_LAST = UCONST64(1) << 29;
+const DecoratorSet DECORATOR_LAST = UCONST64(1) << 30;
 
 namespace AccessInternal {
   // This class adds implied decorators that follow according to decorator rules.
