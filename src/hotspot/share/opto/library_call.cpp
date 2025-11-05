@@ -2409,6 +2409,16 @@ DecoratorSet LibraryCallKit::mo_decorator_for_access_kind(AccessKind kind) {
   }
 }
 
+bool LibraryCallKit::is_stable(AccessKind kind) {
+  switch (kind) {
+      case Stable:
+      case Stable_Volatile:
+        return true;
+      default:
+        return false;
+  }
+}
+
 LibraryCallKit::SavedState::SavedState(LibraryCallKit* kit) :
   _kit(kit),
   _sp(kit->sp()),
@@ -2604,9 +2614,9 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
     Node* p = nullptr;
     // Try to constant fold a load from a constant field
     ciField* field = alias_type->field();
-    if (heap_base_oop != top() && field != nullptr && (field->is_constant() || kind == Stable || kind == Stable_Volatile) && !mismatched) {
+    if (heap_base_oop != top() && field != nullptr && (field->is_constant() || is_stable(kind)) && !mismatched) {
       // final or stable field
-      p = make_constant_from_field(field, heap_base_oop, kind == Stable);
+      p = make_constant_from_field(field, heap_base_oop, is_stable(kind));
     }
 
     if (p == nullptr) { // Could not constant fold the load
