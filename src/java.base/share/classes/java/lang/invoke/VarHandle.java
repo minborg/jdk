@@ -2000,7 +2000,7 @@ public abstract sealed class VarHandle implements Constable
          * method
          * {@link VarHandle#getStableVolatile  VarHandle.getStableVolatile}
          */
-        GET_STABLE_VOLATILE("getStable", AccessType.GET),
+        GET_STABLE_VOLATILE("getStableVolatile", AccessType.GET),
         ;
 
         static final int COUNT = GET_STABLE_VOLATILE.ordinal() + 1;

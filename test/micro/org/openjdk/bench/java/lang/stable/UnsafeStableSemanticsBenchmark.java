@@ -55,13 +55,20 @@ public class UnsafeStableSemanticsBenchmark {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
-    private static final MethodHandle INT_IDENTITY_MH;
+    private static final MethodHandle INT_IDENTITY_MH = MethodHandles.identity(int.class);
+
+    private static final int INT_VALUE = 42;
+    private static final long LONG_VALUE = 42L;
+
+    private static final VarHandle INT_VALUE_VH;
+    private static final VarHandle LONG_VALUE_VH;
 
     static {
         try {
-            INT_IDENTITY_MH = LOOKUP.findStatic(UnsafeStableSemanticsBenchmark.class, "identity", MethodType.methodType(int.class, int.class));
+            INT_VALUE_VH = LOOKUP.findStaticVarHandle(UnsafeStableSemanticsBenchmark.class, "INT_VALUE", int.class);
+            LONG_VALUE_VH = LOOKUP.findStaticVarHandle(UnsafeStableSemanticsBenchmark.class, "LONG_VALUE", long.class);
         } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
+            throw new InternalError(e);
         }
     }
 
@@ -84,7 +91,9 @@ public class UnsafeStableSemanticsBenchmark {
 
     private static final IntHolder INT_HOLDER = new IntHolder();
     private static final StableIntHolder STABLE_INT_HOLDER = new StableIntHolder();
+    private static final StableVolatileIntHolder STABLE_VOLATILE_INT_HOLDER = new StableVolatileIntHolder();
     private static final Map<IntHolder, Integer> INT_MAP = Map.of(STABLE_INT_HOLDER, STABLE_INT_HOLDER.value);
+    private static final Map<IntHolder, Integer> INT_VOLATILE_MAP = Map.of(STABLE_VOLATILE_INT_HOLDER, STABLE_VOLATILE_INT_HOLDER.value);
 
     private static final LongHolder LONG_HOLDER = new LongHolder();
     private static final StableLongHolder STABLE_LONG_HOLDER = new StableLongHolder();
@@ -147,10 +156,12 @@ public class UnsafeStableSemanticsBenchmark {
     @Benchmark public long    arrayAtomicLongStable()              { return ATOMIC_LONG_ARRAY.getStable(0); }
     @Benchmark public long    arrayAtomicLongStableVolatile()      { return ATOMIC_LONG_ARRAY.getStableVolatile(0); }
 
-    // Arrays via Unsafe
+    // Arrays via Unsafe (xBaseline is normal non-Unsafe array access to give a baseline figure)
+    @Benchmark public int     unsafeArrayIntegerBaseline()         { return INT_ARRAY[0]; }
     @Benchmark public int     unsafeArrayInteger()                 { return UNSAFE.getInt(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
     @Benchmark public int     unsafeArrayIntegerStable()           { return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
     @Benchmark public int     unsafeArrayIntegerStableVolatile()   { return UNSAFE.getIntStableVolatile(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+    @Benchmark public long    unsafeArrayLongBaseline()            { return LONG_ARRAY[0]; }
     @Benchmark public long    unsafeArrayLong()                    { return UNSAFE.getLong(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
     @Benchmark public long    unsafeArrayLongStable()              { return UNSAFE.getLongStable(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
     @Benchmark public long    unsafeArrayLongStableVolatile()      { return UNSAFE.getLongStableVolatile(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
@@ -172,12 +183,23 @@ public class UnsafeStableSemanticsBenchmark {
     @Benchmark public char    charMapStable()   { return CHAR_MAP.get(STABLE_CHAR_HOLDER); }
     @Benchmark public int     intMap()          { return INT_MAP.get(INT_HOLDER); }
     @Benchmark public int     intMapStable()    { return INT_MAP.get(STABLE_INT_HOLDER); }
+    @Benchmark public int     intMapStableVolatile()    { return INT_VOLATILE_MAP.get(STABLE_VOLATILE_INT_HOLDER); }
     @Benchmark public long    longMap()         { return LONG_MAP.get(LONG_HOLDER); }
     @Benchmark public long    longMapStable()   { return LONG_MAP.get(STABLE_LONG_HOLDER); }
     @Benchmark public float   floatMap()        { return FLOAT_MAP.get(FLOAT_HOLDER); }
     @Benchmark public float   floatMapStable()  { return FLOAT_MAP.get(STABLE_FLOAT_HOLDER); }
     @Benchmark public double  doubleMap()       { return DOUBLE_MAP.get(DOUBLE_HOLDER); }
     @Benchmark public double  doubleMapStable() { return DOUBLE_MAP.get(STABLE_DOUBLE_HOLDER); }
+
+    // Static VHs
+    @Benchmark public int   staticVhIntegerBaseline()       { return INT_VALUE; }
+    @Benchmark public int   staticVhInteger()               { return (int)INT_VALUE_VH.get(); }
+    @Benchmark public int   staticVhIntegerStable()         { return (int)INT_VALUE_VH.getStable(); }
+    @Benchmark public int   staticVhIntegerStableVolatile() { return (int)INT_VALUE_VH.getStableVolatile(); }
+    @Benchmark public long  staticVhLongBaseline()          { return LONG_VALUE; }
+    @Benchmark public long  staticVhLong()                  { return (long)LONG_VALUE_VH.get(); }
+    @Benchmark public long  staticVhLongStable()            { return (long)LONG_VALUE_VH.getStable(); }
+    @Benchmark public long  staticVhLongStableVolatile()    { return (long)LONG_VALUE_VH.getStableVolatile(); }
 
     // Segment primitives (via Map to amplify constant folding effects)
     @Benchmark public int     segmentIntMap()          { return SEGMENT_INT_MAP.get(SEGMENT_INT_HOLDER); }
@@ -245,6 +267,12 @@ public class UnsafeStableSemanticsBenchmark {
         @Override public int hashCode() { return getStable(); }
     }
 
+    final static class StableVolatileIntHolder extends IntHolder {
+        private static final long OFFSET = valueOffset(IntHolder.class);
+        int getStableVolatile() { return UNSAFE.getIntStableVolatile(this, OFFSET); }
+        @Override public int hashCode() { return getStableVolatile(); }
+    }
+
     static sealed class LongHolder {
         long value = 1;
         @Override public final boolean equals(Object obj) { return obj instanceof LongHolder that  && this.value == that.value; }
@@ -301,13 +329,8 @@ public class UnsafeStableSemanticsBenchmark {
         @Override public int hashCode() { return getStable(); }
     }
 
-
     private static long valueOffset(Class<?> declaredIn) {
         return UNSAFE.objectFieldOffset(declaredIn, "value");
-    }
-
-    static int identity(int value) {
-        return value;
     }
 
 }
