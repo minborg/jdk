@@ -193,6 +193,7 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
   bool unknown_control = (decorators & C2_UNKNOWN_CONTROL_LOAD) != 0;
   bool unsafe = (decorators & C2_UNSAFE_ACCESS) != 0;
   bool immutable = (decorators & C2_IMMUTABLE_MEMORY) != 0;
+  bool stable = (decorators & ACCESS_STABLE) != 0;
 
   MemNode::MemOrd mo = access.mem_node_mo();
   LoadNode::ControlDependency dep = unknown_control ? LoadNode::UnknownControl : LoadNode::DependsOnlyOnTest;
@@ -203,7 +204,7 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
     GraphKit* kit = parse_access.kit();
     Node* control = control_dependent ? kit->control() : nullptr;
 
-    if (immutable) {
+    if (immutable | stable) {
       Compile* C = Compile::current();
       Node* mem = kit->immutable_memory();
       load = LoadNode::make(kit->gvn(), control, mem, adr,

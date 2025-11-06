@@ -35,8 +35,8 @@ import java.util.concurrent.atomic.*;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark) // Share the same state instance (for contention)
-@Warmup(iterations = 5, time = 1)
-@Measurement(iterations = 5, time = 1)
+@Warmup(iterations = 3, time = 2)
+@Measurement(iterations = 3, time = 2)
 @Fork(value = 2, jvmArgs = {
         "--enable-native-access=ALL-UNNAMED",
         "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED"})
@@ -53,12 +53,8 @@ public class StableArrayBenchmark {
     @Benchmark public int     unsafeArrayIntegerStable()           { return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
     @Benchmark public int     unsafeArrayIntegerStableVolatile()   { return UNSAFE.getIntStableVolatile(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
 
-/*
     @Benchmark public long    unsafeArrayLongBaseline()            { return LONG_ARRAY[0]; }
     @Benchmark public long    unsafeArrayLong()                    { return UNSAFE.getLong(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
     @Benchmark public long    unsafeArrayLongStable()              { return UNSAFE.getLongStable(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
     @Benchmark public long    unsafeArrayLongStableVolatile()      { return UNSAFE.getLongStableVolatile(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }
-*/
-
-
 }
