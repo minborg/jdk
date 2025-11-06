@@ -26,8 +26,12 @@ package org.openjdk.bench.java.lang.stable;
 import jdk.internal.misc.Unsafe;
 import org.openjdk.jmh.annotations.*;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.*;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
 /**
  * Benchmark measuring stable semantics access performance
@@ -44,8 +48,11 @@ public class StableArrayBenchmark {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    private static final int[] INT_ARRAY = new int[]{1, 2, 3, 4};
-    private static final long[] LONG_ARRAY = new long[]{1L, 2L, 3L, 4L};
+    private static final VarHandle INT_ARRAY_VH = MethodHandles.arrayElementVarHandle(int[].class);
+
+    private static final int LENGTH = 16;
+    private static final int[] INT_ARRAY = IntStream.range(0, LENGTH).toArray();
+    private static final long[] LONG_ARRAY = LongStream.range(0, LENGTH).toArray();
 
     // Arrays via Unsafe (xBaseline is normal non-Unsafe array access to give a baseline figure)
     @Benchmark public int     unsafeArrayIntegerBaseline()         { return INT_ARRAY[0]; }
@@ -55,15 +62,29 @@ public class StableArrayBenchmark {
 
     @Benchmark
     public int sum() {
-        return INT_ARRAY[0] + INT_ARRAY[1] + INT_ARRAY[2] + INT_ARRAY[3];
+        int sum = 0;
+        for (int i = 0; i < LENGTH; i++) {
+            sum += INT_ARRAY[i];
+        }
+        return sum;
     }
 
     @Benchmark
-    public int sumStable() {
-        return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET) +
-                UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET + 4) +
-                UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET + 8) +
-                UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET + 12);
+    public int sumUnsafeStable() {
+        int sum = 0;
+        for (int i = 0; i < LENGTH; i++) {
+            sum += UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_INT_INDEX_SCALE + i);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int sumVarHandleStable() {
+        int sum = 0;
+        for (int i = 0; i < LENGTH; i++) {
+            sum += (int)INT_ARRAY_VH.getStable(INT_ARRAY, i);
+        }
+        return sum;
     }
 
     @Benchmark public long    unsafeArrayLongBaseline()            { return LONG_ARRAY[0]; }
