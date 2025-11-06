@@ -44,14 +44,27 @@ public class StableArrayBenchmark {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    private static final int[] INT_ARRAY = new int[]{1};
-    private static final long[] LONG_ARRAY = new long[]{1L};
+    private static final int[] INT_ARRAY = new int[]{1, 2, 3, 4};
+    private static final long[] LONG_ARRAY = new long[]{1L, 2L, 3L, 4L};
 
     // Arrays via Unsafe (xBaseline is normal non-Unsafe array access to give a baseline figure)
     @Benchmark public int     unsafeArrayIntegerBaseline()         { return INT_ARRAY[0]; }
     @Benchmark public int     unsafeArrayInteger()                 { return UNSAFE.getInt(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
     @Benchmark public int     unsafeArrayIntegerStable()           { return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
     @Benchmark public int     unsafeArrayIntegerStableVolatile()   { return UNSAFE.getIntStableVolatile(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET); }
+
+    @Benchmark
+    public int sum() {
+        return INT_ARRAY[0] + INT_ARRAY[1] + INT_ARRAY[2] + INT_ARRAY[3];
+    }
+
+    @Benchmark
+    public int sumStable() {
+        return UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET) +
+                UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET + 4) +
+                UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET + 8) +
+                UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET + 12);
+    }
 
     @Benchmark public long    unsafeArrayLongBaseline()            { return LONG_ARRAY[0]; }
     @Benchmark public long    unsafeArrayLong()                    { return UNSAFE.getLong(LONG_ARRAY, Unsafe.ARRAY_LONG_BASE_OFFSET); }

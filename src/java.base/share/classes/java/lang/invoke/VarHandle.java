@@ -838,6 +838,9 @@ public abstract sealed class VarHandle implements Constable
      * The symbolic type descriptor at the call site of {@code getStable}
      * must match the access mode type that is the result of calling
      * {@code accessModeType(VarHandle.AccessMode.GET_STABLE)} on this VarHandle.
+     *<p>
+     * WARNING: The VM is also free to elide any memory barriers associated with
+     *          volatile semantics once it elides reading the actual variable.
      *
      * @param args the signature-polymorphic parameter list of the form
      *             {@code (CT1 ct1, ..., CTn)} , statically represented using varargs.

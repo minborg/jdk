@@ -3516,8 +3516,8 @@ public final class Unsafe {
     // Stable semantics
 
     /**
-     * Fetches a reference value from a given Java variable using plain <em>stable</em>
-     * semantics.
+     * Fetches a reference value from a given Java variable using <em>stable</em>
+     * semantics initially using plain reads.
      * <p>
      * Stable semantics means, if the VM observes a non-default value,
      * (i.e, a non-{@code null} value), the VM is free to reuse said value indefinitely
@@ -3557,8 +3557,8 @@ public final class Unsafe {
     }
 
     /**
-     * Fetches a value from a given Java variable using plain <em>stable</em>
-     * semantics.
+     * Fetches a value from a given Java variable using <em>stable</em>
+     * semantics initially using plain reads.
      * <p>
      * Stable semantics means, if the VM observes a non-default value,
      * (i.e, a non-zero value), the VM is free to reuse said value indefinitely
@@ -3605,13 +3605,16 @@ public final class Unsafe {
     }
 
     /**
-     * Fetches a reference value from a given Java variable using volatile <em>stable</em>
-     * semantics.
+     * Fetches a reference value from a given Java variable using <em>stable</em>
+     * semantics initially using volatile reads.
      * <p>
      * Stable semantics means, if the VM observes a non-default value,
      * (i.e, a non-{@code null} value), the VM is free to reuse said value indefinitely
      * and elide subsequent reads using this method. This is only true if there is a
      * trusted path from a VM constant to the targeted reference value.
+     * <p>
+     * Warning: Once the VM elects to reusing the value, the VM is also free to
+     * eliminate any and all memory barriers associated with volatile semantics.
      *
      * @see #getReferenceVolatile(Object, long)
      * @since 99
@@ -3646,16 +3649,16 @@ public final class Unsafe {
     }
 
     /**
-     * Fetches a value from a given Java variable using volatile <em>stable</em>
-     * semantics.
+     * Fetches a value from a given Java variable using <em>stable</em>
+     * semantics initially using volatile reads.
      * <p>
      * Stable semantics means, if the VM observes a non-default value,
      * (i.e, a non-zero value), the VM is free to reuse said value indefinitely
      * and elide subsequent reads using this method. This is only true if there is a
      * trusted path from a VM constant to the targeted reference value.
      * <p>
-     * By adding various memory fences after a plain stable access, other memory semantics
-     * can be emulated.
+     * Warning: Once the VM elects to reusing the value, the VM is also free to
+     * eliminate any and all memory barriers associated with volatile semantics.
      *
      * @param o Java heap object in which the variable resides, if any, else
      *        null
