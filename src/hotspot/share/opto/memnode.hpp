@@ -45,6 +45,7 @@ private:
   bool _mismatched_access; // Mismatched access from unsafe: byte read in integer array for instance
   bool _unsafe_access;     // Access of unsafe origin.
   uint8_t _barrier_data;   // Bit field with barrier information
+  bool _stable_access;     // Stable access from unsafe
 
 protected:
 #ifdef ASSERT
@@ -69,7 +70,8 @@ protected:
       _unaligned_access(false),
       _mismatched_access(false),
       _unsafe_access(false),
-      _barrier_data(0) {
+      _barrier_data(0),
+      _stable_access(false) {
     init_class_id(Class_Mem);
     DEBUG_ONLY(_adr_type=at; adr_type();)
   }
@@ -78,7 +80,8 @@ protected:
       _unaligned_access(false),
       _mismatched_access(false),
       _unsafe_access(false),
-      _barrier_data(0) {
+      _barrier_data(0),
+      _stable_access(false) {
     init_class_id(Class_Mem);
     DEBUG_ONLY(_adr_type=at; adr_type();)
   }
@@ -87,7 +90,8 @@ protected:
       _unaligned_access(false),
       _mismatched_access(false),
       _unsafe_access(false),
-      _barrier_data(0) {
+      _barrier_data(0),
+      _stable_access(false) {
     init_class_id(Class_Mem);
     DEBUG_ONLY(_adr_type=at; adr_type();)
   }
@@ -165,6 +169,8 @@ public:
   bool is_mismatched_access() const { return _mismatched_access; }
   void set_unsafe_access() { _unsafe_access = true; }
   bool is_unsafe_access() const { return _unsafe_access; }
+  void set_stable_access() { _stable_access = true; }
+  bool is_stable_access() const { return _stable_access; }
 
 #ifndef PRODUCT
   static void dump_adr_type(const TypePtr* adr_type, outputStream* st);
@@ -237,7 +243,7 @@ public:
                     const TypePtr* at, const Type* rt, BasicType bt,
                     MemOrd mo, ControlDependency control_dependency = DependsOnlyOnTest,
                     bool require_atomic_access = false, bool unaligned = false, bool mismatched = false, bool unsafe = false,
-                    uint8_t barrier_data = 0);
+                    uint8_t barrier_data = 0, bool stable_access = false);
 
   virtual uint hash()   const;  // Check the type
 

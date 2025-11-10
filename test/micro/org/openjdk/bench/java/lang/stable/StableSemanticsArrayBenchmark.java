@@ -29,7 +29,6 @@ import org.openjdk.jmh.annotations.*;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.*;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
@@ -43,8 +42,11 @@ import java.util.stream.LongStream;
 @Measurement(iterations = 3, time = 2)
 @Fork(value = 2, jvmArgs = {
         "--enable-native-access=ALL-UNNAMED",
-        "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED"})
-public class StableArrayBenchmark {
+        "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+        "-XX:+UnlockDiagnosticVMOptions",
+        "-XX:+PrintCompilation",
+        "-XX:+PrintAssembly"})
+public class StableSemanticsArrayBenchmark {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
@@ -73,7 +75,7 @@ public class StableArrayBenchmark {
     public int sumUnsafeStable() {
         int sum = 0;
         for (int i = 0; i < LENGTH; i++) {
-            sum += UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_INT_INDEX_SCALE + i);
+            sum += UNSAFE.getIntStable(INT_ARRAY, Unsafe.ARRAY_INT_BASE_OFFSET + (long) Unsafe.ARRAY_INT_INDEX_SCALE * i);
         }
         return sum;
     }

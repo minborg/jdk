@@ -945,7 +945,8 @@ bool LoadNode::is_immutable_value(Node* adr) {
 //----------------------------LoadNode::make-----------------------------------
 // Polymorphic factory method:
 Node* LoadNode::make(PhaseGVN& gvn, Node* ctl, Node* mem, Node* adr, const TypePtr* adr_type, const Type* rt, BasicType bt, MemOrd mo,
-                     ControlDependency control_dependency, bool require_atomic_access, bool unaligned, bool mismatched, bool unsafe, uint8_t barrier_data) {
+                     ControlDependency control_dependency, bool require_atomic_access, bool unaligned, bool mismatched, bool unsafe, uint8_t barrier_data,
+                     bool stable_access) {
   Compile* C = gvn.C;
 
   // sanity check the alias category against the created node type
@@ -996,6 +997,9 @@ Node* LoadNode::make(PhaseGVN& gvn, Node* ctl, Node* mem, Node* adr, const TypeP
   }
   if (unsafe) {
     load->set_unsafe_access();
+  }
+  if (stable_access) {
+    load->set_stable_access();
   }
   load->set_barrier_data(barrier_data);
   if (load->Opcode() == Op_LoadN) {
@@ -2038,7 +2042,7 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
     const bool off_beyond_header = (off >= min_base_off);
 
     // Try to constant-fold a stable array element.
-    if (FoldStableValues && !is_mismatched_access() && ary->is_stable()) {
+    if (FoldStableValues && !is_mismatched_access() && (ary->is_stable() || is_stable_access())) {
       // Make sure the reference is not into the header and the offset is constant
       ciObject* aobj = ary->const_oop();
       if (aobj != nullptr && off_beyond_header && adr->is_AddP() && off != Type::OffsetBot) {

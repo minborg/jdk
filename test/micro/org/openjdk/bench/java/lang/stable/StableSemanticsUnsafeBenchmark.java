@@ -24,14 +24,12 @@
 package org.openjdk.bench.java.lang.stable;
 
 import jdk.internal.misc.Unsafe;
-import org.openjdk.bench.java.util.concurrent.Atomic;
 import org.openjdk.jmh.annotations.*;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -45,12 +43,12 @@ import static java.lang.foreign.ValueLayout.JAVA_INT;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark) // Share the same state instance (for contention)
-@Warmup(iterations = 5, time = 1)
-@Measurement(iterations = 5, time = 1)
+@Warmup(iterations = 3, time = 2)
+@Measurement(iterations = 3, time = 2)
 @Fork(value = 2, jvmArgs = {
         "--enable-native-access=ALL-UNNAMED",
         "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED"})
-public class UnsafeStableSemanticsBenchmark {
+public class StableSemanticsUnsafeBenchmark {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
@@ -65,8 +63,8 @@ public class UnsafeStableSemanticsBenchmark {
 
     static {
         try {
-            INT_VALUE_VH = LOOKUP.findStaticVarHandle(UnsafeStableSemanticsBenchmark.class, "INT_VALUE", int.class);
-            LONG_VALUE_VH = LOOKUP.findStaticVarHandle(UnsafeStableSemanticsBenchmark.class, "LONG_VALUE", long.class);
+            INT_VALUE_VH = LOOKUP.findStaticVarHandle(StableSemanticsUnsafeBenchmark.class, "INT_VALUE", int.class);
+            LONG_VALUE_VH = LOOKUP.findStaticVarHandle(StableSemanticsUnsafeBenchmark.class, "LONG_VALUE", long.class);
         } catch (ReflectiveOperationException e) {
             throw new InternalError(e);
         }
