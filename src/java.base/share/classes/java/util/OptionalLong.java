@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package java.util;
+
+import jdk.internal.vm.annotation.Stable;
 
 import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.LongStream;
+
+import static java.util.Optional.Util.*;
 
 /**
  * A container object which may or may not contain a {@code long} value.
@@ -63,9 +68,16 @@ public final class OptionalLong {
     private static final OptionalLong EMPTY = new OptionalLong();
 
     /**
-     * If true then the value is present, otherwise indicates no value is present
+     * Indicates the state of the optional `value` which could be either of:
+     * <ul>
+     *     <li>Is empty</li>
+     *     <li>Is present and non-zero</li>
+     *     <li>Is present and zero</li>
+     * </ul>
      */
-    private final boolean isPresent;
+    @Stable
+    private final byte state;
+    @Stable
     private final long value;
 
     /**
@@ -75,7 +87,7 @@ public final class OptionalLong {
      * should exist per VM.
      */
     private OptionalLong() {
-        this.isPresent = false;
+        this.state = IS_EMPTY;
         this.value = 0;
     }
 
@@ -101,7 +113,7 @@ public final class OptionalLong {
      * @param value the long value to describe
      */
     private OptionalLong(long value) {
-        this.isPresent = true;
+        this.state = value == 0 ? IS_PRESENT_AND_ZERO : IS_PRESENT_AND_NON_ZERO;
         this.value = value;
     }
 
@@ -126,10 +138,11 @@ public final class OptionalLong {
      * @throws NoSuchElementException if no value is present
      */
     public long getAsLong() {
-        if (!isPresent) {
-            throw new NoSuchElementException("No value present");
-        }
-        return value;
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> 0;
+            case IS_PRESENT_AND_NON_ZERO -> value;
+            default -> throw noValuePresent();
+        };
     }
 
     /**
@@ -138,7 +151,7 @@ public final class OptionalLong {
      * @return {@code true} if a value is present, otherwise {@code false}
      */
     public boolean isPresent() {
-        return isPresent;
+        return state != IS_EMPTY;
     }
 
     /**
@@ -149,7 +162,7 @@ public final class OptionalLong {
      * @since   11
      */
     public boolean isEmpty() {
-        return !isPresent;
+        return state == IS_EMPTY;
     }
 
     /**
@@ -161,8 +174,10 @@ public final class OptionalLong {
      *         {@code null}
      */
     public void ifPresent(LongConsumer action) {
-        if (isPresent) {
-            action.accept(value);
+        switch (state) {
+            case IS_PRESENT_AND_ZERO -> action.accept(0);
+            case IS_PRESENT_AND_NON_ZERO -> action.accept(value);
+            default -> { }
         }
     }
 
@@ -179,10 +194,10 @@ public final class OptionalLong {
      * @since 9
      */
     public void ifPresentOrElse(LongConsumer action, Runnable emptyAction) {
-        if (isPresent) {
-            action.accept(value);
-        } else {
-            emptyAction.run();
+        switch (state) {
+            case IS_PRESENT_AND_ZERO -> action.accept(0);
+            case IS_PRESENT_AND_NON_ZERO -> action.accept(value);
+            default -> emptyAction.run();
         }
     }
 
@@ -202,11 +217,11 @@ public final class OptionalLong {
      * @since 9
      */
     public LongStream stream() {
-        if (isPresent) {
-            return LongStream.of(value);
-        } else {
-            return LongStream.empty();
-        }
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> LongStream.of(0);
+            case IS_PRESENT_AND_NON_ZERO -> LongStream.of(value);
+            default -> LongStream.empty();
+        };
     }
 
     /**
@@ -217,7 +232,7 @@ public final class OptionalLong {
      * @return the value, if present, otherwise {@code other}
      */
     public long orElse(long other) {
-        return isPresent ? value : other;
+        return state == IS_EMPTY ? other: value;
     }
 
     /**
@@ -231,7 +246,7 @@ public final class OptionalLong {
      *         function is {@code null}
      */
     public long orElseGet(LongSupplier supplier) {
-        return isPresent ? value : supplier.getAsLong();
+        return state == IS_EMPTY ? supplier.getAsLong() : value;
     }
 
     /**
@@ -243,10 +258,7 @@ public final class OptionalLong {
      * @since 10
      */
     public long orElseThrow() {
-        if (!isPresent) {
-            throw new NoSuchElementException("No value present");
-        }
-        return value;
+        return getAsLong();
     }
 
     /**
@@ -267,11 +279,11 @@ public final class OptionalLong {
      *         supplying function is {@code null}
      */
     public<X extends Throwable> long orElseThrow(Supplier<? extends X> exceptionSupplier) throws X {
-        if (isPresent) {
-            return value;
-        } else {
-            throw exceptionSupplier.get();
-        }
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> 0;
+            case IS_PRESENT_AND_NON_ZERO -> value;
+            default -> throw exceptionSupplier.get();
+        };
     }
 
     /**
@@ -293,10 +305,8 @@ public final class OptionalLong {
             return true;
         }
 
-        return obj instanceof OptionalLong other
-                && (isPresent && other.isPresent
-                ? value == other.value
-                : isPresent == other.isPresent);
+        return obj instanceof OptionalLong other && state == other.state
+                && (state != IS_PRESENT_AND_NON_ZERO || value == other.value);
     }
 
     /**
@@ -308,7 +318,7 @@ public final class OptionalLong {
      */
     @Override
     public int hashCode() {
-        return isPresent ? Long.hashCode(value) : 0;
+        return (state == IS_PRESENT_AND_NON_ZERO) ? Long.hashCode(value) : 0;
     }
 
     /**
@@ -325,8 +335,10 @@ public final class OptionalLong {
      */
     @Override
     public String toString() {
-        return isPresent
-                ? ("OptionalLong[" + value + "]")
-                : "OptionalLong.empty";
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> "OptionalLong[0]";
+            case IS_PRESENT_AND_NON_ZERO -> "OptionalLong[" + value + "]";
+            default -> "OptionalLong.empty";
+        };
     }
 }

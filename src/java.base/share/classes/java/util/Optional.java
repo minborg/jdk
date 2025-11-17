@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package java.util;
+
+import jdk.internal.vm.annotation.Stable;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -60,14 +63,22 @@ import java.util.stream.Stream;
  */
 @jdk.internal.ValueBased
 public final class Optional<T> {
+
+    /**
+     * The EMPTY_SENTINEL is used as `value` instead of using `null` to allow an empty
+     * optional's `value` to be constant-folded.
+     */
+    private static final Object EMPTY_SENTINEL = new Object();
+
     /**
      * Common instance for {@code empty()}.
      */
-    private static final Optional<?> EMPTY = new Optional<>(null);
+    private static final Optional<?> EMPTY = new Optional<>(EMPTY_SENTINEL);
 
     /**
-     * If non-null, the value; if null, indicates no value is present
+     * If not EMPTY_SENTINEL, the value; if EMPTY_SENTINEL, indicates no value is present
      */
+    @Stable
     private final T value;
 
     /**
@@ -93,8 +104,7 @@ public final class Optional<T> {
      * Constructs an instance with the described value.
      *
      * @param value the value to describe; it's the caller's responsibility to
-     *        ensure the value is non-{@code null} unless creating the singleton
-     *        instance returned by {@code empty()}.
+     *        ensure the value is non-{@code null}.
      */
     private Optional(T value) {
         this.value = value;
@@ -139,8 +149,8 @@ public final class Optional<T> {
      * @throws NoSuchElementException if no value is present
      */
     public T get() {
-        if (value == null) {
-            throw new NoSuchElementException("No value present");
+        if (value == EMPTY_SENTINEL) {
+            throw Util.noValuePresent();
         }
         return value;
     }
@@ -151,7 +161,7 @@ public final class Optional<T> {
      * @return {@code true} if a value is present, otherwise {@code false}
      */
     public boolean isPresent() {
-        return value != null;
+        return value != EMPTY_SENTINEL;
     }
 
     /**
@@ -162,7 +172,7 @@ public final class Optional<T> {
      * @since   11
      */
     public boolean isEmpty() {
-        return value == null;
+        return value == EMPTY_SENTINEL;
     }
 
     /**
@@ -174,7 +184,7 @@ public final class Optional<T> {
      *         {@code null}
      */
     public void ifPresent(Consumer<? super T> action) {
-        if (value != null) {
+        if (value != EMPTY_SENTINEL) {
             action.accept(value);
         }
     }
@@ -192,7 +202,7 @@ public final class Optional<T> {
      * @since 9
      */
     public void ifPresentOrElse(Consumer<? super T> action, Runnable emptyAction) {
-        if (value != null) {
+        if (value != EMPTY_SENTINEL) {
             action.accept(value);
         } else {
             emptyAction.run();
@@ -347,7 +357,7 @@ public final class Optional<T> {
      * @return the value, if present, otherwise {@code other}
      */
     public T orElse(T other) {
-        return value != null ? value : other;
+        return value != EMPTY_SENTINEL ? value : other;
     }
 
     /**
@@ -361,7 +371,7 @@ public final class Optional<T> {
      *         function is {@code null}
      */
     public T orElseGet(Supplier<? extends T> supplier) {
-        return value != null ? value : supplier.get();
+        return value != EMPTY_SENTINEL ? value : supplier.get();
     }
 
     /**
@@ -373,8 +383,8 @@ public final class Optional<T> {
      * @since 10
      */
     public T orElseThrow() {
-        if (value == null) {
-            throw new NoSuchElementException("No value present");
+        if (value == EMPTY_SENTINEL) {
+            throw Util.noValuePresent();
         }
         return value;
     }
@@ -397,7 +407,7 @@ public final class Optional<T> {
      *         supplying function is {@code null} or produces a {@code null} result
      */
     public <X extends Throwable> T orElseThrow(Supplier<? extends X> exceptionSupplier) throws X {
-        if (value != null) {
+        if (value != EMPTY_SENTINEL) {
             return value;
         } else {
             throw exceptionSupplier.get();
@@ -436,7 +446,7 @@ public final class Optional<T> {
      */
     @Override
     public int hashCode() {
-        return Objects.hashCode(value);
+        return value == EMPTY_SENTINEL ? 0 : value.hashCode();
     }
 
     /**
@@ -453,8 +463,24 @@ public final class Optional<T> {
      */
     @Override
     public String toString() {
-        return value != null
+        return value != EMPTY_SENTINEL
             ? ("Optional[" + value + "]")
             : "Optional.empty";
     }
+
+    // A small utility class that is used by all the optional classes.
+    static final class Util {
+
+        private Util() { }
+
+        static final byte IS_EMPTY = 1;
+        static final byte IS_PRESENT_AND_NON_ZERO = 2;
+        static final byte IS_PRESENT_AND_ZERO = 3;
+
+        static NoSuchElementException noValuePresent() {
+            return new NoSuchElementException("No value present");
+        }
+
+    }
+
 }

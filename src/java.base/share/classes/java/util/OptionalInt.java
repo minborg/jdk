@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package java.util;
+
+import jdk.internal.vm.annotation.Stable;
 
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
+
+import static java.util.Optional.Util.*;
 
 /**
  * A container object which may or may not contain an {@code int} value.
@@ -63,9 +68,16 @@ public final class OptionalInt {
     private static final OptionalInt EMPTY = new OptionalInt();
 
     /**
-     * If true then the value is present, otherwise indicates no value is present
+     * Indicates the state of the optional `value` which could be either of:
+     * <ul>
+     *     <li>Is empty</li>
+     *     <li>Is present and non-zero</li>
+     *     <li>Is present and zero</li>
+     * </ul>
      */
-    private final boolean isPresent;
+    @Stable
+    private final byte state;
+    @Stable
     private final int value;
 
     /**
@@ -75,7 +87,7 @@ public final class OptionalInt {
      * should exist per VM.
      */
     private OptionalInt() {
-        this.isPresent = false;
+        this.state = IS_EMPTY;
         this.value = 0;
     }
 
@@ -101,7 +113,7 @@ public final class OptionalInt {
      * @param value the int value to describe
      */
     private OptionalInt(int value) {
-        this.isPresent = true;
+        this.state = value == 0 ? IS_PRESENT_AND_ZERO : IS_PRESENT_AND_NON_ZERO;
         this.value = value;
     }
 
@@ -126,10 +138,11 @@ public final class OptionalInt {
      * @throws NoSuchElementException if no value is present
      */
     public int getAsInt() {
-        if (!isPresent) {
-            throw new NoSuchElementException("No value present");
-        }
-        return value;
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> 0;
+            case IS_PRESENT_AND_NON_ZERO -> value;
+            default -> throw new NoSuchElementException("No value present");
+        };
     }
 
     /**
@@ -138,7 +151,7 @@ public final class OptionalInt {
      * @return {@code true} if a value is present, otherwise {@code false}
      */
     public boolean isPresent() {
-        return isPresent;
+        return state != IS_EMPTY;
     }
 
     /**
@@ -149,7 +162,7 @@ public final class OptionalInt {
      * @since   11
      */
     public boolean isEmpty() {
-        return !isPresent;
+        return state == IS_EMPTY;
     }
 
     /**
@@ -161,8 +174,10 @@ public final class OptionalInt {
      *         {@code null}
      */
     public void ifPresent(IntConsumer action) {
-        if (isPresent) {
-            action.accept(value);
+        switch (state) {
+            case IS_PRESENT_AND_ZERO -> action.accept(0);
+            case IS_PRESENT_AND_NON_ZERO -> action.accept(value);
+            default -> { }
         }
     }
 
@@ -179,10 +194,10 @@ public final class OptionalInt {
      * @since 9
      */
     public void ifPresentOrElse(IntConsumer action, Runnable emptyAction) {
-        if (isPresent) {
-            action.accept(value);
-        } else {
-            emptyAction.run();
+        switch (state) {
+            case IS_PRESENT_AND_ZERO -> action.accept(0);
+            case IS_PRESENT_AND_NON_ZERO -> action.accept(value);
+            default -> emptyAction.run();
         }
     }
 
@@ -202,11 +217,11 @@ public final class OptionalInt {
      * @since 9
      */
     public IntStream stream() {
-        if (isPresent) {
-            return IntStream.of(value);
-        } else {
-            return IntStream.empty();
-        }
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> IntStream.of(0);
+            case IS_PRESENT_AND_NON_ZERO -> IntStream.of(value);
+            default -> IntStream.empty();
+        };
     }
 
     /**
@@ -217,7 +232,7 @@ public final class OptionalInt {
      * @return the value, if present, otherwise {@code other}
      */
     public int orElse(int other) {
-        return isPresent ? value : other;
+        return state == IS_EMPTY ? other: value;
     }
 
     /**
@@ -231,7 +246,7 @@ public final class OptionalInt {
      *         function is {@code null}
      */
     public int orElseGet(IntSupplier supplier) {
-        return isPresent ? value : supplier.getAsInt();
+        return state == IS_EMPTY ? supplier.getAsInt() : value;
     }
 
     /**
@@ -243,10 +258,7 @@ public final class OptionalInt {
      * @since 10
      */
     public int orElseThrow() {
-        if (!isPresent) {
-            throw new NoSuchElementException("No value present");
-        }
-        return value;
+        return getAsInt();
     }
 
     /**
@@ -267,11 +279,11 @@ public final class OptionalInt {
      *         supplying function is {@code null}
      */
     public<X extends Throwable> int orElseThrow(Supplier<? extends X> exceptionSupplier) throws X {
-        if (isPresent) {
-            return value;
-        } else {
-            throw exceptionSupplier.get();
-        }
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> 0;
+            case IS_PRESENT_AND_NON_ZERO -> value;
+            default -> throw exceptionSupplier.get();
+        };
     }
 
     /**
@@ -292,11 +304,8 @@ public final class OptionalInt {
         if (this == obj) {
             return true;
         }
-
-        return obj instanceof OptionalInt other
-                && (isPresent && other.isPresent
-                ? value == other.value
-                : isPresent == other.isPresent);
+        return obj instanceof OptionalInt other && state == other.state
+                && (state != IS_PRESENT_AND_NON_ZERO || value == other.value);
     }
 
     /**
@@ -308,7 +317,7 @@ public final class OptionalInt {
      */
     @Override
     public int hashCode() {
-        return isPresent ? Integer.hashCode(value) : 0;
+        return (state == IS_PRESENT_AND_NON_ZERO) ? Integer.hashCode(value) : 0;
     }
 
     /**
@@ -325,8 +334,10 @@ public final class OptionalInt {
      */
     @Override
     public String toString() {
-        return isPresent
-                ? ("OptionalInt[" + value + "]")
-                : "OptionalInt.empty";
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> "OptionalInt[0]";
+            case IS_PRESENT_AND_NON_ZERO -> "OptionalInt[" + value + "]";
+            default -> "OptionalInt.empty";
+        };
     }
 }

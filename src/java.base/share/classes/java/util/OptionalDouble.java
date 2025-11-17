@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package java.util;
+
+import jdk.internal.vm.annotation.Stable;
 
 import java.util.function.DoubleConsumer;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import java.util.stream.DoubleStream;
+
+import static java.util.Optional.Util.*;
 
 /**
  * A container object which may or may not contain a {@code double} value.
@@ -63,9 +68,16 @@ public final class OptionalDouble {
     private static final OptionalDouble EMPTY = new OptionalDouble();
 
     /**
-     * If true then the value is present, otherwise indicates no value is present
+     * Indicates the state of the optional `value` which could be either of:
+     * <ul>
+     *     <li>Is empty</li>
+     *     <li>Is present and non-zero</li>
+     *     <li>Is present and zero</li>
+     * </ul>
      */
-    private final boolean isPresent;
+    @Stable
+    private final byte state;
+    @Stable
     private final double value;
 
     /**
@@ -75,7 +87,7 @@ public final class OptionalDouble {
      * should exist per VM.
      */
     private OptionalDouble() {
-        this.isPresent = false;
+        this.state = IS_EMPTY;
         this.value = Double.NaN;
     }
 
@@ -101,7 +113,7 @@ public final class OptionalDouble {
      * @param value the double value to describe.
      */
     private OptionalDouble(double value) {
-        this.isPresent = true;
+        this.state = Double.doubleToLongBits(value) == 0 ? IS_PRESENT_AND_ZERO : IS_PRESENT_AND_NON_ZERO;
         this.value = value;
     }
 
@@ -126,10 +138,11 @@ public final class OptionalDouble {
      * @throws NoSuchElementException if no value is present
      */
     public double getAsDouble() {
-        if (!isPresent) {
-            throw new NoSuchElementException("No value present");
-        }
-        return value;
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> 0;
+            case IS_PRESENT_AND_NON_ZERO -> value;
+            default -> throw noValuePresent();
+        };
     }
 
     /**
@@ -138,7 +151,7 @@ public final class OptionalDouble {
      * @return {@code true} if a value is present, otherwise {@code false}
      */
     public boolean isPresent() {
-        return isPresent;
+        return state != IS_EMPTY;
     }
 
     /**
@@ -149,7 +162,7 @@ public final class OptionalDouble {
      * @since   11
      */
     public boolean isEmpty() {
-        return !isPresent;
+        return state == IS_EMPTY;
     }
 
     /**
@@ -161,8 +174,10 @@ public final class OptionalDouble {
      *         {@code null}
      */
     public void ifPresent(DoubleConsumer action) {
-        if (isPresent) {
-            action.accept(value);
+        switch (state) {
+            case IS_PRESENT_AND_ZERO -> action.accept(0);
+            case IS_PRESENT_AND_NON_ZERO -> action.accept(value);
+            default -> { }
         }
     }
 
@@ -179,10 +194,10 @@ public final class OptionalDouble {
      * @since 9
      */
     public void ifPresentOrElse(DoubleConsumer action, Runnable emptyAction) {
-        if (isPresent) {
-            action.accept(value);
-        } else {
-            emptyAction.run();
+        switch (state) {
+            case IS_PRESENT_AND_ZERO -> action.accept(0);
+            case IS_PRESENT_AND_NON_ZERO -> action.accept(value);
+            default -> emptyAction.run();
         }
     }
 
@@ -203,11 +218,11 @@ public final class OptionalDouble {
      * @since 9
      */
     public DoubleStream stream() {
-        if (isPresent) {
-            return DoubleStream.of(value);
-        } else {
-            return DoubleStream.empty();
-        }
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> DoubleStream.of(0);
+            case IS_PRESENT_AND_NON_ZERO -> DoubleStream.of(value);
+            default -> DoubleStream.empty();
+        };
     }
 
     /**
@@ -218,7 +233,7 @@ public final class OptionalDouble {
      * @return the value, if present, otherwise {@code other}
      */
     public double orElse(double other) {
-        return isPresent ? value : other;
+        return state == IS_EMPTY ? other: value;
     }
 
     /**
@@ -232,7 +247,7 @@ public final class OptionalDouble {
      *         function is {@code null}
      */
     public double orElseGet(DoubleSupplier supplier) {
-        return isPresent ? value : supplier.getAsDouble();
+        return state == IS_EMPTY ? supplier.getAsDouble() : value;
     }
 
     /**
@@ -244,10 +259,7 @@ public final class OptionalDouble {
      * @since 10
      */
     public double orElseThrow() {
-        if (!isPresent) {
-            throw new NoSuchElementException("No value present");
-        }
-        return value;
+        return getAsDouble();
     }
 
     /**
@@ -268,11 +280,11 @@ public final class OptionalDouble {
      *         supplying function is {@code null}
      */
     public<X extends Throwable> double orElseThrow(Supplier<? extends X> exceptionSupplier) throws X {
-        if (isPresent) {
-            return value;
-        } else {
-            throw exceptionSupplier.get();
-        }
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> 0;
+            case IS_PRESENT_AND_NON_ZERO -> value;
+            default -> throw exceptionSupplier.get();
+        };
     }
 
     /**
@@ -295,10 +307,8 @@ public final class OptionalDouble {
             return true;
         }
 
-        return obj instanceof OptionalDouble other
-                && (isPresent && other.isPresent
-                ? Double.compare(value, other.value) == 0
-                : isPresent == other.isPresent);
+        return obj instanceof OptionalDouble other && state == other.state
+                && (state != IS_PRESENT_AND_NON_ZERO || Double.compare(value, other.value) == 0);
     }
 
     /**
@@ -310,7 +320,7 @@ public final class OptionalDouble {
      */
     @Override
     public int hashCode() {
-        return isPresent ? Double.hashCode(value) : 0;
+        return (state == IS_PRESENT_AND_NON_ZERO) ? Double.hashCode(value) : 0;
     }
 
     /**
@@ -327,8 +337,10 @@ public final class OptionalDouble {
      */
     @Override
     public String toString() {
-        return isPresent
-                ? ("OptionalDouble[" + value + "]")
-                : "OptionalDouble.empty";
+        return switch (state) {
+            case IS_PRESENT_AND_ZERO -> "OptionalDouble[0]";
+            case IS_PRESENT_AND_NON_ZERO -> "OptionalDouble[" + value + "]";
+            default -> "OptionalDouble.empty";
+        };
     }
 }
