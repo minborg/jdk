@@ -1,4 +1,4 @@
-# Stable Memory Semantics
+# Stable Semantics
 
 
 ## Background
@@ -20,9 +20,9 @@ What’s missing is a lower-level mechanism that enables direct interaction with
 without introducing wrappers. Additionally, wrapper-based approaches like `StableValue` lacks the ability
 to access flat memory, such as `int` arrays or `MemorySegment` instances.
 
-## Stable Semantics
+## Toward Stable Semantics
 
-Stable semantics add two new read-only access modes to the JVM’s existing memory access model:
+Stable semantics adds two new read-only access modes to the JVM’s existing memory access model:
 
  * (new) Stable (exists only for read operations)
  * (new) StableVolatile (exists only for read operations)
@@ -54,8 +54,7 @@ The fundamental primitives for stable semantics are provided in `jdk.internal.mi
 
 In the VM, there are corresponding changes (e.g., `typedef enum { Relaxed, Opaque, Volatile, Acquire, Release, Stable, Stable_Volatile } AccessKind;`)
 
-
-Semantically, when reading a memory location with stable access, the VM may elide all subsequent reads and, regardless of intervening updates by any thread (including the updating thread!),
+Semantically, when reading a memory location with stable access, the VM may elide all subsequent reads and, regardless of intervening updates by any thread (including the updating thread itself!),
 constant-fold the initially observed value. In that sense, Stable semantics can be viewed as even weaker than Plain semantics — a deliberately “weak” read.
 
 While this can raise concerns, it is important to note that `Unsafe` is already limited to advanced users, and there are many existing ways to violate
@@ -66,6 +65,9 @@ memory consistency and safety with `Unsafe`. We do not expect library or third-p
 
 These accessors are safer to use but, like `getVolatile` and related operations, they do not enforce correct usage.
 It remains the developer’s responsibility to apply them appropriately.
+
+Initial attempts were made with the aim to replace the 9 `get*StableVolatile` variants using memory fences but were
+unsuccessful on weaker platforms like AArch64.
 
 ## The State of the Prototype
 
@@ -97,6 +99,7 @@ Array:
                                                             ; - java.MainArray::payload@-1 (line 26)
   0x0000000117cb7e9a:   mov    $0x1,%eax
 ```
+As can be seen, the VM constant folds the value and just loads the folded value into the return register for the ABI in question.
 
 ### Benchmarks
 
@@ -109,5 +112,7 @@ StableArrayBenchmark.sumUnsafeStable     avgt    6  0.393 ± 0.080  ns/op <- The
 StableArrayBenchmark.sumVarHandleStable  avgt    6  0.360 ± 0.046  ns/op
 ```
 
+### Future Work
 
+ * Implement Stable Semantics for native segments.
 
