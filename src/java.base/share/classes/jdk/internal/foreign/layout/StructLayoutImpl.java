@@ -26,9 +26,11 @@
 package jdk.internal.foreign.layout;
 
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.StructLayout;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl> implements StructLayout {
 
@@ -52,6 +54,24 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
             align = Math.max(align, elem.byteAlignment());
         }
         return new StructLayoutImpl(elements, size, align, align, Optional.empty());
+    }
+
+    @Override
+    public <T> Function<MemorySegment, T> binder(Class<T> type) {
+        if (!type.isInterface()) {
+            throw isIllegalBecause(type, "not an interface");
+        }
+        if (type.isSealed()) {
+            throw isIllegalBecause(type, "a sealed interface");
+        }
+        if (type.isHidden()) {
+            throw isIllegalBecause(type, "a hidden interface");
+        }
+        return null;
+    }
+
+    private static IllegalArgumentException isIllegalBecause(Class<?> type, String msg) {
+        return new IllegalArgumentException(type.getName() + "is " + msg);
     }
 
 }

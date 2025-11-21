@@ -26,9 +26,11 @@
 package jdk.internal.foreign.layout;
 
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.UnionLayout;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 public final class UnionLayoutImpl extends AbstractGroupLayout<UnionLayoutImpl> implements UnionLayout {
 
@@ -49,6 +51,11 @@ public final class UnionLayoutImpl extends AbstractGroupLayout<UnionLayoutImpl> 
             align = Math.max(align, elem.byteAlignment());
         }
         return new UnionLayoutImpl(elements, size, align, align, Optional.empty());
+    }
+
+    @Override
+    public <T> Function<MemorySegment, T> binder(Class<T> type) {
+        throw new UnsupportedOperationException();
     }
 
 }

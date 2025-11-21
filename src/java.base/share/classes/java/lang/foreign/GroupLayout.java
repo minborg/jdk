@@ -26,6 +26,7 @@
 package java.lang.foreign;
 
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * A compound layout that is an aggregation of multiple, heterogeneous
@@ -75,4 +76,20 @@ public sealed interface GroupLayout extends MemoryLayout permits StructLayout, U
      */
     @Override
     GroupLayout withByteAlignment(long byteAlignment);
+
+    /**
+     * {@return a binder that can create a mapping between a {@linkplain MemorySegment}}
+     *          and an automatically generated implementation of the provided {@code type}.
+     * <p>
+     * Extensive description to be written ...
+     *
+     * @param type the interface type to be bind.
+     * @param <T> interface type
+     * @throws IllegalArgumentException if the provided type is not an interface,
+     *         or if it is a sealed interface.
+     * @since 99
+     */
+
+    // Todo: Consider BiFunction<MemorySegment, Long, T>
+    <T> Function<MemorySegment, T> binder(Class<T> type);
 }
