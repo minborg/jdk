@@ -3,38 +3,35 @@
 
 ## Background
 
-With the release of `LazyConstant`, the JDK got the ability to unify the best-of-two-worlds properties;
-laziness and constant folding. This was achieved by exposing `LazyConstant` as a safe wrapper around
-a `@Stable` field and additionally, by providing two new factories: `List::ofLazy` and `Map::ofLazy` allowing
-the creation of lazy collections that still benefit from constant folding.
+With the introduction of [JEP 526: Lazy Constants](https://openjdk.org/jeps/526) integrated in JDK 26, the JDK gained
+a way to combine laziness with constant folding. `LazyConstant` is exposed as a safe wrapper around a `@Stable` field, and new factories
+(`List::ofLazy` and `Map::ofLazy`) enable creating lazy collections that still benefit from constant folding.
 
-While this was great, we came across some culprits that became evident already in the first preview
-of `StableValue`. `StableValue` offered both a functional and an imperative mode. The functional mode
-worked mostly fine and was basically just ported to `LazyConstant` with some minor improvements
-(such as allowing the collection of the computing function once the lazy constant was initialized).
+While this was a big step forward, some issues surfaced as early as the first preview of `StableValue`.
+`StableValue` provided both functional and imperative modes. The functional mode worked well and was largely
+carried over to `LazyConstant` with incremental improvements (for example, allowing the collection of
+the computing function once the lazy constant is initialized).
 
-However, the imperative part of `StableValue` was less of a success. Not only did it blur the more clean functional
-view, but it also became evident that adding one or two extra levels of indirections had an adverse impact on both
-performance and memory efficiency. For example, we tried to model lazy aspects of the Classfile API with
-`StableValue` and failed.
+The imperative mode, however, was less successful. It obscured the simpler functional model and introduced
+one or two layers of indirection that hurt performance and memory efficiency. For example, attempts to model
+lazy aspects of the Classfile API with `StableValue` were not successful.
 
-What we were missing is a more low-level approach that would allow us to interact directly with fields
-using stable semantics _without_ creating wrappers. Another drawback with solutions like `StableValue` is
-that they do not allow direct stable access to flat memory such as `int` array or a `MemorySegment`.
+What’s missing is a lower-level mechanism that enables direct interaction with fields using stable semantics
+without introducing wrappers. Additionally, wrapper-based approaches like `StableValue` lacks the ability
+to access flat memory, such as `int` arrays or `MemorySegment` instances.
 
 ## Stable Semantics
 
-Stable semantics is an addition to the current existing memory access semantics we already have in the JVM:
+Stable semantics add two new read-only access modes to the JVM’s existing memory access model:
 
- * Stable (new) (read only)
- * StableVolatile (new) (read only)
+ * (new) Stable (exists only for read operations)
+ * (new) StableVolatile (exists only for read operations)
  * Plain
  * Opaque
  * Acquire/Release
  * Volatile
 
-The fundamental primitives of the new stable semantics are implemented in `jdk.internal.misc.Unsafe` in the
-shape of 18 intrinsic functions `Unsafe::`:
+The fundamental primitives for stable semantics are provided in `jdk.internal.misc.Unsafe` via 18 intrinsics:
 
  * getReferenceStable
  * getBooleanStable
@@ -57,30 +54,60 @@ shape of 18 intrinsic functions `Unsafe::`:
 
 In the VM, there are corresponding changes (e.g., `typedef enum { Relaxed, Opaque, Volatile, Acquire, Release, Stable, Stable_Volatile } AccessKind;`)
 
-Stable semantics works in the way that upon reading a memory location, the VM is free to _alide all further reads_,
-and -- regardless of any potential updates by any thread (even by the same thread!) -- constant fold the value initially read.
 
-Because of this, one could argue that _Stable semantics is even weeker that Plain semantics_. It is a sort of "weak" read.
+Semantically, when reading a memory location with stable access, the VM may elide all subsequent reads and, regardless of intervening updates by any thread (including the updating thread!),
+constant-fold the initially observed value. In that sense, Stable semantics can be viewed as even weaker than Plain semantics — a deliberately “weak” read.
 
-While this might set of mental alarm bells, it should be noted that `Unsafe` methods are restricted to advanced
-user and that there are already many ways to violate memory consistency and safety using `Unsafe`.
-
-Evidently, we do not expect library maintainers and third-party maintainers to use `Unsafe` directly. Instead, there are
-two new methods in `VarHandle::`:
+While this can raise concerns, it is important to note that `Unsafe` is already limited to advanced users, and there are many existing ways to violate
+memory consistency and safety with `Unsafe`. We do not expect library or third-party maintainers to use `Unsafe` directly. Instead, two new methods are provided on `VarHandle`:
 
  * getStable
  * getStableVolatile
 
-While these accessors provide more safety, they are still oblivious to how the outcome of a stable access is used.
-Just as with `getVolatile` et al., is is up to the developer to ensure proper use.
+These accessors are safer to use but, like `getVolatile` and related operations, they do not enforce correct usage.
+It remains the developer’s responsibility to apply them appropriately.
 
 ## The State of the Prototype
 
-The current prototype is able to handle fields, arrays (e.g., an `int` array), and heap-based `MemorySegmnent`
-instances allowing constant folding via stable semantics. We are working on providing an equivalent mechanism for
-native memory access (e.g., a native `MemorySegment`).
+The current prototype supports primitive and `Object` fields, arrays (e.g., `int[]`), and heap-backed `MemorySegment` instances,
+enabling constant folding via stable semantics. Work is underway to provide equivalent support for
+native memory (e.g., native MemorySegment).
 
+In addition, stable semantics (via `getStable` and `getStableVolatile`) are now available on the following atomic classes:
 
+ * AtomicBoolean
+ * AtomicInteger
+ * AtomicIntegerArray
+ * AtomicLong
+ * AtomicLongArray
+ * AtomicReference
+ * AtomicReferenceArray
+
+## Generated Assembler
+
+Field access of a normal `private int value;` field via stable semantics (field set to 1):
+```
+                                                            ; - java.MainField::payload@-1 (line 29)
+  0x0000000118e66e9a:   mov    $0x1,%eax
+
+```
+Array access of a normal `private int[] values;` component via stable semantics (component at index 0 set to 1):
+```
+Array:
+                                                            ; - java.MainArray::payload@-1 (line 26)
+  0x0000000117cb7e9a:   mov    $0x1,%eax
+```
+
+### Benchmarks
+
+Here is a benchmark that loops over a 16-element `int` array and computes the sum of the elements:
+
+```
+Benchmark                                Mode  Cnt  Score   Error  Units
+StableArrayBenchmark.sum                 avgt    6  2.531 ± 0.583  ns/op
+StableArrayBenchmark.sumUnsafeStable     avgt    6  0.393 ± 0.080  ns/op <- The entire loop is constant-folded
+StableArrayBenchmark.sumVarHandleStable  avgt    6  0.360 ± 0.046  ns/op
+```
 
 
 
