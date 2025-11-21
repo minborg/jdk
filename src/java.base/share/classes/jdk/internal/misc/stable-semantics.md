@@ -57,6 +57,12 @@ In the VM, there are corresponding changes (e.g., `typedef enum { Relaxed, Opaqu
 Semantically, when reading a memory location with stable access, the VM may elide all subsequent reads and, regardless of intervening updates by any thread (including the updating thread itself!),
 constant-fold the initially observed value. In that sense, Stable semantics can be viewed as even weaker than Plain semantics — a deliberately “weak” read.
 
+The `get*StableVolatile` variants are equivalent to their corresponding `get*Stable` counterparts but, with the
+additional restriction that the _initial read_ must be made using `volatile` semantics. This allows protection against
+out-of-thin-air values from referenced objects' fields (reordering). It is worth noting that once a value is read,
+the VM is free not only to reuse that value but also to remove any memory fencing associated with `volatile` reads.
+Hence, clients must not rely on `get*StableVolatile` for piggybacking and/or other memory ordering constructs.
+
 While this can raise concerns, it is important to note that `Unsafe` is already limited to advanced users, and there are many existing ways to violate
 memory consistency and safety with `Unsafe`. We do not expect library or third-party maintainers to use `Unsafe` directly. Instead, two new methods are provided on `VarHandle`:
 
