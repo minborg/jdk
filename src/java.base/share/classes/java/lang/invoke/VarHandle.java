@@ -801,7 +801,8 @@ public abstract sealed class VarHandle implements Constable
      * if the variable was declared non-{@code volatile}. Commonly referred to
      * as plain read access but, giving the VM the opportunity to elide further reads
      * on the same variable if a non-default value is observed and if there is a trusted
-     * chain starting from a VM constant and ending with the variable.
+     * chain starting from a VM constant and ending with the variable _and_ if the value
+     * read is not a _default value_ such as `null` or zero.
      *<p>
      * The method signature is of the form {@code (CT1 ct1, ..., CTn ctn)T}.
      *<p>
@@ -831,7 +832,8 @@ public abstract sealed class VarHandle implements Constable
      * Returns the value of a variable, with memory semantics of reading as if
      * the variable was declared {@code volatile} but, giving the VM the opportunity to
      * elide further reads on the same variable if a non-default value is observed and if
-     * there is a trusted chain starting from a VM constant and ending with the variable.
+     * there is a trusted chain starting from a VM constant and ending with the variable
+     *  _and_ if the value read is not a _default value_ such as `null` or zero.
      *<p>
      * The method signature is of the form {@code (CT1 ct1, ..., CTn ctn)T}.
      *<p>
