@@ -72,6 +72,20 @@ memory consistency and safety with `Unsafe`. We do not expect library or third-p
 These accessors are safer to use but, like `getVolatile` and related operations, they do not enforce correct usage.
 It remains the developer’s responsibility to apply them appropriately.
 
+### Default Values
+
+One solution to make sure a fields has been set/computed might be reading the fields using non-stable semantics just
+before using stable semantics. Unfortunately, this would forever prohibit constant folding as the non-stable read would
+forever be kept in the code path.
+
+Therefore, in order for stable semantics to work with uninitialized fields, it is proposed that any get stable operation
+that sees a _default_ value would prevent such values from being constant folded. This is congruent with `@Stable` fields.
+At the beginning of a fields lifetime (unless it is ACC_STRICT), the field holds its default value (i.e., `null` or zero) and
+the initial default value might be updated at any time. Once a non-default value is observed using stable semantics,
+the VM can constant-fold such values.
+
+### Simplifications
+
 Initial attempts were made with the aim to replace the 9 `get*StableVolatile` variants using memory fences but were
 unsuccessful on weaker platforms like AArch64.
 
