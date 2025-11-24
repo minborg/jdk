@@ -3,10 +3,10 @@ package java;
 import jdk.internal.misc.Unsafe;
 
 /** A */
-public class MyMain {
+public final class MainArray {
 
     /** A */
-    public MyMain() {
+    public MainArray() {
     }
 
     private static final Unsafe U = Unsafe.getUnsafe();

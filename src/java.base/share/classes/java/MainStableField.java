@@ -1,19 +1,17 @@
 package java;
 
-import jdk.internal.misc.Unsafe;
+import jdk.internal.vm.annotation.Stable;
 
 /** A */
-public final class MainField {
+public final class MainStableField {
 
     /** A */
-    public MainField() {}
+    public MainStableField() {}
 
-    private static final Unsafe U = Unsafe.getUnsafe();
-    private static final long FIELD_OFFSET =  U.objectFieldOffset(MainField.class, "value");
+    @Stable
     private final int value = 1;
 
     void main() throws InterruptedException {
-        IO.println("Offset is " + FIELD_OFFSET); // 12
         int sum = 0;
         for (int i = 0; i < 1_000_000; i++) {
             sum += payload();
@@ -24,7 +22,7 @@ public final class MainField {
     }
 
     int payload() {
-        return U.getIntStable(this, FIELD_OFFSET);
+        return value;
     }
 
 }

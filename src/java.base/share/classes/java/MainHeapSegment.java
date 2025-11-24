@@ -8,15 +8,14 @@ import java.lang.foreign.MemorySegment;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 
 /** To be removed */
-public class MainSegment {
+public final class MainHeapSegment {
 
     /** A */
-    public MainSegment() {
+    public MainHeapSegment() {
     }
 
     private static final Unsafe U = Unsafe.getUnsafe();
-    private static final MemorySegment S = Arena.global().allocate(JAVA_INT);
-    private static final long A = S.address();
+    private static final MemorySegment S = MemorySegment.ofArray(new int[]{0});
 
     static void main() throws InterruptedException {
         int sum = 0;
@@ -29,7 +28,7 @@ public class MainSegment {
     }
 
     static int payload() {
-        return U.getIntStable(null, A);
+        return U.getIntStable(S.heapBase().orElseThrow(), Unsafe.ARRAY_INT_BASE_OFFSET + (0L * Unsafe.ARRAY_INT_INDEX_SCALE));
     }
 
 }

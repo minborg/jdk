@@ -2,15 +2,21 @@ package java;
 
 import jdk.internal.misc.Unsafe;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+
+import static java.lang.foreign.ValueLayout.JAVA_INT;
+
 /** To be removed */
-public class MainArray {
+public final class MainSegment {
 
     /** A */
-    public MainArray() {
+    public MainSegment() {
     }
 
     private static final Unsafe U = Unsafe.getUnsafe();
-    private static final int[] A = new int[]{1};
+    private static final MemorySegment S = Arena.global().allocate(JAVA_INT);
+    private static final long A = S.address();
 
     static void main() throws InterruptedException {
         int sum = 0;
@@ -23,7 +29,7 @@ public class MainArray {
     }
 
     static int payload() {
-        return U.getIntStable(A, Unsafe.ARRAY_INT_BASE_OFFSET + (0L * Unsafe.ARRAY_INT_INDEX_SCALE));
+        return U.getIntStable(null, A);
     }
 
 }
