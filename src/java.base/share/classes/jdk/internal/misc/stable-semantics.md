@@ -74,7 +74,7 @@ It remains the developer’s responsibility to apply them appropriately.
 
 ### Default Values
 
-One solution to make sure a fields has been set/computed might be reading the fields using non-stable semantics just
+One solution to make sure a field has been set/computed might be first reading the fields using non-stable semantics just
 before using stable semantics. Unfortunately, this would forever prohibit constant folding as the non-stable read would
 forever be kept in the code path.
 
