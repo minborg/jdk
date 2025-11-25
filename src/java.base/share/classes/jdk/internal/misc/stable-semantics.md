@@ -108,17 +108,35 @@ In addition, stable semantics (via `getStable` and `getStableVolatile`) are now 
 ## Generated Assembler
 
 Field access of a normal `private int value;` field via stable semantics (field set to 1):
+
+x64:
 ```
                                                             ; - java.MainField::payload@-1 (line 29)
   0x0000000118e66e9a:   mov    $0x1,%eax
 
 ```
+
+AArch64:
+```
+                                                            ; - java.MainField::payload@-1 (line 41)
+  0x000000011c340bb8:   orr	w0, wzr, #0x1
+```
+
+
+x64:
 Array access of a normal `private int[] values;` component via stable semantics (component at index 0 set to 1):
 ```
 Array:
                                                             ; - java.MainArray::payload@-1 (line 26)
   0x0000000117cb7e9a:   mov    $0x1,%eax
 ```
+
+AArch64:
+```
+                                                            ; - java.MainArray::payload@-1 (line 26)
+  0x00000001177e4b98:   orr	w0, wzr, #0x1
+```
+
 As can be seen, the VM constant folds the value and just loads the folded value into the return register for the ABI in question.
 
 ### Benchmarks
@@ -135,4 +153,14 @@ StableArrayBenchmark.sumVarHandleStable  avgt    6  0.360 ± 0.046  ns/op
 ### Future Work
 
  * Implement Stable Semantics for native segments.
+ * Should there be a way to provide a:
+   * Sentinel value that is _never_ reused
+   * Predicate to tell if the value can be reused
+   * An "invalidator". c.f. MutableCallSite
+
+In other words:
+
+* what access mode is used to perform the non-snapshotted read (plain, acquire, volatile)
+* under what conditions we can snapshot a read (e.g. filter that establishes what "default" means)
+* under what conditions can we "un"snapshot a read (e.g. lifetime object that decides whether the snapshotted value is still valid)
 

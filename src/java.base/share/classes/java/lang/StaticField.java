@@ -1,6 +1,4 @@
-package java.stable;
-
-import jdk.internal.misc.Unsafe;
+package java.lang;
 
 /** To be removed */
 public final class StaticField extends Base {

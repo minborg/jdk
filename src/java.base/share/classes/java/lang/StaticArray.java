@@ -1,4 +1,4 @@
-package java.stable;
+package java.lang;
 
 import jdk.internal.misc.Unsafe;
 

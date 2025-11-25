@@ -1,4 +1,4 @@
-package java.stable;
+package java.lang;
 
 /** To be removed */
 public final class InstanceField extends Base {
@@ -20,7 +20,7 @@ public final class InstanceField extends Base {
     public InstanceField() { }
 
     int payload() {
-        return UNSAFE.getInt(HOLDER, VALUE_OFFSET);
+        return UNSAFE.getIntStable(HOLDER, VALUE_OFFSET);
     }
 
 }
