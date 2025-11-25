@@ -16,6 +16,7 @@ public final class MainHeapSegment {
 
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final MemorySegment S = MemorySegment.ofArray(new int[]{0});
+    private static final int[] A = (int[]) S.heapBase().orElseThrow();
 
     static void main() throws InterruptedException {
         int sum = 0;
@@ -28,7 +29,7 @@ public final class MainHeapSegment {
     }
 
     static int payload() {
-        return U.getIntStable(S.heapBase().orElseThrow(), Unsafe.ARRAY_INT_BASE_OFFSET + (0L * Unsafe.ARRAY_INT_INDEX_SCALE));
+        return U.getIntStable(A /*S.heapBase().orElseThrow()*/, Unsafe.ARRAY_INT_BASE_OFFSET + (0L * Unsafe.ARRAY_INT_INDEX_SCALE));
     }
 
 }

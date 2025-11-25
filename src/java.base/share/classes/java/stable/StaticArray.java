@@ -1,15 +1,17 @@
 package java.stable;
 
+import jdk.internal.misc.Unsafe;
+
 /** To be removed */
 public final class StaticArray extends Base {
 
-    private static final int[] value = new int[]{1};
+    private static final int[] VALUES = new int[]{1};
 
     /** Ctor */
     public StaticArray() { }
 
     int payload() {
-        return value[0];
+        return UNSAFE.getIntStable(VALUES, Unsafe.ARRAY_INT_BASE_OFFSET);
     }
 
 }

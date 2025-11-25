@@ -1,5 +1,7 @@
 package java.stable;
 
+import jdk.internal.misc.Unsafe;
+
 /** To be removed */
 public final class StaticField extends Base {
 
@@ -9,7 +11,8 @@ public final class StaticField extends Base {
     public StaticField() { }
 
     int payload() {
-        return value;
+        throw new UnsupportedOperationException();
+        // return UNSAFE.getIntStable(value);
     }
 
 }
