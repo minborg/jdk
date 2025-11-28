@@ -293,7 +293,7 @@ public interface List<E> extends SequencedCollection<E> {
      * @throws UnsupportedOperationException if the {@code remove} operation
      *         is not supported by this list
      */
-    boolean remove(Object o);
+        boolean remove(Object o);
 
 
     // Bulk Modification Operations
@@ -1260,6 +1260,19 @@ public interface List<E> extends SequencedCollection<E> {
         Objects.requireNonNull(computingFunction);
         // A computed list is not Serializable, so we cannot return `List.of()` if `size == 0`
         return LazyCollections.ofLazyList(size, computingFunction);
+    }
+
+    /**
+     * {@return An unbound, stable, non-blocking, thread-safe List}.
+     * <p>
+     * TBW ...
+     *
+     * @param type     class literal describing the type of elements
+     * @param <E>      the type of elements in the returned list
+     */
+    static <E> List<E> ofLazy(Class<E> type) {
+        Objects.requireNonNull(type);
+        return LazyCollections.ofUnboundLazyList(type);
     }
 
 }

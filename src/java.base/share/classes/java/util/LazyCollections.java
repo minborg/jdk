@@ -28,17 +28,16 @@ package java.util;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.ImmutableBitSetPredicate;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
+import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
-import java.lang.LazyConstant;
 import java.lang.reflect.Array;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
-import java.util.function.Supplier;
 
 /**
  * Container class for lazy collections implementations. Not part of the public API.
@@ -471,6 +470,10 @@ final class LazyCollections {
         return new LazyList<>(size, computingFunction);
     }
 
+    public static <E> List<E> ofUnboundLazyList(Class<E> type) {
+        return new UnboundLazyList<>(type);
+    }
+
     public static <K, V> Map<K, V> ofLazyMap(Set<K> keys,
                                              Function<? super K, ? extends V> computingFunction) {
         return new LazyMap<>(keys, computingFunction);
@@ -579,6 +582,282 @@ final class LazyCollections {
                 function = null;
             }
         }
+    }
+
+
+    static final class UnboundLazyList<E>
+            extends AbstractList<E>
+            implements RandomAccess, List<E> {
+
+        /*
+
+        An unbound, stable, non-blocking, thread-safe List implementation.
+
+
+        Furthermore, the List has the following properties:
+         * Does _not_ allow removal:
+            - ~remove~
+            - ~retainAll~
+            - ~clear~
+            - ~removeFirst~
+            - ~removeLast~
+         * Does _not_ allow updates of existing elements:
+            - ~replaceAll~
+            - ~sort~
+            - ~set(int index, E element)~
+         * Does _not_ allow adding elements at specific indices (allows non-blocking):
+           - ~addAll(int index, Collection<? extends E> c)~
+           - ~add(int index, E element)~
+           - ~addFirst~
+         * Allows adding elements at the end
+            - add
+            - addAll
+            - addLast
+
+        Here is an example with an L = 2 (two-level) tree with B = (2^3) = 8 branches
+        on each level where we have added N = 10 elements [e0 ... e9]:
+        The tree can hold B^L elements.
+
+        Node root;
+        +======+======+======+======+======+======+======+======+
+        |  i0  |  i1  |  i2  |  i3  |  i4  |  i5  |  i6  |  i7  |
+        +======+======+======+======+======+======+======+======+
+        | ptr0 | ptr1 |  --  |  --  |  --  |  --  |  --  |  --  |
+        +--+---+--+---+------+------+------+------+------+------+
+           |      |
+           |      |    Node
+           |      +->  +======+======+======+======+======+======+======+======+
+           |           |  i0  |  i1  |  i2  |  i3  |  i4  |  i5  |  i6  |  i7  |
+           |           +======+======+======+======+======+======+======+======+
+           |           |  e8  |  e9  |  --  |  --  |  --  |  --  |  --  |  --  |
+           |           +------+------+------+------+------+------+------+------+
+           |
+           |    Node
+           +->  +======+======+======+======+======+======+======+======+
+                |  i0  |  i1  |  i2  |  i3  |  i4  |  i5  |  i6  |  i7  |
+                +======+======+======+======+======+======+======+======+
+                |  e0  |  e1  |  e2  |  e3  |  e4  |  e5  |  e6  |  e7  |
+                +------+------+------+------+------+------+------+------+
+
+        # Discussion around get()
+        The complexity for get() is O(L) as we need to traverse L pointer indirections.
+        For an L = 11 list (allowing B^11 = 2^33 elements) there are 2^(33-31) = 4
+        unused elements at the end of the first layer. These four elements could be used
+        to directly point to the first elements in order to short-circuit access to the
+        first 4*B = 32 elements.
+
+        # Discussion around size()
+        The complexity for size() is O(L) (which is O(log(N))
+        Algorithm for size(): On level L check the highest i that is used. All the preceding
+        buckets are full so no need to traverse. Recurse into the next layer for the highest i.
+
+        In the example below, as we see that there is an i1 on level 0, we know that level 1
+        for i0 on level 0 is full (so add (2^3)^1 directly). Then descend into the prt1
+        array. This is a leaf array so we just count the number of set elements (so add 2)
+        giving a size of 8 + 2 = 10 (this incurred 4 reads).
+
+        Selecting a higher B reduces the number of indirections but impairs memory
+        inefficiency. Here is a table with objects for a 10 element node:
+
+        +======+===+=======+================+==================+
+        |   B   |  Objects  |  Indirections  |  Efficiency(*)  |
+        +======+===+=======+================+==================+
+        |   4   |           |                |                 |
+        +-------+-----------+----------------+-----------------+
+        |   8   |           |                |                 |
+        +-------+-----------+----------------+-----------------+
+        |  16   |           |                |                 |
+        +-------+-----------+----------------+-----------------+
+        |  32   |           |                |                 |
+        +------+------------+----------------+-----------------+
+        (*) Compared to a flat array with exact size
+
+
+        # Discussion around iteration
+        The tree might be efficiently traversed using a depth-first approach.
+
+        Using MCS, we could dynamically change L (and, in fact, B). So, at most there
+        would be 31/log2(B) tree replacements.
+
+        Rebalancing the tree is just adding a new top level and then mounting the old
+        tree there!
+
+
+        // Todo: Perform reading of arrays using stable volatile semantics
+        // Todo: Consider an overload with pre-populated elements
+
+         */
+
+        private static final int L = 2;
+        private static final int B_BITS = 3;
+        private static final int B = 1 << B_BITS;
+        private static final int B_MASK = B - 1;
+        private static final int MAX_SIZE = B << L;
+
+        @Stable
+        final Class<E> type;
+
+        /* value */ record Node(@Stable Object[] contents) {
+            public Node() {
+                this(new Object[B]);
+            }
+
+            @ForceInline
+            Object getStableVolatile(int index) {
+                Objects.checkIndex(index, B);
+                return UNSAFE.getReferenceStableVolatile(contents, offsetFor(index));
+            }
+
+            boolean trySet(int index, Object o) {
+                Objects.checkIndex(index, B);
+                return UNSAFE.compareAndSetReference(contents, offsetFor(index), null, o);
+            }
+
+            Node createNewNode(int index) {
+                Objects.checkIndex(index, B);
+                final Node newNode = new Node();
+                final Node witness = (Node) UNSAFE.compareAndExchangeReference(contents, offsetFor(index), null, newNode);
+                return witness == null ? newNode : witness;
+            }
+
+            @Override
+            public String toString() {
+                return "Node" + Arrays.toString(contents);
+            }
+
+            @ForceInline
+            private static long offsetFor(int index) {
+                return Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+            }
+
+        }
+
+        // L = 2, B = 8 -> MAX_SIZE = 32 elements
+        @Stable
+        final Node root;
+
+        UnboundLazyList(Class<E> type) {
+            this.type = type;
+            this.root = new Node();
+        }
+
+        @Override
+        public E get(int index) {
+            final Node node = nodeFor(index);
+            if (node == null) {
+                throw outOfBoundsException(index);
+            }
+            final E e = type.cast(node.getStableVolatile(index & B_MASK));
+            if (e == null) {
+                throw outOfBoundsException(index);
+            }
+            return e;
+        }
+
+        @Override
+        public int size() {
+            int size = 0;
+            Object last = null;
+            for (int i = 0; i < B; i++) {
+                last = root.getStableVolatile(i);
+                if (last == null) {
+                    return size;
+                }
+                final Node node = ((Node) last);
+                for (int j = 0; j < B; j++) {
+                    final Object e = node.getStableVolatile(j);
+                    if (e == null) {
+                        return size;
+                    }
+                    size++;
+                }
+            }
+            return 0;
+        }
+
+        @Override
+        public boolean add(E e) {
+            Objects.requireNonNull(e);
+            if (!type.isInstance(e)) {
+                throw new IllegalArgumentException("Cannot add because the element is not an instance of " + type);
+            }
+
+            // System.out.println("*** add(" + e + ") ***");
+
+            while (true) {
+                final int candidateIndex = size();
+                // If full -> throw
+                Objects.checkIndex(candidateIndex, MAX_SIZE);
+                Node node = nodeFor(candidateIndex);
+
+                //System.out.println("cnt = " + cnt);
+                //System.out.println("candidateIndex = " + candidateIndex);
+                //System.out.println("node = " + node);
+
+                if (node == null) {
+                    int pointer = pointer(candidateIndex);
+                    final int createIndex = pointer & B_MASK;
+                    //System.out.println("createIndex = " + createIndex);
+                    node = root.createNewNode(createIndex);
+                    //System.out.println("created node = " + node);
+                }
+                if (!node.trySet(candidateIndex & B_MASK, e)) {
+                    // Someone else grabbed our intended slot
+                    // so, we need to go back again and retry at another position
+                    continue;
+                }
+                break;
+            }
+            return true;
+        }
+
+        // Unsupported Operations
+        @Override public boolean remove(Object o) {
+            System.out.println("remove(Object o) called!");
+            throw uoe(); }
+
+        @Override public boolean removeAll(Collection<?> c) {
+            System.out.println("removeAll(Collection<?> c) called!");
+            throw uoe();
+        }
+
+        // Todo: Special implementations for subList, Reversed, iterators must be implemented
+        //       to support concurrent access (i.e., no modification counters)
+
+
+        private Node nodeFor(int index) {
+            //System.out.println("nodeFor(" + index + ")");
+            //System.out.println("  index = 0x" + Integer.toHexString(index));
+            int pointer = pointer(index);
+            //System.out.println("  pointer = 0x" + Integer.toHexString(pointer));
+            final int firstIndex = pointer & B_MASK;
+            //System.out.println("  firstIndex = " + firstIndex);
+            Node node = (Node) root.getStableVolatile(firstIndex);
+            //System.out.println("  node = " + node);
+            return node;
+        }
+
+        @ForceInline
+        private static int pointer(int index) {
+            Objects.checkIndex(index, MAX_SIZE);
+            return Integer.rotateLeft(index, Integer.SIZE - (B_BITS * (L - 1)));
+        }
+
+        @ForceInline
+        private static int nextPointer(int pointer) {
+            return Integer.rotateLeft(pointer, B_BITS);
+        }
+
+        @DontInline
+        private static IndexOutOfBoundsException outOfBoundsException(int index) {
+            return new IndexOutOfBoundsException("index = "+index);
+        }
+
+        @DontInline
+        private static UnsupportedOperationException uoe() {
+            return new UnsupportedOperationException();
+        }
+
     }
 
 }
