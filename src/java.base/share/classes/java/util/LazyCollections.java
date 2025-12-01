@@ -585,6 +585,23 @@ final class LazyCollections {
     }
 
 
+    static final class UnboundArrayLazyList<E>
+            extends AbstractList<E>
+            implements RandomAccess, List<E> {
+
+        private Object[] elements;
+
+        @Override
+        public E get(int index) {
+            return null;
+        }
+
+        @Override
+        public int size() {
+            return 0;
+        }
+    }
+
     static final class UnboundLazyList<E>
             extends AbstractList<E>
             implements RandomAccess, List<E> {
@@ -692,7 +709,7 @@ final class LazyCollections {
         private static final int B_BITS = 3;
         private static final int B = 1 << B_BITS;
         private static final int B_MASK = B - 1;
-        private static final int MAX_SIZE = B << L;
+        private static final int MAX_SIZE = Math.powExact(B, L); // B ^ L;
 
         @Stable
         final Class<E> type;
@@ -700,6 +717,12 @@ final class LazyCollections {
         /* value */ record Node(@Stable Object[] contents) {
             public Node() {
                 this(new Object[B]);
+            }
+
+            @ForceInline
+            Object getStable(int index) {
+                Objects.checkIndex(index, B);
+                return UNSAFE.getReferenceStable(contents, offsetFor(index));
             }
 
             @ForceInline
@@ -759,13 +782,15 @@ final class LazyCollections {
             int size = 0;
             Object last = null;
             for (int i = 0; i < B; i++) {
-                last = root.getStableVolatile(i);
+                // We are only looking for the _existence_ of an element so, we can
+                // read the value using plain memory semantics.
+                last = root.getStable(i);
                 if (last == null) {
                     return size;
                 }
                 final Node node = ((Node) last);
                 for (int j = 0; j < B; j++) {
-                    final Object e = node.getStableVolatile(j);
+                    final Object e = node.getStable(j);
                     if (e == null) {
                         return size;
                     }
