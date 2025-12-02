@@ -25,6 +25,7 @@
 
 package java.util;
 
+import jdk.internal.foreign.Utils;
 import jdk.internal.javac.PreviewFeature;
 
 import java.util.function.BiConsumer;
@@ -1824,5 +1825,134 @@ public interface Map<K, V> {
             return LazyCollections.ofLazyMap(keyCopies, computingFunction);
         }
     }
+
+    /**
+     * {@return a builder for lazy maps}
+     * <p>
+     * The initial builder represents:
+     * <ul>
+     *     <li>An <em>unbound map</em> with no pre-specified keys or size</li>
+     *     <li>An un-synchronized map where threads can race to compute associations but
+     *     where only a distinct, winning thread is elected to actually make
+     *     the association</li>
+     * </ul>
+     * TBW
+     * @apiNote The following are examples using the builder:
+     * {@snippet :
+     *     // Creates an unbound map allowing any keys and where threads may race
+     *     // to make associations.
+     *     Map<String, Integer> map = Map.ofLazy(String::length).toMap();
+
+     *     // Creates a bound map with at most 10 associations
+     *     // (with arbitrary keys) and where threads may race to make associations.
+     *     Map<String, Integer> map = Map.ofLazy(String::length).withSize(10).toMap();
+     *
+     *     // Creates a bound map with "Foo" and "Bar" as the only allowed keys and that
+     *     // is synchronized, meaning only one thread will compute and put associations
+     *     // per key.
+     *     Map<String, Integer> map = Map.ofLazy(String::length)
+     *             .withKeys(Set.of("Foo", "Bar"))
+     *             .withSynchronization()
+     *             .toMap();
+     * }
+     *
+     * @param computingFunction to invoke whenever an associated value is first accessed
+     * @param <K>               the type of keys maintained by the returned map
+     * @param <V>               the type of mapped values in the returned map
+     */
+    static <K, V> LazyBuilder<K, V> ofLazy(Function<? super K, ? extends V> computingFunction) {
+        Objects.requireNonNull(computingFunction);
+        return new LazyBuilder.LazyBuilderImpl<>(computingFunction);
+    }
+
+    /**
+     * A thread-safe lazy map builder.
+     * <p>
+     * @param <K>               the type of keys maintained by the returned map
+     * @param <V>               the type of mapped values in the returned map
+     */
+    sealed interface LazyBuilder<K, V> {
+
+        /**
+         * Provide a known set of {@code keys} to the builder.
+         * <p>
+         * This method would from now imply a <em>bound</em> map where only the provided
+         * keys are allowed.
+         * Any previously {@linkplain #withSize(int)} will be discarded.
+         *
+         * @param keys to use
+         * @return a new builder with the provided {@code keys}
+         */
+        LazyBuilder<K, V> withKeys(Set<? extends K> keys);
+
+        /**
+         * Provide a known {@code size} to the builder.
+         * <p>
+         * This method would from now imply a <em>bound</em> map where only {@code size}
+         * associations can be made.
+         * Any previously {@linkplain #withKeys(Set)} will be discarded.
+         *
+         * @param size to use
+         * @return a new builder with the provided {@code size}
+         */
+        LazyBuilder<K, V> withSize(int size);
+
+        /**
+         * Provide a synchronized property to the builder.
+         * <p>
+         * This method would from now imply a <em>synchronized</em> builder where
+         * a plurality of threads may race to set associations. Only one of the racing
+         * threads' associations will be used.
+
+         * @return a new builder with the synchronized property set
+         */
+        LazyBuilder<K, V> withSynchronization();
+
+        /**
+         * @return a new lazy map with the builder parameters.
+         */
+        Map<K, V> toMap();
+
+        record LazyBuilderImpl<K, V>(
+                Function<? super K, ? extends V> computingFunction,
+                Set<? extends K> keys,
+                boolean isEnumKeys,
+                int size,
+                boolean synchronization
+        ) implements LazyBuilder<K, V> {
+
+            private static final int NO_SIZE = -1;
+            private static final Set<?> NO_SET = Set.of();
+            @SuppressWarnings("unchecked") private static <K> Set<K> noSet() { return (Set<K>) NO_SET;}
+
+            public LazyBuilderImpl(Function<? super K, ? extends V> computingFunction) {
+                this(computingFunction, noSet(), false, NO_SIZE, false);
+            }
+
+            @Override
+            public LazyBuilder<K, V> withKeys(Set<? extends K> keys) {
+                final Set<K> keyCopies = Set.copyOf(keys);
+                return new LazyBuilderImpl<>(computingFunction, keyCopies, keys instanceof EnumMap<?, ?> && !keyCopies.isEmpty(), NO_SIZE, synchronization);
+            }
+
+            @Override
+            public LazyBuilder<K, V> withSize(int size) {
+                Utils.checkNonNegativeArgument(size,"size");
+                return new LazyBuilderImpl<>(computingFunction, noSet(), false, size, synchronization);
+            }
+
+            @Override
+            public LazyBuilder<K, V> withSynchronization() {
+                return new LazyBuilderImpl<>(computingFunction, keys, isEnumKeys, size, true);
+            }
+
+            @Override
+            public Map<K, V> toMap() {
+                return Map.of();
+            }
+        }
+
+    }
+
 
 }

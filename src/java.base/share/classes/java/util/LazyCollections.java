@@ -25,6 +25,7 @@
 
 package java.util;
 
+import jdk.internal.ValueBased;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.ImmutableBitSetPredicate;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
@@ -33,11 +34,9 @@ import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.ReadBiasedValue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.IntFunction;
-import java.util.function.IntPredicate;
+import java.util.function.*;
 
 /**
  * Container class for lazy collections implementations. Not part of the public API.
@@ -474,6 +473,10 @@ final class LazyCollections {
         return new UnboundLazyList<>(type);
     }
 
+    public static <E> List<E> ofUnboundLazyList(IntFunction<? extends E> computingFunction) {
+        return new UnboundArrayLazyList<>(computingFunction);
+    }
+
     public static <K, V> Map<K, V> ofLazyMap(Set<K> keys,
                                              Function<? super K, ? extends V> computingFunction) {
         return new LazyMap<>(keys, computingFunction);
@@ -585,20 +588,71 @@ final class LazyCollections {
     }
 
 
-    static final class UnboundArrayLazyList<E>
+    @ValueBased
+    static final /* value */ class UnboundArrayLazyList<E>
             extends AbstractList<E>
             implements RandomAccess, List<E> {
 
-        private Object[] elements;
+        private static final int DEFAULT_CAPACITY = 16;
+        private static final IntUnaryOperator CAPACITY_EXPANDER =
+                c -> (int) Math.min(1L << 31, (long) c << 2);
 
+        // Will be referenced forever
+        @Stable
+        private final IntFunction<? extends E> computingFunction;
+        // An expandable array
+        @Stable
+        private final ReadBiasedValue<Object[]> elements;
+        // Keeps track of the highest index ever used
+        @Stable
+        private final AtomicInteger highestIndex;
+
+        public UnboundArrayLazyList(IntFunction<? extends E> computingFunction) {
+            this.computingFunction = computingFunction;
+            this.elements = ReadBiasedValue.of(Object[].class);
+            // Create a backing array of default capacity
+            // Todo: Maybe there should be a way to say how big the initial size should be?
+            elements.set(new Object[DEFAULT_CAPACITY]);
+            this.highestIndex = new AtomicInteger(-1);
+        }
+
+        @SuppressWarnings("unchecked")
         @Override
         public E get(int index) {
-            return null;
+            if (index < 0) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+            // Todo: Make thread safe
+            Object[] arr = ensureCapacity(index);
+            final long offset = offsetFor(index);
+            E e = (E) UNSAFE.getReferenceStableVolatile(arr, offset);
+            if (e == null) {
+                UNSAFE.putReferenceRelease(arr, offset, e = computingFunction.apply(index));
+                highestIndex.accumulateAndGet(index, Math::max);
+            }
+            return e;
+        }
+
+        private Object[] ensureCapacity(int index) {
+            Object[] arr = elements.get();
+            if (arr.length <= index) {
+                int newSize = arr.length;
+                while (newSize <= index) {
+                    newSize = CAPACITY_EXPANDER.applyAsInt(newSize);
+                }
+                final Object[] newArray = new Object[newSize];
+                // How do we maintain safe publication here?
+                System.arraycopy(arr, 0, newArray, 0, arr.length);
+                // Maybe keep the old array ...
+                elements.set(newArray);
+                arr = newArray;
+            }
+            return arr;
         }
 
         @Override
         public int size() {
-            return 0;
+            return highestIndex.get() + 1;
         }
     }
 
