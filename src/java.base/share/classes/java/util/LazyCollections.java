@@ -26,6 +26,7 @@
 package java.util;
 
 import jdk.internal.ValueBased;
+import jdk.internal.foreign.Utils;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.ImmutableBitSetPredicate;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
@@ -37,6 +38,8 @@ import java.lang.reflect.Array;
 import java.lang.reflect.ReadBiasedValue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.*;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Container class for lazy collections implementations. Not part of the public API.
@@ -47,7 +50,8 @@ final class LazyCollections {
     /**
      * No instances.
      */
-    private LazyCollections() { }
+    private LazyCollections() {
+    }
 
     // Unsafe allows LazyCollection classes to be used early in the boot sequence
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
@@ -75,9 +79,20 @@ final class LazyCollections {
             super();
         }
 
-        @Override public boolean  isEmpty() { return size == 0; }
-        @Override public int      size() { return size; }
-        @Override public Object[] toArray() { return copyInto(new Object[size]); }
+        @Override
+        public boolean isEmpty() {
+            return size == 0;
+        }
+
+        @Override
+        public int size() {
+            return size;
+        }
+
+        @Override
+        public Object[] toArray() {
+            return copyInto(new Object[size]);
+        }
 
         @ForceInline
         @Override
@@ -178,8 +193,7 @@ final class LazyCollections {
             if (enumType.isAssignableFrom(key.getClass())) {
                 final int ordinal = ((Enum<?>) key).ordinal();
                 if (member.test(ordinal)) {
-                    @SuppressWarnings("unchecked")
-                    final K k = (K) key;
+                    @SuppressWarnings("unchecked") final K k = (K) key;
                     return orElseCompute(k, indexForAsInt(k));
                 }
             }
@@ -206,8 +220,7 @@ final class LazyCollections {
         private final Map<K, Integer> indexMapper;
 
         public LazyMap(Set<K> keys, Function<? super K, ? extends V> computingFunction) {
-            @SuppressWarnings("unchecked")
-            final Entry<K, Integer>[] entries = (Entry<K, Integer>[]) new Entry<?, ?>[keys.size()];
+            @SuppressWarnings("unchecked") final Entry<K, Integer>[] entries = (Entry<K, Integer>[]) new Entry<?, ?>[keys.size()];
             int i = 0;
             for (K k : keys) {
                 entries[i] = Map.entry(k, i++);
@@ -221,14 +234,16 @@ final class LazyCollections {
         public V getOrDefault(Object key, V defaultValue) {
             final Integer index = indexMapper.get(key);
             if (index != null) {
-                @SuppressWarnings("unchecked")
-                final K k = (K) key;
+                @SuppressWarnings("unchecked") final K k = (K) key;
                 return orElseCompute(k, index);
             }
             return defaultValue;
         }
 
-        @Override public boolean containsKey(Object o) { return indexMapper.containsKey(o); }
+        @Override
+        public boolean containsKey(Object o) {
+            return indexMapper.containsKey(o);
+        }
 
         @Override
         Integer indexFor(K key) {
@@ -268,14 +283,31 @@ final class LazyCollections {
         }
 
         // Abstract methods
-        @Override public abstract boolean containsKey(Object o);
+        @Override
+        public abstract boolean containsKey(Object o);
+
         abstract Integer indexFor(K key);
 
         // Public methods
-        @Override public final int              size() { return size; }
-        @Override public final boolean          isEmpty() { return size == 0; }
-        @Override public final Set<Entry<K, V>> entrySet() { return entrySet; }
-        @Override public Set<K>                 keySet() { return keySet; }
+        @Override
+        public final int size() {
+            return size;
+        }
+
+        @Override
+        public final boolean isEmpty() {
+            return size == 0;
+        }
+
+        @Override
+        public final Set<Entry<K, V>> entrySet() {
+            return entrySet;
+        }
+
+        @Override
+        public Set<K> keySet() {
+            return keySet;
+        }
 
         @ForceInline
         @Override
@@ -307,9 +339,20 @@ final class LazyCollections {
                 super();
             }
 
-            @Override public Iterator<Entry<K, V>> iterator() { return LazyMapIterator.of(map); }
-            @Override public int                   size() { return map.size(); }
-            @Override public int                   hashCode() { return map.hashCode(); }
+            @Override
+            public Iterator<Entry<K, V>> iterator() {
+                return LazyMapIterator.of(map);
+            }
+
+            @Override
+            public int size() {
+                return map.size();
+            }
+
+            @Override
+            public int hashCode() {
+                return map.hashCode();
+            }
 
             // For @ValueBased
             private static <K, V> LazyMapEntrySet<K, V> of(AbstractLazyMap<K, V> outer) {
@@ -332,7 +375,10 @@ final class LazyCollections {
                     super();
                 }
 
-                @Override  public boolean hasNext() { return keyIterator.hasNext(); }
+                @Override
+                public boolean hasNext() {
+                    return keyIterator.hasNext();
+                }
 
                 @Override
                 public Entry<K, V> next() {
@@ -364,10 +410,25 @@ final class LazyCollections {
                                        AbstractLazyMap<K, V> map,
                                        FunctionHolder<Function<? super K, ? extends V>> functionHolder) implements Entry<K, V> {
 
-            @Override public V      setValue(V value) { throw ImmutableCollections.uoe(); }
-            @Override public V      getValue() { return map.orElseCompute(getKey, map.indexFor(getKey)); }
-            @Override public int    hashCode() { return hash(getKey()) ^ hash(getValue()); }
-            @Override public String toString() { return getKey() + "=" + getValue(); }
+            @Override
+            public V setValue(V value) {
+                throw ImmutableCollections.uoe();
+            }
+
+            @Override
+            public V getValue() {
+                return map.orElseCompute(getKey, map.indexFor(getKey));
+            }
+
+            @Override
+            public int hashCode() {
+                return hash(getKey()) ^ hash(getValue());
+            }
+
+            @Override
+            public String toString() {
+                return getKey() + "=" + getValue();
+            }
 
             @Override
             public boolean equals(Object o) {
@@ -400,10 +461,25 @@ final class LazyCollections {
                 super();
             }
 
-            @Override public Iterator<V> iterator() { return map.new ValueIterator(); }
-            @Override public int         size() { return map.size(); }
-            @Override public boolean     isEmpty() { return map.isEmpty(); }
-            @Override public boolean     contains(Object v) { return map.containsValue(v); }
+            @Override
+            public Iterator<V> iterator() {
+                return map.new ValueIterator();
+            }
+
+            @Override
+            public int size() {
+                return map.size();
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return map.isEmpty();
+            }
+
+            @Override
+            public boolean contains(Object v) {
+                return map.containsValue(v);
+            }
 
             // For @ValueBased
             private static <K, V> LazyMapValues<K, V> of(AbstractLazyMap<K, V> outer) {
@@ -457,6 +533,11 @@ final class LazyCollections {
     @ForceInline
     private static long offsetFor(long index) {
         return Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * index;
+    }
+
+    @ForceInline
+    private static long nextOffset(long offset) {
+        return offset + Unsafe.ARRAY_OBJECT_INDEX_SCALE;
     }
 
     @SuppressWarnings("unchecked")
@@ -516,7 +597,7 @@ final class LazyCollections {
             if (t == null) {
                 final T newValue = switch (functionHolder.function()) {
                     case IntFunction<?> iFun -> (T) iFun.apply((int) input);
-                    case Function<?, ?> fun  ->  ((Function<Object, T>) fun).apply(input);
+                    case Function<?, ?> fun -> ((Function<Object, T>) fun).apply(input);
                     default -> throw new InternalError("cannot reach here");
                 };
                 Objects.requireNonNull(newValue);
@@ -585,6 +666,730 @@ final class LazyCollections {
                 function = null;
             }
         }
+    }
+
+    @ValueBased
+    static final class UnboundStableMap<K, V> extends ImmutableCollections.AbstractImmutableMap<K, V> {
+
+        /*
+
+         An unbound, thread-safe, non-blocking, stable map.
+
+         The lookup is based on linear probing.
+
+         The UnboundStableMap relies on a layered approach where associations are put in
+         ever larger layers. The first layer has an array with 32 elements. As keys and values
+         are stored adjacent to each other in the layer, there are 16 buckets in the
+         first layer and, for performance reasons, only 50% of a layer is used, the first
+         bucket can hold  8 associations.
+         (The key and value are stored adjacent to each other in the layer)
+         Each subsequent layer has 16 times greater capacity than the previous one.
+         Here is a table of how many buckets and associations each layer has:
+
+        +=======+==============+==============+================+==================+
+        | Layer |   Elements   |  Capacity    |  Associations  |  Acc. Assoc.     |
+        +=======+==============+==============+================+==================+
+        |     0 |           32 |           16 |              8 |                8 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     1 |          512 |          256 |            128 |              136 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     2 |        8,192 |        4,096 |          2,048 |            2,184 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     3 |      131,072 |       65,536 |         32,768 |           34,952 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     4 |    2,097,152 |    1,048,576 |        524,288 |          559,240 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     5 |   33,554,432 |   16,777,216 |      8,388,608 |        8,947,848 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     6 |  536,870,912 |  268,435,456 |    134,217,728 |      143,165,576 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     7 |  536,870,912 |  268,435,456 |    134,217,728 |      143,165,576 | (~28 bits)
+        +-------+--------------+--------------+----------------+------------------+
+
+        Hence, it looks like 8 layers would do in order to allow ~ 2^28 associations
+        (which is similar to the existing immutable map implementation of MapN).
+
+        Lookup and size would just be a reduction over the layers. Already compiled
+        code paths can retain their constant folding even though new layers are added.
+
+        Maps with a known size can just allocate _one_ layer with the required size.
+
+         */
+
+        private static final int DEFAULT_LAYER_COUNT = 8;
+
+        /**
+         * The default initial layer capacities - MUST be powers of two.
+         */
+        @Stable
+        static final int[] DEFAULT_INITIAL_LAYER_CAPACITY = IntStream.iterate(5, i -> Math.min(29, i + 4))
+                .limit(8)
+                .map(i -> 1 << i)
+                .toArray(); // 32, 512, 8192, 131072, 2097152, 33554432, 536870912, 536870912
+
+        /**
+         * The maximum layer capacity, used if a higher value is implicitly specified
+         * by either of the constructors with arguments.
+         * MUST be a power of two <= 1<<30.
+         */
+        static final int MAXIMUM_LAYER_CAPACITY = 1 << 30;
+
+        @Stable
+        private final Layer<K, V>[] layers;
+
+        @SuppressWarnings("unchecked")
+        private UnboundStableMap(int layerCount,
+                                 int initialLayerCapacity) {
+            this.layers = (Layer<K, V>[]) new Layer<?, ?>[layerCount];
+            layers[0] = Layer.of(initialLayerCapacity);
+        }
+
+        @ForceInline
+        @Override
+        public V get(Object key) {
+            return getOrDefault(key, null);
+        }
+
+
+        private static IllegalArgumentException outOfSpace(Object key) {
+            return new IllegalArgumentException("Out of space for " + key);
+        }
+
+        @ForceInline
+        @Override
+        public V getOrDefault(Object key, V defaultValue) {
+            // Implicit null check
+            final int keyHash = key.hashCode();
+            V v;
+            for (var layer : layers) {
+                if (layer == null) {
+                    break;
+                }
+                v = layer.get(keyHash, key);
+                if (v != null) {
+                    return v;
+                }
+            }
+            return defaultValue;
+        }
+
+        @Override
+        public V put(K key, V value) {
+            // Implicit null check
+            final int keyHash = key.hashCode();
+            Objects.requireNonNull(value);
+/*            // Fail early if the key exists
+            if (containsKey(key)) {
+                throw new IllegalStateException("Key already exists: " + key);
+            }*/
+            IndexAndLayer<K, V> newestLayer = newestLayerOrCreate(key);
+            // Todo: add some kind of concurrency. Maybe have an array
+            //       of layers per layer...
+            synchronized (layers) {
+                newestLayer.layer().associate(keyHash, key, value);
+            }
+            // By definition, there was no previous value
+            return null;
+        }
+
+        private IndexAndLayer<K, V> newestLayerOrCreate(K key) {
+            IndexAndLayer<K, V> newestLayer = newestLayer();
+            if (newestLayer.layer().isFull()) {
+                synchronized (layers) {
+                    // There might be a new layer create by another winning thread
+                    newestLayer = newestLayer();
+                    if (newestLayer.layer().isFull()) {
+                        newestLayer = createNewLayer(key, newestLayer);
+                    }
+                }
+            }
+            return newestLayer;
+        }
+
+        record IndexAndLayer<K, V>(int index, Layer<K, V> layer) {
+        }
+
+        IndexAndLayer<K, V> createNewLayer(Object key, IndexAndLayer<K, V> previous) {
+            final int newIndex = previous.index() + 1;
+            if (newIndex >= layers.length) {
+                throw outOfSpace(key);
+            }
+            final Layer<K, V> layer = Layer.of(DEFAULT_INITIAL_LAYER_CAPACITY[newIndex]);
+            // Todo: Consider release semantics
+            layers[newIndex] = layer;
+            return new IndexAndLayer<>(newIndex, layer);
+        }
+
+        IndexAndLayer<K, V> newestLayer() {
+            for (int i = layers.length - 1; i >= 0; i--) {
+                Layer<K, V> layer = layers[i];
+                if (layer != null) {
+                    return new IndexAndLayer<>(i, layer);
+                }
+            }
+            // layer[0] is always != null
+            throw new InternalError("Should not reach here");
+        }
+
+        @Override
+        public int size() {
+            int size = 0;
+            for (var layer : layers) {
+                if (layer == null) {
+                    break;
+                }
+                size += layer.size.get();
+            }
+            return size;
+        }
+
+        // Here we have a problem. Does this return true if:
+        // 1) There is an existing mapping
+        // 2) key is of `keyType`
+        // 3) We can compute a mapping
+        //
+        // The only reasonable way is if it corresponds to entrySet() and then this
+        // drags along the same reasoning there except 1) is the only way to go there
+        // because we do not know all possible keys.
+        @Override
+        public boolean containsKey(Object key) {
+            return super.containsKey(key);
+        }
+
+        public Set<Map.Entry<K, V>> entrySet() {
+            return new AbstractSet<>() {
+                @Override
+                public int size() {
+                    return UnboundStableMap.this.size();
+                }
+
+                @Override
+                public Iterator<Map.Entry<K, V>> iterator() {
+                    return new Iter();
+                }
+            };
+        }
+
+        private class Iter implements Iterator<Entry<K, V>> {
+
+            int layerIndex;
+            int index;
+            Entry<K, V> cached;
+
+            @Override
+            public boolean hasNext() {
+                if (cached == null) {
+                    cached = scan();
+                }
+                return cached != null;
+            }
+
+            @Override
+            public Entry<K, V> next() {
+                if (cached != null || hasNext()) {
+                    return consumeCached();
+                }
+                throw new NoSuchElementException();
+            }
+
+            Entry<K, V> consumeCached() {
+                var n = cached;
+                cached = null;
+                return n;
+            }
+
+            Entry<K, V> scan() {
+                for (; layerIndex < layers.length; layerIndex++) {
+                    final Layer<K, V> layer = layers[layerIndex];
+                    if (layer == null) {
+                        // We have scanned all available layers
+                        return null;
+                    }
+                    final Object[] table = layer.table;
+                    while (index < layer.table.length) {
+                        final long offset = offsetFor(index);
+                        index += 2;
+                        @SuppressWarnings("unchecked") final K k = (K) UNSAFE.getReferenceStable(table, offset);
+                        if (k != null) {
+                            @SuppressWarnings("unchecked") final V v = (V) UNSAFE.getReferenceStableVolatile(table, nextOffset(offset));
+                            return new KeyValueHolder<>(k, v);
+                        }
+                    }
+                    index = 0;
+                }
+                return null;
+            }
+
+        }
+
+        record Layer<K, V>(@Stable Object[] table,
+                           AtomicInteger size) {
+
+            @SuppressWarnings("unchecked")
+            V get(int keyHash, Object key) {
+                // On the reader side, we always read the key first!
+                final int probe = probe(keyHash, key);
+                if (probe > 0) {
+                    return (V) UNSAFE.getReferenceStableVolatile(table, offsetFor(probe + 1));
+                }
+                return null;
+            }
+
+            void associate(int keyHash, K key, V value) {
+                final int probe = probe(keyHash, key);
+                if (probe >= 0) {
+                    throw assocAlreadyExists(key);
+                }
+                final int slot = -probe - 1;
+                // Scan for an available slot
+                for (int i = 0; i < table.length >> 1; i += 2) {
+                    final long offset = offsetFor((slot + i) % table.length);
+                    // Always CAS the `value` first.
+                    if (UNSAFE.compareAndSetReference(table, nextOffset(offset), null, value)) {
+                        // Only then set the `key`
+                        UNSAFE.putReferenceRelease(table, offset, key);
+                        size.incrementAndGet();
+                        return;
+                    }
+                }
+                throw outOfSpace(key);
+            }
+
+            boolean isFull() {
+                return size.get() >= (table.length >> 2);
+            }
+
+            static <K, V> Layer<K, V> of(int tableLength) {
+                return new Layer<>(new Object[tableLength], new AtomicInteger());
+            }
+
+            // returns index at which the probe key is present; or if absent,
+            // (-i - 1) where i is location where element should be inserted.
+            // Callers are relying on this method to perform an implicit nullcheck
+            // of pk.
+            private int probe(int keyHash, Object pk) {
+                int idx = Math.floorMod(keyHash, table.length >> 1) << 1;
+                while (true) {
+                    @SuppressWarnings("unchecked")
+                    K ek = (K) table[idx]; // Stable read
+                    if (ek == null) {
+                        return -idx - 1;
+                    } else if (pk.equals(ek)) {
+                        return idx;
+                    } else if ((idx += 2) == table.length) {
+                        idx = 0;
+                    }
+                }
+            }
+
+            void lock() {
+
+            }
+
+            void unlock() {
+
+            }
+
+            @Override
+            public String toString() {
+                return "Layer[table.length=" + table.length + ", size=" + size.get() + "]";
+            }
+
+            @DontInline
+            private static IllegalStateException assocAlreadyExists(Object key) {
+                return new IllegalStateException("An association already exists for key: " + key);
+            }
+        }
+
+        /**
+         * Returns a power of two size for the given target capacity.
+         */
+        static int layerCapacity(int capacity) {
+            int n = -1 >>> Integer.numberOfLeadingZeros(capacity - 1);
+            return (n < 0) ? 1 : (n >= MAXIMUM_LAYER_CAPACITY) ? MAXIMUM_LAYER_CAPACITY : n + 1;
+        }
+
+/*        public static <K, V> Map<K, V> createSized(Class<K> keyType,
+                                                   Function<? super K, ? extends V> computingFunction,
+                                                   int maxSize) {
+            return new UnboundLazyMap<>(computingFunction, DEFAULT_LAYER_COUNT, layerCapacity(maxSize << 2));
+        }*/
+
+/*        public static <K, V> Map<K, V> createExpandable(Class<K> keyType, Function<? super K, ? extends V> computingFunction) {
+            return createExpandable(keyType, computingFunction, DEFAULT_INITIAL_LAYER_CAPACITY[0]);
+        }*/
+
+        public static <K, V> Map<K, V> createExpandable() {
+            return createExpandable(DEFAULT_INITIAL_LAYER_CAPACITY[0]);
+        }
+
+        public static <K, V> Map<K, V> createExpandable(int initialMappingSize) {
+            return new UnboundStableMap<>(DEFAULT_LAYER_COUNT, initialMappingSize << 2);
+        }
+
+    }
+
+    @ValueBased
+    static final class UnboundLazyMapFunctional<K, V> extends ImmutableCollections.AbstractImmutableMap<K, V> {
+
+        /*
+
+         An unbound, thread-safe, non-blocking, lazy map.
+
+         The lookup is based on linear probing.
+
+         The UnboundLazyMap relies on a layered approach where associations are put in
+         ever larger layers. The first layer has an array with 32 elements. As keys and values
+         are stored adjacent to each other in the layer, there are 16 buckets in the
+         first layer and, for performance reasons, only 50% of a layer is used, the first
+         bucket can hold  8 associations.
+         (The key and value are stored adjacent to each other in the layer)
+         Each subsequent layer has 16 times greater capacity than the previous one.
+         Here is a table of how many buckets and associations each layer has:
+
+        +=======+==============+==============+================+==================+
+        | Layer |   Elements   |  Capacity    |  Associations  |  Acc. Assoc.     |
+        +=======+==============+==============+================+==================+
+        |     0 |           32 |           16 |              8 |                8 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     1 |          512 |          256 |            128 |              136 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     2 |        8,192 |        4,096 |          2,048 |            2,184 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     3 |      131,072 |       65,536 |         32,768 |           34,952 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     4 |    2,097,152 |    1,048,576 |        524,288 |          559,240 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     5 |   33,554,432 |   16,777,216 |      8,388,608 |        8,947,848 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     6 |  536,870,912 |  268,435,456 |    134,217,728 |      143,165,576 |
+        +-------+--------------+--------------+----------------+------------------+
+        |     7 |  536,870,912 |  268,435,456 |    134,217,728 |      143,165,576 | (~28 bits)
+        +-------+--------------+--------------+----------------+------------------+
+
+        Hence, it looks like 8 layers would do in order to allow ~ 2^28 associations
+        (which is similar to the existing immutable map implementation of MapN).
+
+        Lookup and size would just be a reduction over the layers. Already compiled
+        code paths can retain their constant folding even though new layers are added.
+
+        Maps with a known size can just allocate _one_ layer with the required size.
+
+         */
+
+        private static final int DEFAULT_LAYER_COUNT = 8;
+
+        /**
+         * The default initial layer capacities - MUST be powers of two.
+         */
+        @Stable
+        static final int[] DEFAULT_INITIAL_LAYER_CAPACITY = IntStream.iterate(5, i -> Math.min(29, i + 4))
+                .limit(8)
+                .map(i -> 1 << i)
+                .toArray(); // 32, 512, 8192, 131072, 2097152, 33554432, 536870912, 536870912
+
+        /**
+         * The maximum layer capacity, used if a higher value is implicitly specified
+         * by either of the constructors with arguments.
+         * MUST be a power of two <= 1<<30.
+         */
+        static final int MAXIMUM_LAYER_CAPACITY = 1 << 30;
+
+        @Stable
+        private final Class<K> keyType;
+        @Stable
+        private final Function<? super K, ? extends V> computingFunction;
+        @Stable
+        private final Layer<K, V>[] layers;
+
+        @SuppressWarnings("unchecked")
+        private UnboundLazyMapFunctional(Class<K> keyTpe,
+                                         Function<? super K, ? extends V> computingFunction,
+                                         int layerCount,
+                                         int initialLayerCapacity) {
+            this.keyType = keyTpe;
+            this.computingFunction = computingFunction;
+            this.layers = (Layer<K, V>[]) new Layer<?, ?>[layerCount];
+            layers[0] = Layer.of(initialLayerCapacity);
+        }
+
+        @ForceInline
+        @Override
+        public V get(Object key) {
+            // We need to check that the key is of the specified `keyType`, Otherwise,
+            // we would be subceptable to heap pollution.
+            // `null` keys are also rejected by this check.
+            if (!keyType.isInstance(key)) {
+                return null;
+            }
+            final int keyHash = key.hashCode();
+            V v;
+            for (var layer : layers) {
+                if (layer == null) {
+                    break;
+                }
+                v = layer.get(keyHash, key);
+                if (v != null) {
+                    return v;
+                }
+            }
+            return getSlowPath(keyHash, key);
+        }
+
+        // Todo: Make lock free
+        private synchronized V getSlowPath(int keyHash, Object key) {
+            for (int i = layers.length - 1; i >= 0; i--) {
+                Layer<K, V> layer = layers[i];
+                if (layer == null) {
+                    continue;
+                }
+                // We have found the newest layer
+                if (layer.isFull()) {
+                    // The newest layer is full!
+                    int nextIndex = i + 1;
+                    if (nextIndex >= layers.length) {
+                        break;
+                    }
+                    layer = Layer.of(DEFAULT_INITIAL_LAYER_CAPACITY[nextIndex]);
+                    // Todo: thread visibility
+                    layers[nextIndex] = layer;
+                }
+                // Todo: What happens if one is providing a key of the wrong type?
+                //       Maybe hold a key type and check instance of? At least a tad better
+                @SuppressWarnings("unchecked") final K k = (K) key;
+                final V v = computingFunction.apply(k);
+                layer.associate(keyHash, k, v);
+                return v;
+            }
+            // Todo: check this...
+            throw outOfSpace(key);
+        }
+
+        private static IllegalArgumentException outOfSpace(Object key) {
+            return new IllegalArgumentException("Out of space for " + key);
+        }
+
+        @ForceInline
+        @Override
+        public V getOrDefault(Object key, V defaultValue) {
+
+            // Todo: have the type of the object and then check if the key
+            //       can be cast to it.
+            //       If yes, call get(), otherwise return default value.
+            // Maybe there should be an optional predicate to filter incoming keys?
+
+            // REMOVE BELOW...
+
+            Objects.requireNonNull(key);
+            final int keyHash = key.hashCode();
+            // Todo: Scan the tables in reverse order as it is most likely an
+            //       assoc is in the largest layer.
+            V v = null;
+            for (var layer : layers) {
+                if (layer == null) {
+                    break;
+                }
+                v = layer.get(keyHash, key);
+                if (v != null) {
+                    return v;
+                }
+            }
+            return defaultValue;
+        }
+
+        @Override
+        public int size() {
+            int size = 0;
+            for (var layer : layers) {
+                if (layer == null) {
+                    break;
+                }
+                size += layer.size.get();
+            }
+            return size;
+        }
+
+        // Here we have a problem. Does this return true if:
+        // 1) There is an existing mapping
+        // 2) key is of `keyType`
+        // 3) We can compute a mapping
+        //
+        // The only reasonable way is if it corresponds to entrySet() and then this
+        // drags along the same reasoning there except 1) is the only way to go there
+        // because we do not know all possible keys.
+        @Override
+        public boolean containsKey(Object key) {
+            return super.containsKey(key);
+        }
+
+        public Set<Map.Entry<K, V>> entrySet() {
+            return new AbstractSet<>() {
+                @Override
+                public int size() {
+                    return UnboundLazyMapFunctional.this.size();
+                }
+
+                @Override
+                public Iterator<Map.Entry<K, V>> iterator() {
+                    return new Iter();
+                }
+            };
+        }
+
+        private class Iter implements Iterator<Entry<K, V>> {
+
+            int layerIndex;
+            int index;
+            Entry<K, V> cached;
+
+            @Override
+            public boolean hasNext() {
+                if (cached == null) {
+                    cached = scan();
+                }
+                return cached != null;
+            }
+
+            @Override
+            public Entry<K, V> next() {
+                if (cached != null || hasNext()) {
+                    return consumeCached();
+                }
+                throw new NoSuchElementException();
+            }
+
+            Entry<K, V> consumeCached() {
+                var n = cached;
+                cached = null;
+                return n;
+            }
+
+            Entry<K, V> scan() {
+                for (; layerIndex < layers.length; layerIndex++) {
+                    final Layer<K, V> layer = layers[layerIndex];
+                    if (layer == null) {
+                        // We have scanned all available layers
+                        return null;
+                    }
+                    final Object[] table = layer.table;
+                    while (index < layer.table.length) {
+                        final long offset = offsetFor(index);
+                        index += 2;
+                        @SuppressWarnings("unchecked") final K k = (K) UNSAFE.getReferenceStable(table, offset);
+                        if (k != null) {
+                            @SuppressWarnings("unchecked") final V v = (V) UNSAFE.getReferenceStableVolatile(table, nextOffset(offset));
+                            return new KeyValueHolder<>(k, v);
+                        }
+                    }
+                    index = 0;
+                }
+                return null;
+            }
+
+        }
+
+        @ForceInline
+        private Stream<Layer<K, V>> layerStream() {
+            return Arrays.stream(layers)
+                    .takeWhile(Objects::nonNull);
+        }
+
+        record Layer<K, V>(@Stable Object[] table, AtomicInteger size) {
+
+            @SuppressWarnings("unchecked")
+            V get(int keyHash, Object key) {
+                // On the reader side, we always read the key first!
+                final int probe = probe(keyHash, key);
+                if (probe > 0) {
+                    return (V) UNSAFE.getReferenceStableVolatile(table, offsetFor(probe + 1));
+                }
+                return null;
+            }
+
+            // Todo: Check if we iterate forever.
+            void associate(int keyHash, K key, V value) {
+                final int probe = probe(keyHash, key);
+                // System.out.println("probe = " + probe);
+                if (probe >= 0) {
+                    // Already associated
+                    return;
+                }
+                final int slot = -probe - 1;
+                // Scan for an available slot
+                for (int i = 0; i < table.length >> 1; i += 2) {
+                    final long offset = offsetFor((slot + i) % table.length);
+                    // Always CAS the `value` first.
+                    if (UNSAFE.compareAndSetReference(table, nextOffset(offset), null, value)) {
+                        // Only then set the `key`
+                        UNSAFE.getAndSetReference(table, offset, key);
+                        size.incrementAndGet();
+                        return;
+                    }
+                }
+                throw outOfSpace(key);
+            }
+
+            boolean isFull() {
+                return size.get() >= (table.length >> 2);
+            }
+
+            static <K, V> Layer<K, V> of(int tableLength) {
+                return new Layer<>(new Object[tableLength], new AtomicInteger());
+            }
+
+            // returns index at which the probe key is present; or if absent,
+            // (-i - 1) where i is location where element should be inserted.
+            // Callers are relying on this method to perform an implicit nullcheck
+            // of pk.
+            private int probe(int keyHash, Object pk) {
+                int idx = Math.floorMod(keyHash, table.length >> 1) << 1;
+                while (true) {
+                    @SuppressWarnings("unchecked")
+                    K ek = (K) table[idx]; // Stable read
+                    if (ek == null) {
+                        return -idx - 1;
+                    } else if (pk.equals(ek)) {
+                        return idx;
+                    } else if ((idx += 2) == table.length) {
+                        idx = 0;
+                    }
+                }
+            }
+
+            @Override
+            public String toString() {
+                return "Layer[table.length=" + table.length + ", size=" + size.get() + "]";
+            }
+        }
+
+        /**
+         * Returns a power of two size for the given target capacity.
+         */
+        static int layerCapacity(int capacity) {
+            int n = -1 >>> Integer.numberOfLeadingZeros(capacity - 1);
+            return (n < 0) ? 1 : (n >= MAXIMUM_LAYER_CAPACITY) ? MAXIMUM_LAYER_CAPACITY : n + 1;
+        }
+
+/*
+        public static <K, V> Map<K, V> createSized(Class<K> keyType,
+                                                   Function<? super K, ? extends V> computingFunction,
+                                                   int maxSize) {
+            return new UnboundStableMap<>(computingFunction, DEFAULT_LAYER_COUNT, layerCapacity(maxSize << 2));
+        }
+
+        public static <K, V> Map<K, V> createExpandable(Class<K> keyType, Function<? super K, ? extends V> computingFunction) {
+            return createExpandable(keyType, computingFunction, DEFAULT_INITIAL_LAYER_CAPACITY[0]);
+        }
+*/
+
+        public static <K, V> Map<K, V> createExpandable() {
+            return new UnboundStableMap<>(DEFAULT_LAYER_COUNT, DEFAULT_INITIAL_LAYER_CAPACITY[0]);
+        }
+
+        public static <K, V> Map<K, V> createExpandable(int initialMappingSize) {
+            return new UnboundStableMap<>(DEFAULT_LAYER_COUNT, initialMappingSize << 2);
+        }
+
     }
 
 
@@ -891,11 +1696,14 @@ final class LazyCollections {
         }
 
         // Unsupported Operations
-        @Override public boolean remove(Object o) {
+        @Override
+        public boolean remove(Object o) {
             System.out.println("remove(Object o) called!");
-            throw uoe(); }
+            throw uoe();
+        }
 
-        @Override public boolean removeAll(Collection<?> c) {
+        @Override
+        public boolean removeAll(Collection<?> c) {
             System.out.println("removeAll(Collection<?> c) called!");
             throw uoe();
         }
@@ -929,14 +1737,49 @@ final class LazyCollections {
 
         @DontInline
         private static IndexOutOfBoundsException outOfBoundsException(int index) {
-            return new IndexOutOfBoundsException("index = "+index);
-        }
-
-        @DontInline
-        private static UnsupportedOperationException uoe() {
-            return new UnsupportedOperationException();
+            return new IndexOutOfBoundsException("index = " + index);
         }
 
     }
 
+    @DontInline
+    private static UnsupportedOperationException uoe() {
+        return new UnsupportedOperationException();
+    }
+
+    record StableBuilderImpl<K, V>(
+            Class<K> keyType,
+            int initialMappingCapacity,
+            boolean synchronization
+    ) implements Map.StableBuilder<K, V> {
+
+        private static final int NO_SIZE = -1;
+
+        public StableBuilderImpl() {
+            this(null, NO_SIZE, false);
+        }
+
+        @Override
+        public Map.StableBuilder<K, V> withKeys(Set<? extends K> keys) {
+            return new StableBuilderImpl<>(keyType, initialMappingCapacity, synchronization);
+        }
+
+        @Override
+        public Map.StableBuilder<K, V> withInitialMappingCapacity(int initialMappingCapacity) {
+            Utils.checkNonNegativeArgument(initialMappingCapacity, "initialMappingCapacity");
+            return new StableBuilderImpl<>(keyType, initialMappingCapacity, synchronization);
+        }
+
+        @Override
+        public Map.StableBuilder<K, V> withSynchronization() {
+            return new StableBuilderImpl<>(keyType, initialMappingCapacity, true);
+        }
+
+        @Override
+        public Map<K, V> toMap() {
+            return initialMappingCapacity != NO_SIZE
+                    ? UnboundStableMap.createExpandable(initialMappingCapacity)
+                    : UnboundStableMap.createExpandable();
+        }
+    }
 }

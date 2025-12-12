@@ -138,7 +138,7 @@ class ImmutableCollections {
 
     /**
      * The reciprocal of load factor. Given a number of elements
-     * to store, multiply by this factor to get the table size.
+     * to store, multiply by this factor to get the table initialMappings.
      */
     static final int EXPAND_FACTOR = 2;
 
@@ -955,7 +955,7 @@ class ImmutableCollections {
 
     /**
      * An array-based Set implementation. The element array must be strictly
-     * larger than the size (the number of contained elements) so that at
+     * larger than the initialMappings (the number of contained elements) so that at
      * least one null is always present.
      * @param <E> the element type
      */
@@ -1223,8 +1223,8 @@ class ImmutableCollections {
     /**
      * An array-based Map implementation. There is a single array "table" that
      * contains keys and values interleaved: table[0] is kA, table[1] is vA,
-     * table[2] is kB, table[3] is vB, etc. The table size must be even. It must
-     * also be strictly larger than the size (the number of key-value pairs contained
+     * table[2] is kB, table[3] is vB, etc. The table initialMappings must be even. It must
+     * also be strictly larger than the initialMappings (the number of key-value pairs contained
      * in the map) so that at least one null key is always present.
      * @param <K> the key type
      * @param <V> the value type
@@ -1456,7 +1456,7 @@ final class CollSer implements Serializable {
      *
      * <p>The tag value also determines the interpretation of the
      * transient {@code Object[] array} field.
-     * For {@code List} and {@code Set}, the array's length is the size
+     * For {@code List} and {@code Set}, the array's length is the initialMappings
      * of the collection, and the array contains the elements of the collection.
      * Null elements are not allowed. For {@code Set}, duplicate elements
      * are not allowed.
