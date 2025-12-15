@@ -669,19 +669,19 @@ final class LazyCollections {
     }
 
     @ValueBased
-    static final class UnboundStableMap<K, V> extends ImmutableCollections.AbstractImmutableMap<K, V> {
+    static final class UnboundedStableMap<K, V> extends ImmutableCollections.AbstractImmutableMap<K, V> {
 
         /*
 
-         An unbound, thread-safe, non-blocking, stable map.
+         An unbounded, thread-safe, non-blocking, stable map.
 
          The lookup is based on linear probing.
 
-         The UnboundStableMap relies on a layered approach where associations are put in
+         The UnboundedStableMap relies on a layered approach where associations are put in
          ever larger layers. The first layer has an array with 32 elements. As keys and values
          are stored adjacent to each other in the layer, there are 16 buckets in the
          first layer and, for performance reasons, only 50% of a layer is used, the first
-         bucket can hold  8 associations.
+         bucket can hold 8 associations.
          (The key and value are stored adjacent to each other in the layer)
          Each subsequent layer has 16 times greater capacity than the previous one.
          Here is a table of how many buckets and associations each layer has:
@@ -738,8 +738,8 @@ final class LazyCollections {
         private final Layer<K, V>[] layers;
 
         @SuppressWarnings("unchecked")
-        private UnboundStableMap(int layerCount,
-                                 int initialLayerCapacity) {
+        private UnboundedStableMap(int layerCount,
+                                   int initialLayerCapacity) {
             this.layers = (Layer<K, V>[]) new Layer<?, ?>[layerCount];
             layers[0] = Layer.of(initialLayerCapacity);
         }
@@ -749,7 +749,6 @@ final class LazyCollections {
         public V get(Object key) {
             return getOrDefault(key, null);
         }
-
 
         private static IllegalArgumentException outOfSpace(Object key) {
             return new IllegalArgumentException("Out of space for " + key);
@@ -778,10 +777,6 @@ final class LazyCollections {
             // Implicit null check
             final int keyHash = key.hashCode();
             Objects.requireNonNull(value);
-/*            // Fail early if the key exists
-            if (containsKey(key)) {
-                throw new IllegalStateException("Key already exists: " + key);
-            }*/
             IndexAndLayer<K, V> newestLayer = newestLayerOrCreate(key);
             // Todo: add some kind of concurrency. Maybe have an array
             //       of layers per layer...
@@ -815,11 +810,14 @@ final class LazyCollections {
                 throw outOfSpace(key);
             }
             final Layer<K, V> layer = Layer.of(DEFAULT_INITIAL_LAYER_CAPACITY[newIndex]);
-            // Todo: Consider release semantics
+            // The layer is new and never observed before so the implicit store-store
+            // fence ensures safe publication.
             layers[newIndex] = layer;
             return new IndexAndLayer<>(newIndex, layer);
         }
 
+        // Todo: Consider scanning in the other direction so we can
+        //       benefit from constant folding
         IndexAndLayer<K, V> newestLayer() {
             for (int i = layers.length - 1; i >= 0; i--) {
                 Layer<K, V> layer = layers[i];
@@ -831,6 +829,8 @@ final class LazyCollections {
             throw new InternalError("Should not reach here");
         }
 
+        // Todo: Consider burning in the eventual final size in another stable
+        //       field once the layer is filled so we can benefit from constant folding
         @Override
         public int size() {
             int size = 0;
@@ -843,24 +843,16 @@ final class LazyCollections {
             return size;
         }
 
-        // Here we have a problem. Does this return true if:
-        // 1) There is an existing mapping
-        // 2) key is of `keyType`
-        // 3) We can compute a mapping
-        //
-        // The only reasonable way is if it corresponds to entrySet() and then this
-        // drags along the same reasoning there except 1) is the only way to go there
-        // because we do not know all possible keys.
         @Override
         public boolean containsKey(Object key) {
-            return super.containsKey(key);
+            return get(key) != null;
         }
 
         public Set<Map.Entry<K, V>> entrySet() {
             return new AbstractSet<>() {
                 @Override
                 public int size() {
-                    return UnboundStableMap.this.size();
+                    return UnboundedStableMap.this.size();
                 }
 
                 @Override
@@ -919,7 +911,6 @@ final class LazyCollections {
                 }
                 return null;
             }
-
         }
 
         record Layer<K, V>(@Stable Object[] table,
@@ -982,14 +973,6 @@ final class LazyCollections {
                 }
             }
 
-            void lock() {
-
-            }
-
-            void unlock() {
-
-            }
-
             @Override
             public String toString() {
                 return "Layer[table.length=" + table.length + ", size=" + size.get() + "]";
@@ -1024,7 +1007,7 @@ final class LazyCollections {
         }
 
         public static <K, V> Map<K, V> createExpandable(int initialMappingSize) {
-            return new UnboundStableMap<>(DEFAULT_LAYER_COUNT, initialMappingSize << 2);
+            return new UnboundedStableMap<>(DEFAULT_LAYER_COUNT, initialMappingSize << 2);
         }
 
     }
@@ -1383,11 +1366,11 @@ final class LazyCollections {
 */
 
         public static <K, V> Map<K, V> createExpandable() {
-            return new UnboundStableMap<>(DEFAULT_LAYER_COUNT, DEFAULT_INITIAL_LAYER_CAPACITY[0]);
+            return new UnboundedStableMap<>(DEFAULT_LAYER_COUNT, DEFAULT_INITIAL_LAYER_CAPACITY[0]);
         }
 
         public static <K, V> Map<K, V> createExpandable(int initialMappingSize) {
-            return new UnboundStableMap<>(DEFAULT_LAYER_COUNT, initialMappingSize << 2);
+            return new UnboundedStableMap<>(DEFAULT_LAYER_COUNT, initialMappingSize << 2);
         }
 
     }
@@ -1778,8 +1761,8 @@ final class LazyCollections {
         @Override
         public Map<K, V> toMap() {
             return initialMappingCapacity != NO_SIZE
-                    ? UnboundStableMap.createExpandable(initialMappingCapacity)
-                    : UnboundStableMap.createExpandable();
+                    ? UnboundedStableMap.createExpandable(initialMappingCapacity)
+                    : UnboundedStableMap.createExpandable();
         }
     }
 }

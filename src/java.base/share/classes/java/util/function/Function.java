@@ -24,7 +24,9 @@
  */
 package java.util.function;
 
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Represents a function that accepts one argument and produces a result.
@@ -97,4 +99,41 @@ public interface Function<T, R> {
     static <T> Function<T, T> identity() {
         return t -> t;
     }
+
+    /**
+     * {@return an unbounded cached function that will cache the results of the
+     *          provided {@code function} for any and all inputs.
+     * <p>
+     * Clients should be aware that ...
+     *
+     * @param function to cache
+     * @param <T> the type of the input to the function
+     * @param <R> the type of the result of the function
+     */
+    @SuppressWarnings("unchecked")
+    static <T, R> Function<T, R> ofCached(Function<? extends T, ? super R> function) {
+        final Map<T, R> map = Map.<T, R>ofStable().toMap();
+        return (T t) -> map.computeIfAbsent(t, (Function<? super T, ? extends R>) function);
+    }
+
+    /**
+     * {@return a bounded partially cached function that will cache the result of the
+     *          result of the provided {@code function} if, and only if, the
+     *          provided {@code cachedInputs} set {@linkplain Set#contains(Object) contains}
+     *          the input.
+     * @param cachedInputs the inputs for which results should be cached
+     * @param function to cache
+     * @param <T> the type of the input to the function
+     * @param <R> the type of the result of the function
+     */
+    @SuppressWarnings("unchecked")
+    static <T, R> Function<T, R> ofCached(Set<? super T> cachedInputs,
+                                          Function<? extends T, ? super R> function) {
+        final Function<T, R> castedComputingFunction = (Function<T, R>) function;
+        final Map<T, R> map = Map.ofLazy((Set<? extends T>) cachedInputs, castedComputingFunction);
+        return (T t) -> map.containsKey(t)
+                ? map.computeIfAbsent(t, castedComputingFunction)
+                : castedComputingFunction.apply(t);
+    }
+
 }

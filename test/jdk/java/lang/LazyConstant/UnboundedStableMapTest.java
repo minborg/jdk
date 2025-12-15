@@ -40,7 +40,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-final class UnboundStableMapTest {
+final class UnboundedStableMapTest {
 
     private static final Function<Integer, Integer> MAPPER = Function.identity();
 
@@ -52,7 +52,8 @@ final class UnboundStableMapTest {
 
     @ParameterizedTest
     @MethodSource("maps")
-    void empty(Map<Integer, Integer> map) {
+    void empty(NamedMap namedMap) {
+        final var map = namedMap.map();
         assertTrue(map.isEmpty());
         assertEquals("{}", map.toString());
         assertThrows(NullPointerException.class, () -> map.get(null));
@@ -61,7 +62,8 @@ final class UnboundStableMapTest {
 
     @ParameterizedTest
     @MethodSource("maps")
-    void size(Map<Integer, Integer> map) {
+    void size(NamedMap namedMap) {
+        final var map = namedMap.map();
         int size = 0;
         for (Integer v : LIST) {
             assertEquals(size++, map.size());
@@ -71,7 +73,8 @@ final class UnboundStableMapTest {
 
     @ParameterizedTest
     @MethodSource("maps")
-    void entryIterator(Map<Integer, Integer> map) {
+    void entryIterator(NamedMap namedMap) {
+        final var map = namedMap.map();
         var iter = map.entrySet().iterator();
         assertFalse(iter.hasNext());
 
@@ -95,9 +98,10 @@ final class UnboundStableMapTest {
 
     @ParameterizedTest
     @MethodSource("maps")
-    void toString(Map<Integer, Integer> map) {
+    void toString(NamedMap namedMap) {
+        final var map = namedMap.map();
         for (Integer v : LIST) {
-            map.put(v, v);
+            namedMap.map.put(v, v);
             var toString = map.toString();
             var expectContains = v + "=" + v;
             assertTrue(toString.contains(expectContains), toString + " didn't contain " + expectContains);
@@ -106,28 +110,37 @@ final class UnboundStableMapTest {
 
     @ParameterizedTest
     @MethodSource("maps")
-    void strangeKeyType(Map<Integer, Integer> map) {
+    void strangeKeyType(NamedMap namedMap) {
+        final var map = namedMap.map();
         assertNull(map.get("String"));
         assertThrows(NullPointerException.class, () -> map.get(null));
     }
 
     @ParameterizedTest
     @MethodSource("mapFactories")
-    void stressTest(Supplier<Map<Integer, Integer>> mapSupplier) {
-        final int maxLen = 1 << 12;
+    void stressTest(NamedFactory namedFactory) {
+        final int maxLen = 1 << 20;
         final var rnd = new Random(42);
 
         for (int run = 0; run < 100; run++) {
-            final Map<Integer, Integer> stableMap = new HashMap<>();
-            final Map<Integer, Integer> refarenceMap = mapSupplier.get();
+            final Map<Integer, Integer> actual = new HashMap<>();
+            final Map<Integer, Integer> expected = namedFactory.factory.get();
             final int len = rnd.nextInt(maxLen);
             for (int i = 0; i < len; i++) {
-                final int key = rnd.nextInt();
+                int key;
+                do {
+                    key = rnd.nextInt();
+                } while (expected.containsKey(key));
                 final int value = rnd.nextInt();
-                stableMap.put(key,value);
-                refarenceMap.put(key, value);
+                actual.put(key,value);
+                try {
+                    expected.put(key, value);
+                } catch (IllegalArgumentException e) {
+                    System.out.println("Ooops");
+                    throw e;
+                }
             }
-            assertEquals(refarenceMap, stableMap, diff(refarenceMap, stableMap));
+            assertEquals(expected, actual, diff(expected, actual));
         }
     }
 
@@ -144,7 +157,6 @@ final class UnboundStableMapTest {
         return "Dunno ?";
     }
 
-
     @Test
     void strangeKeyType2() {
         Map<Integer, Integer> map = new HashMap<>();
@@ -153,16 +165,24 @@ final class UnboundStableMapTest {
         assertTrue(o instanceof String);
     }
 
-    private static Stream<Map<Integer, Integer>> maps() {
-        return mapFactories()
-                .map(Supplier::get);
+    record NamedMap(String name, Map<Integer, Integer> map) {
+        @Override public String toString() { return name; }
     }
 
-    private static Stream<Supplier<Map<Integer, Integer>>> mapFactories() {
+    private static Stream<NamedMap> maps() {
+        return mapFactories()
+                .map(nf -> new NamedMap(nf.name(), nf.factory().get()));
+    }
+
+    record NamedFactory(String name, Supplier<Map<Integer, Integer>> factory) {
+        @Override public String toString() { return name; }
+    }
+
+    private static Stream<NamedFactory> mapFactories() {
         return Stream.of(
-                () -> Map.<Integer, Integer>ofStable().toMap(),
-                () -> Map.<Integer, Integer>ofStable().withInitialMappingCapacity(4).toMap(),
-                () -> Map.<Integer, Integer>ofStable().withInitialMappingCapacity(1024).toMap()
+                new NamedFactory("ofStable()", () -> Map.<Integer, Integer>ofStable().toMap()),
+                new NamedFactory("ofStable().c(4)",() -> Map.<Integer, Integer>ofStable().withInitialMappingCapacity(4).toMap()),
+                new NamedFactory("ofStable().c(1024)", () -> Map.<Integer, Integer>ofStable().withInitialMappingCapacity(1024).toMap())
         );
     }
 

@@ -26,8 +26,9 @@ package org.openjdk.bench.java.lang.stable;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.IntFunction;
 
 /**
  * Benchmark measuring unbound stable list performance
@@ -41,20 +42,26 @@ import java.util.function.IntFunction;
         "--enable-preview"
 })
 @Threads(Threads.MAX)   // Benchmark under contention
-public class UnboundStableListBenchmark {
+public class UnboundedStableMapBenchmark {
 
     private static final int SIZE = 30;
 
-    private static final List<Integer> STABLE = unboundLazyList();
-    private final List<Integer> stable = unboundLazyList();
+    private static final Map<Integer, Integer> STABLE = unboundedStableList();
+    private static final Map<Integer, Integer> CHM = new ConcurrentHashMap<>(STABLE);
+    private final Map<Integer, Integer> stable = unboundedStableList();
 
     @Benchmark
-    public int list() {
+    public int map() {
         return stable.get(1);
     }
 
     @Benchmark
-    public int staticList() {
+    public int staticCHM() {
+        return CHM.get(1);
+    }
+
+    @Benchmark
+    public int staticMap() {
         return STABLE.get(1);
     }
 
@@ -63,12 +70,13 @@ public class UnboundStableListBenchmark {
         return STABLE.size();
     }
 
-    private static List<Integer> unboundLazyList() {
-        var list = List.ofLazy(Integer.class);
+    private static Map<Integer, Integer> unboundedStableList() {
+        Map<Integer, Integer> map = Map.<Integer, Integer>ofStable()
+                .toMap();
         for (int i = 0; i < SIZE; i++) {
-            list.add(i);
+            map.put(i, i);
         }
-        return list;
+        return map;
     }
 
 }
