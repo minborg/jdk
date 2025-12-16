@@ -38,7 +38,7 @@ import jdk.internal.access.SharedSecrets;
  * This class consists exclusively of static methods to support groupings of threads.
  */
 public class ThreadContainers {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     // true if all threads are tracked
     private static final boolean TRACK_ALL_THREADS;

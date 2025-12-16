@@ -246,7 +246,7 @@ public class ForkJoinWorkerThread extends Thread {
         = U.objectFieldOffset(Thread.class, "threadLocals");
     private static final long INHERITABLETHREADLOCALS
         = U.objectFieldOffset(Thread.class, "inheritableThreadLocals");
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /**
      * A worker thread that is not a member of any user-defined

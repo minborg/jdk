@@ -25,6 +25,7 @@
 
 package java.lang.reflect;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
 import jdk.internal.reflect.CallerSensitive;
@@ -756,7 +757,7 @@ public final class Method extends Executable {
             getReturnType());
         Object result = AnnotationParser.parseMemberValue(
             memberType, ByteBuffer.wrap(annotationDefault),
-            SharedSecrets.getJavaLangAccess().
+            SharedSecrets.get(JavaLangAccess.class).
                 getConstantPool(getDeclaringClass()),
             getDeclaringClass());
         if (result instanceof ExceptionProxy) {

@@ -330,7 +330,7 @@ import jdk.internal.vm.annotation.Stable;
  * @since 1.1
  */
 public class BigDecimal extends Number implements Comparable<BigDecimal> {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /*
      * Let l = log_2(10).

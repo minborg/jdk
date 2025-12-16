@@ -52,7 +52,7 @@ import static jdk.internal.util.ModifiedUtf.utfLen;
  * @since   1.0
  */
 public class DataOutputStream extends FilterOutputStream implements DataOutput {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /**
      * The number of bytes written to the data output stream so far.

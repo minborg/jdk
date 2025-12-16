@@ -148,7 +148,7 @@ public final class StringConcatFactory {
      */
     private static final int MAX_INDY_CONCAT_ARG_SLOTS = 200;
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     // StringConcatFactory bootstrap methods are startup sensitive, and may be
     // special cased in java.lang.invoke.BootstrapMethodInvoker to ensure

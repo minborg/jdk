@@ -28,6 +28,7 @@ import compiler.jvmci.common.testcases.MultipleImplementer2;
 import compiler.jvmci.common.testcases.MultipleImplementersInterface;
 import compiler.jvmci.compilerToVM.ConstantPoolTestCase.ConstantTypes;
 import compiler.jvmci.compilerToVM.ConstantPoolTestCase.TestedCPEntry;
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import org.objectweb.asm.Opcodes;
 import jdk.internal.reflect.ConstantPool;
@@ -72,7 +73,7 @@ public class ConstantPoolTestsHelper {
 
         DummyClasses(Class<?> klass, Map<ConstantTypes, TestedCPEntry[]> testedCP) {
             this.klass = klass;
-            this.constantPoolSS = SharedSecrets.getJavaLangAccess().getConstantPool(klass);
+            this.constantPoolSS = SharedSecrets.get(JavaLangAccess.class).getConstantPool(klass);
             this.testedCP = testedCP;
         }
 

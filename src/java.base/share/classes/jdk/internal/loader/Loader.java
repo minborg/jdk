@@ -51,6 +51,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.module.Resources;
 
@@ -283,7 +284,7 @@ public final class Loader extends SecureClassLoader {
      * of layers rooted at the given parent.
      */
     private Optional<ModuleLayer> findModuleLayer(ModuleLayer parent, Configuration cf) {
-        return SharedSecrets.getJavaLangAccess().layers(parent)
+        return SharedSecrets.get(JavaLangAccess.class).layers(parent)
                 .filter(l -> l.configuration() == cf)
                 .findAny();
     }

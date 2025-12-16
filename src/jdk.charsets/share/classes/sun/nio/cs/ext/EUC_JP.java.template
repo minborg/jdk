@@ -34,6 +34,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
+import jdk.internal.access.JavaLangAccess;
 import sun.nio.cs.HistoricallyNamedCharset;
 import sun.nio.cs.DelegatableDecoder;
 import sun.nio.cs.DoubleByte;
@@ -46,7 +47,7 @@ public class EUC_JP
     extends Charset
     implements HistoricallyNamedCharset
 {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     public EUC_JP() {
         super("EUC-JP",  $ALIASES$);

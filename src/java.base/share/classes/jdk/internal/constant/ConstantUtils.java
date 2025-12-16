@@ -44,7 +44,7 @@ import static jdk.internal.constant.PrimitiveClassDescImpl.*;
  */
 @AOTSafeClassInitializer // initialization dependency of PrimitiveClassDescImpl
 public final class ConstantUtils {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /** an empty constant descriptor */
     public static final ConstantDesc[] EMPTY_CONSTANTDESC = new ConstantDesc[0];

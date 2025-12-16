@@ -253,7 +253,7 @@ public abstract class AbstractClassLoaderValue<CLV extends AbstractClassLoaderVa
         }
     }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /**
      * @return a ConcurrentHashMap for given ClassLoader

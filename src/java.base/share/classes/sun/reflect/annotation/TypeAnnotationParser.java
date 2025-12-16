@@ -330,7 +330,7 @@ public final class TypeAnnotationParser {
     static TypeAnnotation[] parseAllTypeAnnotations(AnnotatedElement decl) {
         Class<?> container;
         byte[] rawBytes;
-        JavaLangAccess javaLangAccess = SharedSecrets.getJavaLangAccess();
+        JavaLangAccess javaLangAccess = SharedSecrets.get(JavaLangAccess.class);
         if (decl instanceof Class<?> classDecl) {
             container = classDecl;
             rawBytes = javaLangAccess.getRawClassTypeAnnotations(container);

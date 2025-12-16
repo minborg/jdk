@@ -23,6 +23,7 @@
 
 package sun.hotspot.tools.ctw;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.ConstantPool;
@@ -77,7 +78,7 @@ public class Compiler {
 
         // Initialize all constant pool entries, if requested.
         if (Utils.COMPILE_THE_WORLD_PRELOAD_CLASSES) {
-            ConstantPool constantPool = SharedSecrets.getJavaLangAccess().getConstantPool(aClass);
+            ConstantPool constantPool = SharedSecrets.get(JavaLangAccess.class).getConstantPool(aClass);
             preloadClasses(aClass.getName(), id, constantPool);
         }
 

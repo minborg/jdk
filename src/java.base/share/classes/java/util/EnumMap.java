@@ -25,6 +25,7 @@
 
 package java.util;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -747,7 +748,7 @@ public class EnumMap<K extends Enum<K>, V> extends AbstractMap<K, V>
      * The result is uncloned, cached, and shared by all callers.
      */
     private static <K extends Enum<K>> K[] getKeyUniverse(Class<K> keyType) {
-        return SharedSecrets.getJavaLangAccess()
+        return SharedSecrets.get(JavaLangAccess.class)
                                         .getEnumConstantsShared(keyType);
     }
 

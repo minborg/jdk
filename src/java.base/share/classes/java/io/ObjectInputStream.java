@@ -2851,7 +2851,7 @@ public class ObjectInputStream
         /** readBlockHeader() return value indicating header read may block */
         private static final int HEADER_BLOCKED = -2;
         /** access to internal methods to count ASCII and inflate latin1/ASCII bytes to char */
-        private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+        private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
         /** buffer for reading general/block data */
         private final byte[] buf = new byte[MAX_BLOCK_SIZE];

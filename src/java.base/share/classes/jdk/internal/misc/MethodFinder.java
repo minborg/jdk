@@ -36,7 +36,7 @@ import jdk.internal.access.SharedSecrets;
  */
 public class MethodFinder {
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     private MethodFinder() {
         throw new AssertionError("private constructor");

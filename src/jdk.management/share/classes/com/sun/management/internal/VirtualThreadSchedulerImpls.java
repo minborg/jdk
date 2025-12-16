@@ -91,7 +91,7 @@ public class VirtualThreadSchedulerImpls {
          */
         private static class Scheduler {
             private static final Executor scheduler =
-                SharedSecrets.getJavaLangAccess().virtualThreadDefaultScheduler();
+                SharedSecrets.get(JavaLangAccess.class).virtualThreadDefaultScheduler();
             static Executor instance() {
                 return scheduler;
             }

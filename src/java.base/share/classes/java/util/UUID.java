@@ -90,7 +90,7 @@ public final class UUID implements java.io.Serializable, Comparable<UUID> {
      */
     private final long leastSigBits;
 
-    private static final JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess jla = SharedSecrets.get(JavaLangAccess.class);
 
     /*
      * The random number generator used by this class to create random

@@ -46,7 +46,7 @@ public class ClassLoaders {
 
     private ClassLoaders() { }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     // the built-in class loaders
     private static final BootClassLoader BOOT_LOADER;

@@ -30,6 +30,7 @@ import java.nio.*;
 import java.nio.charset.*;
 import java.util.Arrays;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.io.JdkConsoleImpl;
 
@@ -56,7 +57,7 @@ public class Password {
         try {
             // Only use Console if `in` is the initial System.in
             if (!isEchoOn) {
-                if (in == SharedSecrets.getJavaLangAccess().initialSystemIn()
+                if (in == SharedSecrets.get(JavaLangAccess.class).initialSystemIn()
                         && ConsoleHolder.consoleIsAvailable()) {
                     consoleEntered = ConsoleHolder.readPassword();
                     // readPassword might return null. Stop now.

@@ -36,7 +36,7 @@ import jdk.internal.vm.Continuation;
  * A ForkJoinWorkerThread that can be used as a carrier thread.
  */
 public class CarrierThread extends ForkJoinWorkerThread {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     private static final Unsafe U = Unsafe.getUnsafe();
 
     private static final ThreadGroup CARRIER_THREADGROUP = carrierThreadGroup();

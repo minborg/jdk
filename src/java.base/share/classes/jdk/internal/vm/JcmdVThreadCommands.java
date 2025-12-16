@@ -36,7 +36,7 @@ import sun.nio.ch.Poller;
  * called from the "Attach Listener" thread.
  */
 public class JcmdVThreadCommands {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     private JcmdVThreadCommands() { }
 

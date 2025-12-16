@@ -87,7 +87,7 @@ public final class ModuleBootstrap {
     private static final String ALL_MODULE_PATH = "ALL-MODULE-PATH";
 
     // access to java.lang/module
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     private static final JavaLangModuleAccess JLMA = SharedSecrets.getJavaLangModuleAccess();
 
     // The ModulePatcher for the initial configuration

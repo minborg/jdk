@@ -66,7 +66,7 @@ public class ISO_8859_1
 
     private static class Decoder extends CharsetDecoder {
 
-        private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+        private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
         private Decoder(Charset cs) {
             super(cs, 1.0f, 1.0f);

@@ -31,6 +31,8 @@ import java.security.CodeSource;
 import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
+
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.event.FinalFieldMutationEvent;
 import jdk.internal.loader.ClassLoaders;
@@ -1400,7 +1402,7 @@ class Field extends AccessibleObject implements Member {
                     } else {
                         declAnnos = AnnotationParser.parseAnnotations(
                                 annotations,
-                                SharedSecrets.getJavaLangAccess()
+                                SharedSecrets.get(JavaLangAccess.class)
                                         .getConstantPool(getDeclaringClass()),
                                 getDeclaringClass());
                     }
@@ -1423,7 +1425,7 @@ class Field extends AccessibleObject implements Member {
      */
     public AnnotatedType getAnnotatedType() {
         return TypeAnnotationParser.buildAnnotatedType(getTypeAnnotationBytes0(),
-                                                       SharedSecrets.getJavaLangAccess().
+                                                       SharedSecrets.get(JavaLangAccess.class).
                                                            getConstantPool(getDeclaringClass()),
                                                        this,
                                                        getDeclaringClass(),

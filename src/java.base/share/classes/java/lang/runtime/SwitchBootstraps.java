@@ -45,6 +45,7 @@ import java.util.Optional;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.Label;
@@ -382,7 +383,7 @@ public final class SwitchBootstraps {
                 constantsMap = enumCache.constantsMap;
 
                 if (constantsMap == null) {
-                    T[] constants = SharedSecrets.getJavaLangAccess()
+                    T[] constants = SharedSecrets.get(JavaLangAccess.class)
                                                  .getEnumConstantsShared(enumClass);
                     constantsMap = new int[constants.length];
                     int ordinal = 0;

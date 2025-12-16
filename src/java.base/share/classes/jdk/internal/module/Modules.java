@@ -61,7 +61,7 @@ import jdk.internal.access.SharedSecrets;
 public class Modules {
     private Modules() { }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     private static final JavaLangModuleAccess JLMA = SharedSecrets.getJavaLangModuleAccess();
 
     /**

@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamField;
+
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -120,7 +122,7 @@ public class UndeclaredThrowableException extends RuntimeException {
         ObjectInputStream.GetField fields = s.readFields();
         Throwable exception = (Throwable) fields.get("undeclaredThrowable", null);
         if (exception != null) {
-            SharedSecrets.getJavaLangAccess().setCause(this, exception);
+            SharedSecrets.get(JavaLangAccess.class).setCause(this, exception);
         }
     }
 

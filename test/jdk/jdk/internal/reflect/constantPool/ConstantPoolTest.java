@@ -36,6 +36,8 @@
 import java.lang.classfile.ClassFile;
 import java.util.HashMap;
 import java.util.Map;
+
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.reflect.ConstantPool;
 import jdk.test.lib.Asserts;
@@ -48,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ConstantPoolTest {
 
     private static final Class<?> TEST_CLASS = ConstantPoolTestDummy.class;
-    private static final ConstantPool CP = SharedSecrets.getJavaLangAccess()
+    private static final ConstantPool CP = SharedSecrets.get(JavaLangAccess.class)
             .getConstantPool(TEST_CLASS);
 
     @ParameterizedTest

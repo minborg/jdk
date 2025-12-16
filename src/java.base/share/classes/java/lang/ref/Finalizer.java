@@ -140,7 +140,7 @@ final class Finalizer extends FinalReference<Object> { /* Package-private; must 
                 // in case of recursive call to run()
                 if (running)
                     return;
-                final JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+                final JavaLangAccess jla = SharedSecrets.get(JavaLangAccess.class);
                 running = true;
                 for (Finalizer f; (f = (Finalizer)queue.poll()) != null; )
                     f.runFinalizer(jla);
@@ -158,7 +158,7 @@ final class Finalizer extends FinalReference<Object> { /* Package-private; must 
             if (running)
                 return;
 
-            final JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+            final JavaLangAccess jla = SharedSecrets.get(JavaLangAccess.class);
             running = true;
             for (;;) {
                 try {

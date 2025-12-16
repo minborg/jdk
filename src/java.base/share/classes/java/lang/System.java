@@ -47,18 +47,13 @@ import java.nio.channels.spi.SelectorProvider;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.security.ProtectionDomain;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.ResourceBundle;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import jdk.internal.access.JavaIOAccess;
 import jdk.internal.javac.Restricted;
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.logger.LoggerFinderLoader.TemporaryLoggerFinder;
@@ -234,8 +229,6 @@ public final class System {
         setErr0(err);
     }
 
-    private static volatile Console cons;
-
     /**
      * Returns the unique {@link Console Console} object associated
      * with the current Java virtual machine, if any.
@@ -246,15 +239,7 @@ public final class System {
      * @since   1.6
      */
      public static Console console() {
-         Console c;
-         if ((c = cons) == null) {
-             synchronized (System.class) {
-                 if ((c = cons) == null) {
-                     cons = c = SharedSecrets.getJavaIOAccess().console();
-                 }
-             }
-         }
-         return c;
+         return SharedSecrets.get(JavaIOAccess.class).console();
      }
 
     /**
@@ -1994,7 +1979,7 @@ public final class System {
 
     private static void setJavaLangAccess() {
         // Allow privileged classes outside of java.lang
-        SharedSecrets.setJavaLangAccess(new JavaLangAccess() {
+        SharedSecrets.set(JavaLangAccess.class, new JavaLangAccess() {
             public List<Method> getDeclaredPublicMethods(Class<?> klass, String name, Class<?>... parameterTypes) {
                 return klass.getDeclaredPublicMethods(name, parameterTypes);
             }

@@ -38,6 +38,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
 import java.util.Set;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
@@ -521,7 +522,7 @@ public class ReflectionFactory {
     }
 
     private final ClassFileFormatVersion classFileFormatVersion(Class<?> cl) {
-        int raw = SharedSecrets.getJavaLangAccess().classFileVersion(cl);
+        int raw = SharedSecrets.get(JavaLangAccess.class).classFileVersion(cl);
 
         int major = raw & 0xFFFF;
         int minor = raw >>> Character.SIZE;

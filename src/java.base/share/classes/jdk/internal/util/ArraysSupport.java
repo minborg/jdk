@@ -413,7 +413,7 @@ public class ArraysSupport {
         return result;
     }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     /*
      * fromIndex and length must be scaled to char indexes.
      */

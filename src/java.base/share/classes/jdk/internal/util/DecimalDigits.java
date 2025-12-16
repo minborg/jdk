@@ -38,7 +38,7 @@ import static jdk.internal.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
  * @since 21
  */
 public final class DecimalDigits {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**

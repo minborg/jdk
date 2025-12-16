@@ -26,6 +26,8 @@
 package jdk.internal.access;
 
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
+import jdk.internal.vm.annotation.DontInline;
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import javax.crypto.SealedObject;
@@ -35,12 +37,12 @@ import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
 import java.security.Security;
 import java.security.spec.EncodedKeySpec;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ForkJoinPool;
 import java.util.jar.JarFile;
 import java.io.Console;
 import java.io.FileDescriptor;
-import java.io.FilePermission;
 import java.io.ObjectInputStream;
 import java.io.RandomAccessFile;
 import java.security.Signature;
@@ -73,16 +75,49 @@ import javax.security.auth.x500.X500Principal;
  * cache creation will fail.
  */
 @AOTSafeClassInitializer
-public class SharedSecrets {
+public final class SharedSecrets {
+
+    // This map is used to associate a certain Access interface to another class where
+    // the implementation of said interface resides
+    private static final Map<Class<? extends Access>, Class<?>> IMPLEMENTATIONS =
+            Map.ofEntries(
+                    Map.entry(JavaIOAccess.class, Console.class),
+                    Map.entry(JavaLangAccess.class, System.class)
+            );
+
+    private static final StableComponentContainer<Access> COMPONENTS =
+            StableComponentContainer.of(IMPLEMENTATIONS.keySet());
+
+    @ForceInline
+    public static <T extends Access> T get(Class<T> clazz) {
+        final T component = COMPONENTS.orElse(clazz, null);
+        return component == null
+                ? getSlowPath(clazz)
+                : component;
+    }
+
+    @DontInline
+    private static <T extends Access> T getSlowPath(Class<T> clazz) {
+        Class<?> implementation = IMPLEMENTATIONS.get(clazz);
+        assert implementation != null;
+        ensureClassInitialized(implementation);
+        // The component should now be initialized
+        return COMPONENTS.get(clazz);
+    }
+
+    public static <T extends Access> void set(Class<T> type, T access) {
+        COMPONENTS.set(type, access);
+    }
+
     // This field is not necessarily stable
     private static JavaAWTFontAccess javaAWTFontAccess;
     @Stable private static JavaBeansAccess javaBeansAccess;
-    @Stable private static JavaLangAccess javaLangAccess;
+//    @Stable private static JavaLangAccess javaLangAccess;
     @Stable private static JavaLangInvokeAccess javaLangInvokeAccess;
     @Stable private static JavaLangModuleAccess javaLangModuleAccess;
     @Stable private static JavaLangRefAccess javaLangRefAccess;
     @Stable private static JavaLangReflectAccess javaLangReflectAccess;
-    @Stable private static JavaIOAccess javaIOAccess;
+    //@Stable private static JavaIOAccess javaIOAccess;
     @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
     @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
     @Stable private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
@@ -163,14 +198,6 @@ public class SharedSecrets {
 
     public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
         javaUtilJarAccess = access;
-    }
-
-    public static void setJavaLangAccess(JavaLangAccess jla) {
-        javaLangAccess = jla;
-    }
-
-    public static JavaLangAccess getJavaLangAccess() {
-        return javaLangAccess;
     }
 
     public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {
@@ -280,19 +307,6 @@ public class SharedSecrets {
             // shared secret.
             ensureClassInitialized(java.nio.Buffer.class);
             access = javaNioAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaIOAccess(JavaIOAccess jia) {
-        javaIOAccess = jia;
-    }
-
-    public static JavaIOAccess getJavaIOAccess() {
-        var access = javaIOAccess;
-        if (access == null) {
-            ensureClassInitialized(Console.class);
-            access = javaIOAccess;
         }
         return access;
     }

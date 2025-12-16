@@ -25,6 +25,7 @@
 
 package java.util;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -406,7 +407,7 @@ public abstract sealed class EnumSet<E extends Enum<E>> extends AbstractSet<E>
      * The result is uncloned, cached, and shared by all callers.
      */
     private static <E extends Enum<E>> E[] getUniverse(Class<E> elementType) {
-        return SharedSecrets.getJavaLangAccess()
+        return SharedSecrets.get(JavaLangAccess.class)
                                         .getEnumConstantsShared(elementType);
     }
 

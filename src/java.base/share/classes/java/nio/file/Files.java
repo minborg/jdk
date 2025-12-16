@@ -75,6 +75,7 @@ import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.util.ArraysSupport;
 import sun.nio.ch.FileChannelImpl;
 import sun.nio.cs.UTF_8;
@@ -2908,7 +2909,7 @@ public final class Files {
     }
 
     private static final jdk.internal.access.JavaLangAccess JLA =
-            jdk.internal.access.SharedSecrets.getJavaLangAccess();
+            jdk.internal.access.SharedSecrets.get(JavaLangAccess.class);
 
     /**
      * Reads all the bytes from an input stream. Uses {@code initialSize} as a hint

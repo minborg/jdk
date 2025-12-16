@@ -82,7 +82,7 @@ public class Reflection {
         low 13 bits (i.e., a mask of 0x1FFF) are guaranteed to be
         valid. */
     public static int getClassAccessFlags(Class<?> c) {
-        return SharedSecrets.getJavaLangAccess().getClassFileAccessFlags(c);
+        return SharedSecrets.get(JavaLangAccess.class).getClassFileAccessFlags(c);
     }
 
 
@@ -117,7 +117,7 @@ public class Reflection {
                 currentClass.getModule() :
                 ClassLoader.getSystemClassLoader().getUnnamedModule();
         class Holder {
-            static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+            static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
         }
         if (module != null) {
             // not in init phase

@@ -32,7 +32,7 @@ import jdk.internal.access.SharedSecrets;
 import static java.lang.Math.multiplyHigh;
 
 abstract sealed class ToDecimal permits DoubleToDecimal, FloatToDecimal {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /* Used for left-to-tight digit extraction */
     static final int MASK_28 = (1 << 28) - 1;

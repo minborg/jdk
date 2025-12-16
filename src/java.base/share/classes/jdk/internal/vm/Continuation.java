@@ -44,7 +44,7 @@ public class Continuation {
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final long MOUNTED_OFFSET = U.objectFieldOffset(Continuation.class, "mounted");
     private static final boolean PRESERVE_SCOPED_VALUE_CACHE;
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     static {
         ContinuationSupport.ensureSupported();
 

@@ -52,7 +52,7 @@ import static sun.nio.fs.UnixNativeDispatcher.*;
  */
 class UnixPath implements Path {
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     private final UnixFileSystem fs;
 

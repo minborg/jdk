@@ -49,7 +49,7 @@ import java.util.Objects;
  * @since   1.0
  */
 public class DataInputStream extends FilterInputStream implements DataInput {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     private static final char[] EMPTY_CHAR_ARRAY = new char[0];

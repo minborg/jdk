@@ -109,7 +109,7 @@ public class DoubleByte {
         Arrays.fill(B2C_UNMAPPABLE, UNMAPPABLE_DECODING);
     }
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     public static class Decoder extends CharsetDecoder
                                 implements DelegatableDecoder, ArrayDecoder

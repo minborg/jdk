@@ -174,7 +174,7 @@ import static jdk.internal.util.ModifiedUtf.utfLen;
 public class ObjectOutputStream
     extends OutputStream implements ObjectOutput, ObjectStreamConstants
 {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /** filter stream for handling block data conversion */
     private final BlockDataOutputStream bout;

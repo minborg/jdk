@@ -35,6 +35,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.util.ArraysSupport;
 import sun.nio.cs.UTF_8;
 
@@ -47,7 +48,7 @@ import sun.nio.cs.UTF_8;
 class ZipCoder {
 
     private static final jdk.internal.access.JavaLangAccess JLA =
-        jdk.internal.access.SharedSecrets.getJavaLangAccess();
+        jdk.internal.access.SharedSecrets.get(JavaLangAccess.class);
 
     // Encoding/decoding is stateless, so make it singleton.
     static final UTF8ZipCoder UTF8 = new UTF8ZipCoder(UTF_8.INSTANCE);

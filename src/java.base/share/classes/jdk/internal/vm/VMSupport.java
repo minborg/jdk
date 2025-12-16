@@ -205,7 +205,7 @@ public class VMSupport {
             Class<?> superClass = declaringClass.getSuperclass();
             nextSuperClass:
             while (superClass != null) {
-                JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
+                JavaLangAccess jla = SharedSecrets.get(JavaLangAccess.class);
                 Map<Class<? extends Annotation>, Annotation> superAnnotations =
                     AnnotationParser.parseSelectAnnotations(
                             jla.getRawClassAnnotations(superClass),
