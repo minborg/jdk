@@ -40,6 +40,7 @@ import java.util.Set;
 
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.JavaLangReflectAccess;
+import jdk.internal.access.JavaObjectStreamReflectionAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
 import jdk.internal.vm.annotation.Stable;
@@ -352,7 +353,7 @@ public class ReflectionFactory {
             return null;
         }
 
-        return SharedSecrets.getJavaObjectStreamReflectionAccess().defaultReadObject(cl);
+        return SharedSecrets.get(JavaObjectStreamReflectionAccess.class).defaultReadObject(cl);
     }
 
     public final MethodHandle defaultWriteObjectForSerialization(Class<?> cl) {
@@ -360,7 +361,7 @@ public class ReflectionFactory {
             return null;
         }
 
-        return SharedSecrets.getJavaObjectStreamReflectionAccess().defaultWriteObject(cl);
+        return SharedSecrets.get(JavaObjectStreamReflectionAccess.class).defaultWriteObject(cl);
     }
 
     /**

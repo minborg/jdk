@@ -29,7 +29,7 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 
-public interface JavaNetInetAddressAccess {
+public non-sealed interface JavaNetInetAddressAccess extends Access {
     /**
      * Return the original application specified hostname of
      * the given InetAddress object.

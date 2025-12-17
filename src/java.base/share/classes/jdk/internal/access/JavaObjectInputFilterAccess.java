@@ -30,7 +30,7 @@ import java.io.ObjectInputFilter;
 /**
  * Access to the alternative ObjectInputFilter.Config.createFilter2 for RMI.
  */
-public interface JavaObjectInputFilterAccess {
+public non-sealed interface JavaObjectInputFilterAccess extends Access {
     /**
      * Creates a filter from the pattern.
      */

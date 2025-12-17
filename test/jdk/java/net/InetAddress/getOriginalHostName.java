@@ -36,7 +36,7 @@ import jdk.internal.access.SharedSecrets;
 public class getOriginalHostName {
 
     private static final JavaNetInetAddressAccess jna =
-        SharedSecrets.getJavaNetInetAddressAccess();
+        SharedSecrets.get(JavaNetInetAddressAccess.class);
 
     public static void main(String[] args) throws Exception {
         final String HOST = "dummyserver.java.net";

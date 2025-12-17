@@ -47,7 +47,7 @@ import jdk.internal.util.ArraysSupport;
  * This class is not thread safe.
  */
 class NativeSocketAddress {
-    private static final JavaNetInetAddressAccess JNINA = SharedSecrets.getJavaNetInetAddressAccess();
+    private static final JavaNetInetAddressAccess JNINA = SharedSecrets.get(JavaNetInetAddressAccess.class);
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final long ARRAY_BASE_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
 

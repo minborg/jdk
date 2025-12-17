@@ -85,18 +85,21 @@ public final class SharedSecrets {
     // the implementation of said interface resides
     private static final Map<Class<? extends Access>, ? extends Constable> IMPLEMENTATIONS =
             Map.ofEntries(
-                    Map.entry(JavaIOAccess.class                   , Console.class),
-                    Map.entry(JavaLangAccess.class                 , System.class),
-                    Map.entry(JavaLangInvokeAccess.class           , "java.lang.invoke.MethodHandleImpl"),
-                    Map.entry(JavaBeansAccess.class                , NO_INIT),
-                    Map.entry(JavaLangModuleAccess.class           , ModuleDescriptor.class),
-                    Map.entry(JavaUtilJarAccess.class              , JarFile.class),
-                    Map.entry(JavaLangRefAccess.class              , NO_INIT),
-                    Map.entry(JavaLangReflectAccess.class          , NO_INIT),
-                    Map.entry(JavaIOFileDescriptorAccess.class     , FileDescriptor.class),
-                    Map.entry(JavaIORandomAccessFileAccess.class   , RandomAccessFile.class),
-                    Map.entry(JavaObjectInputStreamReadString.class, ObjectInputStream.class),
-                    Map.entry(JavaObjectInputStreamAccess.class    , ObjectInputStream.class)
+                    Map.entry(JavaIOAccess.class                    , Console.class),
+                    Map.entry(JavaLangAccess.class                  , System.class),
+                    Map.entry(JavaLangInvokeAccess.class            , "java.lang.invoke.MethodHandleImpl"),
+                    Map.entry(JavaBeansAccess.class                 , NO_INIT),
+                    Map.entry(JavaLangModuleAccess.class            , ModuleDescriptor.class),
+                    Map.entry(JavaUtilJarAccess.class               , JarFile.class),
+                    Map.entry(JavaLangRefAccess.class               , NO_INIT),
+                    Map.entry(JavaLangReflectAccess.class           , NO_INIT),
+                    Map.entry(JavaIOFileDescriptorAccess.class      , FileDescriptor.class),
+                    Map.entry(JavaIORandomAccessFileAccess.class    , RandomAccessFile.class),
+                    Map.entry(JavaObjectInputStreamReadString.class , ObjectInputStream.class),
+                    Map.entry(JavaObjectInputStreamAccess.class     , ObjectInputStream.class),
+                    Map.entry(JavaObjectInputFilterAccess.class     , ObjectInputFilter.Config.class),
+                    Map.entry(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access"),
+                    Map.entry(JavaNetInetAddressAccess.class        , java.net.InetAddress.class)
             );
 
     private static final StableComponentContainer<Access> COMPONENTS =
@@ -139,9 +142,9 @@ public final class SharedSecrets {
 //    @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
 //    @Stable private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
 //    @Stable private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
-    @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
-    @Stable private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
-    @Stable private static JavaNetInetAddressAccess javaNetInetAddressAccess;
+//    @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
+//    @Stable private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
+//    @Stable private static JavaNetInetAddressAccess javaNetInetAddressAccess;
     @Stable private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
     @Stable private static JavaNetUriAccess javaNetUriAccess;
     @Stable private static JavaNetURLAccess javaNetURLAccess;
@@ -228,19 +231,6 @@ public final class SharedSecrets {
         return access;
     }
 
-    public static void setJavaNetInetAddressAccess(JavaNetInetAddressAccess jna) {
-        javaNetInetAddressAccess = jna;
-    }
-
-    public static JavaNetInetAddressAccess getJavaNetInetAddressAccess() {
-        var access = javaNetInetAddressAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.InetAddress.class);
-            access = javaNetInetAddressAccess;
-        }
-        return access;
-    }
-
     public static void setJavaNetHttpCookieAccess(JavaNetHttpCookieAccess a) {
         javaNetHttpCookieAccess = a;
     }
@@ -316,34 +306,6 @@ public final class SharedSecrets {
 
     public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
         javaUtilResourceBundleAccess = access;
-    }
-
-    public static JavaObjectInputFilterAccess getJavaObjectInputFilterAccess() {
-        var access = javaObjectInputFilterAccess;
-        if (access == null) {
-            ensureClassInitialized(ObjectInputFilter.Config.class);
-            access = javaObjectInputFilterAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaObjectInputFilterAccess(JavaObjectInputFilterAccess access) {
-        javaObjectInputFilterAccess = access;
-    }
-
-    public static JavaObjectStreamReflectionAccess getJavaObjectStreamReflectionAccess() {
-        var access = javaObjectStreamReflectionAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.io.ObjectStreamReflection$Access", true, null);
-                access = javaObjectStreamReflectionAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-    public static void setJavaObjectStreamReflectionAccess(JavaObjectStreamReflectionAccess access) {
-        javaObjectStreamReflectionAccess = access;
     }
 
     public static void setJavaSecuritySignatureAccess(JavaSecuritySignatureAccess jssa) {

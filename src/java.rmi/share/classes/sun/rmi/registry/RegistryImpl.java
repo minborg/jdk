@@ -46,6 +46,7 @@ import java.rmi.server.RMIClientSocketFactory;
 import java.rmi.server.RMIServerSocketFactory;
 import java.text.MessageFormat;
 
+import jdk.internal.access.JavaObjectInputFilterAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.rmi.runtime.Log;
 import sun.rmi.server.UnicastRef;
@@ -117,7 +118,7 @@ public class RegistryImpl extends java.rmi.server.RemoteServer
             props = Security.getProperty(REGISTRY_FILTER_PROPNAME);
         }
         if (props != null) {
-            filter = SharedSecrets.getJavaObjectInputFilterAccess().createFilter2(props);
+            filter = SharedSecrets.get(JavaObjectInputFilterAccess.class).createFilter2(props);
             Log regLog = Log.getLog("sun.rmi.registry", "registry", -1);
             if (regLog.isLoggable(Log.BRIEF)) {
                 regLog.log(Log.BRIEF, "registryFilter = " + filter);
