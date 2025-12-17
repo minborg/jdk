@@ -33,6 +33,7 @@ import jdk.internal.vm.annotation.Stable;
 import javax.crypto.SealedObject;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ObjectInputFilter;
+import java.lang.constant.Constable;
 import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
 import java.security.Security;
@@ -77,15 +78,21 @@ import javax.security.auth.x500.X500Principal;
 @AOTSafeClassInitializer
 public final class SharedSecrets {
 
+    // Sentinel value signaling that no explicit class initialization shall be performed
+    private static final String NO_INIT = "";
+
     // This map is used to associate a certain Access interface to another class where
     // the implementation of said interface resides
-    private static final Map<Class<? extends Access>, Object> IMPLEMENTATIONS =
+    private static final Map<Class<? extends Access>, ? extends Constable> IMPLEMENTATIONS =
             Map.ofEntries(
                     Map.entry(JavaIOAccess.class, Console.class),
                     Map.entry(JavaLangAccess.class, System.class),
                     Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl"),
-                    Map.entry(JavaBeansAccess.class, ""),
-                    Map.entry(JavaLangModuleAccess.class, ModuleDescriptor.class)
+                    Map.entry(JavaBeansAccess.class, NO_INIT),
+                    Map.entry(JavaLangModuleAccess.class, ModuleDescriptor.class),
+                    Map.entry(JavaUtilJarAccess.class, JarFile.class),
+                    Map.entry(JavaLangRefAccess.class,  NO_INIT),
+                    Map.entry(JavaLangReflectAccess.class, NO_INIT)
             );
 
     private static final StableComponentContainer<Access> COMPONENTS =
@@ -101,10 +108,10 @@ public final class SharedSecrets {
 
     @DontInline
     private static <T extends Access> T getSlowPath(Class<T> clazz) {
-        Object implementation = IMPLEMENTATIONS.get(clazz);
+        final Constable implementation = IMPLEMENTATIONS.get(clazz);
         switch (implementation) {
             case Class<?> c -> ensureClassInitialized(c);
-            case String s   -> { if (!s.isEmpty()) ensureClassInitialized(s); }
+            case String s   -> { if (!s.equals(NO_INIT)) ensureClassInitialized(s); }
             default         -> throw new InternalError("Should not reach here");
         }
         // The component should now be initialized
@@ -121,8 +128,8 @@ public final class SharedSecrets {
 //    @Stable private static JavaLangAccess javaLangAccess;
 //    @Stable private static JavaLangInvokeAccess javaLangInvokeAccess;
 //    @Stable private static JavaLangModuleAccess javaLangModuleAccess;
-    @Stable private static JavaLangRefAccess javaLangRefAccess;
-    @Stable private static JavaLangReflectAccess javaLangReflectAccess;
+//    @Stable private static JavaLangRefAccess javaLangRefAccess;
+//    @Stable private static JavaLangReflectAccess javaLangReflectAccess;
     //@Stable private static JavaIOAccess javaIOAccess;
     @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
     @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
@@ -189,37 +196,6 @@ public final class SharedSecrets {
             access = javaUtilConcurrentFJPAccess;
         }
         return access;
-    }
-
-    public static JavaUtilJarAccess javaUtilJarAccess() {
-        var access = javaUtilJarAccess;
-        if (access == null) {
-            // Ensure JarFile is initialized; we know that this class
-            // provides the shared secret
-            ensureClassInitialized(JarFile.class);
-            access = javaUtilJarAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
-        javaUtilJarAccess = access;
-    }
-
-    public static void setJavaLangRefAccess(JavaLangRefAccess jlra) {
-        javaLangRefAccess = jlra;
-    }
-
-    public static JavaLangRefAccess getJavaLangRefAccess() {
-        return javaLangRefAccess;
-    }
-
-    public static void setJavaLangReflectAccess(JavaLangReflectAccess jlra) {
-        javaLangReflectAccess = jlra;
-    }
-
-    public static JavaLangReflectAccess getJavaLangReflectAccess() {
-        return javaLangReflectAccess;
     }
 
     public static void setJavaNetUriAccess(JavaNetUriAccess jnua) {

@@ -25,6 +25,7 @@
 
 package java.util.jar;
 
+import jdk.internal.access.JavaUtilJarAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaUtilZipFileAccess;
 import sun.security.util.ManifestEntryVerifier;
@@ -163,7 +164,7 @@ public class JarFile extends ZipFile {
 
     static {
         // Set up JavaUtilJarAccess in SharedSecrets
-        SharedSecrets.setJavaUtilJarAccess(new JavaUtilJarAccessImpl());
+        SharedSecrets.set(JavaUtilJarAccess.class, new JavaUtilJarAccessImpl());
         // Get JavaUtilZipFileAccess from SharedSecrets
         JUZFA = SharedSecrets.getJavaUtilZipFileAccess();
         // multi-release jar file versions >= 9

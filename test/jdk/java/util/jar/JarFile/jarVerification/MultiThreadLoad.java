@@ -34,7 +34,7 @@ public class MultiThreadLoad {
 
     private static PrintStream out = System.err;
     static String TEST_CLASS_PATH;
-    private static final JavaUtilJarAccess JUJA = SharedSecrets.javaUtilJarAccess();
+    private static final JavaUtilJarAccess JUJA = SharedSecrets.get(JavaUtilJarAccess.class);
     private static CountDownLatch cdl = new CountDownLatch(1);
 
     private static <T> Set<T> setOf(Iterable<T> it) {

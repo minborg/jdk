@@ -32,6 +32,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
 import jdk.internal.module.ModuleBootstrap;
@@ -361,7 +362,7 @@ public class Reflection {
      * modified reflectively regardless of the value of its accessible flag.
      */
     public static boolean isTrustedFinalField(Field field) {
-        return SharedSecrets.getJavaLangReflectAccess().isTrustedFinalField(field);
+        return SharedSecrets.get(JavaLangReflectAccess.class).isTrustedFinalField(field);
     }
 
     /**

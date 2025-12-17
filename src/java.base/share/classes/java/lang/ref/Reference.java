@@ -291,7 +291,7 @@ public abstract sealed class Reference<@jdk.internal.RequiresIdentity T>
 
     static {
         // provide access in SharedSecrets
-        SharedSecrets.setJavaLangRefAccess(new JavaLangRefAccess() {
+        SharedSecrets.set(JavaLangRefAccess.class, new JavaLangRefAccess() {
             @Override
             public void startThreads() {
                 ThreadGroup tg = Thread.currentThread().getThreadGroup();

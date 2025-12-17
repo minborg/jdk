@@ -206,7 +206,7 @@ class Bits {                            // package-private
     private static boolean tryReserveOrClean(long size, long cap)
         throws InterruptedException
     {
-        JavaLangRefAccess jlra = SharedSecrets.getJavaLangRefAccess();
+        JavaLangRefAccess jlra = SharedSecrets.get(JavaLangRefAccess.class);
         boolean progressing = true;
         while (true) {
             if (tryReserveMemory(size, cap)) {

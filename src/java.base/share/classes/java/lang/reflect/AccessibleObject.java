@@ -29,6 +29,7 @@ import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.ref.WeakReference;
 
+import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
 import jdk.internal.reflect.CallerSensitive;
@@ -75,7 +76,7 @@ import jdk.internal.reflect.ReflectionFactory;
 public class AccessibleObject implements AnnotatedElement {
     static {
         // AccessibleObject is initialized early in initPhase1
-        SharedSecrets.setJavaLangReflectAccess(new ReflectAccess());
+        SharedSecrets.set(JavaLangReflectAccess.class, new ReflectAccess());
     }
 
     /**

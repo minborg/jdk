@@ -67,7 +67,7 @@ public class ReflectionFactory {
     private final JavaLangReflectAccess langReflectAccess;
 
     private ReflectionFactory() {
-        this.langReflectAccess = SharedSecrets.getJavaLangReflectAccess();
+        this.langReflectAccess = SharedSecrets.get(JavaLangReflectAccess.class);
     }
 
     /**
