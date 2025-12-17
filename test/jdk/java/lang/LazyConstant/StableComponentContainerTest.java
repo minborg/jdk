@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.util.HashSet;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -86,6 +87,22 @@ final class StableComponentContainerTest {
     void testToStringEmpty() {
         StableComponentContainer<Number> container = StableComponentContainer.of(Set.of());
         assertEquals("StableComponentContainer{}", container.toString());
+    }
+
+    @Test
+    void computeIfAbsent() {
+        StableComponentContainer<Number> container = StableComponentContainer.of(SET);
+        Integer value = container.computeIfAbsent(Integer.class, StableComponentContainerTest::mapper);
+        assertEquals(1, value);
+        assertThrows(NullPointerException.class, () -> container.computeIfAbsent(Byte.class, StableComponentContainerTest::mapper));
+    }
+
+    static <C extends Number> C mapper(Class<C> type) {
+        return type.cast(switch (type) {
+            case Class<?> c when c.equals(Byte.class) -> null;
+            case Class<?> c when c.equals(Integer.class) -> 1;
+            default -> throw new NoSuchElementException(type.toString());
+        });
     }
 
     private static StableComponentContainer<Number> populated() {

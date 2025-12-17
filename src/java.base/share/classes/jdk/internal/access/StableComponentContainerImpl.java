@@ -7,6 +7,7 @@ import jdk.internal.vm.annotation.Stable;
 
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.function.Function;
 
 @AOTSafeClassInitializer
 record StableComponentContainerImpl<T>(@Stable Object[] table) implements StableComponentContainer<T> {
@@ -36,14 +37,33 @@ record StableComponentContainerImpl<T>(@Stable Object[] table) implements Stable
     }
 
     public <C extends T> void set(Class<C> type, C component) {
-        // Implicit null check of both `type` and `component`
+        set0(type, component, true);
+    }
+
+    @ForceInline
+    public <C extends T> void set0(Class<C> type, C component, boolean setSemantics) {
+        Objects.requireNonNull(component);
+        // Implicit null check of `type`
         if (!type.isInstance(component)) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("The component '" + component + "' is not an instance of " + type);
         }
         final int probe = probeOrThrow(type);
-        if (!UNSAFE.compareAndSetReference(table, nextOffset(offsetFor(probe)), null, component)) {
+        if (!UNSAFE.compareAndSetReference(table, nextOffset(offsetFor(probe)), null, component) && setSemantics) {
             throw new IllegalStateException("The component is already initialized: " + type.getName());
         }
+    }
+
+    @ForceInline
+    @Override
+    public <C extends T> C computeIfAbsent(Class<C> type,
+                                           Function<Class<C>, ? extends C> mappingFunction) {
+        Objects.requireNonNull(mappingFunction);
+        C c;
+        if ((c = orElse(type, null)) == null) {
+            // Allow racy sets as several threads can race to set the value
+            set0(type, c = mappingFunction.apply(type), false);
+        }
+        return c;
     }
 
     @Override

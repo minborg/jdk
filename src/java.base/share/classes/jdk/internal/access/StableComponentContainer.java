@@ -1,7 +1,9 @@
 package jdk.internal.access;
 
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 // This class is required to be able to be used very early in the boot sequence.
 // Because of this, it does not use reflection, MethodHandles, or ImmutableCollections
@@ -63,6 +65,46 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
      *         with a component
      */
     <C extends T> void set(Class<C> type, C component);
+
+    /**
+     * If the specified type is not already associated with a component,
+     * attempts to compute its value using the given mapping
+     * function and enters it into this container.
+     *<p>
+     * If the mapping function itself throws an (unchecked) exception, the
+     * exception is rethrown, and no association is recorded. The most
+     * common usage is to construct a new object serving as an initial
+     * mapped value or memoized result, as in:
+     *
+     * <pre> {@code
+     * Component component = container.computeIfAbsent(Component.class, k -> new ComponentImpl(f(k)));
+     * }</pre>
+     *
+     * <p>The mapping function should not modify this container during computation.
+     *
+     * @implSpec
+     * The implementation is equivalent to the following steps for this
+     * {@code container}, then returning the current value or {@code null} if now
+     * absent:
+     *
+     * <pre> {@code
+     * if (!map.isInitialized(key)) {
+     *     map.put(key, mappingFunction.apply(key));
+     * }
+     * }</pre>
+     * <p>
+     * The implementation makes no guarantees about synchronization
+     * or atomicity properties of this method.
+     *
+     * @param type with which the to-be-computed component is to be associated
+     * @param mappingFunction the mapping function to compute a component
+     * @return the current (existing or computed) component associated with
+     *         the specified type
+     * @throws IllegalArgumentException if the provided {@code type} was not specified
+     *         {@linkplain StableComponentContainer#of(Set) at construction}.
+     */
+    <C extends T> C computeIfAbsent(Class<C> type,
+                                    Function<Class<C>, ? extends C> mappingFunction);
 
     /**
      * {@return a new stable component container that can associate any of the provided
