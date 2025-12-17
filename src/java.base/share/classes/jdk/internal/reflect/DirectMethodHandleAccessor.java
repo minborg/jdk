@@ -311,7 +311,7 @@ class DirectMethodHandleAccessor extends MethodAccessorImpl {
                 }
             }
 
-            static final JavaLangInvokeAccess JLIA = SharedSecrets.getJavaLangInvokeAccess();
+            static final JavaLangInvokeAccess JLIA = SharedSecrets.get(JavaLangInvokeAccess.class);
             static final MethodHandle NATIVE_ACCESSOR_INVOKE = MhUtil.findVirtual(
                     MethodHandles.lookup(), NativeAccessor.class, "invoke",
                     genericMethodType(1, true));

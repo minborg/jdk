@@ -66,7 +66,7 @@ public final class GenerateJLIClassesPlugin extends AbstractPlugin {
     private static final String DEFAULT_TRACE_FILE = "default_jli_trace.txt";
 
     private static final JavaLangInvokeAccess JLIA
-            = SharedSecrets.getJavaLangInvokeAccess();
+            = SharedSecrets.get(JavaLangInvokeAccess.class);
 
     private String mainArgument;
     private Stream<String> traceFileStream;

@@ -439,7 +439,7 @@ final class MethodHandleAccessorFactory {
      * Delay initializing these static fields until java.lang.invoke is fully initialized.
      */
     static class LazyStaticHolder {
-        static final JavaLangInvokeAccess JLIA = SharedSecrets.getJavaLangInvokeAccess();
+        static final JavaLangInvokeAccess JLIA = SharedSecrets.get(JavaLangInvokeAccess.class);
     }
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();

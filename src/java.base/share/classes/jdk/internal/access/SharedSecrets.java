@@ -79,10 +79,11 @@ public final class SharedSecrets {
 
     // This map is used to associate a certain Access interface to another class where
     // the implementation of said interface resides
-    private static final Map<Class<? extends Access>, Class<?>> IMPLEMENTATIONS =
+    private static final Map<Class<? extends Access>, Object> IMPLEMENTATIONS =
             Map.ofEntries(
                     Map.entry(JavaIOAccess.class, Console.class),
-                    Map.entry(JavaLangAccess.class, System.class)
+                    Map.entry(JavaLangAccess.class, System.class),
+                    Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl")
             );
 
     private static final StableComponentContainer<Access> COMPONENTS =
@@ -98,9 +99,12 @@ public final class SharedSecrets {
 
     @DontInline
     private static <T extends Access> T getSlowPath(Class<T> clazz) {
-        Class<?> implementation = IMPLEMENTATIONS.get(clazz);
-        assert implementation != null;
-        ensureClassInitialized(implementation);
+        Object implementation = IMPLEMENTATIONS.get(clazz);
+        switch (implementation) {
+            case Class<?> c -> ensureClassInitialized(c);
+            case String s   -> ensureClassInitialized(s);
+            default         -> throw new InternalError("Should not reach here");
+        }
         // The component should now be initialized
         return COMPONENTS.get(clazz);
     }
@@ -113,7 +117,7 @@ public final class SharedSecrets {
     private static JavaAWTFontAccess javaAWTFontAccess;
     @Stable private static JavaBeansAccess javaBeansAccess;
 //    @Stable private static JavaLangAccess javaLangAccess;
-    @Stable private static JavaLangInvokeAccess javaLangInvokeAccess;
+//    @Stable private static JavaLangInvokeAccess javaLangInvokeAccess;
     @Stable private static JavaLangModuleAccess javaLangModuleAccess;
     @Stable private static JavaLangRefAccess javaLangRefAccess;
     @Stable private static JavaLangReflectAccess javaLangReflectAccess;
@@ -198,21 +202,6 @@ public final class SharedSecrets {
 
     public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
         javaUtilJarAccess = access;
-    }
-
-    public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {
-        javaLangInvokeAccess = jlia;
-    }
-
-    public static JavaLangInvokeAccess getJavaLangInvokeAccess() {
-        var access = javaLangInvokeAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.lang.invoke.MethodHandleImpl", true, null);
-                access = javaLangInvokeAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
     }
 
     public static void setJavaLangModuleAccess(JavaLangModuleAccess jlrma) {
@@ -516,6 +505,12 @@ public final class SharedSecrets {
     private static void ensureClassInitialized(Class<?> c) {
         try {
             MethodHandles.lookup().ensureInitialized(c);
-        } catch (IllegalAccessException e) {}
+        } catch (IllegalAccessException _) {}
+    }
+
+    private static void ensureClassInitialized(String className) {
+        try {
+            Class.forName(className, true, null);
+        } catch (ClassNotFoundException _) {}
     }
 }
