@@ -3730,7 +3730,7 @@ public final class URI
     }
 
     static {
-        SharedSecrets.setJavaNetUriAccess(
+        SharedSecrets.set(JavaNetUriAccess.class,
             new JavaNetUriAccess() {
                 public URI create(String scheme, String path) {
                     return new URI(scheme, path);

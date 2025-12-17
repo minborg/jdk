@@ -99,7 +99,10 @@ public final class SharedSecrets {
                     Map.entry(JavaObjectInputStreamAccess.class     , ObjectInputStream.class),
                     Map.entry(JavaObjectInputFilterAccess.class     , ObjectInputFilter.Config.class),
                     Map.entry(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access"),
-                    Map.entry(JavaNetInetAddressAccess.class        , java.net.InetAddress.class)
+                    Map.entry(JavaNetInetAddressAccess.class        , java.net.InetAddress.class),
+                    Map.entry(JavaNetHttpCookieAccess.class         , java.net.HttpCookie.class),
+                    Map.entry(JavaNetUriAccess.class                , java.net.URI.class),
+                    Map.entry(JavaNetURLAccess.class                , java.net.URL.class)
             );
 
     private static final StableComponentContainer<Access> COMPONENTS =
@@ -145,14 +148,14 @@ public final class SharedSecrets {
 //    @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
 //    @Stable private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
 //    @Stable private static JavaNetInetAddressAccess javaNetInetAddressAccess;
-    @Stable private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
-    @Stable private static JavaNetUriAccess javaNetUriAccess;
-    @Stable private static JavaNetURLAccess javaNetURLAccess;
+//    @Stable private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
+//    @Stable private static JavaNetUriAccess javaNetUriAccess;
+//    @Stable private static JavaNetURLAccess javaNetURLAccess;
     @Stable private static JavaNioAccess javaNioAccess;
     @Stable private static JavaUtilCollectionAccess javaUtilCollectionAccess;
     @Stable private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
     @Stable private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
-    @Stable private static JavaUtilJarAccess javaUtilJarAccess;
+//    @Stable private static JavaUtilJarAccess javaUtilJarAccess;
     @Stable private static JavaUtilZipFileAccess javaUtilZipFileAccess;
     @Stable private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
     @Stable private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
@@ -201,45 +204,6 @@ public final class SharedSecrets {
         if (access == null) {
             ensureClassInitialized(ForkJoinPool.class);
             access = javaUtilConcurrentFJPAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetUriAccess(JavaNetUriAccess jnua) {
-        javaNetUriAccess = jnua;
-    }
-
-    public static JavaNetUriAccess getJavaNetUriAccess() {
-        var access = javaNetUriAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.URI.class);
-            access = javaNetUriAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetURLAccess(JavaNetURLAccess jnua) {
-        javaNetURLAccess = jnua;
-    }
-
-    public static JavaNetURLAccess getJavaNetURLAccess() {
-        var access = javaNetURLAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.URL.class);
-            access = javaNetURLAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetHttpCookieAccess(JavaNetHttpCookieAccess a) {
-        javaNetHttpCookieAccess = a;
-    }
-
-    public static JavaNetHttpCookieAccess getJavaNetHttpCookieAccess() {
-        var access = javaNetHttpCookieAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.HttpCookie.class);
-            access = javaNetHttpCookieAccess;
         }
         return access;
     }

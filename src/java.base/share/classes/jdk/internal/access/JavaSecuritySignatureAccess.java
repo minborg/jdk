@@ -28,7 +28,7 @@ package jdk.internal.access;
 import java.security.*;
 import java.security.spec.AlgorithmParameterSpec;
 
-public interface JavaSecuritySignatureAccess {
+public non-sealed interface JavaSecuritySignatureAccess extends Access {
 
     void initVerify(Signature s, PublicKey publicKey, AlgorithmParameterSpec params)
             throws InvalidKeyException, InvalidAlgorithmParameterException;

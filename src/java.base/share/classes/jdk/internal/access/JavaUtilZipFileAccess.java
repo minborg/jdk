@@ -34,7 +34,7 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public interface JavaUtilZipFileAccess {
+public non-sealed interface JavaUtilZipFileAccess extends Access {
     public boolean startsWithLocHeader(ZipFile zip);
     public List<String> getManifestAndSignatureRelatedFiles(JarFile zip);
     public String getManifestName(JarFile zip, boolean onlyIfSignatureRelatedFiles);

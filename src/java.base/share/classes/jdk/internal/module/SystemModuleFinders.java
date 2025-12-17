@@ -71,7 +71,7 @@ import jdk.internal.module.ModuleHashes.HashSupplier;
  */
 
 public final class SystemModuleFinders {
-    private static final JavaNetUriAccess JNUA = SharedSecrets.getJavaNetUriAccess();
+    private static final JavaNetUriAccess JNUA = SharedSecrets.get(JavaNetUriAccess.class);
 
     private static final boolean USE_FAST_PATH;
     static {
