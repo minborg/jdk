@@ -52,6 +52,7 @@ import java.util.stream.Stream;
 import static jdk.internal.module.Checks.*;
 import static java.util.Objects.*;
 
+import jdk.internal.access.JavaLangModuleAccess;
 import jdk.internal.module.Checks;
 import jdk.internal.module.ModuleInfo;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
@@ -2672,7 +2673,7 @@ public final class ModuleDescriptor
          * private package methods in java.lang.module.
          */
         jdk.internal.access.SharedSecrets
-            .setJavaLangModuleAccess(new jdk.internal.access.JavaLangModuleAccess() {
+            .set(JavaLangModuleAccess.class, new jdk.internal.access.JavaLangModuleAccess() {
                 @Override
                 public Builder newModuleBuilder(String mn,
                                                 boolean strict,

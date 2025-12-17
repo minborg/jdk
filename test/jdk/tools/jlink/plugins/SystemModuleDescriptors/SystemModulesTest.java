@@ -52,7 +52,7 @@ import static org.testng.Assert.*;
 
 public class SystemModulesTest {
     private static final JavaLangModuleAccess JLMA =
-        SharedSecrets.getJavaLangModuleAccess();
+        SharedSecrets.get(JavaLangModuleAccess.class);
     private static final String OS_NAME = System.getProperty("os.name");
     private static final String OS_ARCH = System.getProperty("os.arch");
     //  system modules containing no package

@@ -142,7 +142,7 @@ public class Introspector {
 
     // register with SharedSecrets for JMX usage
     static {
-        SharedSecrets.setJavaBeansAccess(new JavaBeansAccess() {
+        SharedSecrets.set(JavaBeansAccess.class, new JavaBeansAccess() {
             @Override
             public Method getReadMethod(Class<?> clazz, String property) throws Exception {
                 BeanInfo bi = Introspector.getBeanInfo(clazz);

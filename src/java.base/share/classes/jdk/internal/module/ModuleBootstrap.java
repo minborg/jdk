@@ -88,7 +88,7 @@ public final class ModuleBootstrap {
 
     // access to java.lang/module
     private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
-    private static final JavaLangModuleAccess JLMA = SharedSecrets.getJavaLangModuleAccess();
+    private static final JavaLangModuleAccess JLMA = SharedSecrets.get(JavaLangModuleAccess.class);
 
     // The ModulePatcher for the initial configuration
     private static final ModulePatcher patcher = initModulePatcher();

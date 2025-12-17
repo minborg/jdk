@@ -28,7 +28,7 @@ package jdk.internal.access;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
-public interface JavaBeansAccess {
+public non-sealed interface JavaBeansAccess extends Access {
     /**
      * Returns the getter method for a property of the given name
      * @param clazz The JavaBeans class

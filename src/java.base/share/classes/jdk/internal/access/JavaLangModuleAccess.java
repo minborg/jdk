@@ -43,7 +43,7 @@ import java.util.Set;
  * Provides access to non-public methods in java.lang.module.
  */
 
-public interface JavaLangModuleAccess {
+public non-sealed interface JavaLangModuleAccess extends Access {
 
     /**
      * Creates a builder for building a module with the given module name.

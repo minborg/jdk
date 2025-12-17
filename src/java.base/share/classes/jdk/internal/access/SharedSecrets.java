@@ -83,7 +83,9 @@ public final class SharedSecrets {
             Map.ofEntries(
                     Map.entry(JavaIOAccess.class, Console.class),
                     Map.entry(JavaLangAccess.class, System.class),
-                    Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl")
+                    Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl"),
+                    Map.entry(JavaBeansAccess.class, ""),
+                    Map.entry(JavaLangModuleAccess.class, ModuleDescriptor.class)
             );
 
     private static final StableComponentContainer<Access> COMPONENTS =
@@ -102,7 +104,7 @@ public final class SharedSecrets {
         Object implementation = IMPLEMENTATIONS.get(clazz);
         switch (implementation) {
             case Class<?> c -> ensureClassInitialized(c);
-            case String s   -> ensureClassInitialized(s);
+            case String s   -> { if (!s.isEmpty()) ensureClassInitialized(s); }
             default         -> throw new InternalError("Should not reach here");
         }
         // The component should now be initialized
@@ -115,10 +117,10 @@ public final class SharedSecrets {
 
     // This field is not necessarily stable
     private static JavaAWTFontAccess javaAWTFontAccess;
-    @Stable private static JavaBeansAccess javaBeansAccess;
+//    @Stable private static JavaBeansAccess javaBeansAccess;
 //    @Stable private static JavaLangAccess javaLangAccess;
 //    @Stable private static JavaLangInvokeAccess javaLangInvokeAccess;
-    @Stable private static JavaLangModuleAccess javaLangModuleAccess;
+//    @Stable private static JavaLangModuleAccess javaLangModuleAccess;
     @Stable private static JavaLangRefAccess javaLangRefAccess;
     @Stable private static JavaLangReflectAccess javaLangReflectAccess;
     //@Stable private static JavaIOAccess javaIOAccess;
@@ -202,19 +204,6 @@ public final class SharedSecrets {
 
     public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
         javaUtilJarAccess = access;
-    }
-
-    public static void setJavaLangModuleAccess(JavaLangModuleAccess jlrma) {
-        javaLangModuleAccess = jlrma;
-    }
-
-    public static JavaLangModuleAccess getJavaLangModuleAccess() {
-        var access = javaLangModuleAccess;
-        if (access == null) {
-            ensureClassInitialized(ModuleDescriptor.class);
-            access = javaLangModuleAccess;
-        }
-        return access;
     }
 
     public static void setJavaLangRefAccess(JavaLangRefAccess jlra) {
@@ -347,14 +336,6 @@ public final class SharedSecrets {
         // this may return null in which case calling code needs to
         // provision for.
         return javaAWTFontAccess;
-    }
-
-    public static JavaBeansAccess getJavaBeansAccess() {
-        return javaBeansAccess;
-    }
-
-    public static void setJavaBeansAccess(JavaBeansAccess access) {
-        javaBeansAccess = access;
     }
 
     public static JavaUtilResourceBundleAccess getJavaUtilResourceBundleAccess() {
