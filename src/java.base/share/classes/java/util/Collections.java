@@ -41,6 +41,8 @@ import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 
@@ -5664,7 +5666,7 @@ public final class Collections {
         @java.io.Serial
         private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
             ois.defaultReadObject();
-            SharedSecrets.getJavaObjectInputStreamAccess().checkArray(ois, Object[].class, n);
+            SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(ois, Object[].class, n);
         }
     }
 

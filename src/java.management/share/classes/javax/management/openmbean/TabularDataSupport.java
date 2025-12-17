@@ -40,6 +40,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 
 
@@ -906,7 +908,7 @@ public class TabularDataSupport
       in.defaultReadObject();
       List<String> tmpNames = tabularType.getIndexNames();
       int size = tmpNames.size();
-      SharedSecrets.getJavaObjectInputStreamAccess().checkArray(in, String[].class, size);
+      SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(in, String[].class, size);
       indexNamesArray = tmpNames.toArray(new String[size]);
     }
 }

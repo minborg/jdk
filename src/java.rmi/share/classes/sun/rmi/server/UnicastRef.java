@@ -39,6 +39,7 @@ import java.rmi.server.RemoteCall;
 import java.rmi.server.RemoteObject;
 import java.rmi.server.RemoteRef;
 
+import jdk.internal.access.JavaObjectInputStreamReadString;
 import jdk.internal.access.SharedSecrets;
 import sun.rmi.runtime.Log;
 import sun.rmi.transport.Connection;
@@ -320,7 +321,7 @@ public class UnicastRef implements RemoteRef {
                 throw new Error("Unrecognized primitive type: " + type);
             }
         } else if (type == String.class && in instanceof ObjectInputStream) {
-            return SharedSecrets.getJavaObjectInputStreamReadString().readString((ObjectInputStream)in);
+            return SharedSecrets.get(JavaObjectInputStreamReadString.class).readString((ObjectInputStream)in);
         } else {
             return in.readObject();
         }

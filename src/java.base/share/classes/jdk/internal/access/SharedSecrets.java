@@ -85,16 +85,18 @@ public final class SharedSecrets {
     // the implementation of said interface resides
     private static final Map<Class<? extends Access>, ? extends Constable> IMPLEMENTATIONS =
             Map.ofEntries(
-                    Map.entry(JavaIOAccess.class                , Console.class),
-                    Map.entry(JavaLangAccess.class              , System.class),
-                    Map.entry(JavaLangInvokeAccess.class        , "java.lang.invoke.MethodHandleImpl"),
-                    Map.entry(JavaBeansAccess.class             , NO_INIT),
-                    Map.entry(JavaLangModuleAccess.class        , ModuleDescriptor.class),
-                    Map.entry(JavaUtilJarAccess.class           , JarFile.class),
-                    Map.entry(JavaLangRefAccess.class           , NO_INIT),
-                    Map.entry(JavaLangReflectAccess.class       , NO_INIT),
-                    Map.entry(JavaIOFileDescriptorAccess.class  , FileDescriptor.class),
-                    Map.entry(JavaIORandomAccessFileAccess.class, RandomAccessFile.class)
+                    Map.entry(JavaIOAccess.class                   , Console.class),
+                    Map.entry(JavaLangAccess.class                 , System.class),
+                    Map.entry(JavaLangInvokeAccess.class           , "java.lang.invoke.MethodHandleImpl"),
+                    Map.entry(JavaBeansAccess.class                , NO_INIT),
+                    Map.entry(JavaLangModuleAccess.class           , ModuleDescriptor.class),
+                    Map.entry(JavaUtilJarAccess.class              , JarFile.class),
+                    Map.entry(JavaLangRefAccess.class              , NO_INIT),
+                    Map.entry(JavaLangReflectAccess.class          , NO_INIT),
+                    Map.entry(JavaIOFileDescriptorAccess.class     , FileDescriptor.class),
+                    Map.entry(JavaIORandomAccessFileAccess.class   , RandomAccessFile.class),
+                    Map.entry(JavaObjectInputStreamReadString.class, ObjectInputStream.class),
+                    Map.entry(JavaObjectInputStreamAccess.class    , ObjectInputStream.class)
             );
 
     private static final StableComponentContainer<Access> COMPONENTS =
@@ -135,8 +137,8 @@ public final class SharedSecrets {
     //@Stable private static JavaIOAccess javaIOAccess;
 //    @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
 //    @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
-    @Stable private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
-    @Stable private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
+//    @Stable private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
+//    @Stable private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
     @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
     @Stable private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
     @Stable private static JavaNetInetAddressAccess javaNetInetAddressAccess;
@@ -314,32 +316,6 @@ public final class SharedSecrets {
 
     public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
         javaUtilResourceBundleAccess = access;
-    }
-
-    public static JavaObjectInputStreamReadString getJavaObjectInputStreamReadString() {
-        var access = javaObjectInputStreamReadString;
-        if (access == null) {
-            ensureClassInitialized(ObjectInputStream.class);
-            access = javaObjectInputStreamReadString;
-        }
-        return access;
-    }
-
-    public static void setJavaObjectInputStreamReadString(JavaObjectInputStreamReadString access) {
-        javaObjectInputStreamReadString = access;
-    }
-
-    public static JavaObjectInputStreamAccess getJavaObjectInputStreamAccess() {
-        var access = javaObjectInputStreamAccess;
-        if (access == null) {
-            ensureClassInitialized(ObjectInputStream.class);
-            access = javaObjectInputStreamAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaObjectInputStreamAccess(JavaObjectInputStreamAccess access) {
-        javaObjectInputStreamAccess = access;
     }
 
     public static JavaObjectInputFilterAccess getJavaObjectInputFilterAccess() {

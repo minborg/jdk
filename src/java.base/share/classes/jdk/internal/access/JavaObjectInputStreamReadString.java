@@ -32,7 +32,7 @@ import java.io.ObjectInputStream;
  * Interface to specify methods for accessing {@code ObjectInputStream}.
  */
 @FunctionalInterface
-public interface JavaObjectInputStreamReadString {
+public non-sealed interface JavaObjectInputStreamReadString extends Access {
     String readString(ObjectInputStream ois) throws IOException;
 }
 
