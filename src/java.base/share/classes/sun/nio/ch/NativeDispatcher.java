@@ -36,7 +36,7 @@ import jdk.internal.access.SharedSecrets;
  */
 
 abstract class NativeDispatcher {
-    private static final JavaIOFileDescriptorAccess JIOFDA = SharedSecrets.getJavaIOFileDescriptorAccess();
+    private static final JavaIOFileDescriptorAccess JIOFDA = SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     abstract int read(FileDescriptor fd, long address, int len)
         throws IOException;

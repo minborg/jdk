@@ -33,7 +33,7 @@ import jdk.internal.ref.PhantomCleanable;
  * @author Chris Hegarty
  */
 
-public interface JavaIOFileDescriptorAccess {
+public non-sealed interface JavaIOFileDescriptorAccess extends Access {
     public void set(FileDescriptor fdo, int fd);
     public int get(FileDescriptor fdo);
     public void setAppend(FileDescriptor fdo, boolean append);

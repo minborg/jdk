@@ -29,7 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-public interface JavaIORandomAccessFileAccess {
+public non-sealed interface JavaIORandomAccessFileAccess extends Access {
     public RandomAccessFile openAndDelete(File file, String mode)
         throws IOException;
 }

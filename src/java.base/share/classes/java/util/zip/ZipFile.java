@@ -44,6 +44,8 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.JavaUtilZipFileAccess;
 import jdk.internal.access.JavaUtilJarAccess;
 import jdk.internal.access.SharedSecrets;
@@ -1541,7 +1543,7 @@ public class ZipFile implements ZipConstants, Closeable {
             this.key = key;
             if (toDelete) {
                 if (OperatingSystem.isWindows()) {
-                    this.zfile = SharedSecrets.getJavaIORandomAccessFileAccess()
+                    this.zfile = SharedSecrets.get(JavaIORandomAccessFileAccess.class)
                                               .openAndDelete(key.file, "r");
                 } else {
                     this.zfile = new RandomAccessFile(key.file, "r");

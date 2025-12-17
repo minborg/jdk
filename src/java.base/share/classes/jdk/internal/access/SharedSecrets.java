@@ -85,14 +85,16 @@ public final class SharedSecrets {
     // the implementation of said interface resides
     private static final Map<Class<? extends Access>, ? extends Constable> IMPLEMENTATIONS =
             Map.ofEntries(
-                    Map.entry(JavaIOAccess.class, Console.class),
-                    Map.entry(JavaLangAccess.class, System.class),
-                    Map.entry(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl"),
-                    Map.entry(JavaBeansAccess.class, NO_INIT),
-                    Map.entry(JavaLangModuleAccess.class, ModuleDescriptor.class),
-                    Map.entry(JavaUtilJarAccess.class, JarFile.class),
-                    Map.entry(JavaLangRefAccess.class,  NO_INIT),
-                    Map.entry(JavaLangReflectAccess.class, NO_INIT)
+                    Map.entry(JavaIOAccess.class                , Console.class),
+                    Map.entry(JavaLangAccess.class              , System.class),
+                    Map.entry(JavaLangInvokeAccess.class        , "java.lang.invoke.MethodHandleImpl"),
+                    Map.entry(JavaBeansAccess.class             , NO_INIT),
+                    Map.entry(JavaLangModuleAccess.class        , ModuleDescriptor.class),
+                    Map.entry(JavaUtilJarAccess.class           , JarFile.class),
+                    Map.entry(JavaLangRefAccess.class           , NO_INIT),
+                    Map.entry(JavaLangReflectAccess.class       , NO_INIT),
+                    Map.entry(JavaIOFileDescriptorAccess.class  , FileDescriptor.class),
+                    Map.entry(JavaIORandomAccessFileAccess.class, RandomAccessFile.class)
             );
 
     private static final StableComponentContainer<Access> COMPONENTS =
@@ -131,8 +133,8 @@ public final class SharedSecrets {
 //    @Stable private static JavaLangRefAccess javaLangRefAccess;
 //    @Stable private static JavaLangReflectAccess javaLangReflectAccess;
     //@Stable private static JavaIOAccess javaIOAccess;
-    @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
-    @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
+//    @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
+//    @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
     @Stable private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
     @Stable private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
     @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
@@ -265,19 +267,6 @@ public final class SharedSecrets {
         return access;
     }
 
-    public static void setJavaIOFileDescriptorAccess(JavaIOFileDescriptorAccess jiofda) {
-        javaIOFileDescriptorAccess = jiofda;
-    }
-
-    public static JavaIOFileDescriptorAccess getJavaIOFileDescriptorAccess() {
-        var access = javaIOFileDescriptorAccess;
-        if (access == null) {
-            ensureClassInitialized(FileDescriptor.class);
-            access = javaIOFileDescriptorAccess;
-        }
-        return access;
-    }
-
     public static void setJavaSecurityPropertiesAccess(JavaSecurityPropertiesAccess jspa) {
         javaSecurityPropertiesAccess = jspa;
     }
@@ -379,19 +368,6 @@ public final class SharedSecrets {
 
     public static void setJavaObjectStreamReflectionAccess(JavaObjectStreamReflectionAccess access) {
         javaObjectStreamReflectionAccess = access;
-    }
-
-    public static void setJavaIORandomAccessFileAccess(JavaIORandomAccessFileAccess jirafa) {
-        javaIORandomAccessFileAccess = jirafa;
-    }
-
-    public static JavaIORandomAccessFileAccess getJavaIORandomAccessFileAccess() {
-        var access = javaIORandomAccessFileAccess;
-        if (access == null) {
-            ensureClassInitialized(RandomAccessFile.class);
-            access = javaIORandomAccessFileAccess;
-        }
-        return access;
     }
 
     public static void setJavaSecuritySignatureAccess(JavaSecuritySignatureAccess jssa) {
