@@ -28,7 +28,7 @@ package jdk.internal.access;
 import java.net.HttpCookie;
 import java.util.List;
 
-public interface JavaNetHttpCookieAccess {
+public non-sealed interface JavaNetHttpCookieAccess extends Access {
     /*
      * Constructs cookies from Set-Cookie or Set-Cookie2 header string,
      * retaining the original header String in the cookie itself.

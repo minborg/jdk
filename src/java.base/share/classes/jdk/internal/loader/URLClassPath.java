@@ -468,7 +468,7 @@ public class URLClassPath {
     }
 
     private static final JavaNetURLAccess JNUA
-            = SharedSecrets.getJavaNetURLAccess();
+            = SharedSecrets.get(JavaNetURLAccess.class);
 
     private static boolean isDefaultJarHandler(URL u) {
         URLStreamHandler h = JNUA.getHandler(u);

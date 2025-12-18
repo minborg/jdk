@@ -27,6 +27,6 @@ package jdk.internal.access;
 import java.net.URL;
 import java.net.URLStreamHandler;
 
-public interface JavaNetURLAccess {
+public non-sealed interface JavaNetURLAccess extends Access {
     URLStreamHandler getHandler(URL u);
 }

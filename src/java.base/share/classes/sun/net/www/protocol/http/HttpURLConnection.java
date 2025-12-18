@@ -2847,7 +2847,7 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
                 return value;
 
             JavaNetHttpCookieAccess access =
-                    SharedSecrets.getJavaNetHttpCookieAccess();
+                    SharedSecrets.get(JavaNetHttpCookieAccess.class);
             StringJoiner retValue = new StringJoiner(",");  // RFC 2965, comma separated
             List<HttpCookie> cookies = access.parse(value);
             for (HttpCookie cookie : cookies) {

@@ -36,6 +36,10 @@ import java.io.ObjectInputFilter;
 import java.lang.constant.Constable;
 import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
+import java.net.HttpCookie;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URL;
 import java.nio.Buffer;
 import java.security.Security;
 import java.security.spec.EncodedKeySpec;
@@ -97,12 +101,12 @@ public class SharedSecrets {
     @Stable private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
     @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
     @Stable private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
+
+/*
     @Stable private static JavaNetInetAddressAccess javaNetInetAddressAccess;
     @Stable private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
     @Stable private static JavaNetUriAccess javaNetUriAccess;
     @Stable private static JavaNetURLAccess javaNetURLAccess;
-
-/*
     @Stable private static JavaNioAccess javaNioAccess;
     @Stable private static JavaUtilCollectionAccess javaUtilCollectionAccess;
     @Stable private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
@@ -129,6 +133,10 @@ public class SharedSecrets {
     private static Map<Class<? extends Access>, Constable> implementations() {
         final Map<Class<? extends Access>, Constable> map = new HashMap<>();
 
+        map.put(JavaNetHttpCookieAccess.class, HttpCookie.class);
+        map.put(JavaNetInetAddressAccess.class, InetAddress.class);
+        map.put(JavaNetURLAccess.class, URL.class);
+        map.put(JavaNetUriAccess.class, URI.class);
         map.put(JavaNioAccess.class, Buffer.class);
         map.put(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$Access");
         map.put(JavaUtilConcurrentFJPAccess.class, ForkJoinPool.class);
@@ -227,58 +235,6 @@ public class SharedSecrets {
 
     public static JavaLangReflectAccess getJavaLangReflectAccess() {
         return javaLangReflectAccess;
-    }
-
-    public static void setJavaNetUriAccess(JavaNetUriAccess jnua) {
-        javaNetUriAccess = jnua;
-    }
-
-    public static JavaNetUriAccess getJavaNetUriAccess() {
-        var access = javaNetUriAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.URI.class);
-            access = javaNetUriAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetURLAccess(JavaNetURLAccess jnua) {
-        javaNetURLAccess = jnua;
-    }
-
-    public static JavaNetURLAccess getJavaNetURLAccess() {
-        var access = javaNetURLAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.URL.class);
-            access = javaNetURLAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetInetAddressAccess(JavaNetInetAddressAccess jna) {
-        javaNetInetAddressAccess = jna;
-    }
-
-    public static JavaNetInetAddressAccess getJavaNetInetAddressAccess() {
-        var access = javaNetInetAddressAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.InetAddress.class);
-            access = javaNetInetAddressAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNetHttpCookieAccess(JavaNetHttpCookieAccess a) {
-        javaNetHttpCookieAccess = a;
-    }
-
-    public static JavaNetHttpCookieAccess getJavaNetHttpCookieAccess() {
-        var access = javaNetHttpCookieAccess;
-        if (access == null) {
-            ensureClassInitialized(java.net.HttpCookie.class);
-            access = javaNetHttpCookieAccess;
-        }
-        return access;
     }
 
     public static void setJavaIOAccess(JavaIOAccess jia) {
