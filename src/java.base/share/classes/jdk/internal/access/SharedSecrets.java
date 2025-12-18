@@ -97,12 +97,12 @@ public class SharedSecrets {
     @Stable private static JavaIOAccess javaIOAccess;
     @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
     @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
+
+/*
     @Stable private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
     @Stable private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
     @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
     @Stable private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
-
-/*
     @Stable private static JavaNetInetAddressAccess javaNetInetAddressAccess;
     @Stable private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
     @Stable private static JavaNetUriAccess javaNetUriAccess;
@@ -133,6 +133,10 @@ public class SharedSecrets {
     private static Map<Class<? extends Access>, Constable> implementations() {
         final Map<Class<? extends Access>, Constable> map = new HashMap<>();
 
+        map.put(JavaObjectInputStreamReadString.class, ObjectInputStream.class);
+        map.put(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access");
+        map.put(JavaObjectInputFilterAccess.class, ObjectInputFilter.Config.class);
+        map.put(JavaObjectInputStreamAccess.class, ObjectInputStream.class);
         map.put(JavaNetHttpCookieAccess.class, HttpCookie.class);
         map.put(JavaNetInetAddressAccess.class, InetAddress.class);
         map.put(JavaNetURLAccess.class, URL.class);
@@ -279,60 +283,6 @@ public class SharedSecrets {
 
     public static void setJavaBeansAccess(JavaBeansAccess access) {
         javaBeansAccess = access;
-    }
-
-    public static JavaObjectInputStreamReadString getJavaObjectInputStreamReadString() {
-        var access = javaObjectInputStreamReadString;
-        if (access == null) {
-            ensureClassInitialized(ObjectInputStream.class);
-            access = javaObjectInputStreamReadString;
-        }
-        return access;
-    }
-
-    public static void setJavaObjectInputStreamReadString(JavaObjectInputStreamReadString access) {
-        javaObjectInputStreamReadString = access;
-    }
-
-    public static JavaObjectInputStreamAccess getJavaObjectInputStreamAccess() {
-        var access = javaObjectInputStreamAccess;
-        if (access == null) {
-            ensureClassInitialized(ObjectInputStream.class);
-            access = javaObjectInputStreamAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaObjectInputStreamAccess(JavaObjectInputStreamAccess access) {
-        javaObjectInputStreamAccess = access;
-    }
-
-    public static JavaObjectInputFilterAccess getJavaObjectInputFilterAccess() {
-        var access = javaObjectInputFilterAccess;
-        if (access == null) {
-            ensureClassInitialized(ObjectInputFilter.Config.class);
-            access = javaObjectInputFilterAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaObjectInputFilterAccess(JavaObjectInputFilterAccess access) {
-        javaObjectInputFilterAccess = access;
-    }
-
-    public static JavaObjectStreamReflectionAccess getJavaObjectStreamReflectionAccess() {
-        var access = javaObjectStreamReflectionAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.io.ObjectStreamReflection$Access", true, null);
-                access = javaObjectStreamReflectionAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-    public static void setJavaObjectStreamReflectionAccess(JavaObjectStreamReflectionAccess access) {
-        javaObjectStreamReflectionAccess = access;
     }
 
     public static void setJavaIORandomAccessFileAccess(JavaIORandomAccessFileAccess jirafa) {

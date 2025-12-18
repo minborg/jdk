@@ -27,7 +27,7 @@ package jdk.internal.access;
 
 import java.lang.invoke.MethodHandle;
 
-public interface JavaObjectStreamReflectionAccess {
+public non-sealed interface JavaObjectStreamReflectionAccess extends Access {
     MethodHandle defaultReadObject(Class<?> clazz);
     MethodHandle defaultWriteObject(Class<?> clazz);
 }

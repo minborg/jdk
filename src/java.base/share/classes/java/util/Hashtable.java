@@ -29,6 +29,8 @@ import java.io.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.BiFunction;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.ArraysSupport;
 
@@ -1298,7 +1300,7 @@ public class Hashtable<K,V>
 
         // Check Map.Entry[].class since it's the nearest public type to
         // what we're actually creating.
-        SharedSecrets.getJavaObjectInputStreamAccess().checkArray(s, Map.Entry[].class, length);
+        SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(s, Map.Entry[].class, length);
         Hashtable.UnsafeHolder.putLoadFactor(this, lf);
         table = new Entry<?,?>[length];
         threshold = (int)Math.min(length * lf, MAX_ARRAY_SIZE + 1);

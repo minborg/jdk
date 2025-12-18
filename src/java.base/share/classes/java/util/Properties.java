@@ -46,6 +46,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.util.StaticProperty;
 import sun.nio.cs.ISO_8859_1;
 import sun.nio.cs.UTF_8;
@@ -1584,7 +1585,7 @@ public class Properties extends Hashtable<Object,Object> {
         // (CHM uses the same power-of-two computation as HashMap, and HashMap.tableSizeFor is
         // accessible here.) Check Map.Entry[].class since it's the nearest public type to
         // what is actually created.
-        SharedSecrets.getJavaObjectInputStreamAccess()
+        SharedSecrets.get(JavaObjectInputStreamAccess.class)
                      .checkArray(s, Map.Entry[].class, HashMap.tableSizeFor((int)(elements / 0.75)));
 
         // create CHM of appropriate capacity

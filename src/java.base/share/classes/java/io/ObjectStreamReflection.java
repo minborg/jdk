@@ -149,7 +149,7 @@ final class ObjectStreamReflection {
 
     static final class Access implements JavaObjectStreamReflectionAccess {
         static {
-            SharedSecrets.setJavaObjectStreamReflectionAccess(new Access());
+            SharedSecrets.set(JavaObjectStreamReflectionAccess.class, new Access());
         }
 
         public MethodHandle defaultReadObject(Class<?> clazz) {

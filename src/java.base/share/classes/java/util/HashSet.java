@@ -26,6 +26,8 @@
 package java.util;
 
 import java.io.InvalidObjectException;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -340,7 +342,7 @@ public class HashSet<E>
         // added, so check it before construction. Call HashMap.tableSizeFor to compute the
         // actual allocation size. Check Map.Entry[].class since it's the nearest public type to
         // what is actually created.
-        SharedSecrets.getJavaObjectInputStreamAccess()
+        SharedSecrets.get(JavaObjectInputStreamAccess.class)
                      .checkArray(s, Map.Entry[].class, HashMap.tableSizeFor(capacity));
 
         // Create backing HashMap

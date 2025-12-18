@@ -27,6 +27,8 @@ package java.util;
 
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.ArraysSupport;
 
@@ -789,7 +791,7 @@ public class PriorityQueue<E> extends AbstractQueue<E>
         // Read in (and discard) array length
         s.readInt();
 
-        SharedSecrets.getJavaObjectInputStreamAccess().checkArray(s, Object[].class, size);
+        SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(s, Object[].class, size);
         final Object[] es = queue = new Object[Math.max(size, 1)];
 
         // Read in all elements.

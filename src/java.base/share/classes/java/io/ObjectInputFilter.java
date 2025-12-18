@@ -25,6 +25,7 @@
 
 package java.io;
 
+import jdk.internal.access.JavaObjectInputFilterAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.StaticProperty;
 
@@ -687,7 +688,7 @@ public interface ObjectInputFilter {
             }
             invalidFactoryMessage = factoryMessage;
             // Setup shared secrets for RegistryImpl to use.
-            SharedSecrets.setJavaObjectInputFilterAccess(Config::createFilter2);
+            SharedSecrets.set(JavaObjectInputFilterAccess.class, Config::createFilter2);
         }
 
         /**

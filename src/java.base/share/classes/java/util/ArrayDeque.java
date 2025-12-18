@@ -37,6 +37,8 @@ package java.util;
 import java.io.Serializable;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.ArraysSupport;
 
@@ -1199,7 +1201,7 @@ public class ArrayDeque<E> extends AbstractCollection<E>
 
         // Read in size and allocate array
         int size = s.readInt();
-        SharedSecrets.getJavaObjectInputStreamAccess().checkArray(s, Object[].class, size + 1);
+        SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(s, Object[].class, size + 1);
         elements = new Object[size + 1];
         this.tail = size;
 

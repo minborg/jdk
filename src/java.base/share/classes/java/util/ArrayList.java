@@ -28,6 +28,8 @@ package java.util;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.ArraysSupport;
 
@@ -982,7 +984,7 @@ public class ArrayList<E> extends AbstractList<E>
 
         if (size > 0) {
             // like clone(), allocate array based upon size not capacity
-            SharedSecrets.getJavaObjectInputStreamAccess().checkArray(s, Object[].class, size);
+            SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(s, Object[].class, size);
             Object[] elements = new Object[size];
 
             // Read in all elements in the proper order.

@@ -32,7 +32,7 @@ import java.io.ObjectInputStream;
  * Interface to specify methods for accessing {@code ObjectInputStream}.
  */
 @FunctionalInterface
-public interface JavaObjectInputStreamAccess {
+public non-sealed interface JavaObjectInputStreamAccess extends Access {
     void checkArray(ObjectInputStream ois, Class<?> arrayType, int arrayLength)
         throws ObjectStreamException;
 }

@@ -52,6 +52,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.util.ArraysSupport;
@@ -921,7 +923,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         try {
             s.defaultReadObject();
             int sz = q.size();
-            SharedSecrets.getJavaObjectInputStreamAccess().checkArray(s, Object[].class, sz);
+            SharedSecrets.get(JavaObjectInputStreamAccess.class).checkArray(s, Object[].class, sz);
             this.queue = new Object[Math.max(1, sz)];
             comparator = q.comparator();
             addAll(q);
