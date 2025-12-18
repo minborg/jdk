@@ -26,15 +26,19 @@
 package jdk.internal.access;
 
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
+import jdk.internal.vm.annotation.DontInline;
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import javax.crypto.SealedObject;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ObjectInputFilter;
+import java.lang.constant.Constable;
 import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
 import java.security.Security;
 import java.security.spec.EncodedKeySpec;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ForkJoinPool;
 import java.util.jar.JarFile;
@@ -107,6 +111,46 @@ public class SharedSecrets {
     @Stable private static JavaxCryptoSpecAccess javaxCryptoSpecAccess;
     @Stable private static JavaxSecurityAccess javaxSecurityAccess;
 
+    // Sentinel value signaling that no explicit class initialization shall be performed
+    private static final String NO_INIT = "";
+
+    // This map is used to associate a certain Access interface to another class where
+    // the implementation of said interface resides
+    private static final Map<Class<? extends Access>, ? extends Constable> IMPLEMENTATIONS =
+            // Todo: Consider using a HashMap so that ImmutableCollections is not touched.
+            Map.ofEntries(
+                    Map.entry(JavaxSecurityAccess.class, X500Principal.class)
+            );
+
+    private static final StableComponentContainer<Access> COMPONENTS =
+            StableComponentContainer.of(IMPLEMENTATIONS.keySet());
+
+    @ForceInline
+    public static <T extends Access> T get(Class<T> clazz) {
+        final T component = COMPONENTS.orElse(clazz, null);
+        return component == null
+                ? getSlowPath(clazz)
+                : component;
+    }
+
+    @DontInline
+    private static <T extends Access> T getSlowPath(Class<T> clazz) {
+        final Constable implementation = IMPLEMENTATIONS.get(clazz);
+        switch (implementation) {
+            case Class<?> c -> ensureClassInitialized(c);
+            case String s -> {
+                if (!s.equals(NO_INIT)) ensureClassInitialized(s);
+            }
+            default -> throw new InternalError("Should not reach here");
+        }
+        // The component should now be initialized
+        return COMPONENTS.get(clazz);
+    }
+
+    public static <T extends Access> void set(Class<T> type, T access) {
+        COMPONENTS.set(type, access);
+    }
+
     public static void setJavaUtilCollectionAccess(JavaUtilCollectionAccess juca) {
         javaUtilCollectionAccess = juca;
     }
@@ -121,6 +165,7 @@ public class SharedSecrets {
         }
         return access;
     }
+
 
     public static void setJavaUtilConcurrentTLRAccess(JavaUtilConcurrentTLRAccess access) {
         javaUtilConcurrentTLRAccess = access;
@@ -486,22 +531,16 @@ public class SharedSecrets {
         return access;
     }
 
-    public static void setJavaxSecurityAccess(JavaxSecurityAccess jsa) {
-        javaxSecurityAccess = jsa;
-    }
-
-    public static JavaxSecurityAccess getJavaxSecurityAccess() {
-        var access = javaxSecurityAccess;
-        if (access == null) {
-            ensureClassInitialized(X500Principal.class);
-            access = javaxSecurityAccess;
-        }
-        return access;
-    }
-
     private static void ensureClassInitialized(Class<?> c) {
         try {
             MethodHandles.lookup().ensureInitialized(c);
-        } catch (IllegalAccessException e) {}
+        } catch (IllegalAccessException _) {}
     }
+
+    private static void ensureClassInitialized(String className) {
+        try {
+            Class.forName(className, true, null);
+        } catch (ClassNotFoundException _) {}
+    }
+
 }

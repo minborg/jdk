@@ -30,6 +30,7 @@ import java.security.Principal;
 import java.util.*;
 import javax.security.auth.x500.X500Principal;
 
+import jdk.internal.access.JavaxSecurityAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.util.*;
 
@@ -1275,7 +1276,7 @@ public class X500Name implements GeneralNameInterface, Principal {
     public X500Principal asX500Principal() {
         if (x500Principal == null) {
             x500Principal =
-                SharedSecrets.getJavaxSecurityAccess().asX500Principal(this);
+                SharedSecrets.get(JavaxSecurityAccess.class).asX500Principal(this);
         }
         return x500Principal;
     }
@@ -1284,7 +1285,7 @@ public class X500Name implements GeneralNameInterface, Principal {
      * Get the X500Name contained in the given X500Principal.
      */
     public static X500Name asX500Name(X500Principal p) {
-        return SharedSecrets.getJavaxSecurityAccess().asX500Name(p);
+        return SharedSecrets.get(JavaxSecurityAccess.class).asX500Name(p);
     }
 
 }
