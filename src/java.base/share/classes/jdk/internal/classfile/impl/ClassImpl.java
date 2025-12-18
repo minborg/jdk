@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 
 public final class ClassImpl
@@ -119,7 +120,7 @@ public final class ClassImpl
                 arr[i] = reader.readEntry(pos, ClassEntry.class);
                 pos += 2;
             }
-            this.interfaces = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
+            this.interfaces = SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(arr);
         }
         return interfaces;
     }

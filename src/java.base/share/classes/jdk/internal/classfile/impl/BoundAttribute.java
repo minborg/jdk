@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 
 import static java.lang.classfile.Attributes.*;
@@ -122,7 +123,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         for (int i = 0; p < end; i++, p += 2) {
             entries[i] = classReader.readEntry(p, type);
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(entries);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(entries);
     }
 
     public static List<Attribute<?>> readAttributes(AttributedElement enclosing, ClassReader reader, int pos,

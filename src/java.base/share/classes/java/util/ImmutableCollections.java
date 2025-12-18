@@ -122,7 +122,7 @@ class ImmutableCollections {
 
     static class Access {
         static {
-            SharedSecrets.setJavaUtilCollectionAccess(new JavaUtilCollectionAccess() {
+            SharedSecrets.set(JavaUtilCollectionAccess.class, new JavaUtilCollectionAccess() {
                 public <E> List<E> listFromTrustedArray(Object[] array) {
                     return ImmutableCollections.listFromTrustedArray(array);
                 }

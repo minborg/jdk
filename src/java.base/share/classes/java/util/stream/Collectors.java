@@ -56,6 +56,7 @@ import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 
@@ -264,7 +265,7 @@ public final class Collectors {
                                    (left, right) -> { left.addAll(right); return left; },
                                    list -> {
                                        if (list.getClass() == ArrayList.class) { // ensure it's trusted
-                                           return SharedSecrets.getJavaUtilCollectionAccess()
+                                           return SharedSecrets.get(JavaUtilCollectionAccess.class)
                                                                .listFromTrustedArray(list.toArray());
                                        } else {
                                            throw new IllegalArgumentException();

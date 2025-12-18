@@ -48,6 +48,8 @@ import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
+
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -660,7 +662,7 @@ abstract class ReferencePipeline<P_IN, P_OUT>
 
     @Override
     public List<P_OUT> toList() {
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArrayNullsAllowed(this.toArray());
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArrayNullsAllowed(this.toArray());
     }
 
     @Override

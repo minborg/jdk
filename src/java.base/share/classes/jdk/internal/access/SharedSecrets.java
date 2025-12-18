@@ -38,6 +38,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
 import java.security.Security;
 import java.security.spec.EncodedKeySpec;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ForkJoinPool;
@@ -99,8 +101,9 @@ public class SharedSecrets {
     @Stable private static JavaNetUriAccess javaNetUriAccess;
     @Stable private static JavaNetURLAccess javaNetURLAccess;
     @Stable private static JavaNioAccess javaNioAccess;
-    @Stable private static JavaUtilCollectionAccess javaUtilCollectionAccess;
+
 /*
+    @Stable private static JavaUtilCollectionAccess javaUtilCollectionAccess;
     @Stable private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
     @Stable private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
     @Stable private static JavaUtilJarAccess javaUtilJarAccess;
@@ -118,21 +121,28 @@ public class SharedSecrets {
 
     // This map is used to associate a certain Access interface to another class where
     // the implementation of said interface resides
-    private static final Map<Class<? extends Access>, ? extends Constable> IMPLEMENTATIONS =
-            // Todo: Consider using a HashMap so that ImmutableCollections is not touched.
-            Map.ofEntries(
-                    Map.entry(JavaUtilConcurrentFJPAccess.class, ForkJoinPool.class),
-                    Map.entry(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access"),
-                    Map.entry(JavaUtilResourceBundleAccess.class, ResourceBundle.class),
-                    Map.entry(JavaUtilZipFileAccess.class, ZipFile.class),
-                    Map.entry(JavaUtilJarAccess.class, JarFile.class),
-                    Map.entry(JavaxSecurityAccess.class, X500Principal.class),
-                    Map.entry(JavaxCryptoSealedObjectAccess.class, SealedObject.class),
-                    Map.entry(JavaxCryptoSpecAccess.class, SecretKeySpec.class),
-                    Map.entry(JavaSecuritySpecAccess.class, EncodedKeySpec.class),
-                    Map.entry(JavaSecuritySignatureAccess.class, Signature.class),
-                    Map.entry(JavaSecurityPropertiesAccess.class, Security.class)
-            );
+    private static final Map<Class<? extends Access>, Constable> IMPLEMENTATIONS = implementations();
+
+    // In order to avoid creating a circular dependency graph, we refrain from using
+    // ImmutableCollections. Here, this means we have to resort to mutating a map.
+    private static Map<Class<? extends Access>, Constable> implementations() {
+        final Map<Class<? extends Access>, Constable> map = new HashMap<>();
+
+        map.put(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$Access");
+        map.put(JavaUtilConcurrentFJPAccess.class, ForkJoinPool.class);
+        map.put(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access");
+        map.put(JavaUtilResourceBundleAccess.class, ResourceBundle.class);
+        map.put(JavaUtilZipFileAccess.class, ZipFile.class);
+        map.put(JavaUtilJarAccess.class, JarFile.class);
+        map.put(JavaxSecurityAccess.class, X500Principal.class);
+        map.put(JavaxCryptoSealedObjectAccess.class, SealedObject.class);
+        map.put(JavaxCryptoSpecAccess.class, SecretKeySpec.class);
+        map.put(JavaSecuritySpecAccess.class, EncodedKeySpec.class);
+        map.put(JavaSecuritySignatureAccess.class, Signature.class);
+        map.put(JavaSecurityPropertiesAccess.class, Security.class);
+
+        return Collections.unmodifiableMap(map);
+    }
 
     private static final StableComponentContainer<Access> COMPONENTS =
             StableComponentContainer.of(IMPLEMENTATIONS.keySet());
@@ -148,12 +158,14 @@ public class SharedSecrets {
     @DontInline
     private static <T extends Access> T getSlowPath(Class<T> clazz) {
         final Constable implementation = IMPLEMENTATIONS.get(clazz);
-        switch (implementation) {
-            case Class<?> c -> ensureClassInitialized(c);
-            case String s -> {
-                if (!s.equals(NO_INIT)) ensureClassInitialized(s);
-            }
-            default -> throw new InternalError("Should not reach here");
+        // We can't use pattern matching here as that would trigger
+        // classfile initialization
+        if (implementation instanceof Class<?> c) {
+            ensureClassInitialized(c);
+        } else if (implementation instanceof String s && !s.isEmpty()) {
+            ensureClassInitialized(s);
+        } else {
+            throw new InternalError("Should not reach here: " + implementation);
         }
         // The component should now be initialized
         return COMPONENTS.get(clazz);
@@ -161,21 +173,6 @@ public class SharedSecrets {
 
     public static <T extends Access> void set(Class<T> type, T access) {
         COMPONENTS.set(type, access);
-    }
-
-    public static void setJavaUtilCollectionAccess(JavaUtilCollectionAccess juca) {
-        javaUtilCollectionAccess = juca;
-    }
-
-    public static JavaUtilCollectionAccess getJavaUtilCollectionAccess() {
-        var access = javaUtilCollectionAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.util.ImmutableCollections$Access", true, null);
-                access = javaUtilCollectionAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
     }
 
     public static void setJavaLangAccess(JavaLangAccess jla) {

@@ -26,6 +26,8 @@ package jdk.internal.classfile.impl;
 
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.CodeAttribute;
+
+import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.classfile.components.ClassPrinter;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.ModuleEntry;
@@ -170,7 +172,7 @@ public final class Util {
             array[i] = sanitizeU2List((List<?>) array[i]);
         }
 
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(array);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(array);
     }
 
     public static<T, U> List<U> mappedList(List<? extends T> list, Function<T, U> mapper) {
@@ -192,7 +194,7 @@ public final class Util {
         for (int i = 0; i < result.length; i++) {
             result[i] = TemporaryConstantPool.INSTANCE.classEntry(list.get(i));
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(result);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(result);
     }
 
     public static List<ModuleEntry> moduleEntryList(List<? extends ModuleDesc> list) {
@@ -200,7 +202,7 @@ public final class Util {
         for (int i = 0; i < result.length; i++) {
             result[i] = TemporaryConstantPool.INSTANCE.moduleEntry(TemporaryConstantPool.INSTANCE.utf8Entry(list.get(i).name()));
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(result);
+        return SharedSecrets.get(JavaUtilCollectionAccess.class).listFromTrustedArray(result);
     }
 
     public static void checkKind(Opcode op, Opcode.Kind k) {

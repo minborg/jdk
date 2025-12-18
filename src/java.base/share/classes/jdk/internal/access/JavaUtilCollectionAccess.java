@@ -27,7 +27,7 @@ package jdk.internal.access;
 
 import java.util.List;
 
-public interface JavaUtilCollectionAccess {
+public non-sealed interface JavaUtilCollectionAccess extends Access {
     <E> List<E> listFromTrustedArray(Object[] array);
     <E> List<E> listFromTrustedArrayNullsAllowed(Object[] array);
 }
