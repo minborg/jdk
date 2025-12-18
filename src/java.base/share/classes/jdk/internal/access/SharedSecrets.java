@@ -51,7 +51,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.jar.JarFile;
 import java.io.Console;
 import java.io.FileDescriptor;
-import java.io.FilePermission;
 import java.io.ObjectInputStream;
 import java.io.RandomAccessFile;
 import java.security.Signature;
@@ -90,17 +89,18 @@ public final class SharedSecrets {
 
     // This field is not necessarily stable
     private static JavaAWTFontAccess javaAWTFontAccess;
-    @Stable private static JavaBeansAccess javaBeansAccess;
-    @Stable private static JavaLangAccess javaLangAccess;
+
+    @Stable private static JavaLangAccess javaLangAccess; // Try later
     @Stable private static JavaLangInvokeAccess javaLangInvokeAccess;
     @Stable private static JavaLangModuleAccess javaLangModuleAccess;
 /*
+    @Stable private static JavaBeansAccess javaBeansAccess;
+
     @Stable private static JavaLangRefAccess javaLangRefAccess;
     @Stable private static JavaLangReflectAccess javaLangReflectAccess;
     @Stable private static JavaIOAccess javaIOAccess;
     @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
     @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
-
     @Stable private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
     @Stable private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
     @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
@@ -135,6 +135,7 @@ public final class SharedSecrets {
     private static Map<Class<? extends Access>, Constable> implementations() {
         final Map<Class<? extends Access>, Constable> map = new HashMap<>();
 
+        map.put(JavaBeansAccess.class, NO_INIT);
         map.put(JavaLangRefAccess.class, NO_INIT);
         map.put(JavaLangReflectAccess.class, NO_INIT);
         map.put(JavaIORandomAccessFileAccess.class, RandomAccessFile.class);
@@ -240,14 +241,6 @@ public final class SharedSecrets {
         // this may return null in which case calling code needs to
         // provision for.
         return javaAWTFontAccess;
-    }
-
-    public static JavaBeansAccess getJavaBeansAccess() {
-        return javaBeansAccess;
-    }
-
-    public static void setJavaBeansAccess(JavaBeansAccess access) {
-        javaBeansAccess = access;
     }
 
     private static void ensureClassInitialized(Class<?> c) {
