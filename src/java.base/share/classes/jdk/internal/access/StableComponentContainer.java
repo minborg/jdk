@@ -125,4 +125,21 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
         return StableComponentContainerImpl.of(inputs);
     }
 
+    /**
+     * {@return a new stable component container that can associate any of the permitted
+     *          subclasses of the provided {@code type} to components}
+     *
+     * @param type sealed type who's permitted subclasses can be used to associate
+     *             components
+     * @param <T>  the common type of the components. The type can be {@linkplain Object}
+     *             if there is no common super type for the components.
+     */
+    static <T> StableComponentContainer<T> of(Class<T> type) {
+        // Implicit null check
+        if (!type.isSealed()) {
+            throw new IllegalArgumentException("The provided type must be sealed: " + type);
+        }
+        throw new UnsupportedOperationException();
+    }
+
 }

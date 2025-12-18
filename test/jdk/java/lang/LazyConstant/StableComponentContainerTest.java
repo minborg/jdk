@@ -48,15 +48,30 @@ final class StableComponentContainerTest {
             Float.class,
             Double.class);
 
+    sealed interface Component {
+        sealed interface Foo extends Component {
+            final class FooImp implements Foo {}
+        }
+
+        sealed interface Bar extends Component {
+            final class BarImp implements Bar {}
+        }
+    }
+
     @Test
     void factoryInvariants() {
-        assertThrows(NullPointerException.class, () -> StableComponentContainer.of(null));
+        assertThrows(NullPointerException.class, () -> StableComponentContainer.of((Set<Class<?>>) null));
         Set<Class<? extends Number>> setWithNull = new HashSet<>();
         setWithNull.add(Byte.class);
         setWithNull.add(Short.class);
         setWithNull.add(null);
         setWithNull.add(Integer.class);
         assertThrows(NullPointerException.class, () -> StableComponentContainer.of(setWithNull));
+
+        assertThrows(NullPointerException.class, () -> StableComponentContainer.of((Class<?>) null));
+        // Integer is not a sealed class
+        var x = assertThrows(IllegalArgumentException.class, () -> StableComponentContainer.of(Integer.class));
+        assertEquals("The provided type must be sealed: " + Integer.class, x.getMessage());
     }
 
     @Test

@@ -45,6 +45,8 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.security.auth.DestroyFailedException;
 import javax.security.auth.x500.X500Principal;
 
+import jdk.internal.access.JavaSecuritySpecAccess;
+import jdk.internal.access.JavaxCryptoSpecAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.pkcs.ContentInfo;
 import sun.security.pkcs.EncryptedPrivateKeyInfo;
@@ -383,7 +385,7 @@ public final class PKCS12KeyStore extends KeyStoreSpi {
                             }
                             return tmp;
                         } finally {
-                            SharedSecrets.getJavaSecuritySpecAccess()
+                            SharedSecrets.get(JavaSecuritySpecAccess.class)
                                     .clearEncodedKeySpec(kspec);
                         }
                         // decode secret key
@@ -409,7 +411,7 @@ public final class PKCS12KeyStore extends KeyStoreSpi {
                                     tmp = sKeyFactory.generateSecret(pbeKeySpec);
                                 } finally {
                                     ((PBEKeySpec)pbeKeySpec).clearPassword();
-                                    SharedSecrets.getJavaxCryptoSpecAccess()
+                                    SharedSecrets.get(JavaxCryptoSpecAccess.class)
                                             .clearSecretKeySpec(secretKeySpec);
                                 }
                             } else {

@@ -27,6 +27,6 @@ package jdk.internal.access;
 
 import java.security.spec.EncodedKeySpec;
 
-public interface JavaSecuritySpecAccess {
+public non-sealed interface JavaSecuritySpecAccess extends Access {
     void clearEncodedKeySpec(EncodedKeySpec keySpec);
 }

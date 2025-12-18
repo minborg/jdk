@@ -25,6 +25,7 @@
 
 package com.sun.crypto.provider;
 
+import jdk.internal.access.JavaxCryptoSpecAccess;
 import jdk.internal.access.SharedSecrets;
 
 import java.util.Arrays;
@@ -193,7 +194,7 @@ abstract class PBMAC1Core extends HmacCore {
             throw new InvalidKeyException("Cannot construct PBE key", ikse);
         } finally {
             if (cipherKey != null) {
-                SharedSecrets.getJavaxCryptoSpecAccess()
+                SharedSecrets.get(JavaxCryptoSpecAccess.class)
                         .clearSecretKeySpec(cipherKey);
             }
             if (derivedKey != null) {

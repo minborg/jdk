@@ -39,6 +39,9 @@ import javax.crypto.spec.DHPublicKeySpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.security.auth.DestroyFailedException;
+
+import jdk.internal.access.JavaSecuritySpecAccess;
+import jdk.internal.access.JavaxCryptoSpecAccess;
 import jdk.internal.access.SharedSecrets;
 
 import com.sun.crypto.provider.PBKDF2KeyImpl;
@@ -470,7 +473,7 @@ public final class KeyUtil {
         for (SecretKey k : keys) {
             if (k != null) {
                 if (k instanceof SecretKeySpec sk) {
-                    SharedSecrets.getJavaxCryptoSpecAccess()
+                    SharedSecrets.get(JavaxCryptoSpecAccess.class)
                             .clearSecretKeySpec(sk);
                 } else if (k instanceof PBKDF2KeyImpl p2k) {
                     p2k.clear();
@@ -558,7 +561,7 @@ public final class KeyUtil {
                 case char[] c -> Arrays.fill(c, (char)0);
                 case PKCS8Key p8 -> p8.clear();
                 case PKCS8EncodedKeySpec p8 ->
-                    SharedSecrets.getJavaSecuritySpecAccess().clearEncodedKeySpec(p8);
+                    SharedSecrets.get(JavaSecuritySpecAccess.class).clearEncodedKeySpec(p8);
                 case PBEKeySpec pbe -> pbe.clearPassword();
                 case null -> {}
                 default ->

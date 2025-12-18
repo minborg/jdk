@@ -33,6 +33,7 @@ import java.security.interfaces.RSAKey;
 import java.security.spec.*;
 import java.util.Locale;
 
+import jdk.internal.access.JavaSecuritySignatureAccess;
 import sun.security.pkcs.NamedPKCS8Key;
 import sun.security.rsa.RSAUtil;
 import jdk.internal.access.SharedSecrets;
@@ -170,7 +171,7 @@ public class SignatureUtil {
     public static void initVerifyWithParam(Signature s, PublicKey key,
             AlgorithmParameterSpec params)
             throws InvalidAlgorithmParameterException, InvalidKeyException {
-        SharedSecrets.getJavaSecuritySignatureAccess().initVerify(s, key, params);
+        SharedSecrets.get(JavaSecuritySignatureAccess.class).initVerify(s, key, params);
     }
 
     // Utility method for initializing the specified Signature object
@@ -179,7 +180,7 @@ public class SignatureUtil {
             java.security.cert.Certificate cert,
             AlgorithmParameterSpec params)
             throws InvalidAlgorithmParameterException, InvalidKeyException {
-        SharedSecrets.getJavaSecuritySignatureAccess().initVerify(s, cert, params);
+        SharedSecrets.get(JavaSecuritySignatureAccess.class).initVerify(s, cert, params);
     }
 
     // Utility method for initializing the specified Signature object
@@ -187,7 +188,7 @@ public class SignatureUtil {
     public static void initSignWithParam(Signature s, PrivateKey key,
             AlgorithmParameterSpec params, SecureRandom sr)
             throws InvalidAlgorithmParameterException, InvalidKeyException {
-        SharedSecrets.getJavaSecuritySignatureAccess().initSign(s, key, params, sr);
+        SharedSecrets.get(JavaSecuritySignatureAccess.class).initSign(s, key, params, sr);
     }
 
     public static class DigestAlgHolder {

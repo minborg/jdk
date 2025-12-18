@@ -39,6 +39,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jdk.internal.access.JavaSecurityPropertiesAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -85,7 +86,7 @@ public final class SecuritySettings {
 
     private static void printSecurityProperties() {
         ostream.println(INDENT + "Security properties:");
-        Properties p = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
+        Properties p = SharedSecrets.get(JavaSecurityPropertiesAccess.class).getInitialProperties();
         for (String key : p.stringPropertyNames().stream().sorted().toList()) {
             String val = p.getProperty(key);
             if (val.length() > 60) {

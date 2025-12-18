@@ -25,6 +25,7 @@
 
 package com.sun.crypto.provider;
 
+import jdk.internal.access.JavaSecuritySpecAccess;
 import jdk.internal.access.SharedSecrets;
 
 import java.security.Key;
@@ -115,7 +116,7 @@ final class ConstructKeys {
         } catch (InvalidKeySpecException ikse) {
             throw new InvalidKeyException("Cannot construct private key", ikse);
         } finally {
-            SharedSecrets.getJavaSecuritySpecAccess().clearEncodedKeySpec(keySpec);
+            SharedSecrets.get(JavaSecuritySpecAccess.class).clearEncodedKeySpec(keySpec);
             if (keyBytes != encodedKey) {
                 Arrays.fill(keyBytes, (byte)0);
             }

@@ -23,6 +23,7 @@
 
 package jdk.jfr.event.security;
 
+import jdk.internal.access.JavaSecurityPropertiesAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
@@ -56,7 +57,7 @@ public class TestInitialSecurityPropertyEvent {
             Security.setProperty(SEC_KEY, "false");
             recording.stop();
 
-            Properties p = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
+            Properties p = SharedSecrets.get(JavaSecurityPropertiesAccess.class).getInitialProperties();
             List<RecordedEvent> events = Events.fromRecording(recording);
             if (events.size() == 0) {
                 throw new Exception("No security properties - Security class may not have loaded ?");

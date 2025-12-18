@@ -25,6 +25,7 @@
 
 package sun.security.pkcs;
 
+import jdk.internal.access.JavaSecuritySpecAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.ec.ECPrivateKeyImpl;
 import sun.security.util.*;
@@ -247,7 +248,7 @@ public class PKCS8Key implements PrivateKey, InternalPrivateKey {
                 if (result != rawKey) {
                     rawKey.clear();
                 }
-                SharedSecrets.getJavaSecuritySpecAccess()
+                SharedSecrets.get(JavaSecuritySpecAccess.class)
                         .clearEncodedKeySpec(pkcs8KeySpec);
             }
             return result;

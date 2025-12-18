@@ -25,6 +25,7 @@
 
 package com.sun.crypto.provider;
 
+import jdk.internal.access.JavaxCryptoSpecAccess;
 import jdk.internal.access.SharedSecrets;
 
 import javax.crypto.KDFSpi;
@@ -389,7 +390,7 @@ abstract class HKDFKeyDerivation extends KDFSpi {
             // but just in case...
             throw new ProviderException(sbe);
         } finally {
-            SharedSecrets.getJavaxCryptoSpecAccess()
+            SharedSecrets.get(JavaxCryptoSpecAccess.class)
                     .clearSecretKeySpec(pseudoRandomKey);
         }
         return kdfOutput;

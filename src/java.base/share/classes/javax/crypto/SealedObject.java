@@ -25,6 +25,7 @@
 
 package javax.crypto;
 
+import jdk.internal.access.JavaxCryptoSealedObjectAccess;
 import jdk.internal.access.SharedSecrets;
 
 import java.io.*;
@@ -447,7 +448,7 @@ public class SealedObject implements Serializable {
     }
 
     static {
-        SharedSecrets.setJavaxCryptoSealedObjectAccess(SealedObject::getExtObjectInputStream);
+        SharedSecrets.set(JavaxCryptoSealedObjectAccess.class, SealedObject::getExtObjectInputStream);
     }
 }
 

@@ -25,6 +25,7 @@
 
 package javax.crypto.spec;
 
+import jdk.internal.access.JavaxCryptoSpecAccess;
 import jdk.internal.access.SharedSecrets;
 
 import javax.crypto.SecretKey;
@@ -73,7 +74,7 @@ public class SecretKeySpec implements KeySpec, SecretKey {
     private final String algorithm;
 
     static {
-        SharedSecrets.setJavaxCryptoSpecAccess(
+        SharedSecrets.set(JavaxCryptoSpecAccess.class,
                 SecretKeySpec::clear);
     }
 

@@ -104,12 +104,13 @@ public class SharedSecrets {
     @Stable private static JavaUtilJarAccess javaUtilJarAccess;
     @Stable private static JavaUtilZipFileAccess javaUtilZipFileAccess;
     @Stable private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
+/*
     @Stable private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
     @Stable private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
     @Stable private static JavaSecuritySpecAccess javaSecuritySpecAccess;
     @Stable private static JavaxCryptoSealedObjectAccess javaxCryptoSealedObjectAccess;
     @Stable private static JavaxCryptoSpecAccess javaxCryptoSpecAccess;
-    @Stable private static JavaxSecurityAccess javaxSecurityAccess;
+    @Stable private static JavaxSecurityAccess javaxSecurityAccess; */
 
     // Sentinel value signaling that no explicit class initialization shall be performed
     private static final String NO_INIT = "";
@@ -119,7 +120,12 @@ public class SharedSecrets {
     private static final Map<Class<? extends Access>, ? extends Constable> IMPLEMENTATIONS =
             // Todo: Consider using a HashMap so that ImmutableCollections is not touched.
             Map.ofEntries(
-                    Map.entry(JavaxSecurityAccess.class, X500Principal.class)
+                    Map.entry(JavaxSecurityAccess.class, X500Principal.class),
+                    Map.entry(JavaxCryptoSealedObjectAccess.class, SealedObject.class),
+                    Map.entry(JavaxCryptoSpecAccess.class, SecretKeySpec.class),
+                    Map.entry(JavaSecuritySpecAccess.class, EncodedKeySpec.class),
+                    Map.entry(JavaSecuritySignatureAccess.class, Signature.class),
+                    Map.entry(JavaSecurityPropertiesAccess.class, Security.class)
             );
 
     private static final StableComponentContainer<Access> COMPONENTS =
@@ -355,19 +361,6 @@ public class SharedSecrets {
         return access;
     }
 
-    public static void setJavaSecurityPropertiesAccess(JavaSecurityPropertiesAccess jspa) {
-        javaSecurityPropertiesAccess = jspa;
-    }
-
-    public static JavaSecurityPropertiesAccess getJavaSecurityPropertiesAccess() {
-        var access = javaSecurityPropertiesAccess;
-        if (access == null) {
-            ensureClassInitialized(Security.class);
-            access = javaSecurityPropertiesAccess;
-        }
-        return access;
-    }
-
     public static JavaUtilZipFileAccess getJavaUtilZipFileAccess() {
         var access = javaUtilZipFileAccess;
         if (access == null) {
@@ -475,58 +468,6 @@ public class SharedSecrets {
         if (access == null) {
             ensureClassInitialized(RandomAccessFile.class);
             access = javaIORandomAccessFileAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaSecuritySignatureAccess(JavaSecuritySignatureAccess jssa) {
-        javaSecuritySignatureAccess = jssa;
-    }
-
-    public static JavaSecuritySignatureAccess getJavaSecuritySignatureAccess() {
-        var access = javaSecuritySignatureAccess;
-        if (access == null) {
-            ensureClassInitialized(Signature.class);
-            access = javaSecuritySignatureAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaSecuritySpecAccess(JavaSecuritySpecAccess jssa) {
-        javaSecuritySpecAccess = jssa;
-    }
-
-    public static JavaSecuritySpecAccess getJavaSecuritySpecAccess() {
-        var access = javaSecuritySpecAccess;
-        if (access == null) {
-            ensureClassInitialized(EncodedKeySpec.class);
-            access = javaSecuritySpecAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaxCryptoSpecAccess(JavaxCryptoSpecAccess jcsa) {
-        javaxCryptoSpecAccess = jcsa;
-    }
-
-    public static JavaxCryptoSpecAccess getJavaxCryptoSpecAccess() {
-        var access = javaxCryptoSpecAccess;
-        if (access == null) {
-            ensureClassInitialized(SecretKeySpec.class);
-            access = javaxCryptoSpecAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaxCryptoSealedObjectAccess(JavaxCryptoSealedObjectAccess jcsoa) {
-        javaxCryptoSealedObjectAccess = jcsoa;
-    }
-
-    public static JavaxCryptoSealedObjectAccess getJavaxCryptoSealedObjectAccess() {
-        var access = javaxCryptoSealedObjectAccess;
-        if (access == null) {
-            ensureClassInitialized(SealedObject.class);
-            access = javaxCryptoSealedObjectAccess;
         }
         return access;
     }

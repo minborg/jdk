@@ -27,6 +27,6 @@ package jdk.internal.access;
 
 import javax.crypto.spec.SecretKeySpec;
 
-public interface JavaxCryptoSpecAccess {
+public non-sealed interface JavaxCryptoSpecAccess extends Access {
     void clearSecretKeySpec(SecretKeySpec keySpec);
 }

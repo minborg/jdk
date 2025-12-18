@@ -27,6 +27,7 @@ package jdk.jfr.internal;
 
 import java.util.Properties;
 
+import jdk.internal.access.JavaSecurityPropertiesAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.event.JFRTracing;
 import jdk.internal.event.ThrowableTracer;
@@ -225,7 +226,7 @@ public final class JDKEvents {
     }
 
     private static void emitInitialSecurityProperties() {
-        Properties p = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
+        Properties p = SharedSecrets.get(JavaSecurityPropertiesAccess.class).getInitialProperties();
         if (p != null) {
             for (String key : p.stringPropertyNames()) {
                 InitialSecurityPropertyEvent e = new InitialSecurityPropertyEvent();

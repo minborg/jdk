@@ -37,6 +37,7 @@ import javax.crypto.spec.*;
 
 import static sun.security.pkcs11.TemplateManager.*;
 
+import jdk.internal.access.JavaxCryptoSpecAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.security.pkcs11.wrapper.*;
 import static sun.security.pkcs11.wrapper.PKCS11Constants.*;
@@ -717,7 +718,7 @@ final class P11SecretKeyFactory extends SecretKeyFactorySpi {
             return engineGenerateSecret(secretKeySpec);
         } finally {
             if (secretKeySpec != null) {
-                SharedSecrets.getJavaxCryptoSpecAccess()
+                SharedSecrets.get(JavaxCryptoSpecAccess.class)
                         .clearSecretKeySpec(secretKeySpec);
             }
             if (keyBytes != null) {

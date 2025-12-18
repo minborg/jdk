@@ -27,6 +27,6 @@ package jdk.internal.access;
 
 import java.util.Properties;
 
-public interface JavaSecurityPropertiesAccess {
+public non-sealed interface JavaSecurityPropertiesAccess extends Access {
     Properties getInitialProperties();
 }
