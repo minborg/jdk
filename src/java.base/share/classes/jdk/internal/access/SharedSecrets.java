@@ -94,11 +94,12 @@ public class SharedSecrets {
     @Stable private static JavaLangModuleAccess javaLangModuleAccess;
     @Stable private static JavaLangRefAccess javaLangRefAccess;
     @Stable private static JavaLangReflectAccess javaLangReflectAccess;
+
+/*
     @Stable private static JavaIOAccess javaIOAccess;
     @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
     @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
 
-/*
     @Stable private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
     @Stable private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
     @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
@@ -133,6 +134,9 @@ public class SharedSecrets {
     private static Map<Class<? extends Access>, Constable> implementations() {
         final Map<Class<? extends Access>, Constable> map = new HashMap<>();
 
+        map.put(JavaIORandomAccessFileAccess.class, RandomAccessFile.class);
+        map.put(JavaIOFileDescriptorAccess.class, FileDescriptor.class);
+        map.put(JavaIOAccess.class, Console.class);
         map.put(JavaObjectInputStreamReadString.class, ObjectInputStream.class);
         map.put(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access");
         map.put(JavaObjectInputFilterAccess.class, ObjectInputFilter.Config.class);
@@ -241,32 +245,6 @@ public class SharedSecrets {
         return javaLangReflectAccess;
     }
 
-    public static void setJavaIOAccess(JavaIOAccess jia) {
-        javaIOAccess = jia;
-    }
-
-    public static JavaIOAccess getJavaIOAccess() {
-        var access = javaIOAccess;
-        if (access == null) {
-            ensureClassInitialized(Console.class);
-            access = javaIOAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaIOFileDescriptorAccess(JavaIOFileDescriptorAccess jiofda) {
-        javaIOFileDescriptorAccess = jiofda;
-    }
-
-    public static JavaIOFileDescriptorAccess getJavaIOFileDescriptorAccess() {
-        var access = javaIOFileDescriptorAccess;
-        if (access == null) {
-            ensureClassInitialized(FileDescriptor.class);
-            access = javaIOFileDescriptorAccess;
-        }
-        return access;
-    }
-
     public static void setJavaAWTFontAccess(JavaAWTFontAccess jafa) {
         javaAWTFontAccess = jafa;
     }
@@ -283,19 +261,6 @@ public class SharedSecrets {
 
     public static void setJavaBeansAccess(JavaBeansAccess access) {
         javaBeansAccess = access;
-    }
-
-    public static void setJavaIORandomAccessFileAccess(JavaIORandomAccessFileAccess jirafa) {
-        javaIORandomAccessFileAccess = jirafa;
-    }
-
-    public static JavaIORandomAccessFileAccess getJavaIORandomAccessFileAccess() {
-        var access = javaIORandomAccessFileAccess;
-        if (access == null) {
-            ensureClassInitialized(RandomAccessFile.class);
-            access = javaIORandomAccessFileAccess;
-        }
-        return access;
     }
 
     private static void ensureClassInitialized(Class<?> c) {

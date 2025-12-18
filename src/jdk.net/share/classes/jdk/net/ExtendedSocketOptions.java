@@ -328,7 +328,7 @@ public final class ExtendedSocketOptions {
     }
 
     private static final JavaIOFileDescriptorAccess fdAccess =
-            SharedSecrets.getJavaIOFileDescriptorAccess();
+            SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     private static void setQuickAckOption(FileDescriptor fd, boolean enable)
             throws SocketException {

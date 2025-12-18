@@ -42,7 +42,7 @@ class UnixFileDispatcherImpl extends FileDispatcher {
     }
 
     private static final JavaIOFileDescriptorAccess fdAccess =
-            SharedSecrets.getJavaIOFileDescriptorAccess();
+            SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     UnixFileDispatcherImpl() {
     }

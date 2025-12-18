@@ -67,7 +67,7 @@ public final class FileDescriptor {
 
     // Set up JavaIOFileDescriptorAccess in SharedSecrets
     static {
-        SharedSecrets.setJavaIOFileDescriptorAccess(
+        SharedSecrets.set(JavaIOFileDescriptorAccess.class,
                 new JavaIOFileDescriptorAccess() {
                     public void set(FileDescriptor fdo, int fd) {
                         fdo.set(fd);

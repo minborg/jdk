@@ -1269,7 +1269,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
     static {
         initIDs();
-        SharedSecrets.setJavaIORandomAccessFileAccess(new JavaIORandomAccessFileAccess()
+        SharedSecrets.set(JavaIORandomAccessFileAccess.class, new JavaIORandomAccessFileAccess()
         {
             // This is for j.u.z.ZipFile.OPEN_DELETE. The O_TEMPORARY flag
             // is only implemented/supported on Windows.

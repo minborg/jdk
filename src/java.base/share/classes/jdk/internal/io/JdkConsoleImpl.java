@@ -41,6 +41,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import jdk.internal.access.JavaIOAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.StaticProperty;
 import sun.nio.cs.StreamDecoder;
@@ -126,7 +127,7 @@ public final class JdkConsoleImpl implements JdkConsole {
 
                     // If stdin is NOT redirected, return an Optional containing a JdkConsoleImpl
                     // instance, otherwise an empty Optional.
-                    return SharedSecrets.getJavaIOAccess().isStdinTty() ?
+                    return SharedSecrets.get(JavaIOAccess.class).isStdinTty() ?
                             Optional.of(
                                     new JdkConsoleImpl(
                                             Charset.forName(StaticProperty.stdinEncoding(), UTF_8.INSTANCE),

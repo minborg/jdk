@@ -47,7 +47,7 @@ final class FileCleanable extends PhantomCleanable<FileDescriptor> {
     // Access to FileDescriptor private fields;
     // avoids making fd and handle package private
     private static final JavaIOFileDescriptorAccess fdAccess =
-            SharedSecrets.getJavaIOFileDescriptorAccess();
+            SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     /*
      * Raw close of the file fd and/or handle.

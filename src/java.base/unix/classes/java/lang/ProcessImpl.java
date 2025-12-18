@@ -58,7 +58,7 @@ import jdk.internal.util.StaticProperty;
  */
 final class ProcessImpl extends Process {
     private static final JavaIOFileDescriptorAccess fdAccess
-        = SharedSecrets.getJavaIOFileDescriptorAccess();
+        = SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     // Linux platforms support a normal (non-forcible) kill signal.
     static final boolean SUPPORTS_NORMAL_TERMINATION = true;

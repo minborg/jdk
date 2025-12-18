@@ -59,6 +59,7 @@ import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import jdk.internal.access.JavaIOAccess;
 import jdk.internal.javac.Restricted;
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.logger.LoggerFinderLoader.TemporaryLoggerFinder;
@@ -250,7 +251,7 @@ public final class System {
          if ((c = cons) == null) {
              synchronized (System.class) {
                  if ((c = cons) == null) {
-                     cons = c = SharedSecrets.getJavaIOAccess().console();
+                     cons = c = SharedSecrets.get(JavaIOAccess.class).console();
                  }
              }
          }
