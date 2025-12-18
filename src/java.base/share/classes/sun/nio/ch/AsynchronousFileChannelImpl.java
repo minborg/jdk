@@ -42,7 +42,7 @@ import jdk.internal.access.SharedSecrets;
 abstract class AsynchronousFileChannelImpl
     extends AsynchronousFileChannel
 {
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     // close support
     protected final ReadWriteLock closeLock = new ReentrantReadWriteLock();

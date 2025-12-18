@@ -51,7 +51,7 @@ abstract class AsynchronousSocketChannelImpl
     extends AsynchronousSocketChannel
     implements Cancellable, Groupable
 {
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     protected final FileDescriptor fd;
 

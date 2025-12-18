@@ -60,7 +60,7 @@ import static sun.security.pkcs11.TemplateManager.*;
  */
 final class P11KeyWrapCipher extends CipherSpi {
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     private static final int BLK_SIZE = 8;
 

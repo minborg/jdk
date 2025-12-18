@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.vm.annotation.Stable;
 import sun.nio.ch.FileChannelImpl;
@@ -465,7 +466,7 @@ public class VM {
 
         static {
             ArrayList<BufferPool> bufferPools = new ArrayList<>(3);
-            bufferPools.add(SharedSecrets.getJavaNioAccess().getDirectBufferPool());
+            bufferPools.add(SharedSecrets.get(JavaNioAccess.class).getDirectBufferPool());
             bufferPools.add(FileChannelImpl.getMappedBufferPool());
             bufferPools.add(FileChannelImpl.getSyncMappedBufferPool());
 

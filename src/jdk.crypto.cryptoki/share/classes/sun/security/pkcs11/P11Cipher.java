@@ -59,7 +59,7 @@ import static sun.security.pkcs11.wrapper.PKCS11Exception.RV.*;
  */
 final class P11Cipher extends CipherSpi {
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     // mode and padding constants
     private enum Mode {ECB /* or stream ciphers */, CBC, CTR, CTS}

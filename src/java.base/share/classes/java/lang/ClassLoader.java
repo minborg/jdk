@@ -54,6 +54,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.loader.BootLoader;
 import jdk.internal.loader.BuiltinClassLoader;
@@ -1075,13 +1076,13 @@ public abstract class ClassLoader {
     private Class<?> defineClass(String name, ByteBuffer b, int len, ProtectionDomain pd) {
         pd = preDefineClass(name, pd);
         String source = defineClassSourceLocation(pd);
-        SharedSecrets.getJavaNioAccess().acquireSession(b);
+        SharedSecrets.get(JavaNioAccess.class).acquireSession(b);
         try {
             Class<?> c = defineClass2(this, name, b, b.position(), len, pd, source);
             postDefineClass(c, pd);
             return c;
         } finally {
-            SharedSecrets.getJavaNioAccess().releaseSession(b);
+            SharedSecrets.get(JavaNioAccess.class).releaseSession(b);
         }
     }
 

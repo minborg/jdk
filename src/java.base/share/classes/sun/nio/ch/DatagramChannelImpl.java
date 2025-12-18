@@ -90,7 +90,7 @@ class DatagramChannelImpl
     // Used to make native read and write calls
     private static final NativeDispatcher nd = new DatagramDispatcher();
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     // true if interruptible (can be false to emulate legacy DatagramSocket)
     private final boolean interruptible;

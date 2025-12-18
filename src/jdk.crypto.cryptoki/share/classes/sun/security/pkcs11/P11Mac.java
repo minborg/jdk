@@ -61,7 +61,7 @@ import sun.security.util.PBEUtil;
  */
 final class P11Mac extends MacSpi {
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     // token instance
     private final Token token;

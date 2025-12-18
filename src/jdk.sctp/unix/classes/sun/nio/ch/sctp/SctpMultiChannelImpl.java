@@ -75,7 +75,7 @@ import static sun.nio.ch.sctp.ResultContainer.*;
 public class SctpMultiChannelImpl extends SctpMultiChannel
     implements SelChImpl
 {
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     private final FileDescriptor fd;
 

@@ -35,7 +35,7 @@ import java.lang.foreign.MemorySegment;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
-public interface JavaNioAccess {
+public non-sealed interface JavaNioAccess extends Access {
 
     /**
      * Used by {@code jdk.internal.misc.VM}.

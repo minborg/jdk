@@ -100,7 +100,7 @@ import sun.security.util.KeyUtil;
  */
 final class P11Signature extends SignatureSpi {
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     // token instance
     private final Token token;

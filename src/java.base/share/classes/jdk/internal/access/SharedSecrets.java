@@ -36,6 +36,7 @@ import java.io.ObjectInputFilter;
 import java.lang.constant.Constable;
 import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
+import java.nio.Buffer;
 import java.security.Security;
 import java.security.spec.EncodedKeySpec;
 import java.util.Collections;
@@ -100,9 +101,9 @@ public class SharedSecrets {
     @Stable private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
     @Stable private static JavaNetUriAccess javaNetUriAccess;
     @Stable private static JavaNetURLAccess javaNetURLAccess;
-    @Stable private static JavaNioAccess javaNioAccess;
 
 /*
+    @Stable private static JavaNioAccess javaNioAccess;
     @Stable private static JavaUtilCollectionAccess javaUtilCollectionAccess;
     @Stable private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
     @Stable private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
@@ -116,7 +117,7 @@ public class SharedSecrets {
     @Stable private static JavaxCryptoSpecAccess javaxCryptoSpecAccess;
     @Stable private static JavaxSecurityAccess javaxSecurityAccess; */
 
-    // Sentinel value signaling that no explicit class initialization shall be performed
+    // Sentinel value signaling that no explicit class initialization should be performed
     private static final String NO_INIT = "";
 
     // This map is used to associate a certain Access interface to another class where
@@ -128,6 +129,7 @@ public class SharedSecrets {
     private static Map<Class<? extends Access>, Constable> implementations() {
         final Map<Class<? extends Access>, Constable> map = new HashMap<>();
 
+        map.put(JavaNioAccess.class, Buffer.class);
         map.put(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$Access");
         map.put(JavaUtilConcurrentFJPAccess.class, ForkJoinPool.class);
         map.put(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access");
@@ -162,7 +164,7 @@ public class SharedSecrets {
         // classfile initialization
         if (implementation instanceof Class<?> c) {
             ensureClassInitialized(c);
-        } else if (implementation instanceof String s && !s.isEmpty()) {
+        } else if (implementation instanceof String s && !s.equals(NO_INIT)) {
             ensureClassInitialized(s);
         } else {
             throw new InternalError("Should not reach here: " + implementation);
@@ -275,21 +277,6 @@ public class SharedSecrets {
         if (access == null) {
             ensureClassInitialized(java.net.HttpCookie.class);
             access = javaNetHttpCookieAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaNioAccess(JavaNioAccess jna) {
-        javaNioAccess = jna;
-    }
-
-    public static JavaNioAccess getJavaNioAccess() {
-        var access = javaNioAccess;
-        if (access == null) {
-            // Ensure java.nio.Buffer is initialized, which provides the
-            // shared secret.
-            ensureClassInitialized(java.nio.Buffer.class);
-            access = javaNioAccess;
         }
         return access;
     }

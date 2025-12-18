@@ -92,7 +92,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
         if (!(base instanceof byte[] baseByte)) {
             throw new UnsupportedOperationException("Not an address to an heap-allocated byte array");
         }
-        JavaNioAccess nioAccess = SharedSecrets.getJavaNioAccess();
+        JavaNioAccess nioAccess = SharedSecrets.get(JavaNioAccess.class);
         return nioAccess.newHeapByteBuffer(baseByte, (int)(offset - Utils.BaseAndScale.BYTE.base()), (int) byteSize(), null);
     }
 

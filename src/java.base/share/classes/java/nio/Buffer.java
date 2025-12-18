@@ -822,7 +822,7 @@ public abstract sealed class Buffer
     static {
 
         // setup access to this package in SharedSecrets
-        SharedSecrets.setJavaNioAccess(
+        SharedSecrets.set(JavaNioAccess.class,
             new JavaNioAccess() {
 
                 @Override

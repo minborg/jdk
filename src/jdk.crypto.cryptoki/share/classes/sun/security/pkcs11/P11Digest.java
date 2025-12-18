@@ -56,7 +56,7 @@ import static sun.security.pkcs11.wrapper.PKCS11Constants.*;
 final class P11Digest extends MessageDigestSpi implements Cloneable,
     MessageDigestSpi2 {
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     /* fields initialized, no session acquired */
     private static final int S_BLANK    = 1;

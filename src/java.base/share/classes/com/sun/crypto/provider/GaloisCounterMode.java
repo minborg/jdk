@@ -79,7 +79,7 @@ abstract class GaloisCounterMode extends CipherSpi {
 
     static final byte[] EMPTY_BUF = new byte[0];
 
-    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+    private static final JavaNioAccess NIO_ACCESS = SharedSecrets.get(JavaNioAccess.class);
 
     private boolean initialized = false;
 
