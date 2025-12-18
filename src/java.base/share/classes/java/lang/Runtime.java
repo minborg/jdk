@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.StringTokenizer;
 
+import jdk.internal.access.JavaLangRefAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.javac.Restricted;
 import jdk.internal.reflect.CallerSensitive;
@@ -709,7 +710,7 @@ public final class Runtime {
      */
     @Deprecated(since="18", forRemoval=true)
     public void runFinalization() {
-        SharedSecrets.getJavaLangRefAccess().runFinalization();
+        SharedSecrets.get(JavaLangRefAccess.class).runFinalization();
     }
 
     /**

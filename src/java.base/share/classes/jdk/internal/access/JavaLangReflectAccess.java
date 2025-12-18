@@ -30,7 +30,7 @@ import jdk.internal.reflect.*;
 
 /** An interface which gives privileged packages Java-level access to
     internals of java.lang.reflect. Use as a last resort! */
-public interface JavaLangReflectAccess {
+public non-sealed interface JavaLangReflectAccess extends Access {
     /**
      * Creates a new root constructor from the original one, with
      * a custom accessor. Used by serialization hooks.

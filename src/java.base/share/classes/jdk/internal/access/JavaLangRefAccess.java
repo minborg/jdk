@@ -27,7 +27,7 @@ package jdk.internal.access;
 
 import java.lang.ref.ReferenceQueue;
 
-public interface JavaLangRefAccess {
+public non-sealed interface JavaLangRefAccess extends Access {
 
     /**
      * Starts the Finalizer and Reference Handler threads.

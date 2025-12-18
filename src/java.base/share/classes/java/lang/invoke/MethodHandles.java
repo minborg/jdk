@@ -25,6 +25,7 @@
 
 package java.lang.invoke;
 
+import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
@@ -3447,7 +3448,7 @@ return mh1;
                 }
                 // check if write access to final field allowed
                 if (!field.isStatic() && isAccessible) {
-                    SharedSecrets.getJavaLangReflectAccess().checkAllowedToUnreflectFinalSetter(lookupClass, f);
+                    SharedSecrets.get(JavaLangReflectAccess.class).checkAllowedToUnreflectFinalSetter(lookupClass, f);
                 }
             }
             assert(isSetter

@@ -85,17 +85,18 @@ import javax.security.auth.x500.X500Principal;
  * cache creation will fail.
  */
 @AOTSafeClassInitializer
-public class SharedSecrets {
+public final class SharedSecrets {
+    private SharedSecrets() { }
+
     // This field is not necessarily stable
     private static JavaAWTFontAccess javaAWTFontAccess;
     @Stable private static JavaBeansAccess javaBeansAccess;
     @Stable private static JavaLangAccess javaLangAccess;
     @Stable private static JavaLangInvokeAccess javaLangInvokeAccess;
     @Stable private static JavaLangModuleAccess javaLangModuleAccess;
+/*
     @Stable private static JavaLangRefAccess javaLangRefAccess;
     @Stable private static JavaLangReflectAccess javaLangReflectAccess;
-
-/*
     @Stable private static JavaIOAccess javaIOAccess;
     @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
     @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
@@ -134,6 +135,8 @@ public class SharedSecrets {
     private static Map<Class<? extends Access>, Constable> implementations() {
         final Map<Class<? extends Access>, Constable> map = new HashMap<>();
 
+        map.put(JavaLangRefAccess.class, NO_INIT);
+        map.put(JavaLangReflectAccess.class, NO_INIT);
         map.put(JavaIORandomAccessFileAccess.class, RandomAccessFile.class);
         map.put(JavaIOFileDescriptorAccess.class, FileDescriptor.class);
         map.put(JavaIOAccess.class, Console.class);
@@ -227,22 +230,6 @@ public class SharedSecrets {
             access = javaLangModuleAccess;
         }
         return access;
-    }
-
-    public static void setJavaLangRefAccess(JavaLangRefAccess jlra) {
-        javaLangRefAccess = jlra;
-    }
-
-    public static JavaLangRefAccess getJavaLangRefAccess() {
-        return javaLangRefAccess;
-    }
-
-    public static void setJavaLangReflectAccess(JavaLangReflectAccess jlra) {
-        javaLangReflectAccess = jlra;
-    }
-
-    public static JavaLangReflectAccess getJavaLangReflectAccess() {
-        return javaLangReflectAccess;
     }
 
     public static void setJavaAWTFontAccess(JavaAWTFontAccess jafa) {
