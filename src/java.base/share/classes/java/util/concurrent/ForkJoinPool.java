@@ -4387,7 +4387,7 @@ public class ForkJoinPool extends AbstractExecutorService
         Class<?> dep = LockSupport.class; // ensure loaded
         // allow access to non-public methods
         JLA = SharedSecrets.getJavaLangAccess();
-        SharedSecrets.setJavaUtilConcurrentFJPAccess(
+        SharedSecrets.set(JavaUtilConcurrentFJPAccess.class,
             new JavaUtilConcurrentFJPAccess() {
                 @Override
                 public long beginCompensatedBlock(ForkJoinPool pool) {

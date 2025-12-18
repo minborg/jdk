@@ -126,7 +126,7 @@ public class CarrierThread extends ForkJoinWorkerThread {
      */
     private static class ForkJoinPools {
         private static final JavaUtilConcurrentFJPAccess FJP_ACCESS =
-                SharedSecrets.getJavaUtilConcurrentFJPAccess();
+                SharedSecrets.get(JavaUtilConcurrentFJPAccess.class);
         static long beginCompensatedBlock(ForkJoinPool pool) {
             return FJP_ACCESS.beginCompensatedBlock(pool);
         }

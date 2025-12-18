@@ -100,13 +100,12 @@ public class SharedSecrets {
     @Stable private static JavaNetURLAccess javaNetURLAccess;
     @Stable private static JavaNioAccess javaNioAccess;
     @Stable private static JavaUtilCollectionAccess javaUtilCollectionAccess;
+/*
     @Stable private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
     @Stable private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
-/*
     @Stable private static JavaUtilJarAccess javaUtilJarAccess;
     @Stable private static JavaUtilZipFileAccess javaUtilZipFileAccess;
     @Stable private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
-
     @Stable private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
     @Stable private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
     @Stable private static JavaSecuritySpecAccess javaSecuritySpecAccess;
@@ -122,6 +121,8 @@ public class SharedSecrets {
     private static final Map<Class<? extends Access>, ? extends Constable> IMPLEMENTATIONS =
             // Todo: Consider using a HashMap so that ImmutableCollections is not touched.
             Map.ofEntries(
+                    Map.entry(JavaUtilConcurrentFJPAccess.class, ForkJoinPool.class),
+                    Map.entry(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access"),
                     Map.entry(JavaUtilResourceBundleAccess.class, ResourceBundle.class),
                     Map.entry(JavaUtilZipFileAccess.class, ZipFile.class),
                     Map.entry(JavaUtilJarAccess.class, JarFile.class),
@@ -173,35 +174,6 @@ public class SharedSecrets {
                 Class.forName("java.util.ImmutableCollections$Access", true, null);
                 access = javaUtilCollectionAccess;
             } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-
-    public static void setJavaUtilConcurrentTLRAccess(JavaUtilConcurrentTLRAccess access) {
-        javaUtilConcurrentTLRAccess = access;
-    }
-
-    public static JavaUtilConcurrentTLRAccess getJavaUtilConcurrentTLRAccess() {
-        var access = javaUtilConcurrentTLRAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.util.concurrent.ThreadLocalRandom$Access", true, null);
-                access = javaUtilConcurrentTLRAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-    public static void setJavaUtilConcurrentFJPAccess(JavaUtilConcurrentFJPAccess access) {
-        javaUtilConcurrentFJPAccess = access;
-    }
-
-    public static JavaUtilConcurrentFJPAccess getJavaUtilConcurrentFJPAccess() {
-        var access = javaUtilConcurrentFJPAccess;
-        if (access == null) {
-            ensureClassInitialized(ForkJoinPool.class);
-            access = javaUtilConcurrentFJPAccess;
         }
         return access;
     }

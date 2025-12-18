@@ -26,7 +26,7 @@ package jdk.internal.access;
 
 import java.util.concurrent.ForkJoinPool;
 
-public interface JavaUtilConcurrentFJPAccess {
+public non-sealed interface JavaUtilConcurrentFJPAccess extends Access {
     long beginCompensatedBlock(ForkJoinPool pool);
     void endCompensatedBlock(ForkJoinPool pool, long post);
 }

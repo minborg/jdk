@@ -389,7 +389,7 @@ public final class ThreadLocalRandom extends Random {
     // used by ScopedValue
     private static class Access {
         static {
-            SharedSecrets.setJavaUtilConcurrentTLRAccess(
+            SharedSecrets.set(JavaUtilConcurrentTLRAccess.class,
                 new JavaUtilConcurrentTLRAccess() {
                     public int nextSecondaryThreadLocalRandomSeed() {
                         return nextSecondarySeed();

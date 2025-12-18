@@ -25,7 +25,7 @@
 
 package jdk.internal.access;
 
-public interface JavaUtilConcurrentTLRAccess {
+public non-sealed interface JavaUtilConcurrentTLRAccess extends Access {
     int nextSecondaryThreadLocalRandomSeed();
     int getThreadLocalRandomProbe();
     int advanceThreadLocalRandomProbe(int r);

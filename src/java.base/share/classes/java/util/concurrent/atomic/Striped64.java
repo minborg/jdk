@@ -368,7 +368,7 @@ abstract class Striped64 extends Number {
     }
 
     private static final JavaUtilConcurrentTLRAccess TLR =
-        SharedSecrets.getJavaUtilConcurrentTLRAccess();
+        SharedSecrets.get(JavaUtilConcurrentTLRAccess.class);
 
     // VarHandle mechanics
     private static final VarHandle BASE;

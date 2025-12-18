@@ -765,7 +765,7 @@ public final class ScopedValue<T> {
             private static final int MAX_CACHE_SIZE = 16;
 
             private static final JavaUtilConcurrentTLRAccess THREAD_LOCAL_RANDOM_ACCESS
-                = SharedSecrets.getJavaUtilConcurrentTLRAccess();
+                = SharedSecrets.get(JavaUtilConcurrentTLRAccess.class);
 
             static {
                 final String propertyName = "java.lang.ScopedValue.cacheSize";
