@@ -4,10 +4,12 @@ package jdk.internal.access;
  * Marker interface for all the Access components.
  */
 public sealed interface Access permits
+        JavaAWTFontAccess,
         JavaBeansAccess,
         JavaIOAccess,
         JavaIOFileDescriptorAccess,
         JavaIORandomAccessFileAccess,
+        JavaLangAccess,
         JavaLangInvokeAccess,
         JavaLangModuleAccess,
         JavaLangRefAccess,

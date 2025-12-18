@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.Function;
 import java.util.jar.JarFile;
 import java.io.Console;
 import java.io.FileDescriptor;
@@ -87,8 +88,7 @@ import javax.security.auth.x500.X500Principal;
 public final class SharedSecrets {
     private SharedSecrets() { }
 
-    // This field is not necessarily stable
-    private static JavaAWTFontAccess javaAWTFontAccess;
+    // Todo: Remove this field.
     @Stable private static JavaLangAccess javaLangAccess;
 
     // Sentinel value signaling that no explicit class initialization should be performed
@@ -103,10 +103,12 @@ public final class SharedSecrets {
     private static Map<Class<? extends Access>, Constable> implementations() {
         final Map<Class<? extends Access>, Constable> map = new HashMap<>();
 
+        map.put(JavaAWTFontAccess.class, NO_INIT);
         map.put(JavaBeansAccess.class, NO_INIT);
         map.put(JavaIOAccess.class, Console.class);
         map.put(JavaIOFileDescriptorAccess.class, FileDescriptor.class);
         map.put(JavaIORandomAccessFileAccess.class, RandomAccessFile.class);
+        map.put(JavaLangAccess.class, NO_INIT);
         map.put(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl");
         map.put(JavaLangModuleAccess.class, ModuleDescriptor.class);
         map.put(JavaLangRefAccess.class, NO_INIT);
@@ -164,25 +166,26 @@ public final class SharedSecrets {
     }
 
     public static <T extends Access> void set(Class<T> type, T access) {
-        COMPONENTS.set(type, access);
+        COMPONENTS.set(type, tee(access));
     }
 
-    public static void setJavaLangAccess(JavaLangAccess jla) {
-        javaLangAccess = jla;
+    public static <T extends Access> void setIfUnset(Class<T> type, T access) {
+        COMPONENTS.computeIfAbsent(type, new Function<Class<T>, T>() {
+            @Override public T apply(Class<T> tClass) { return tee(access); }
+        });
+    }
+
+    static <T> T tee(T access) {
+        // Special case for this component type as some call sites used early in the
+        // boot sequence cannot use SharedSecrets::get. So, we scribble it up on the side.
+        if (access instanceof JavaLangAccess jla) {
+            javaLangAccess = jla;
+        }
+        return access;
     }
 
     public static JavaLangAccess getJavaLangAccess() {
         return javaLangAccess;
-    }
-
-    public static void setJavaAWTFontAccess(JavaAWTFontAccess jafa) {
-        javaAWTFontAccess = jafa;
-    }
-
-    public static JavaAWTFontAccess getJavaAWTFontAccess() {
-        // this may return null in which case calling code needs to
-        // provision for.
-        return javaAWTFontAccess;
     }
 
     private static void ensureClassInitialized(Class<?> c) {

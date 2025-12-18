@@ -29,7 +29,7 @@ package jdk.internal.access;
  * SharedSecrets interface used for the access from java.text.Bidi
  */
 
-public interface JavaAWTFontAccess {
+public non-sealed interface JavaAWTFontAccess extends Access {
 
     // java.awt.font.TextAttribute constants
     public Object getTextAttributeConstant(String name);

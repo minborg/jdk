@@ -59,8 +59,7 @@ import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import jdk.internal.access.JavaIOAccess;
-import jdk.internal.access.JavaLangRefAccess;
+import jdk.internal.access.*;
 import jdk.internal.javac.Restricted;
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.logger.LoggerFinderLoader.TemporaryLoggerFinder;
@@ -71,8 +70,6 @@ import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.ServicesCatalog;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
-import jdk.internal.access.JavaLangAccess;
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.logger.LoggerFinderLoader;
 import jdk.internal.logger.LazyLoggers;
 import jdk.internal.logger.LocalizedLoggerWrapper;
@@ -1996,7 +1993,7 @@ public final class System {
 
     private static void setJavaLangAccess() {
         // Allow privileged classes outside of java.lang
-        SharedSecrets.setJavaLangAccess(new JavaLangAccess() {
+        SharedSecrets.set(JavaLangAccess.class, new JavaLangAccess() {
             public List<Method> getDeclaredPublicMethods(Class<?> klass, String name, Class<?>... parameterTypes) {
                 return klass.getDeclaredPublicMethods(name, parameterTypes);
             }

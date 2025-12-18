@@ -4725,7 +4725,7 @@ public class BidiBase {
                 Class.forName("java.awt.font.TextAttribute", true, null);
             } catch (ClassNotFoundException e) {}
         }
-        static final JavaAWTFontAccess jafa = SharedSecrets.getJavaAWTFontAccess();
+        static final JavaAWTFontAccess jafa = SharedSecrets.get(JavaAWTFontAccess.class);
 
         /**
          * TextAttribute instances (or a fake Attribute type if
@@ -4767,7 +4767,7 @@ public class BidiBase {
                 Class.forName("java.awt.font.NumericShaper", true, null);
             } catch (ClassNotFoundException e) {}
         }
-        static final JavaAWTFontAccess jafa = SharedSecrets.getJavaAWTFontAccess();
+        static final JavaAWTFontAccess jafa = SharedSecrets.get(JavaAWTFontAccess.class);
 
         /**
          * Invokes NumericShaping shape(text,start,count) method.

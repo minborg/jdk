@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.Set;
 
+import jdk.internal.access.JavaAWTFontAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -145,9 +146,7 @@ public final class NumericShaper implements java.io.Serializable {
 
     // For access from java.text.Bidi
     static {
-        if (SharedSecrets.getJavaAWTFontAccess() == null) {
-            SharedSecrets.setJavaAWTFontAccess(new JavaAWTFontAccessImpl());
-        }
+        SharedSecrets.setIfUnset(JavaAWTFontAccess.class, new JavaAWTFontAccessImpl());
     }
 
     /**
