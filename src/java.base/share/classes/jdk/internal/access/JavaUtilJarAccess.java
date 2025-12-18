@@ -31,7 +31,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-public interface JavaUtilJarAccess {
+public non-sealed interface JavaUtilJarAccess extends Access {
     public boolean jarFileHasClassPathAttribute(JarFile jar) throws IOException;
     public Attributes getTrustedAttributes(Manifest man, String name);
     public void ensureInitialization(JarFile jar);

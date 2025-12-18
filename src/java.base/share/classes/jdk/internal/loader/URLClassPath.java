@@ -60,6 +60,7 @@ import java.util.jar.Attributes.Name;
 import java.util.zip.ZipFile;
 
 import jdk.internal.access.JavaNetURLAccess;
+import jdk.internal.access.JavaUtilJarAccess;
 import jdk.internal.access.JavaUtilZipFileAccess;
 import jdk.internal.access.SharedSecrets;
 import sun.net.util.URLUtil;
@@ -608,7 +609,7 @@ public class URLClassPath {
         private final URL csu;
         private boolean closed = false;
         private static final JavaUtilZipFileAccess zipAccess =
-                SharedSecrets.getJavaUtilZipFileAccess();
+                SharedSecrets.get(JavaUtilZipFileAccess.class);
 
         /*
          * Creates a new JarLoader for the specified URL referring to
@@ -717,7 +718,7 @@ public class URLClassPath {
                 public int getContentLength()
                     { return (int)entry.getSize(); }
                 public Manifest getManifest() throws IOException {
-                    SharedSecrets.javaUtilJarAccess().ensureInitialization(jar);
+                    SharedSecrets.get(JavaUtilJarAccess.class).ensureInitialization(jar);
                     return jar.getManifest();
                 }
                 public Certificate[] getCertificates()
@@ -776,7 +777,7 @@ public class URLClassPath {
             ensureOpen();
 
             // Only get manifest when necessary
-            if (SharedSecrets.javaUtilJarAccess().jarFileHasClassPathAttribute(jar)) {
+            if (SharedSecrets.get(JavaUtilJarAccess.class).jarFileHasClassPathAttribute(jar)) {
                 Manifest man = jar.getManifest();
                 if (man != null) {
                     Attributes attr = man.getMainAttributes();

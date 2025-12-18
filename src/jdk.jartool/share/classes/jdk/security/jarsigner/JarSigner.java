@@ -87,7 +87,7 @@ import static sun.security.util.SignatureFileVerifier.isInMetaInf;
  */
 public final class JarSigner {
 
-    static final JavaUtilZipFileAccess JUZFA = SharedSecrets.getJavaUtilZipFileAccess();
+    static final JavaUtilZipFileAccess JUZFA = SharedSecrets.get(JavaUtilZipFileAccess.class);
 
     /**
      * A mutable builder class that can create an immutable {@code JarSigner}

@@ -83,7 +83,7 @@ import java.util.ResourceBundle;
  */
 public abstract class AbstractResourceBundleProvider implements ResourceBundleProvider {
     private static final JavaUtilResourceBundleAccess RB_ACCESS =
-        SharedSecrets.getJavaUtilResourceBundleAccess();
+        SharedSecrets.get(JavaUtilResourceBundleAccess.class);
 
     private static final String FORMAT_CLASS = "java.class";
     private static final String FORMAT_PROPERTIES = "java.properties";

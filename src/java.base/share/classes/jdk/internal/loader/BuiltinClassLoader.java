@@ -52,6 +52,7 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
+import jdk.internal.access.JavaUtilJarAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
 import jdk.internal.module.ModulePatcher.PatchedModuleReader;
@@ -851,7 +852,7 @@ public class BuiltinClassLoader
         URL sealBase = null;
 
         if (man != null) {
-            Attributes attr = SharedSecrets.javaUtilJarAccess()
+            Attributes attr = SharedSecrets.get(JavaUtilJarAccess.class)
                     .getTrustedAttributes(man, pn.replace('.', '/').concat("/"));
             if (attr != null) {
                 specTitle = attr.getValue(Attributes.Name.SPECIFICATION_TITLE);
@@ -902,7 +903,7 @@ public class BuiltinClassLoader
      * @throws SecurityException if the package name is untrusted in the manifest
      */
     private boolean isSealed(String pn, Manifest man) {
-        Attributes attr = SharedSecrets.javaUtilJarAccess()
+        Attributes attr = SharedSecrets.get(JavaUtilJarAccess.class)
                 .getTrustedAttributes(man, pn.replace('.', '/').concat("/"));
         String sealed = null;
         if (attr != null)

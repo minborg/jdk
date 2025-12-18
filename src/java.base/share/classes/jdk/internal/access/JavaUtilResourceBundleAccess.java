@@ -31,7 +31,7 @@ import java.util.ResourceBundle;
 /**
  * Provides access to non-public methods in java.util.ResourceBundle.
  */
-public interface JavaUtilResourceBundleAccess {
+public non-sealed interface JavaUtilResourceBundleAccess extends Access {
     /**
      * Sets the bundle's parent to the given parent.
      */

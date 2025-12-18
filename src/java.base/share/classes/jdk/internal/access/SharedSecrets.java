@@ -48,6 +48,7 @@ import java.io.FilePermission;
 import java.io.ObjectInputStream;
 import java.io.RandomAccessFile;
 import java.security.Signature;
+import java.util.zip.ZipFile;
 import javax.security.auth.x500.X500Principal;
 
 /** A repository of "shared secrets", which are a mechanism for
@@ -101,10 +102,11 @@ public class SharedSecrets {
     @Stable private static JavaUtilCollectionAccess javaUtilCollectionAccess;
     @Stable private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
     @Stable private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
+/*
     @Stable private static JavaUtilJarAccess javaUtilJarAccess;
     @Stable private static JavaUtilZipFileAccess javaUtilZipFileAccess;
     @Stable private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
-/*
+
     @Stable private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
     @Stable private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
     @Stable private static JavaSecuritySpecAccess javaSecuritySpecAccess;
@@ -120,6 +122,9 @@ public class SharedSecrets {
     private static final Map<Class<? extends Access>, ? extends Constable> IMPLEMENTATIONS =
             // Todo: Consider using a HashMap so that ImmutableCollections is not touched.
             Map.ofEntries(
+                    Map.entry(JavaUtilResourceBundleAccess.class, ResourceBundle.class),
+                    Map.entry(JavaUtilZipFileAccess.class, ZipFile.class),
+                    Map.entry(JavaUtilJarAccess.class, JarFile.class),
                     Map.entry(JavaxSecurityAccess.class, X500Principal.class),
                     Map.entry(JavaxCryptoSealedObjectAccess.class, SealedObject.class),
                     Map.entry(JavaxCryptoSpecAccess.class, SecretKeySpec.class),
@@ -199,21 +204,6 @@ public class SharedSecrets {
             access = javaUtilConcurrentFJPAccess;
         }
         return access;
-    }
-
-    public static JavaUtilJarAccess javaUtilJarAccess() {
-        var access = javaUtilJarAccess;
-        if (access == null) {
-            // Ensure JarFile is initialized; we know that this class
-            // provides the shared secret
-            ensureClassInitialized(JarFile.class);
-            access = javaUtilJarAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaUtilJarAccess(JavaUtilJarAccess access) {
-        javaUtilJarAccess = access;
     }
 
     public static void setJavaLangAccess(JavaLangAccess jla) {
@@ -361,19 +351,6 @@ public class SharedSecrets {
         return access;
     }
 
-    public static JavaUtilZipFileAccess getJavaUtilZipFileAccess() {
-        var access = javaUtilZipFileAccess;
-        if (access == null) {
-            ensureClassInitialized(java.util.zip.ZipFile.class);
-            access = javaUtilZipFileAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaUtilZipFileAccess(JavaUtilZipFileAccess access) {
-        javaUtilZipFileAccess = access;
-    }
-
     public static void setJavaAWTFontAccess(JavaAWTFontAccess jafa) {
         javaAWTFontAccess = jafa;
     }
@@ -390,19 +367,6 @@ public class SharedSecrets {
 
     public static void setJavaBeansAccess(JavaBeansAccess access) {
         javaBeansAccess = access;
-    }
-
-    public static JavaUtilResourceBundleAccess getJavaUtilResourceBundleAccess() {
-        var access = javaUtilResourceBundleAccess;
-        if (access == null) {
-            ensureClassInitialized(ResourceBundle.class);
-            access = javaUtilResourceBundleAccess;
-        }
-        return access;
-    }
-
-    public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
-        javaUtilResourceBundleAccess = access;
     }
 
     public static JavaObjectInputStreamReadString getJavaObjectInputStreamReadString() {

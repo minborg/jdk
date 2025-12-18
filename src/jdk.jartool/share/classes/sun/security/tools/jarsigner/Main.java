@@ -132,7 +132,7 @@ public class Main {
     static final int SOME_ALIASES_NOT_FOUND = 0x10;
     // at least one signer alias is not in keystore
 
-    static final JavaUtilZipFileAccess JUZFA = SharedSecrets.getJavaUtilZipFileAccess();
+    static final JavaUtilZipFileAccess JUZFA = SharedSecrets.get(JavaUtilZipFileAccess.class);
 
     // Attention:
     // This is the entry that get launched by the security tool jarsigner.
