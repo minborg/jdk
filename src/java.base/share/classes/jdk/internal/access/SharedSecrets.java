@@ -99,7 +99,7 @@ public final class SharedSecrets {
     private static final Map<Class<? extends Access>, Constable> IMPLEMENTATIONS = implementations();
 
     // In order to avoid creating a circular dependency graph, we refrain from using
-    // ImmutableCollections. Here, this means we have to resort to mutating a map.
+    // ImmutableCollections. This means we have to resort to mutating a map.
     private static Map<Class<? extends Access>, Constable> implementations() {
         final Map<Class<? extends Access>, Constable> map = new HashMap<>();
 

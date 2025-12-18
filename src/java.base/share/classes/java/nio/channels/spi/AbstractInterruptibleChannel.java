@@ -31,6 +31,7 @@ import java.nio.channels.Channel;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.InterruptibleChannel;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import sun.nio.ch.Interruptible;
@@ -221,6 +222,6 @@ public abstract class AbstractInterruptibleChannel
 
     // -- jdk.internal.access.SharedSecrets --
     static void blockedOn(Interruptible intr) {         // package-private
-        SharedSecrets.getJavaLangAccess().blockedOn(intr);
+        SharedSecrets.get(JavaLangAccess.class).blockedOn(intr);
     }
 }

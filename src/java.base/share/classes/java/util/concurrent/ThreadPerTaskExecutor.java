@@ -46,7 +46,7 @@ import jdk.internal.vm.ThreadContainers;
  * threads is unbounded.
  */
 class ThreadPerTaskExecutor extends ThreadContainer implements ExecutorService {
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
     private static final VarHandle STATE = MhUtil.findVarHandle(
             MethodHandles.lookup(), "state", int.class);
 

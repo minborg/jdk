@@ -51,7 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TestEncoderReplaceUTF16 {
 
-    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JLA = SharedSecrets.get(JavaLangAccess.class);
 
     /**
      * Character sets known to be absent of non-Latin-1 {@linkplain CoderResult#isUnmappable() unmappable} characters.

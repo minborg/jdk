@@ -43,7 +43,7 @@ import static java.lang.foreign.ValueLayout.*;
  */
 public final class StringSupport {
 
-    private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.get(JavaLangAccess.class);
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
     private static final long LONG_MASK = ~7L; // The last three bits are zero
 

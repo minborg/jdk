@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamField;
+
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -118,7 +120,7 @@ public class PrivilegedActionException extends Exception {
         ObjectInputStream.GetField fields = s.readFields();
         Exception exception = (Exception) fields.get("exception", null);
         if (exception != null) {
-            SharedSecrets.getJavaLangAccess().setCause(this, exception);
+            SharedSecrets.get(JavaLangAccess.class).setCause(this, exception);
         }
     }
 
