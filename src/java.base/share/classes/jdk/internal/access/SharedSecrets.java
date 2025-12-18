@@ -89,39 +89,7 @@ public final class SharedSecrets {
 
     // This field is not necessarily stable
     private static JavaAWTFontAccess javaAWTFontAccess;
-
-    @Stable private static JavaLangAccess javaLangAccess; // Try later
-    @Stable private static JavaLangInvokeAccess javaLangInvokeAccess;
-    @Stable private static JavaLangModuleAccess javaLangModuleAccess;
-/*
-    @Stable private static JavaBeansAccess javaBeansAccess;
-
-    @Stable private static JavaLangRefAccess javaLangRefAccess;
-    @Stable private static JavaLangReflectAccess javaLangReflectAccess;
-    @Stable private static JavaIOAccess javaIOAccess;
-    @Stable private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
-    @Stable private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
-    @Stable private static JavaObjectInputStreamReadString javaObjectInputStreamReadString;
-    @Stable private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
-    @Stable private static JavaObjectInputFilterAccess javaObjectInputFilterAccess;
-    @Stable private static JavaObjectStreamReflectionAccess javaObjectStreamReflectionAccess;
-    @Stable private static JavaNetInetAddressAccess javaNetInetAddressAccess;
-    @Stable private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
-    @Stable private static JavaNetUriAccess javaNetUriAccess;
-    @Stable private static JavaNetURLAccess javaNetURLAccess;
-    @Stable private static JavaNioAccess javaNioAccess;
-    @Stable private static JavaUtilCollectionAccess javaUtilCollectionAccess;
-    @Stable private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
-    @Stable private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
-    @Stable private static JavaUtilJarAccess javaUtilJarAccess;
-    @Stable private static JavaUtilZipFileAccess javaUtilZipFileAccess;
-    @Stable private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
-    @Stable private static JavaSecurityPropertiesAccess javaSecurityPropertiesAccess;
-    @Stable private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
-    @Stable private static JavaSecuritySpecAccess javaSecuritySpecAccess;
-    @Stable private static JavaxCryptoSealedObjectAccess javaxCryptoSealedObjectAccess;
-    @Stable private static JavaxCryptoSpecAccess javaxCryptoSpecAccess;
-    @Stable private static JavaxSecurityAccess javaxSecurityAccess; */
+    @Stable private static JavaLangAccess javaLangAccess;
 
     // Sentinel value signaling that no explicit class initialization should be performed
     private static final String NO_INIT = "";
@@ -136,32 +104,34 @@ public final class SharedSecrets {
         final Map<Class<? extends Access>, Constable> map = new HashMap<>();
 
         map.put(JavaBeansAccess.class, NO_INIT);
+        map.put(JavaIOAccess.class, Console.class);
+        map.put(JavaIOFileDescriptorAccess.class, FileDescriptor.class);
+        map.put(JavaIORandomAccessFileAccess.class, RandomAccessFile.class);
+        map.put(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl");
+        map.put(JavaLangModuleAccess.class, ModuleDescriptor.class);
         map.put(JavaLangRefAccess.class, NO_INIT);
         map.put(JavaLangReflectAccess.class, NO_INIT);
-        map.put(JavaIORandomAccessFileAccess.class, RandomAccessFile.class);
-        map.put(JavaIOFileDescriptorAccess.class, FileDescriptor.class);
-        map.put(JavaIOAccess.class, Console.class);
-        map.put(JavaObjectInputStreamReadString.class, ObjectInputStream.class);
-        map.put(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access");
-        map.put(JavaObjectInputFilterAccess.class, ObjectInputFilter.Config.class);
-        map.put(JavaObjectInputStreamAccess.class, ObjectInputStream.class);
         map.put(JavaNetHttpCookieAccess.class, HttpCookie.class);
         map.put(JavaNetInetAddressAccess.class, InetAddress.class);
         map.put(JavaNetURLAccess.class, URL.class);
         map.put(JavaNetUriAccess.class, URI.class);
         map.put(JavaNioAccess.class, Buffer.class);
+        map.put(JavaObjectInputFilterAccess.class, ObjectInputFilter.Config.class);
+        map.put(JavaObjectInputStreamAccess.class, ObjectInputStream.class);
+        map.put(JavaObjectInputStreamReadString.class, ObjectInputStream.class);
+        map.put(JavaObjectStreamReflectionAccess.class, "java.io.ObjectStreamReflection$Access");
+        map.put(JavaSecurityPropertiesAccess.class, Security.class);
+        map.put(JavaSecuritySignatureAccess.class, Signature.class);
+        map.put(JavaSecuritySpecAccess.class, EncodedKeySpec.class);
         map.put(JavaUtilCollectionAccess.class, "java.util.ImmutableCollections$Access");
         map.put(JavaUtilConcurrentFJPAccess.class, ForkJoinPool.class);
         map.put(JavaUtilConcurrentTLRAccess.class, "java.util.concurrent.ThreadLocalRandom$Access");
+        map.put(JavaUtilJarAccess.class, JarFile.class);
         map.put(JavaUtilResourceBundleAccess.class, ResourceBundle.class);
         map.put(JavaUtilZipFileAccess.class, ZipFile.class);
-        map.put(JavaUtilJarAccess.class, JarFile.class);
-        map.put(JavaxSecurityAccess.class, X500Principal.class);
         map.put(JavaxCryptoSealedObjectAccess.class, SealedObject.class);
         map.put(JavaxCryptoSpecAccess.class, SecretKeySpec.class);
-        map.put(JavaSecuritySpecAccess.class, EncodedKeySpec.class);
-        map.put(JavaSecuritySignatureAccess.class, Signature.class);
-        map.put(JavaSecurityPropertiesAccess.class, Security.class);
+        map.put(JavaxSecurityAccess.class, X500Principal.class);
 
         return Collections.unmodifiableMap(map);
     }
@@ -203,34 +173,6 @@ public final class SharedSecrets {
 
     public static JavaLangAccess getJavaLangAccess() {
         return javaLangAccess;
-    }
-
-    public static void setJavaLangInvokeAccess(JavaLangInvokeAccess jlia) {
-        javaLangInvokeAccess = jlia;
-    }
-
-    public static JavaLangInvokeAccess getJavaLangInvokeAccess() {
-        var access = javaLangInvokeAccess;
-        if (access == null) {
-            try {
-                Class.forName("java.lang.invoke.MethodHandleImpl", true, null);
-                access = javaLangInvokeAccess;
-            } catch (ClassNotFoundException e) {}
-        }
-        return access;
-    }
-
-    public static void setJavaLangModuleAccess(JavaLangModuleAccess jlrma) {
-        javaLangModuleAccess = jlrma;
-    }
-
-    public static JavaLangModuleAccess getJavaLangModuleAccess() {
-        var access = javaLangModuleAccess;
-        if (access == null) {
-            ensureClassInitialized(ModuleDescriptor.class);
-            access = javaLangModuleAccess;
-        }
-        return access;
     }
 
     public static void setJavaAWTFontAccess(JavaAWTFontAccess jafa) {

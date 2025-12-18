@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-public interface JavaLangInvokeAccess {
+public non-sealed interface JavaLangInvokeAccess extends Access {
     /**
      * Returns the declaring class for the given ResolvedMethodName.
      * Used by {@code StackFrameInfo}.

@@ -1535,7 +1535,7 @@ abstract class MethodHandleImpl {
     }
 
     static {
-        SharedSecrets.setJavaLangInvokeAccess(new JavaLangInvokeAccess() {
+        SharedSecrets.set(JavaLangInvokeAccess.class, new JavaLangInvokeAccess() {
             @Override
             public Class<?> getDeclaringClass(Object rmname) {
                 ResolvedMethodName method = (ResolvedMethodName)rmname;

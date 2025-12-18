@@ -65,7 +65,7 @@ import static jdk.internal.module.ClassFileConstants.*;
 public final class ModuleInfo {
 
     private static final JavaLangModuleAccess JLMA
-        = SharedSecrets.getJavaLangModuleAccess();
+        = SharedSecrets.get(JavaLangModuleAccess.class);
 
     // supplies the set of packages when ModulePackages attribute not present
     private final Supplier<Set<String>> packageFinder;

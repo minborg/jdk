@@ -49,6 +49,8 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+
+import jdk.internal.access.JavaLangModuleAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.module.ModuleTarget;
 
@@ -68,7 +70,7 @@ class ConfigurationTest {
      * test the create ModuleDescriptor objects that do not require java.base.
      */
     private static ModuleDescriptor.Builder newBuilder(String mn) {
-        return SharedSecrets.getJavaLangModuleAccess()
+        return SharedSecrets.get(JavaLangModuleAccess.class)
                 .newModuleBuilder(mn, false, Set.of());
     }
 

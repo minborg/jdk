@@ -25,6 +25,7 @@
 
 package jdk.internal.foreign;
 
+import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.misc.Unsafe;
@@ -138,7 +139,7 @@ public final class Utils {
             baseCarrier = ADDRESS_CARRIER_TYPE;
         }
 
-        VarHandle handle = SharedSecrets.getJavaLangInvokeAccess().memorySegmentViewHandle(baseCarrier,
+        VarHandle handle = SharedSecrets.get(JavaLangInvokeAccess.class).memorySegmentViewHandle(baseCarrier,
                 enclosing, layout.byteAlignment() - 1, layout.order(), constantOffset, offset);
 
         if (layout instanceof AddressLayout addressLayout) {

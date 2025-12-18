@@ -50,7 +50,7 @@ public class DowncallLinker {
     private static final boolean USE_SPEC = Boolean.parseBoolean(
             System.getProperty("jdk.internal.foreign.DowncallLinker.USE_SPEC", "true"));
 
-    private static final JavaLangInvokeAccess JLIA = SharedSecrets.getJavaLangInvokeAccess();
+    private static final JavaLangInvokeAccess JLIA = SharedSecrets.get(JavaLangInvokeAccess.class);
 
     private static final MethodHandle MH_INVOKE_INTERP_BINDINGS = MhUtil.findVirtual(
             MethodHandles.lookup(), DowncallLinker.class, "invokeInterpBindings",
