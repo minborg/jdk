@@ -28,6 +28,7 @@ import java.io.ObjectInputFilter;
 import java.io.ObjectInputStream;
 import java.io.InvalidClassException;
 
+import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.SharedSecrets;
 
 import org.testng.annotations.DataProvider;
@@ -73,7 +74,7 @@ public class CheckArrayTest {
             // Check the arraysize against the filter
             try {
                 ois.setObjectInputFilter(filter);
-                SharedSecrets.getJavaObjectInputStreamAccess()
+                SharedSecrets.get(JavaObjectInputStreamAccess.class)
                         .checkArray(ois, array.getClass(), arraySize);
                 Assert.assertTrue(array.length >= arraySize,
                         "Should have thrown InvalidClassException due to array size");
