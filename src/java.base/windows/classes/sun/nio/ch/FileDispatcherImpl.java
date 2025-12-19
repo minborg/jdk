@@ -45,7 +45,7 @@ class FileDispatcherImpl extends FileDispatcher {
     private static final boolean FAST_FILE_TRANSFER;
 
     private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
+        SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     FileDispatcherImpl() { }
 

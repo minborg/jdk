@@ -56,7 +56,7 @@ import jdk.internal.misc.Blocker;
 
 final class ProcessImpl extends Process {
     private static final JavaIOFileDescriptorAccess fdAccess
-        = SharedSecrets.getJavaIOFileDescriptorAccess();
+        = SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     // Windows platforms support a forcible kill signal.
     static final boolean SUPPORTS_NORMAL_TERMINATION = false;

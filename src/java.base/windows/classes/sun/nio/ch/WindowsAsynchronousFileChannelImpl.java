@@ -47,7 +47,7 @@ public class WindowsAsynchronousFileChannelImpl
     implements Iocp.OverlappedChannel, Groupable
 {
     private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
+        SharedSecrets.get(JavaIOFileDescriptorAccess.class);
 
     // error when EOF is detected asynchronously.
     private static final int ERROR_HANDLE_EOF = 38;
