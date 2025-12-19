@@ -138,7 +138,7 @@ public sealed interface HeterogeneousContainer<T> permits HeterogeneousContainer
         if (!type.isSealed()) {
             throw new IllegalArgumentException("The provided type must be sealed: " + type);
         }
-        throw new UnsupportedOperationException();
+        return HeterogeneousContainerImpl.of(Objects.requireNonNull(type.getPermittedSubclasses()));
     }
 
 }

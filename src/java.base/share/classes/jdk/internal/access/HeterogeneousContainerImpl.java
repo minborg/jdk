@@ -5,6 +5,7 @@ import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.Function;
@@ -16,7 +17,11 @@ record HeterogeneousContainerImpl<T>(@Stable Object[] table) implements Heteroge
 
     @ForceInline
     public <C extends T> C get(Class<C> type) {
-        return type.cast(componentRaw(type));
+        final Object componentRaw = componentRaw(type);
+        if (componentRaw == null) {
+            throw new NoSuchElementException("No component of type " + type);
+        }
+        return type.cast(componentRaw);
     }
 
     public boolean isInitialized(Class<? extends T> type) {
