@@ -24,6 +24,8 @@
  */
 package java.lang;
 
+import jdk.internal.vm.annotation.AOTSafeClassInitializer;
+
 /**
  * This is the common base class of all Java language record classes.
  *
@@ -87,6 +89,7 @@ package java.lang;
  * @jls 8.10 Record Classes
  * @since 16
  */
+@AOTSafeClassInitializer // for hierarchy checks
 public abstract class Record {
     /**
      * Constructor for record classes to call.
