@@ -25,7 +25,6 @@
 
 package jdk.internal.access;
 
-import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
@@ -33,7 +32,6 @@ import jdk.internal.vm.annotation.Stable;
 import javax.crypto.SealedObject;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ObjectInputFilter;
-import java.lang.constant.Constable;
 import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
 import java.net.HttpCookie;
@@ -84,24 +82,24 @@ import javax.security.auth.x500.X500Principal;
  * code that would lead to the initialization of such fields, or else the AOT
  * cache creation will fail.
  */
-@AOTSafeClassInitializer
 public final class SharedSecrets {
     private SharedSecrets() { }
 
     // Todo: Remove this field.
     @Stable private static JavaLangAccess javaLangAccess;
 
-    // Sentinel value signaling that no explicit class initialization should be performed
-    private static final String NO_INIT = "";
+    // Sentinel value signaling that no explicit class initialization should be performed.
+    // Must not be of type Class or String.
+    private static final Object NO_INIT = new Object();
 
     // This map is used to associate a certain Access interface to another class where
     // the implementation of said interface resides
-    private static final Map<Class<? extends Access>, Constable> IMPLEMENTATIONS = implementations();
+    private static final Map<Class<? extends Access>, Object> IMPLEMENTATIONS = implementations();
 
     // In order to avoid creating a circular dependency graph, we refrain from using
     // ImmutableCollections. This means we have to resort to mutating a map.
-    private static Map<Class<? extends Access>, Constable> implementations() {
-        final Map<Class<? extends Access>, Constable> map = new HashMap<>();
+    private static Map<Class<? extends Access>, Object> implementations() {
+        final Map<Class<? extends Access>, Object> map = new HashMap<>();
 
         map.put(JavaAWTFontAccess.class, NO_INIT);
         map.put(JavaBeansAccess.class, NO_INIT);
@@ -138,8 +136,8 @@ public final class SharedSecrets {
         return Collections.unmodifiableMap(map);
     }
 
-    private static final StableComponentContainer<Access> COMPONENTS =
-            StableComponentContainer.of(IMPLEMENTATIONS.keySet());
+    private static final HeterogeneousContainer<Access> COMPONENTS =
+            HeterogeneousContainer.of(IMPLEMENTATIONS.keySet());
 
     @ForceInline
     public static <T extends Access> T get(Class<T> clazz) {
@@ -151,16 +149,17 @@ public final class SharedSecrets {
 
     @DontInline
     private static <T extends Access> T getSlowPath(Class<T> clazz) {
-        final Constable implementation = IMPLEMENTATIONS.get(clazz);
+        final Object implementation = IMPLEMENTATIONS.get(clazz);
         // We can't use pattern matching here as that would trigger
         // classfile initialization
         if (implementation instanceof Class<?> c) {
             ensureClassInitialized(c);
-        } else if (implementation instanceof String s && !s.equals(NO_INIT)) {
+        } else if (implementation instanceof String s) {
             ensureClassInitialized(s);
         } else {
-            throw new InternalError("Should not reach here: " + implementation);
+            throw new InternalError("Should not reach here: " + clazz + " -> " + implementation);
         }
+
         // The component should now be initialized
         return COMPONENTS.get(clazz);
     }

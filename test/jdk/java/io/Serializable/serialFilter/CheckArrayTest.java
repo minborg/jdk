@@ -97,7 +97,7 @@ public class CheckArrayTest {
             // Check the arraysize against the filter
             ObjectInputFilter filter = ObjectInputFilter.Config.createFilter(pattern);
             ois.setObjectInputFilter(filter);
-            SharedSecrets.getJavaObjectInputStreamAccess()
+            SharedSecrets.get(JavaObjectInputStreamAccess.class)
                     .checkArray(ois, array.getClass(), arraySize);
             Assert.assertTrue(array.length >= arraySize,
                     "Should have thrown InvalidClassException due to array size");

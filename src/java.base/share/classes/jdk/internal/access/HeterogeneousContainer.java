@@ -1,6 +1,5 @@
 package jdk.internal.access;
 
-import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -20,7 +19,7 @@ import java.util.function.Function;
  * @param <T> The common type of the components. The type can be {@linkplain Object} if
  *            there is no common super type for the components.
  */
-public sealed interface StableComponentContainer<T> permits StableComponentContainerImpl {
+public sealed interface HeterogeneousContainer<T> permits HeterogeneousContainerImpl {
 
     /**
      * {@return the associated component for the provided {@code type}}
@@ -28,7 +27,7 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
      * @param type to use as lookup
      * @param <C> component type
      * @throws IllegalArgumentException if the provided {@code type} was not specified
-     *         {@linkplain StableComponentContainer#of(Set) at construction}.
+     *         {@linkplain HeterogeneousContainer#of(Set) at construction}.
      */
     <C extends T> C get(Class<C> type);
 
@@ -41,7 +40,7 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
      *              (nullable)
      * @param <C> component type
      * @throws IllegalArgumentException if the provided {@code type} was not specified
-     *         {@linkplain StableComponentContainer#of(Set) at construction}.
+     *         {@linkplain HeterogeneousContainer#of(Set) at construction}.
      */
     <C extends T> C orElse(Class<C> type, C other);
 
@@ -51,7 +50,7 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
      *
      * @param type to use as lookup
      * @throws IllegalArgumentException if the provided {@code type} was not specified
-     *         {@linkplain StableComponentContainer#of(Set) at construction}.
+     *         {@linkplain HeterogeneousContainer#of(Set) at construction}.
      */
     boolean isInitialized(Class<? extends T> type);
 
@@ -60,7 +59,7 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
      *
      * @param type to use as lookup
      * @throws IllegalArgumentException if the provided {@code type} was not specified
-     *         {@linkplain StableComponentContainer#of(Set) at construction}.
+     *         {@linkplain HeterogeneousContainer#of(Set) at construction}.
      * @throws IllegalStateException if the provided {@code type} was already associated
      *         with a component
      */
@@ -101,7 +100,7 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
      * @return the current (existing or computed) component associated with
      *         the specified type
      * @throws IllegalArgumentException if the provided {@code type} was not specified
-     *         {@linkplain StableComponentContainer#of(Set) at construction}.
+     *         {@linkplain HeterogeneousContainer#of(Set) at construction}.
      */
     <C extends T> C computeIfAbsent(Class<C> type,
                                     Function<Class<C>, ? extends C> mappingFunction);
@@ -114,7 +113,7 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
      * @param <T>   the common type of the components. The type can be {@linkplain Object}
      *              if there is no common super type for the components.
      */
-    static <T> StableComponentContainer<T> of(Set<Class<? extends T>> types) {
+    static <T> HeterogeneousContainer<T> of(Set<Class<? extends T>> types) {
         // TOC TOU protection and
         // implicit null check of `types` and explicit null check on all its elements
         final Object[] inputs = new Object[types.size()];
@@ -122,7 +121,7 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
         for (Object type : types) {
             inputs[idx++] = Objects.requireNonNull(type);
         }
-        return StableComponentContainerImpl.of(inputs);
+        return HeterogeneousContainerImpl.of(inputs);
     }
 
     /**
@@ -134,7 +133,7 @@ public sealed interface StableComponentContainer<T> permits StableComponentConta
      * @param <T>  the common type of the components. The type can be {@linkplain Object}
      *             if there is no common super type for the components.
      */
-    static <T> StableComponentContainer<T> of(Class<T> type) {
+    static <T> HeterogeneousContainer<T> of(Class<T> type) {
         // Implicit null check
         if (!type.isSealed()) {
             throw new IllegalArgumentException("The provided type must be sealed: " + type);

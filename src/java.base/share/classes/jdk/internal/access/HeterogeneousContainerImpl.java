@@ -10,7 +10,7 @@ import java.util.StringJoiner;
 import java.util.function.Function;
 
 @AOTSafeClassInitializer
-record StableComponentContainerImpl<T>(@Stable Object[] table) implements StableComponentContainer<T> {
+record HeterogeneousContainerImpl<T>(@Stable Object[] table) implements HeterogeneousContainer<T> {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
@@ -127,7 +127,7 @@ record StableComponentContainerImpl<T>(@Stable Object[] table) implements Stable
         return -probe - 1;
     }
 
-    static <T> StableComponentContainer<T> of(Object[] inputs) {
+    static <T> HeterogeneousContainer<T> of(Object[] inputs) {
         // Prepopulate all the keys upfront
         final Object[] table = new Object[inputs.length << 2];
         for (Object type : inputs) {
@@ -136,7 +136,7 @@ record StableComponentContainerImpl<T>(@Stable Object[] table) implements Stable
             final int keyIndex = availableIndex(probe);
             table[keyIndex] = type;
         }
-        return new StableComponentContainerImpl<>(table);
+        return new HeterogeneousContainerImpl<>(table);
     }
 
 }
