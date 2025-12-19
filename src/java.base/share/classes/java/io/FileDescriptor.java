@@ -42,16 +42,12 @@ import jdk.internal.io.InternalFileDescriptor;
 @SuppressWarnings("exports") // Todo: check this
 public final class FileDescriptor extends InternalFileDescriptor {
 
-/*    @Stable
-    private final InternalFileDescriptor internalFileDescriptor;*/
-
     /**
      * Constructs an (invalid) FileDescriptor object.
      * The fd or handle is set later.
      */
     public FileDescriptor() {
         super();
-        //internalFileDescriptor = new InternalFileDescriptor();
     }
 
     /**
@@ -62,7 +58,6 @@ public final class FileDescriptor extends InternalFileDescriptor {
      */
     private FileDescriptor(int fd) {
         super(fd);
-        //internalFileDescriptor = new InternalFileDescriptor(fd);
     }
 
     /**
@@ -100,7 +95,6 @@ public final class FileDescriptor extends InternalFileDescriptor {
      */
     public boolean valid() {
         return super.valid();
-        //return internalFileDescriptor.valid();
     }
 
     /**
@@ -133,7 +127,6 @@ public final class FileDescriptor extends InternalFileDescriptor {
      */
     public void sync() throws SyncFailedException {
         super.sync();
-        //internalFileDescriptor.sync();
     }
 
     /*
@@ -149,7 +142,6 @@ public final class FileDescriptor extends InternalFileDescriptor {
      */
     void attach(Closeable c) {
         super.attach0(c);
-        //internalFileDescriptor.attach(c);
     }
 
     /**
@@ -161,7 +153,6 @@ public final class FileDescriptor extends InternalFileDescriptor {
      */
     void close() throws IOException {
         super.close1();
-        //internalFileDescriptor.close();
     }
 
     /**
@@ -172,7 +163,6 @@ public final class FileDescriptor extends InternalFileDescriptor {
      */
     void closeAll(Closeable releaser) throws IOException {
         super.closeAll0(releaser);
-        //internalFileDescriptor.closeAll(releaser);
     }
 
 }
