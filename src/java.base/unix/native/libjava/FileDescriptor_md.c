@@ -31,7 +31,7 @@
 #include "jvm.h"
 
 #include "io_util_md.h"
-#include "java_io_FileDescriptor.h"
+#include "jdk_internal_io_InternalFileDescriptor.h"
 
 /*******************************************************************/
 /*  BEGIN JNI ********* BEGIN JNI *********** BEGIN JNI ************/
@@ -48,7 +48,7 @@ jfieldID IO_append_fdID;
  */
 
 JNIEXPORT void JNICALL
-Java_java_io_FileDescriptor_initIDs(JNIEnv *env, jclass fdClass) {
+Java_jdk_internal_io_InternalFileDescriptor_initIDs(JNIEnv *env, jclass fdClass) {
     CHECK_NULL(IO_fd_fdID = (*env)->GetFieldID(env, fdClass, "fd", "I"));
     CHECK_NULL(IO_append_fdID = (*env)->GetFieldID(env, fdClass, "append", "Z"));
 }
@@ -58,31 +58,31 @@ Java_java_io_FileDescriptor_initIDs(JNIEnv *env, jclass fdClass) {
  */
 
 JNIEXPORT void JNICALL
-Java_java_io_FileDescriptor_sync0(JNIEnv *env, jobject this) {
+Java_jdk_internal_io_InternalFileDescriptor_sync0(JNIEnv *env, jobject this) {
     FD fd = THIS_FD(this);
     if (IO_Sync(fd) == -1) {
         JNU_ThrowByName(env, "java/io/SyncFailedException", "sync failed");
     }
 }
 JNIEXPORT jlong JNICALL
-Java_java_io_FileDescriptor_getHandle(JNIEnv *env, jclass fdClass, jint fd) {
+Java_jdk_internal_io_InternalFileDescriptor_getHandle(JNIEnv *env, jclass fdClass, jint fd) {
     return -1;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_java_io_FileDescriptor_getAppend(JNIEnv *env, jclass fdClass, jint fd) {
+Java_jdk_internal_io_InternalFileDescriptor_getAppend(JNIEnv *env, jclass fdClass, jint fd) {
     int flags = fcntl(fd, F_GETFL);
     return ((flags & O_APPEND) == 0) ? JNI_FALSE : JNI_TRUE;
 }
 
 // instance method close0 for FileDescriptor
 JNIEXPORT void JNICALL
-Java_java_io_FileDescriptor_close0(JNIEnv *env, jobject this) {
+Java_jdk_internal_io_InternalFileDescriptor_close0(JNIEnv *env, jobject this) {
     fileDescriptorClose(env, this);
 }
 
 JNIEXPORT void JNICALL
-Java_java_io_FileCleanable_cleanupClose0(JNIEnv *env, jclass fdClass, jint fd, jlong unused) {
+Java_jdk_internal_io_FileCleanable_cleanupClose0(JNIEnv *env, jclass fdClass, jint fd, jlong unused) {
     if (fd != -1) {
         if (close(fd) == -1) {
             JNU_ThrowIOExceptionWithLastError(env, "close failed");

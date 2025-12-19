@@ -27,8 +27,7 @@ package sun.nio.ch;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 
 /**
  * Allows different platforms to call different native methods
@@ -36,7 +35,6 @@ import jdk.internal.access.SharedSecrets;
  */
 
 abstract class NativeDispatcher {
-    private static final JavaIOFileDescriptorAccess JIOFDA = SharedSecrets.getJavaIOFileDescriptorAccess();
 
     abstract int read(FileDescriptor fd, long address, int len)
         throws IOException;
@@ -80,7 +78,7 @@ abstract class NativeDispatcher {
      */
     final void preClose(FileDescriptor fd, long reader, long writer) throws IOException {
         if (NativeThread.isVirtualThread(reader) || NativeThread.isVirtualThread(writer)) {
-            int fdVal = JIOFDA.get(fd);
+            int fdVal = JavaIOFileDescriptorAccessUtil.get(fd);
             Poller.stopPoll(fdVal);
         }
         if (NativeThread.isNativeThread(reader) || NativeThread.isNativeThread(writer)) {

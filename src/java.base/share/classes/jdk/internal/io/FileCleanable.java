@@ -23,13 +23,15 @@
  * questions.
  */
 
-package java.io;
+package jdk.internal.io;
 
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 import jdk.internal.ref.CleanerFactory;
 import jdk.internal.ref.PhantomCleanable;
 
+import java.io.FileDescriptor;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.ref.Cleaner;
 
 /**
@@ -42,12 +44,7 @@ import java.lang.ref.Cleaner;
  * than calling {@link FileDescriptor#close}.
  * Otherwise, it might incorrectly close the handle after it has been reused.
  */
-final class FileCleanable extends PhantomCleanable<FileDescriptor> {
-
-    // Access to FileDescriptor private fields;
-    // avoids making fd and handle package private
-    private static final JavaIOFileDescriptorAccess fdAccess =
-            SharedSecrets.getJavaIOFileDescriptorAccess();
+public final class FileCleanable extends PhantomCleanable<FileDescriptor> {
 
     /*
      * Raw close of the file fd and/or handle.
@@ -70,10 +67,10 @@ final class FileCleanable extends PhantomCleanable<FileDescriptor> {
      *
      * @param fdo the FileDescriptor; may be null
      */
-    static void register(FileDescriptor fdo) {
+    public static void register(FileDescriptor fdo) {
         if (fdo != null && fdo.valid()) {
-            int fd = fdAccess.get(fdo);
-            long handle = fdAccess.getHandle(fdo);
+            int fd = JavaIOFileDescriptorAccessUtil.get(fdo);
+            long handle = JavaIOFileDescriptorAccessUtil.getHandle(fdo);
             fdo.registerCleanup(new FileCleanable(fdo, CleanerFactory.cleaner(), fd, handle));
         }
     }
@@ -82,7 +79,7 @@ final class FileCleanable extends PhantomCleanable<FileDescriptor> {
      * Unregister a Cleanable from the FileDescriptor.
      * @param fdo the FileDescriptor; may be null
      */
-    static void unregister(FileDescriptor fdo) {
+    public static void unregister(InternalFileDescriptor fdo) {
         if (fdo != null) {
             fdo.unregisterCleanup();
         }
@@ -96,7 +93,7 @@ final class FileCleanable extends PhantomCleanable<FileDescriptor> {
      * @param fd      file descriptor to close
      * @param handle  handle to close
      */
-    private FileCleanable(FileDescriptor obj, Cleaner cleaner, int fd, long handle) {
+    public FileCleanable(FileDescriptor obj, Cleaner cleaner, int fd, long handle) {
         super(obj, cleaner);
         this.fd = fd;
         this.handle = handle;

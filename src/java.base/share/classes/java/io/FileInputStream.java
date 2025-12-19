@@ -27,6 +27,8 @@ package java.io;
 
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+
+import jdk.internal.io.FileCleanable;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.event.FileReadEvent;
 import jdk.internal.vm.annotation.Stable;

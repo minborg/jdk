@@ -33,10 +33,9 @@ import java.nio.ByteBuffer;
 import java.nio.BufferOverflowException;
 import java.io.IOException;
 import java.io.FileDescriptor;
-import jdk.internal.access.SharedSecrets;
-import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileForceEvent;
 import jdk.internal.invoke.MhUtil;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 
 /**
  * Windows implementation of AsynchronousFileChannel using overlapped I/O.
@@ -46,8 +45,6 @@ public class WindowsAsynchronousFileChannelImpl
     extends AsynchronousFileChannelImpl
     implements Iocp.OverlappedChannel, Groupable
 {
-    private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
 
     // error when EOF is detected asynchronously.
     private static final int ERROR_HANDLE_EOF = 38;
@@ -95,7 +92,7 @@ public class WindowsAsynchronousFileChannelImpl
     {
         super(fdObj, reading, writing, iocp.executor());
         this.path = path;
-        this.handle = fdAccess.getHandle(fdObj);
+        this.handle = JavaIOFileDescriptorAccessUtil.getHandle(fdObj);
         this.iocp = iocp;
         this.isDefaultIocp = isDefaultIocp;
         this.ioCache = new PendingIoCache();

@@ -29,8 +29,7 @@ import java.io.File;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.nio.CharBuffer;
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 
 class FileDispatcherImpl extends FileDispatcher {
     private static final int MAP_INVALID = -1;
@@ -43,9 +42,6 @@ class FileDispatcherImpl extends FileDispatcher {
 
     // set to true if fast file transmission (TransmitFile) is enabled
     private static final boolean FAST_FILE_TRANSFER;
-
-    private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
 
     FileDispatcherImpl() { }
 
@@ -71,7 +67,7 @@ class FileDispatcherImpl extends FileDispatcher {
     }
 
     int write(FileDescriptor fd, long address, int len) throws IOException {
-        return write0(fd, address, len, fdAccess.getAppend(fd));
+        return write0(fd, address, len, JavaIOFileDescriptorAccessUtil.getAppend(fd));
     }
 
     int pwrite(FileDescriptor fd, long address, int len, long position)
@@ -81,7 +77,7 @@ class FileDispatcherImpl extends FileDispatcher {
     }
 
     long writev(FileDescriptor fd, long address, int len) throws IOException {
-        return writev0(fd, address, len, fdAccess.getAppend(fd));
+        return writev0(fd, address, len, JavaIOFileDescriptorAccessUtil.getAppend(fd));
     }
 
     long seek(FileDescriptor fd, long offset) throws IOException {
@@ -119,15 +115,15 @@ class FileDispatcherImpl extends FileDispatcher {
     }
 
     void close(FileDescriptor fd) throws IOException {
-        fdAccess.close(fd);
+        JavaIOFileDescriptorAccessUtil.close(fd);
     }
 
     FileDescriptor duplicateForMapping(FileDescriptor fd) throws IOException {
         // on Windows we need to keep a handle to the file
         FileDescriptor result = new FileDescriptor();
-        long handle = duplicateHandle(fdAccess.getHandle(fd));
-        fdAccess.setHandle(result, handle);
-        fdAccess.registerCleanup(result);
+        long handle = duplicateHandle(JavaIOFileDescriptorAccessUtil.getHandle(fd));
+        JavaIOFileDescriptorAccessUtil.setHandle(result, handle);
+        JavaIOFileDescriptorAccessUtil.registerCleanup(result);
         return result;
     }
 

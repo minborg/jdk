@@ -26,9 +26,9 @@
 package java.io;
 
 import java.nio.channels.FileChannel;
-import jdk.internal.access.SharedSecrets;
-import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
+import jdk.internal.io.FileCleanable;
 import sun.nio.ch.FileChannelImpl;
 
 
@@ -63,11 +63,6 @@ import sun.nio.ch.FileChannelImpl;
  */
 public class FileOutputStream extends OutputStream
 {
-    /**
-     * Access to FileDescriptor internals.
-     */
-    private static final JavaIOFileDescriptorAccess FD_ACCESS =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
 
     /**
      * Flag set by jdk.internal.event.JFRTracing to indicate if
@@ -284,7 +279,7 @@ public class FileOutputStream extends OutputStream
      */
     @Override
     public void write(int b) throws IOException {
-        boolean append = FD_ACCESS.getAppend(fd);
+        boolean append = JavaIOFileDescriptorAccessUtil.getAppend(fd);
         if (jfrTracing && FileWriteEvent.enabled()) {
             traceWrite(b, append);
             return;
@@ -324,7 +319,7 @@ public class FileOutputStream extends OutputStream
      */
     @Override
     public void write(byte[] b) throws IOException {
-        boolean append = FD_ACCESS.getAppend(fd);
+        boolean append = JavaIOFileDescriptorAccessUtil.getAppend(fd);
         if (jfrTracing && FileWriteEvent.enabled()) {
             traceWriteBytes(b, 0, b.length, append);
             return;
@@ -344,7 +339,7 @@ public class FileOutputStream extends OutputStream
      */
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        boolean append = FD_ACCESS.getAppend(fd);
+        boolean append = JavaIOFileDescriptorAccessUtil.getAppend(fd);
         if (jfrTracing && FileWriteEvent.enabled()) {
             traceWriteBytes(b, off, len, append);
             return;

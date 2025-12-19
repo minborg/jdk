@@ -30,8 +30,7 @@ import java.nio.file.*;
 import java.nio.channels.*;
 import java.util.Set;
 
-import jdk.internal.access.SharedSecrets;
-import jdk.internal.access.JavaIOFileDescriptorAccess;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 import sun.nio.ch.FileChannelImpl;
 import sun.nio.ch.ThreadPool;
 import sun.nio.ch.SimpleAsynchronousFileChannelImpl;
@@ -44,8 +43,6 @@ import static sun.nio.fs.UnixConstants.*;
  */
 
 class UnixChannelFactory {
-    private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
 
     protected UnixChannelFactory() {
     }
@@ -272,8 +269,8 @@ class UnixChannelFactory {
 
         // create java.io.FileDescriptor
         FileDescriptor fdObj = new FileDescriptor();
-        fdAccess.set(fdObj, fd);
-        fdAccess.setAppend(fdObj, flags.append);
+        JavaIOFileDescriptorAccessUtil.set(fdObj, fd);
+        JavaIOFileDescriptorAccessUtil.setAppend(fdObj, flags.append);
         return fdObj;
     }
 }

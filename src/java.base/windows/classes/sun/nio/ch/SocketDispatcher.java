@@ -28,8 +28,7 @@ package sun.nio.ch;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 
 /**
  * Allows different platforms to call different native methods
@@ -37,8 +36,6 @@ import jdk.internal.access.SharedSecrets;
  */
 
 class SocketDispatcher extends NativeDispatcher {
-    private static final JavaIOFileDescriptorAccess fdAccess =
-            SharedSecrets.getJavaIOFileDescriptorAccess();
 
     SocketDispatcher() { }
 
@@ -69,8 +66,8 @@ class SocketDispatcher extends NativeDispatcher {
 
     static void invalidateAndClose(FileDescriptor fd) throws IOException {
         assert fd.valid();
-        int fdVal = fdAccess.get(fd);
-        fdAccess.set(fd, -1);
+        int fdVal = JavaIOFileDescriptorAccessUtil.get(fd);
+        JavaIOFileDescriptorAccessUtil.set(fd, -1);
         close0(fdVal);
     }
 

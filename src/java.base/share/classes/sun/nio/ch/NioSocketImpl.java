@@ -51,8 +51,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 import jdk.internal.ref.CleanerFactory;
 import sun.net.ConnectionResetException;
 import sun.net.PlatformSocketImpl;
@@ -1260,8 +1259,7 @@ public final class NioSocketImpl extends SocketImpl implements PlatformSocketImp
      * Return the file descriptor value.
      */
     private static int fdVal(FileDescriptor fd) {
-        return JIOFDA.get(fd);
+        return JavaIOFileDescriptorAccessUtil.get(fd);
     }
 
-    private static final JavaIOFileDescriptorAccess JIOFDA = SharedSecrets.getJavaIOFileDescriptorAccess();
 }

@@ -48,11 +48,10 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Objects;
 
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.event.FileForceEvent;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.SegmentFactories;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 import jdk.internal.misc.Blocker;
 import jdk.internal.misc.ExtendedMapMode;
 import jdk.internal.misc.Unsafe;
@@ -67,9 +66,6 @@ import sun.nio.Cleaner;
 public class FileChannelImpl
     extends FileChannel
 {
-    // Access to FileDescriptor internals
-    private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
 
     // Used to make native read and write calls
     private static final FileDispatcher nd = new FileDispatcherImpl();
@@ -120,7 +116,7 @@ public class FileChannelImpl
 
         public void run() {
             try {
-                fdAccess.close(fd);
+                JavaIOFileDescriptorAccessUtil.close(fd);
             } catch (IOException ioe) {
                 // Rethrow as unchecked so the exception can be propagated as needed
                 throw new UncheckedIOException("close", ioe);
@@ -446,7 +442,7 @@ public class FileChannelImpl
                 ti = threads.add();
                 if (!isOpen())
                     return 0;
-                boolean append = fdAccess.getAppend(fd);
+                boolean append = JavaIOFileDescriptorAccessUtil.getAppend(fd);
                 do {
                     // in append-mode then position is advanced to end before writing
                     p = (append) ? nd.size(fd) : nd.seek(fd, -1);
@@ -723,7 +719,7 @@ public class FileChannelImpl
      */
     private long transferToFileDescriptor(long position, int count, FileDescriptor targetFD) {
         long n;
-        boolean append = fdAccess.getAppend(targetFD);
+        boolean append = JavaIOFileDescriptorAccessUtil.getAppend(targetFD);
         do {
             n = nd.transferTo(fd, position, count, targetFD, append);
         } while ((n == IOStatus.INTERRUPTED) && isOpen());
@@ -989,7 +985,7 @@ public class FileChannelImpl
      */
     private long transferFromFileDescriptor(FileDescriptor srcFD, long position, long count) {
         long n;
-        boolean append = fdAccess.getAppend(fd);
+        boolean append = JavaIOFileDescriptorAccessUtil.getAppend(fd);
         do {
             n = nd.transferFrom(srcFD, fd, position, count, append);
         } while ((n == IOStatus.INTERRUPTED) && isOpen());

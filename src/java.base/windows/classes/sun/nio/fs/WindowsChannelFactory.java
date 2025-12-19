@@ -34,8 +34,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Set;
 
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 import sun.nio.ch.FileChannelImpl;
 import sun.nio.ch.ThreadPool;
 import sun.nio.ch.WindowsAsynchronousFileChannelImpl;
@@ -48,8 +47,6 @@ import static sun.nio.fs.WindowsConstants.*;
  */
 
 class WindowsChannelFactory {
-    private static final JavaIOFileDescriptorAccess fdAccess =
-        SharedSecrets.getJavaIOFileDescriptorAccess();
 
     private WindowsChannelFactory() { }
 
@@ -210,7 +207,7 @@ class WindowsChannelFactory {
         } catch (IOException x) {
             // IOException is thrown if the file handle cannot be associated
             // with the completion port. All we can do is close the file.
-            fdAccess.close(fdObj);
+            JavaIOFileDescriptorAccessUtil.close(fdObj);
             throw x;
         }
     }
@@ -327,9 +324,9 @@ class WindowsChannelFactory {
 
         // create FileDescriptor and return
         FileDescriptor fdObj = new FileDescriptor();
-        fdAccess.setHandle(fdObj, handle);
-        fdAccess.setAppend(fdObj, flags.append);
-        fdAccess.registerCleanup(fdObj);
+        JavaIOFileDescriptorAccessUtil.setHandle(fdObj, handle);
+        JavaIOFileDescriptorAccessUtil.setAppend(fdObj, flags.append);
+        JavaIOFileDescriptorAccessUtil.registerCleanup(fdObj);
         return fdObj;
     }
 }

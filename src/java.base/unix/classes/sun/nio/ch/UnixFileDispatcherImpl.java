@@ -28,8 +28,7 @@ package sun.nio.ch;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 
 class UnixFileDispatcherImpl extends FileDispatcher {
     private static final int MAP_INVALID = -1;
@@ -40,9 +39,6 @@ class UnixFileDispatcherImpl extends FileDispatcher {
     static {
         IOUtil.load();
     }
-
-    private static final JavaIOFileDescriptorAccess fdAccess =
-            SharedSecrets.getJavaIOFileDescriptorAccess();
 
     UnixFileDispatcherImpl() {
     }
@@ -112,7 +108,7 @@ class UnixFileDispatcherImpl extends FileDispatcher {
     }
 
     void close(FileDescriptor fd) throws IOException {
-        fdAccess.close(fd);
+        JavaIOFileDescriptorAccessUtil.close(fd);
     }
 
     FileDescriptor duplicateForMapping(FileDescriptor fd) {

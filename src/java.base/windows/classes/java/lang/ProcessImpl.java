@@ -42,8 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 import jdk.internal.ref.CleanerFactory;
 import jdk.internal.misc.Blocker;
 
@@ -55,8 +54,6 @@ import jdk.internal.misc.Blocker;
  */
 
 final class ProcessImpl extends Process {
-    private static final JavaIOFileDescriptorAccess fdAccess
-        = SharedSecrets.getJavaIOFileDescriptorAccess();
 
     // Windows platforms support a forcible kill signal.
     static final boolean SUPPORTS_NORMAL_TERMINATION = false;
@@ -75,7 +72,7 @@ final class ProcessImpl extends Process {
             String path = f.getPath();
             long handle = openForAtomicAppend(path);
             final FileDescriptor fd = new FileDescriptor();
-            fdAccess.setHandle(fd, handle);
+            JavaIOFileDescriptorAccessUtil.setHandle(fd, handle);
             return new FileOutputStream(fd);
         } else {
             return new FileOutputStream(f);
@@ -107,39 +104,39 @@ final class ProcessImpl extends Process {
                 if (redirects[0] == Redirect.PIPE) {
                     stdHandles[0] = -1L;
                 } else if (redirects[0] == Redirect.INHERIT) {
-                    stdHandles[0] = fdAccess.getHandle(FileDescriptor.in);
+                    stdHandles[0] = JavaIOFileDescriptorAccessUtil.getHandle(FileDescriptor.in);
                 } else if (redirects[0] instanceof ProcessBuilder.RedirectPipeImpl) {
-                    stdHandles[0] = fdAccess.getHandle(((ProcessBuilder.RedirectPipeImpl) redirects[0]).getFd());
+                    stdHandles[0] = JavaIOFileDescriptorAccessUtil.getHandle(((ProcessBuilder.RedirectPipeImpl) redirects[0]).getFd());
                 } else {
                     f0 = new FileInputStream(redirects[0].file());
-                    stdHandles[0] = fdAccess.getHandle(f0.getFD());
+                    stdHandles[0] = JavaIOFileDescriptorAccessUtil.getHandle(f0.getFD());
                 }
 
                 if (redirects[1] == Redirect.PIPE) {
                     stdHandles[1] = -1L;
                 } else if (redirects[1] == Redirect.INHERIT) {
-                    stdHandles[1] = fdAccess.getHandle(FileDescriptor.out);
+                    stdHandles[1] = JavaIOFileDescriptorAccessUtil.getHandle(FileDescriptor.out);
                 } else if (redirects[1] instanceof ProcessBuilder.RedirectPipeImpl) {
-                    stdHandles[1] = fdAccess.getHandle(((ProcessBuilder.RedirectPipeImpl) redirects[1]).getFd());
+                    stdHandles[1] = JavaIOFileDescriptorAccessUtil.getHandle(((ProcessBuilder.RedirectPipeImpl) redirects[1]).getFd());
                     // Force getInputStream to return a null stream,
                     // the handle is directly assigned to the next process.
                     forceNullOutputStream = true;
                 } else {
                     f1 = newFileOutputStream(redirects[1].file(),
                                              redirects[1].append());
-                    stdHandles[1] = fdAccess.getHandle(f1.getFD());
+                    stdHandles[1] = JavaIOFileDescriptorAccessUtil.getHandle(f1.getFD());
                 }
 
                 if (redirects[2] == Redirect.PIPE) {
                     stdHandles[2] = -1L;
                 } else if (redirects[2] == Redirect.INHERIT) {
-                    stdHandles[2] = fdAccess.getHandle(FileDescriptor.err);
+                    stdHandles[2] = JavaIOFileDescriptorAccessUtil.getHandle(FileDescriptor.err);
                 } else if (redirects[2] instanceof ProcessBuilder.RedirectPipeImpl) {
-                    stdHandles[2] = fdAccess.getHandle(((ProcessBuilder.RedirectPipeImpl) redirects[2]).getFd());
+                    stdHandles[2] = JavaIOFileDescriptorAccessUtil.getHandle(((ProcessBuilder.RedirectPipeImpl) redirects[2]).getFd());
                 } else {
                     f2 = newFileOutputStream(redirects[2].file(),
                                              redirects[2].append());
-                    stdHandles[2] = fdAccess.getHandle(f2.getFD());
+                    stdHandles[2] = JavaIOFileDescriptorAccessUtil.getHandle(f2.getFD());
                 }
             }
 
@@ -149,17 +146,17 @@ final class ProcessImpl extends Process {
                 // Copy the handles's if they are to be redirected to another process
                 if (stdHandles[0] >= 0
                         && redirects[0] instanceof ProcessBuilder.RedirectPipeImpl) {
-                    fdAccess.setHandle(((ProcessBuilder.RedirectPipeImpl) redirects[0]).getFd(),
+                    JavaIOFileDescriptorAccessUtil.setHandle(((ProcessBuilder.RedirectPipeImpl) redirects[0]).getFd(),
                             stdHandles[0]);
                 }
                 if (stdHandles[1] >= 0
                         && redirects[1] instanceof ProcessBuilder.RedirectPipeImpl) {
-                    fdAccess.setHandle(((ProcessBuilder.RedirectPipeImpl) redirects[1]).getFd(),
+                    JavaIOFileDescriptorAccessUtil.setHandle(((ProcessBuilder.RedirectPipeImpl) redirects[1]).getFd(),
                             stdHandles[1]);
                 }
                 if (stdHandles[2] >= 0
                         && redirects[2] instanceof ProcessBuilder.RedirectPipeImpl) {
-                    fdAccess.setHandle(((ProcessBuilder.RedirectPipeImpl) redirects[2]).getFd(),
+                    JavaIOFileDescriptorAccessUtil.setHandle(((ProcessBuilder.RedirectPipeImpl) redirects[2]).getFd(),
                             stdHandles[2]);
                 }
             }
@@ -485,8 +482,8 @@ final class ProcessImpl extends Process {
             stdin_stream = ProcessBuilder.NullOutputStream.INSTANCE;
         else {
             FileDescriptor stdin_fd = new FileDescriptor();
-            fdAccess.setHandle(stdin_fd, stdHandles[0]);
-            fdAccess.registerCleanup(stdin_fd);
+            JavaIOFileDescriptorAccessUtil.setHandle(stdin_fd, stdHandles[0]);
+            JavaIOFileDescriptorAccessUtil.registerCleanup(stdin_fd);
             stdin_stream = new BufferedOutputStream(
                 new PipeOutputStream(stdin_fd));
         }
@@ -495,8 +492,8 @@ final class ProcessImpl extends Process {
             stdout_stream = ProcessBuilder.NullInputStream.INSTANCE;
         else {
             FileDescriptor stdout_fd = new FileDescriptor();
-            fdAccess.setHandle(stdout_fd, stdHandles[1]);
-            fdAccess.registerCleanup(stdout_fd);
+            JavaIOFileDescriptorAccessUtil.setHandle(stdout_fd, stdHandles[1]);
+            JavaIOFileDescriptorAccessUtil.registerCleanup(stdout_fd);
             stdout_stream = new BufferedInputStream(
                 new PipeInputStream(stdout_fd));
         }
@@ -505,8 +502,8 @@ final class ProcessImpl extends Process {
             stderr_stream = ProcessBuilder.NullInputStream.INSTANCE;
         else {
             FileDescriptor stderr_fd = new FileDescriptor();
-            fdAccess.setHandle(stderr_fd, stdHandles[2]);
-            fdAccess.registerCleanup(stderr_fd);
+            JavaIOFileDescriptorAccessUtil.setHandle(stderr_fd, stdHandles[2]);
+            JavaIOFileDescriptorAccessUtil.registerCleanup(stderr_fd);
             stderr_stream = new PipeInputStream(stderr_fd);
         }
     }

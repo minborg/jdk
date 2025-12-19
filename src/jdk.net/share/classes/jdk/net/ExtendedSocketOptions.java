@@ -32,8 +32,7 @@ import java.net.StandardProtocolFamily;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import jdk.internal.access.JavaIOFileDescriptorAccess;
-import jdk.internal.access.SharedSecrets;
+import jdk.internal.access.JavaIOFileDescriptorAccessUtil;
 import jdk.internal.util.OperatingSystem;
 
 /**
@@ -327,62 +326,59 @@ public final class ExtendedSocketOptions {
         });
     }
 
-    private static final JavaIOFileDescriptorAccess fdAccess =
-            SharedSecrets.getJavaIOFileDescriptorAccess();
-
     private static void setQuickAckOption(FileDescriptor fd, boolean enable)
             throws SocketException {
-        platformSocketOptions.setQuickAck(fdAccess.get(fd), enable);
+        platformSocketOptions.setQuickAck(JavaIOFileDescriptorAccessUtil.get(fd), enable);
     }
 
     private static Object getSoPeerCred(FileDescriptor fd)
             throws SocketException {
-        return platformSocketOptions.getSoPeerCred(fdAccess.get(fd));
+        return platformSocketOptions.getSoPeerCred(JavaIOFileDescriptorAccessUtil.get(fd));
     }
 
     private static Object getQuickAckOption(FileDescriptor fd)
             throws SocketException {
-        return platformSocketOptions.getQuickAck(fdAccess.get(fd));
+        return platformSocketOptions.getQuickAck(JavaIOFileDescriptorAccessUtil.get(fd));
     }
 
     private static void setTcpKeepAliveProbes(FileDescriptor fd, int value)
             throws SocketException {
-        platformSocketOptions.setTcpKeepAliveProbes(fdAccess.get(fd), value);
+        platformSocketOptions.setTcpKeepAliveProbes(JavaIOFileDescriptorAccessUtil.get(fd), value);
     }
 
     private static void setTcpKeepAliveTime(FileDescriptor fd, int value)
             throws SocketException {
-        platformSocketOptions.setTcpKeepAliveTime(fdAccess.get(fd), value);
+        platformSocketOptions.setTcpKeepAliveTime(JavaIOFileDescriptorAccessUtil.get(fd), value);
     }
 
     private static void setIpDontFragment(FileDescriptor fd, boolean value, boolean isIPv6)
             throws SocketException {
-        platformSocketOptions.setIpDontFragment(fdAccess.get(fd), value, isIPv6);
+        platformSocketOptions.setIpDontFragment(JavaIOFileDescriptorAccessUtil.get(fd), value, isIPv6);
     }
 
     private static void setTcpKeepAliveIntvl(FileDescriptor fd, int value)
             throws SocketException {
-        platformSocketOptions.setTcpKeepAliveIntvl(fdAccess.get(fd), value);
+        platformSocketOptions.setTcpKeepAliveIntvl(JavaIOFileDescriptorAccessUtil.get(fd), value);
     }
 
     private static int getTcpKeepAliveProbes(FileDescriptor fd) throws SocketException {
-        return platformSocketOptions.getTcpKeepAliveProbes(fdAccess.get(fd));
+        return platformSocketOptions.getTcpKeepAliveProbes(JavaIOFileDescriptorAccessUtil.get(fd));
     }
 
     private static boolean getIpDontFragment(FileDescriptor fd, boolean isIPv6) throws SocketException {
-        return platformSocketOptions.getIpDontFragment(fdAccess.get(fd), isIPv6);
+        return platformSocketOptions.getIpDontFragment(JavaIOFileDescriptorAccessUtil.get(fd), isIPv6);
     }
 
     private static int getTcpKeepAliveTime(FileDescriptor fd) throws SocketException {
-        return platformSocketOptions.getTcpKeepAliveTime(fdAccess.get(fd));
+        return platformSocketOptions.getTcpKeepAliveTime(JavaIOFileDescriptorAccessUtil.get(fd));
     }
 
     private static int getTcpKeepAliveIntvl(FileDescriptor fd) throws SocketException {
-        return platformSocketOptions.getTcpKeepAliveIntvl(fdAccess.get(fd));
+        return platformSocketOptions.getTcpKeepAliveIntvl(JavaIOFileDescriptorAccessUtil.get(fd));
     }
 
     private static int getIncomingNapiId(FileDescriptor fd) throws SocketException {
-        return platformSocketOptions.getIncomingNapiId(fdAccess.get(fd));
+        return platformSocketOptions.getIncomingNapiId(JavaIOFileDescriptorAccessUtil.get(fd));
     }
 
     static class PlatformSocketOptions {

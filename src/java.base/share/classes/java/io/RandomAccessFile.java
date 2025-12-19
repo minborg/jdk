@@ -29,6 +29,7 @@ import java.nio.channels.FileChannel;
 
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.io.FileCleanable;
 import jdk.internal.misc.Blocker;
 import jdk.internal.util.ByteArray;
 import jdk.internal.event.FileReadEvent;
