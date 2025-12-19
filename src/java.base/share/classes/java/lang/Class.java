@@ -257,6 +257,11 @@ public final class Class<T> implements java.io.Serializable,
         classFileAccessFlags = flags;
     }
 
+    @Override
+    public int hashCode() {
+        int h; return (h = hashCode) == 0 ? hashCode = super.hashCode() : h;
+    }
+
     /**
      * Converts the object to a string. The string representation is the
      * string "class" or "interface", followed by a space, and then by the
@@ -1019,6 +1024,9 @@ public final class Class<T> implements java.io.Serializable,
     private final transient char modifiers;  // Set by the VM
     private final transient char classFileAccessFlags;  // Set by the VM
     private final transient boolean primitive;  // Set by the VM if the Class is a primitive type.
+
+    @Stable
+    private int hashCode;
 
     // package-private
     Object getClassData() {
