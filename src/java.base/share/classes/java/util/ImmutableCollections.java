@@ -43,6 +43,9 @@ import jdk.internal.access.JavaObjectInputStreamAccess;
 import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.CDS;
+import jdk.internal.vm.annotation.AOTRuntimeSetup;
+import jdk.internal.vm.annotation.AOTSafeClassInitializer;
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 /**
@@ -53,6 +56,7 @@ import jdk.internal.vm.annotation.Stable;
  * classes use a serial proxy and thus have no need to declare serialVersionUID.
  */
 @SuppressWarnings("serial")
+@AOTSafeClassInitializer
 class ImmutableCollections {
     /**
      * A "salt" value used for randomizing iteration order. This is initialized once
@@ -60,14 +64,20 @@ class ImmutableCollections {
      * it needs to vary sufficiently from one run to the next so that iteration order
      * will vary between JVM runs.
      */
-    private static final long SALT32L;
+    @Stable private static long SALT32L;
 
     /**
      * For set and map iteration, we will iterate in "reverse" stochastically,
      * decided at bootstrap time.
      */
-    private static final boolean REVERSE;
+    @Stable private static boolean REVERSE;
+
     static {
+        runtimeSetup();
+    }
+
+    @AOTRuntimeSetup
+    private static void runtimeSetup() {
         // to generate a reasonably random and well-mixed SALT, use an arbitrary
         // value (a slice of pi), multiply with a random seed, then pick
         // the mid 32-bits from the product. By picking a SALT value in the
@@ -103,6 +113,7 @@ class ImmutableCollections {
     static final MapN<?,?> EMPTY_MAP;
 
     static {
+        // Legacy CDS archive support (to be deprecated)
         CDS.initializeFromArchive(ImmutableCollections.class);
         if (archivedObjects == null) {
             EMPTY = new Object();
