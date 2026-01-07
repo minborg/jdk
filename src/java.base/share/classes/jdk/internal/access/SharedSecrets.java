@@ -92,9 +92,16 @@ public final class SharedSecrets {
     // Must not be of type Class or String.
     private static final Object NO_INIT = new Object();
 
-    // This map is used to associate a certain Access interface to another class where
-    // the implementation of said interface resides
-    private static final Map<Class<? extends Access>, Object> IMPLEMENTATIONS = implementations();
+    // Fix to avoid CDSHeapVerifier::SharedSecretsAccessorFinder problems
+    // The above C++ class must be modified to be able to CDS components within the container
+    private static final class Holder {
+        // This map is used to associate a certain Access interface to another class where
+        // the implementation of said interface resides
+        private static final Map<Class<? extends Access>, Object> IMPLEMENTATIONS = implementations();
+
+        private static final HeterogeneousContainer<Access> COMPONENTS =
+                HeterogeneousContainer.of(Holder.IMPLEMENTATIONS.keySet());
+    }
 
     // In order to avoid creating a circular dependency graph, we refrain from using
     // ImmutableCollections. This means we have to resort to mutating a map.
@@ -136,12 +143,10 @@ public final class SharedSecrets {
         return Collections.unmodifiableMap(map);
     }
 
-    private static final HeterogeneousContainer<Access> COMPONENTS =
-            HeterogeneousContainer.of(IMPLEMENTATIONS.keySet());
 
     @ForceInline
     public static <T extends Access> T get(Class<T> clazz) {
-        final T component = COMPONENTS.orElse(clazz, null);
+        final T component = Holder.COMPONENTS.orElse(clazz, null);
         return component == null
                 ? getSlowPath(clazz)
                 : component;
@@ -149,7 +154,7 @@ public final class SharedSecrets {
 
     @DontInline
     private static <T extends Access> T getSlowPath(Class<T> clazz) {
-        final Object implementation = IMPLEMENTATIONS.get(clazz);
+        final Object implementation = Holder.IMPLEMENTATIONS.get(clazz);
         // We can't use pattern matching here as that would trigger
         // classfile initialization
         if (implementation instanceof Class<?> c) {
@@ -161,15 +166,15 @@ public final class SharedSecrets {
         }
 
         // The component should now be initialized
-        return COMPONENTS.get(clazz);
+        return Holder.COMPONENTS.get(clazz);
     }
 
     public static <T extends Access> void set(Class<T> type, T access) {
-        COMPONENTS.set(type, tee(access));
+        Holder.COMPONENTS.set(type, tee(access));
     }
 
     public static <T extends Access> void setIfUnset(Class<T> type, T access) {
-        COMPONENTS.computeIfAbsent(type, new Function<Class<T>, T>() {
+        Holder.COMPONENTS.computeIfAbsent(type, new Function<Class<T>, T>() {
             @Override public T apply(Class<T> tClass) { return tee(access); }
         });
     }
