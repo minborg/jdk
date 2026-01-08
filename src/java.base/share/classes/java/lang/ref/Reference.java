@@ -25,6 +25,7 @@
 
 package java.lang.ref;
 
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.IntrinsicCandidate;
@@ -42,7 +43,7 @@ import jdk.internal.access.SharedSecrets;
  * @since    1.2
  * @sealedGraph
  */
-@AOTSafeClassInitializer
+// @AOTSafeClassInitializer Disabled so that SharedSecrets component gets installed
 public abstract sealed class Reference<@jdk.internal.RequiresIdentity T>
     permits PhantomReference, SoftReference, WeakReference, FinalReference {
 

@@ -39,6 +39,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.module.ModuleDescriptor;
+import java.lang.ref.Reference;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -66,6 +67,7 @@ import jdk.internal.loader.NativeLibraries;
 import jdk.internal.logger.LoggerFinderLoader.TemporaryLoggerFinder;
 import jdk.internal.misc.Blocker;
 import jdk.internal.misc.CarrierThreadLocal;
+import jdk.internal.misc.Unsafe;
 import jdk.internal.util.StaticProperty;
 import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.ServicesCatalog;
@@ -1829,6 +1831,7 @@ public final class System {
         // classes are used.
         VM.initializeOSEnvironment();
 
+        setJavaLangRefAccess();
         // start Finalizer and Reference Handler threads
         SharedSecrets.get(JavaLangRefAccess.class).startThreads();
 
@@ -1990,6 +1993,17 @@ public final class System {
 
         // system is fully initialized
         VM.initLevel(4);
+    }
+
+    private static void setJavaLangRefAccess() {
+        Unsafe unsafe = Unsafe.getUnsafe();
+        // Initialize the class
+        int h = Reference.class.hashCode();
+        //unsafe.ensureClassInitialized(Reference.class);
+        // We are initializing the class from the init thread so we need to wait
+        while (unsafe.shouldBeInitialized(Reference.class)) {
+            Thread.onSpinWait();
+        }
     }
 
     private static void setJavaLangAccess() {

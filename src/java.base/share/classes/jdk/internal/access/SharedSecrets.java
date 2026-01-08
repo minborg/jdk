@@ -25,6 +25,8 @@
 
 package jdk.internal.access;
 
+import jdk.internal.misc.Unsafe;
+import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
@@ -32,8 +34,8 @@ import jdk.internal.vm.annotation.Stable;
 import javax.crypto.SealedObject;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ObjectInputFilter;
-import java.lang.invoke.MethodHandles;
 import java.lang.module.ModuleDescriptor;
+import java.lang.ref.Reference;
 import java.net.HttpCookie;
 import java.net.InetAddress;
 import java.net.URI;
@@ -56,14 +58,15 @@ import java.security.Signature;
 import java.util.zip.ZipFile;
 import javax.security.auth.x500.X500Principal;
 
-/** A repository of "shared secrets", which are a mechanism for
-    calling implementation-private methods in another package without
-    using reflection. A package-private class implements a public
-    interface and provides the ability to call package-private methods
-    within that package; the object implementing that interface is
-    provided through a third package to which access is restricted.
-    This framework avoids the primary disadvantage of using reflection
-    for this purpose, namely the loss of compile-time checking.
+/**
+ * A repository of "shared secrets", which are a mechanism for
+ * calling implementation-private methods in another package without
+ * using reflection. A package-private class implements a public
+ * interface and provides the ability to call package-private methods
+ * within that package; the object implementing that interface is
+ * provided through a third package to which access is restricted.
+ * This framework avoids the primary disadvantage of using reflection
+ * for this purpose, namely the loss of compile-time checking.
  * <p><strong>
  * Usage of these APIs often means bad encapsulation designs,
  * increased complexity and lack of sustainability.
@@ -82,8 +85,11 @@ import javax.security.auth.x500.X500Principal;
  * code that would lead to the initialization of such fields, or else the AOT
  * cache creation will fail.
  */
+@AOTSafeClassInitializer
 public final class SharedSecrets {
     private SharedSecrets() { }
+
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     // Todo: Remove this field.
     @Stable private static JavaLangAccess javaLangAccess;
@@ -94,6 +100,7 @@ public final class SharedSecrets {
 
     // Fix to avoid CDSHeapVerifier::SharedSecretsAccessorFinder problems
     // The above C++ class must be modified to be able to CDS components within the container
+    @AOTSafeClassInitializer
     private static final class Holder {
         // This map is used to associate a certain Access interface to another class where
         // the implementation of said interface resides
@@ -116,7 +123,7 @@ public final class SharedSecrets {
         map.put(JavaLangAccess.class, NO_INIT);
         map.put(JavaLangInvokeAccess.class, "java.lang.invoke.MethodHandleImpl");
         map.put(JavaLangModuleAccess.class, ModuleDescriptor.class);
-        map.put(JavaLangRefAccess.class, NO_INIT);
+        map.put(JavaLangRefAccess.class, Reference.class);
         map.put(JavaLangReflectAccess.class, NO_INIT);
         map.put(JavaNetHttpCookieAccess.class, HttpCookie.class);
         map.put(JavaNetInetAddressAccess.class, InetAddress.class);
@@ -145,16 +152,16 @@ public final class SharedSecrets {
 
 
     @ForceInline
-    public static <T extends Access> T get(Class<T> clazz) {
-        final T component = Holder.COMPONENTS.orElse(clazz, null);
+    public static <T extends Access> T get(Class<T> accessType) {
+        final T component = Holder.COMPONENTS.orElse(accessType, null);
         return component == null
-                ? getSlowPath(clazz)
+                ? getSlowPath(accessType)
                 : component;
     }
 
     @DontInline
-    private static <T extends Access> T getSlowPath(Class<T> clazz) {
-        final Object implementation = Holder.IMPLEMENTATIONS.get(clazz);
+    private static <T extends Access> T getSlowPath(Class<T> accessType) {
+        final Object implementation = Holder.IMPLEMENTATIONS.get(accessType);
         // We can't use pattern matching here as that would trigger
         // classfile initialization
         if (implementation instanceof Class<?> c) {
@@ -162,19 +169,19 @@ public final class SharedSecrets {
         } else if (implementation instanceof String s) {
             ensureClassInitialized(s);
         } else {
-            throw new InternalError("Should not reach here: " + clazz + " -> " + implementation);
+            throw new InternalError("Should not reach here: " + accessType + " -> " + implementation);
         }
 
         // The component should now be initialized
-        return Holder.COMPONENTS.get(clazz);
+        return Holder.COMPONENTS.get(accessType);
     }
 
-    public static <T extends Access> void set(Class<T> type, T access) {
-        Holder.COMPONENTS.set(type, tee(access));
+    public static <T extends Access> void set(Class<T> accessType, T access) {
+        Holder.COMPONENTS.set(accessType, tee(access));
     }
 
-    public static <T extends Access> void setIfUnset(Class<T> type, T access) {
-        Holder.COMPONENTS.computeIfAbsent(type, new Function<Class<T>, T>() {
+    public static <T extends Access> void setIfUnset(Class<T> accessType, T access) {
+        Holder.COMPONENTS.computeIfAbsent(accessType, new Function<Class<T>, T>() {
             @Override public T apply(Class<T> tClass) { return tee(access); }
         });
     }
@@ -193,15 +200,15 @@ public final class SharedSecrets {
     }
 
     private static void ensureClassInitialized(Class<?> c) {
-        try {
-            MethodHandles.lookup().ensureInitialized(c);
-        } catch (IllegalAccessException _) {}
+        UNSAFE.ensureClassInitialized(c);
     }
 
     private static void ensureClassInitialized(String className) {
         try {
             Class.forName(className, true, null);
-        } catch (ClassNotFoundException _) {}
+        } catch (ClassNotFoundException _) {
+            throw new InternalError("Class " + className + " not found");
+        }
     }
 
 }
