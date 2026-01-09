@@ -89,8 +89,6 @@ import javax.security.auth.x500.X500Principal;
 public final class SharedSecrets {
     private SharedSecrets() { }
 
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-
     // Todo: Remove this field.
     @Stable private static JavaLangAccess javaLangAccess;
 
@@ -200,7 +198,8 @@ public final class SharedSecrets {
     }
 
     private static void ensureClassInitialized(Class<?> c) {
-        UNSAFE.ensureClassInitialized(c);
+        // Unsafe is not stateless so, can't be in an AOT field.
+        Unsafe.getUnsafe().ensureClassInitialized(c);
     }
 
     private static void ensureClassInitialized(String className) {
