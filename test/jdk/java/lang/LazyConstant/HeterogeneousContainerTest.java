@@ -84,7 +84,7 @@ final class HeterogeneousContainerTest {
     void testToString() {
         HeterogeneousContainer<Number> container = populated();
         var toString = container.toString();
-        assertTrue(toString.startsWith("StableComponentContainer{"), toString);
+        assertTrue(toString.startsWith("HeterogeneousContainer{"), toString);
         for (Class<? extends Number> type : SET) {
             assertTrue(toString.contains(type.getName()+"=1"), toString);
         }
@@ -94,7 +94,7 @@ final class HeterogeneousContainerTest {
     @Test
     void testToStringEmpty() {
         HeterogeneousContainer<Number> container = HeterogeneousContainer.of(Set.of());
-        assertEquals("StableComponentContainer{}", container.toString());
+        assertEquals("HeterogeneousContainer{}", container.toString());
     }
 
     @Test
