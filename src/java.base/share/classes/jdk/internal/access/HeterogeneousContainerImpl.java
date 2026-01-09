@@ -13,7 +13,9 @@ import java.util.function.Function;
 @AOTSafeClassInitializer
 record HeterogeneousContainerImpl<T>(@Stable Object[] table) implements HeterogeneousContainer<T> {
 
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+    private static class AOTExclusion {
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+    }
 
     @ForceInline
     public <C extends T> C get(Class<C> type) {
@@ -38,7 +40,7 @@ record HeterogeneousContainerImpl<T>(@Stable Object[] table) implements Heteroge
     private Object componentRaw(Class<?> type) {
         Objects.requireNonNull(type);
         final int probe = probeOrThrow(type);
-        return UNSAFE.getReferenceAcquire(table, nextOffset(offsetFor(probe)));
+        return AOTExclusion.UNSAFE.getReferenceAcquire(table, nextOffset(offsetFor(probe)));
     }
 
     public <C extends T> void set(Class<C> type, C component) {
@@ -53,7 +55,7 @@ record HeterogeneousContainerImpl<T>(@Stable Object[] table) implements Heteroge
             throw new IllegalArgumentException("The component '" + component + "' is not an instance of " + type);
         }
         final int probe = probeOrThrow(type);
-        if (!UNSAFE.compareAndSetReference(table, nextOffset(offsetFor(probe)), null, component) && setSemantics) {
+        if (!AOTExclusion.UNSAFE.compareAndSetReference(table, nextOffset(offsetFor(probe)), null, component) && setSemantics) {
             throw new IllegalStateException("The component is already initialized: " + type.getName());
         }
     }
@@ -73,7 +75,7 @@ record HeterogeneousContainerImpl<T>(@Stable Object[] table) implements Heteroge
 
     @Override
     public String toString() {
-        return "StableComponentContainer" + associations(true);
+        return "HeterogeneousContainer" + associations(true);
     }
 
     private String associations(boolean showValues) {
@@ -82,7 +84,7 @@ record HeterogeneousContainerImpl<T>(@Stable Object[] table) implements Heteroge
             final Class<?> type = (Class<?>) table[i];
             if (type != null) {
                 if (showValues) {
-                    final Object component = UNSAFE.getReferenceAcquire(table, nextOffset(offsetFor(i)));
+                    final Object component = AOTExclusion.UNSAFE.getReferenceAcquire(table, nextOffset(offsetFor(i)));
                     sj.add(type.getName() + (component != null ? "=" + component : ""));
                 } else {
                     sj.add(type.toString());
