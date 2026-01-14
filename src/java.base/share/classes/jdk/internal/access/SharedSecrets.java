@@ -158,7 +158,11 @@ public final class SharedSecrets {
     }
 
     @DontInline
-    private static <T extends Access> T getSlowPath(Class<T> accessType) {
+    private static synchronized <T extends Access> T getSlowPath(Class<T> accessType) {
+        final T component = Holder.COMPONENTS.orElse(accessType, null);
+        if (component != null) {
+            return component;
+        }
         final Object implementation = Holder.IMPLEMENTATIONS.get(accessType);
         // We can't use pattern matching here as that would trigger
         // classfile initialization
@@ -174,11 +178,11 @@ public final class SharedSecrets {
         return Holder.COMPONENTS.get(accessType);
     }
 
-    public static <T extends Access> void set(Class<T> accessType, T access) {
+    public static synchronized <T extends Access> void set(Class<T> accessType, T access) {
         Holder.COMPONENTS.set(accessType, tee(access));
     }
 
-    public static <T extends Access> void setIfUnset(Class<T> accessType, T access) {
+    public static synchronized <T extends Access> void setIfUnset(Class<T> accessType, T access) {
         Holder.COMPONENTS.computeIfAbsent(accessType, new Function<Class<T>, T>() {
             @Override public T apply(Class<T> tClass) { return tee(access); }
         });
