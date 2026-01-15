@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.SocketException;
+import java.util.function.Supplier;
 
 /**
  * This class creates server sockets.  It may be subclassed by other
@@ -54,7 +55,20 @@ public abstract class ServerSocketFactory
     // NOTE:  JDK 1.1 bug in class GC, this can get collected
     // even though it's always accessible via getDefault().
     //
-    private static ServerSocketFactory          theFactory;
+    private static final LazyConstant<ServerSocketFactory> theFactory = LazyConstant.of(
+            new Supplier<>() {
+                @Override
+                public ServerSocketFactory get() {
+                    //
+                    // Different implementations of this method could
+                    // work rather differently.  For example, driving
+                    // this from a system property, or using a different
+                    // implementation than JavaSoft's.
+                    //
+                    return new DefaultServerSocketFactory();
+                }
+            }
+    );
 
 
     /**
@@ -67,23 +81,9 @@ public abstract class ServerSocketFactory
      *
      * @return the <code>ServerSocketFactory</code>
      */
-    public static ServerSocketFactory getDefault()
-    {
-        synchronized (ServerSocketFactory.class) {
-            if (theFactory == null) {
-                //
-                // Different implementations of this method could
-                // work rather differently.  For example, driving
-                // this from a system property, or using a different
-                // implementation than JavaSoft's.
-                //
-                theFactory = new DefaultServerSocketFactory();
-            }
-        }
-
-        return theFactory;
+    public static ServerSocketFactory getDefault() {
+        return theFactory.get();
     }
-
 
     /**
      * Returns an unbound server socket.  The socket is configured with

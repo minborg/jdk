@@ -31,6 +31,7 @@ import java.util.Enumeration;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Collections;
+import java.util.function.Supplier;
 
 /**
  * A multicast datagram socket that delegates socket operations to a
@@ -536,27 +537,22 @@ final class NetMulticastSocket extends MulticastSocket {
         return getImpl().getOption(name);
     }
 
-    private volatile Set<SocketOption<?>> options;
-    private final Object optionsLock = new Object();
-
+    private final LazyConstant<Set<SocketOption<?>>> options = LazyConstant.of(
+            new Supplier<>() {
+                @Override
+                public Set<SocketOption<?>> get() {
+                    try {
+                        DatagramSocketImpl impl = getImpl();
+                        return Collections.unmodifiableSet(impl.supportedOptions());
+                    } catch (IOException e) {
+                        return Collections.emptySet();
+                    }
+                }
+            }
+    );
     @Override
     public Set<SocketOption<?>> supportedOptions() {
-        Set<SocketOption<?>> options = this.options;
-        if (options != null)
-            return options;
-        synchronized (optionsLock) {
-            options = this.options;
-            if (options != null) {
-                return options;
-            }
-            try {
-                DatagramSocketImpl impl = getImpl();
-                options = Collections.unmodifiableSet(impl.supportedOptions());
-            } catch (IOException e) {
-                options = Collections.emptySet();
-            }
-            return this.options = options;
-        }
+        return options.get();
     }
 
     // Multicast socket support

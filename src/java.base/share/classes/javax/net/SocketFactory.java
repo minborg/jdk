@@ -31,6 +31,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.function.Supplier;
 
 /**
  * This class creates sockets.  It may be subclassed by other factories,
@@ -74,7 +75,14 @@ public abstract class SocketFactory
     // NOTE:  JDK 1.1 bug in class GC, this can get collected
     // even though it's always accessible via getDefault().
     //
-    private static SocketFactory                theFactory;
+    private static final LazyConstant<SocketFactory> theFactory = LazyConstant.of(
+            new Supplier<SocketFactory>() {
+                @Override
+                public SocketFactory get() {
+                    return new DefaultSocketFactory();
+                }
+            }
+    );
 
     /**
      * Creates a <code>SocketFactory</code>.
@@ -87,21 +95,8 @@ public abstract class SocketFactory
      *
      * @return the default <code>SocketFactory</code>
      */
-    public static SocketFactory getDefault()
-    {
-        synchronized (SocketFactory.class) {
-            if (theFactory == null) {
-                //
-                // Different implementations of this method SHOULD
-                // work rather differently.  For example, driving
-                // this from a system property, or using a different
-                // implementation than JavaSoft's.
-                //
-                theFactory = new DefaultSocketFactory();
-            }
-        }
-
-        return theFactory;
+    public static SocketFactory getDefault() {
+        return theFactory.get();
     }
 
 

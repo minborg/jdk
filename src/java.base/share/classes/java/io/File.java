@@ -35,6 +35,8 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
+
 import jdk.internal.util.StaticProperty;
 
 /**
@@ -2073,7 +2075,8 @@ public class File
 
     // -- Integration with java.nio.file --
 
-    private transient volatile Path filePath;
+    private final transient LazyConstant<Path> filePath = LazyConstant.of(
+            new Supplier<>() { @Override public Path get() { return FileSystems.getDefault().getPath(path); }});
 
     /**
      * Returns a {@link Path java.nio.file.Path} object constructed from
@@ -2102,16 +2105,6 @@ public class File
      * @see Path#toFile
      */
     public Path toPath() {
-        Path result = filePath;
-        if (result == null) {
-            synchronized (this) {
-                result = filePath;
-                if (result == null) {
-                    result = FileSystems.getDefault().getPath(path);
-                    filePath = result;
-                }
-            }
-        }
-        return result;
+        return filePath.get();
     }
 }

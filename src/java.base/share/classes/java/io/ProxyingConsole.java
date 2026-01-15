@@ -27,6 +27,7 @@ package java.io;
 
 import java.nio.charset.Charset;
 import java.util.Locale;
+import java.util.function.Supplier;
 
 import jdk.internal.io.JdkConsole;
 
@@ -38,8 +39,22 @@ final class ProxyingConsole extends Console {
     private final JdkConsole delegate;
     private final Object readLock = new Object();
     private final Object writeLock = new Object();
-    private volatile Reader reader;
-    private volatile PrintWriter printWriter;
+    private final LazyConstant<Reader> reader = LazyConstant.of(
+            new Supplier<Reader>() {
+                @Override
+                public Reader get() {
+                    return new WrappingReader(delegate.reader(), readLock);
+                }
+            }
+    );
+    private final LazyConstant<PrintWriter> printWriter = LazyConstant.of(
+            new Supplier<>() {
+                @Override
+                public PrintWriter get() {
+                    return new WrappingWriter(delegate.writer(), writeLock);
+                }
+            }
+    );
 
     ProxyingConsole(JdkConsole delegate) {
         this.delegate = delegate;
@@ -50,17 +65,7 @@ final class ProxyingConsole extends Console {
      */
     @Override
     public PrintWriter writer() {
-        PrintWriter printWriter = this.printWriter;
-        if (printWriter == null) {
-            synchronized (this) {
-                printWriter = this.printWriter;
-                if (printWriter == null) {
-                    printWriter = new WrappingWriter(delegate.writer(), writeLock);
-                    this.printWriter = printWriter;
-                }
-            }
-        }
-        return printWriter;
+        return printWriter.get();
     }
 
     /**
@@ -68,17 +73,7 @@ final class ProxyingConsole extends Console {
      */
     @Override
     public Reader reader() {
-        Reader reader = this.reader;
-        if (reader == null) {
-            synchronized (this) {
-                reader = this.reader;
-                if (reader == null) {
-                    reader = new WrappingReader(delegate.reader(), readLock);
-                    this.reader = reader;
-                }
-            }
-        }
-        return reader;
+        return reader.get();
     }
 
     /**

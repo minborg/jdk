@@ -39,9 +39,8 @@ import java.util.List;
 
 public abstract sealed class ResolverConfiguration permits ResolverConfigurationImpl {
 
-    private static final Object lock = new Object();
-
-    private static ResolverConfiguration provider;
+    private static final LazyConstant<ResolverConfiguration> provider =
+            LazyConstant.of(sun.net.dns.ResolverConfigurationImpl::new);
 
     protected ResolverConfiguration() { }
 
@@ -51,12 +50,7 @@ public abstract sealed class ResolverConfiguration permits ResolverConfiguration
      * @return the resolver configuration
      */
     public static ResolverConfiguration open() {
-        synchronized (lock) {
-            if (provider == null) {
-                provider = new sun.net.dns.ResolverConfigurationImpl();
-            }
-            return provider;
-        }
+        return provider.get();
     }
 
     /**

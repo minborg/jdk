@@ -658,6 +658,7 @@ public abstract sealed class Executable extends AccessibleObject
         return AnnotationParser.toArray(declaredAnnotations());
     }
 
+    // Cannot be turned into a LazyConstant because of bootstrap issues
     private transient volatile Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
     private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
