@@ -70,7 +70,7 @@ public abstract class PhysicalStrike extends FontStrike {
      * request involves scaling and hinting the glyph outline potentially
      * over and over again.
      */
-    ConcurrentHashMap<Integer, Point2D.Float> glyphPointMapCache;
+    private final LazyConstant<ConcurrentHashMap<Integer, Point2D.Float>> glyphPointMapCache = LazyConstant.of(ConcurrentHashMap::new);
 
     protected boolean getImageWithAdvance;
     protected static final int complexTX =
@@ -123,21 +123,11 @@ public abstract class PhysicalStrike extends FontStrike {
     Point2D.Float getGlyphPoint(int glyphCode, int ptNumber) {
         Point2D.Float gp = null;
         Integer ptKey = Integer.valueOf(glyphCode<<16|ptNumber);
-        if (glyphPointMapCache == null) {
-            synchronized (this) {
-                if (glyphPointMapCache == null) {
-                    glyphPointMapCache =
-                        new ConcurrentHashMap<Integer, Point2D.Float>();
-                }
-            }
-        } else {
-            gp = glyphPointMapCache.get(ptKey);
-        }
-
+        gp = glyphPointMapCache.get().get(ptKey);
         if (gp == null) {
             gp = (physicalFont.getGlyphPoint(pScalerContext, glyphCode, ptNumber));
             adjustPoint(gp);
-            glyphPointMapCache.put(ptKey, gp);
+            glyphPointMapCache.get().put(ptKey, gp);
         }
         return gp;
     }

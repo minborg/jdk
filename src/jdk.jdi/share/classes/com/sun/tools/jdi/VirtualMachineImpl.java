@@ -136,16 +136,30 @@ class VirtualMachineImpl extends MirrorImpl
 
     // Per-vm singletons for primitive types and for void.
     // singleton-ness protected by "synchronized(this)".
-    private BooleanType theBooleanType;
-    private ByteType    theByteType;
-    private CharType    theCharType;
-    private ShortType   theShortType;
-    private IntegerType theIntegerType;
-    private LongType    theLongType;
-    private FloatType   theFloatType;
-    private DoubleType  theDoubleType;
 
-    private VoidType    theVoidType;
+    // Here: a Heterogeneous Container should be a perfect fit...
+    private final Map<Class<?>, Type> typeMap = Map.ofLazy(
+            Set.of(BooleanType.class, ByteType.class, CharType.class, ShortType.class,
+                    IntegerType.class, LongType.class, FloatType.class, DoubleType.class,
+                    Void.class),
+            t ->
+                    (switch (t) {
+                        // Give us switch over constants...
+                        case Class<?> c when c.equals(BooleanType.class) -> new BooleanTypeImpl(this);
+                        case Class<?> d when d.equals(ByteType.class)    -> new ByteTypeImpl(this);
+                        case Class<?> c when c.equals(CharType.class)    -> new CharTypeImpl(this);
+                        case Class<?> c when c.equals(ShortType.class)   -> new ShortTypeImpl(this);
+                        case Class<?> c when c.equals(IntegerType.class) -> new IntegerTypeImpl(this);
+                        case Class<?> c when c.equals(LongType.class)    -> new LongTypeImpl(this);
+                        case Class<?> c when c.equals(FloatType.class)   -> new FloatTypeImpl(this);
+                        case Class<?> c when c.equals(DoubleType.class)  -> new DoubleTypeImpl(this);
+                        case Class<?> c when c.equals(VoidType.class)    -> new VoidTypeImpl(this);
+                        default -> throw new InternalError("Should not reach here");
+                    }));
+
+    private <T extends Type> T typeFor(Class<T> type) {
+        return type.cast(typeMap.get(type));
+    }
 
     private VoidValue voidVal;
 
@@ -1192,102 +1206,39 @@ class VirtualMachineImpl extends MirrorImpl
     }
 
     BooleanType theBooleanType() {
-        if (theBooleanType == null) {
-            synchronized(this) {
-                if (theBooleanType == null) {
-                    theBooleanType = new BooleanTypeImpl(this);
-                }
-            }
-        }
-        return theBooleanType;
+        return typeFor(BooleanType.class);
     }
 
     ByteType theByteType() {
-        if (theByteType == null) {
-            synchronized(this) {
-                if (theByteType == null) {
-                    theByteType = new ByteTypeImpl(this);
-                }
-            }
-        }
-        return theByteType;
+        return typeFor(ByteType.class);
     }
 
     CharType theCharType() {
-        if (theCharType == null) {
-            synchronized(this) {
-                if (theCharType == null) {
-                    theCharType = new CharTypeImpl(this);
-                }
-            }
-        }
-        return theCharType;
+        return typeFor(CharType.class);
     }
 
     ShortType theShortType() {
-        if (theShortType == null) {
-            synchronized(this) {
-                if (theShortType == null) {
-                    theShortType = new ShortTypeImpl(this);
-                }
-            }
-        }
-        return theShortType;
+        return typeFor(ShortType.class);
     }
 
     IntegerType theIntegerType() {
-        if (theIntegerType == null) {
-            synchronized(this) {
-                if (theIntegerType == null) {
-                    theIntegerType = new IntegerTypeImpl(this);
-                }
-            }
-        }
-        return theIntegerType;
+        return typeFor(IntegerType.class);
     }
 
     LongType theLongType() {
-        if (theLongType == null) {
-            synchronized(this) {
-                if (theLongType == null) {
-                    theLongType = new LongTypeImpl(this);
-                }
-            }
-        }
-        return theLongType;
+        return typeFor(LongType.class);
     }
 
     FloatType theFloatType() {
-        if (theFloatType == null) {
-            synchronized(this) {
-                if (theFloatType == null) {
-                    theFloatType = new FloatTypeImpl(this);
-                }
-            }
-        }
-        return theFloatType;
+        return typeFor(FloatType.class);
     }
 
     DoubleType theDoubleType() {
-        if (theDoubleType == null) {
-            synchronized(this) {
-                if (theDoubleType == null) {
-                    theDoubleType = new DoubleTypeImpl(this);
-                }
-            }
-        }
-        return theDoubleType;
+        return typeFor(DoubleType.class);
     }
 
     VoidType theVoidType() {
-        if (theVoidType == null) {
-            synchronized(this) {
-                if (theVoidType == null) {
-                    theVoidType = new VoidTypeImpl(this);
-                }
-            }
-        }
-        return theVoidType;
+        return typeFor(VoidType.class);
     }
 
     PrimitiveType primitiveTypeMirror(byte tag) {

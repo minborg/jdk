@@ -1807,7 +1807,7 @@ public interface Map<K, V> {
      * @see LazyConstant
      * @since 26
      */
-    @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
+    //@PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
     static <K, V> Map<K, V> ofLazy(Set<? extends K> keys,
                                    Function<? super K, ? extends V> computingFunction) {
         // Protect against TOC-TOU attacks.
