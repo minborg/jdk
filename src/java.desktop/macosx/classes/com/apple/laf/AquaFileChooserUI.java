@@ -1804,29 +1804,24 @@ public final class AquaFileChooserUI extends FileChooserUI {
     }
 
     // Lazy-init the subpanels
-    synchronized FCSubpanel getSaveFilePanel() {
-        if (fSaveFilePanel == null) fSaveFilePanel = new SaveFilePanel();
-        return fSaveFilePanel;
+    FCSubpanel getSaveFilePanel() {
+        return fSaveFilePanel.get();
     }
 
-    synchronized FCSubpanel getOpenFilePanel() {
-        if (fOpenFilePanel == null) fOpenFilePanel = new OpenFilePanel();
-        return fOpenFilePanel;
+    FCSubpanel getOpenFilePanel() {
+        return fOpenFilePanel.get();
     }
 
-    synchronized FCSubpanel getOpenDirOrAnyPanel() {
-        if (fOpenDirOrAnyPanel == null) fOpenDirOrAnyPanel = new OpenDirOrAnyPanel();
-        return fOpenDirOrAnyPanel;
+    FCSubpanel getOpenDirOrAnyPanel() {
+        return fOpenDirOrAnyPanel.get();
     }
 
-    synchronized FCSubpanel getCustomFilePanel() {
-        if (fCustomFilePanel == null) fCustomFilePanel = new CustomFilePanel();
-        return fCustomFilePanel;
+    FCSubpanel getCustomFilePanel() {
+        return fCustomFilePanel.get();
     }
 
-    synchronized FCSubpanel getCustomDirOrAnyPanel() {
-        if (fCustomDirOrAnyPanel == null) fCustomDirOrAnyPanel = new CustomDirOrAnyPanel();
-        return fCustomDirOrAnyPanel;
+    FCSubpanel getCustomDirOrAnyPanel() {
+        return fCustomDirOrAnyPanel.get();
     }
 
     void setBottomPanelForMode(final JFileChooser fc) {
@@ -2013,11 +2008,11 @@ public final class AquaFileChooserUI extends FileChooserUI {
     private Component fDirectoryPanelSpacer;
     private JPanel fBottomPanel; // The panel that holds fDirectoryPanel and filterComboBox
 
-    private FCSubpanel fSaveFilePanel = null;
-    private FCSubpanel fOpenFilePanel = null;
-    private FCSubpanel fOpenDirOrAnyPanel = null;
-    private FCSubpanel fCustomFilePanel = null;
-    private FCSubpanel fCustomDirOrAnyPanel = null;
+    private final LazyConstant<FCSubpanel> fSaveFilePanel = LazyConstant.of(SaveFilePanel::new);
+    private final LazyConstant<FCSubpanel> fOpenFilePanel = LazyConstant.of(OpenFilePanel::new);
+    private final LazyConstant<FCSubpanel> fOpenDirOrAnyPanel = LazyConstant.of(OpenDirOrAnyPanel::new);
+    private final LazyConstant<FCSubpanel> fCustomFilePanel = LazyConstant.of(CustomFilePanel::new);
+    private final LazyConstant<FCSubpanel> fCustomDirOrAnyPanel = LazyConstant.of(CustomDirOrAnyPanel::new);
 
     FCSubpanel fSubPanel = null; // Current FCSubpanel
 

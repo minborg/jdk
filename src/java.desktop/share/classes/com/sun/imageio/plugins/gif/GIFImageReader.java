@@ -1116,10 +1116,10 @@ public class GIFImageReader extends ImageReader {
         fallbackColorTable = null;
     }
 
-    private static byte[] defaultPalette = null;
+    // Note: array elements in LazyConstants are not constant-folded.
+    private static final LazyConstant<byte[]> DEFAULT_PALETTE = LazyConstant.of(GIFImageReader::defaultPalette0);
 
-    private static synchronized byte[] getDefaultPalette() {
-        if (defaultPalette == null) {
+    private static byte[] defaultPalette0() {
             BufferedImage img = new BufferedImage(1, 1,
                     BufferedImage.TYPE_BYTE_INDEXED);
             IndexColorModel icm = (IndexColorModel) img.getColorModel();
@@ -1132,14 +1132,18 @@ public class GIFImageReader extends ImageReader {
             icm.getGreens(g);
             icm.getBlues(b);
 
-            defaultPalette = new byte[size * 3];
+            byte[] defaultPalette = new byte[size * 3];
 
             for (int i = 0; i < size; i++) {
                 defaultPalette[3 * i + 0] = r[i];
                 defaultPalette[3 * i + 1] = g[i];
                 defaultPalette[3 * i + 2] = b[i];
             }
-        }
+
         return defaultPalette;
+    }
+    
+    private static byte[] getDefaultPalette() {
+        return DEFAULT_PALETTE.get();
     }
 }

@@ -29,10 +29,7 @@ import javax.imageio.metadata.IIOMetadataFormat;
 
 public class TIFFImageMetadataFormat extends TIFFMetadataFormat {
 
-    private static TIFFImageMetadataFormat theInstance = null;
-
-    static {
-    }
+    private static final LazyConstant<TIFFImageMetadataFormat> THE_INSTANCE = LazyConstant.of(TIFFImageMetadataFormat::new);
 
     @Override
     public boolean canNodeAppear(String elementName,
@@ -143,10 +140,7 @@ public class TIFFImageMetadataFormat extends TIFFMetadataFormat {
         attrInfoMap.put("TIFFField/name", ainfo);
     }
 
-    public static synchronized IIOMetadataFormat getInstance() {
-        if (theInstance == null) {
-            theInstance = new TIFFImageMetadataFormat();
-        }
-        return theInstance;
+    public static IIOMetadataFormat getInstance() {
+        return THE_INSTANCE.get();
     }
 }

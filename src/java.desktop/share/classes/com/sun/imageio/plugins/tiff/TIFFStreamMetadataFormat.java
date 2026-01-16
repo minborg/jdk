@@ -29,7 +29,7 @@ import javax.imageio.metadata.IIOMetadataFormat;
 
 public class TIFFStreamMetadataFormat extends TIFFMetadataFormat {
 
-    private static TIFFStreamMetadataFormat theInstance = null;
+    private static final LazyConstant<TIFFStreamMetadataFormat> THE_INSTANCE = LazyConstant.of(TIFFStreamMetadataFormat::new);
 
     @Override
     public boolean canNodeAppear(String elementName,
@@ -66,9 +66,6 @@ public class TIFFStreamMetadataFormat extends TIFFMetadataFormat {
     }
 
     public static synchronized IIOMetadataFormat getInstance() {
-        if (theInstance == null) {
-            theInstance = new TIFFStreamMetadataFormat();
-        }
-        return theInstance;
+        return THE_INSTANCE.get();
     }
 }

@@ -1786,17 +1786,16 @@ public abstract class SunToolkit extends Toolkit
         return (Window)comp;
     }
 
-    private static Boolean sunAwtDisableMixing = null;
+    private static final LazyConstant<Boolean> SUN_AWT_DISABLE_MIXING = LazyConstant.of(() ->
+            Boolean.getBoolean("sun.awt.disableMixing")
+    );
 
     /**
      * Returns the value of "sun.awt.disableMixing" property. Default
      * value is {@code false}.
      */
-    public static synchronized boolean getSunAwtDisableMixing() {
-        if (sunAwtDisableMixing == null) {
-            sunAwtDisableMixing = Boolean.getBoolean("sun.awt.disableMixing");
-        }
-        return sunAwtDisableMixing.booleanValue();
+    public static boolean getSunAwtDisableMixing() {
+        return SUN_AWT_DISABLE_MIXING.get();
     }
 
     public String getDesktop() {

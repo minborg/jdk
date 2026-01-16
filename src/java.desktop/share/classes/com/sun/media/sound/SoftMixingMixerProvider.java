@@ -36,7 +36,7 @@ import javax.sound.sampled.spi.MixerProvider;
  */
 public final class SoftMixingMixerProvider extends MixerProvider {
 
-    static SoftMixingMixer globalmixer = null;
+    static final LazyConstant<SoftMixingMixer> GLOBAL_MIXER = LazyConstant.of(SoftMixingMixer::new);
 
     static Thread lockthread = null;
 
@@ -54,9 +54,7 @@ public final class SoftMixingMixerProvider extends MixerProvider {
                     throw new IllegalArgumentException("Mixer "
                             + info.toString()
                             + " not supported by this provider.");
-            if (globalmixer == null)
-                globalmixer = new SoftMixingMixer();
-            return globalmixer;
+            return GLOBAL_MIXER.get();
         }
     }
 

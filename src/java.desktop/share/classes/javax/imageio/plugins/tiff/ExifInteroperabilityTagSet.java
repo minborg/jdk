@@ -63,7 +63,12 @@ public final class ExifInteroperabilityTagSet extends TIFFTagSet {
      */
     public static final String INTEROPERABILITY_INDEX_THM = "THM";
 
-    private static ExifInteroperabilityTagSet theInstance = null;
+    private static final LazyConstant<ExifInteroperabilityTagSet> THE_INSTANCE = LazyConstant.of(() -> {
+        initTags();
+        var theInstance = new ExifInteroperabilityTagSet();
+        tags = null;
+        return theInstance;
+    });
 
     static class InteroperabilityIndex extends TIFFTag {
 
@@ -92,12 +97,7 @@ public final class ExifInteroperabilityTagSet extends TIFFTagSet {
      *
      * @return the {@code ExifInteroperabilityTagSet} instance.
      */
-    public static synchronized ExifInteroperabilityTagSet getInstance() {
-        if (theInstance == null) {
-            initTags();
-            theInstance = new ExifInteroperabilityTagSet();
-            tags = null;
-        }
-        return theInstance;
+    public static ExifInteroperabilityTagSet getInstance() {
+        return THE_INSTANCE.get();
     }
 }

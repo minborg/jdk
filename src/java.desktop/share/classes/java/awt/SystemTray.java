@@ -122,7 +122,7 @@ import sun.awt.SunToolkit;
  * @author Anton Tarasov
  */
 public class SystemTray {
-    private static SystemTray systemTray;
+    private static final LazyConstant<SystemTray> SYSTEM_TRAY = LazyConstant.of(SystemTray::new);
     private int currentIconID = 0; // each TrayIcon added gets a unique ID
 
     private transient SystemTrayPeer peer;
@@ -162,15 +162,12 @@ public class SystemTray {
         if (GraphicsEnvironment.isHeadless()) {
             throw new HeadlessException();
         }
-
-        initializeSystemTrayIfNeeded();
-
         if (!isSupported()) {
             throw new UnsupportedOperationException(
                 "The system tray is not supported on the current platform.");
         }
 
-        return systemTray;
+        return SYSTEM_TRAY.get();
     }
 
     /**
@@ -199,10 +196,11 @@ public class SystemTray {
      * functionality is supported for the current platform
      */
     public static boolean isSupported() {
+
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         if (toolkit instanceof SunToolkit) {
             // connecting tray to native resource
-            initializeSystemTrayIfNeeded();
+            SYSTEM_TRAY.get();
             return ((SunToolkit)toolkit).isTraySupported();
         } else if (toolkit instanceof HeadlessToolkit) {
             // skip initialization as the init routine
@@ -242,7 +240,7 @@ public class SystemTray {
         TrayIcon[] newArray;
         Vector<TrayIcon> icons;
         synchronized (this) {
-            oldArray = systemTray.getTrayIcons();
+            oldArray = SYSTEM_TRAY.get().getTrayIcons();
             @SuppressWarnings("unchecked")
             Vector<TrayIcon> tmp = (Vector<TrayIcon>)AppContext.getAppContext().get(TrayIcon.class);
             icons = tmp;
@@ -254,7 +252,7 @@ public class SystemTray {
                 throw new IllegalArgumentException("adding TrayIcon that is already added");
             }
             icons.add(trayIcon);
-            newArray = systemTray.getTrayIcons();
+            newArray = SYSTEM_TRAY.get().getTrayIcons();
 
             trayIcon.setID(++currentIconID);
         }
@@ -290,7 +288,7 @@ public class SystemTray {
         TrayIcon[] oldArray;
         TrayIcon[] newArray;
         synchronized (this) {
-            oldArray = systemTray.getTrayIcons();
+            oldArray = SYSTEM_TRAY.get().getTrayIcons();
             @SuppressWarnings("unchecked")
             Vector<TrayIcon> icons = (Vector<TrayIcon>)AppContext.getAppContext().get(TrayIcon.class);
             // TrayIcon with no peer is not contained in the array.
@@ -298,7 +296,7 @@ public class SystemTray {
                 return;
             }
             trayIcon.removeNotify();
-            newArray = systemTray.getTrayIcons();
+            newArray = SYSTEM_TRAY.get().getTrayIcons();
         }
         firePropertyChange("trayIcons", oldArray, newArray);
     }
@@ -489,11 +487,4 @@ public class SystemTray {
         }
     }
 
-    private static void initializeSystemTrayIfNeeded() {
-        synchronized (SystemTray.class) {
-            if (systemTray == null) {
-                systemTray = new SystemTray();
-            }
-        }
-    }
 }

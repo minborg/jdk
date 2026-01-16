@@ -40,7 +40,12 @@ import java.util.List;
  */
 public final class GeoTIFFTagSet extends TIFFTagSet {
 
-    private static GeoTIFFTagSet theInstance = null;
+    private static final LazyConstant<GeoTIFFTagSet> THE_INSTANCE = LazyConstant.of(() -> {
+        initTags();
+        var theInstance = new GeoTIFFTagSet();
+        tags = null;
+        return theInstance;
+    });
 
     /**
      * A tag used to specify the size of raster pixel spacing in
@@ -138,12 +143,7 @@ public final class GeoTIFFTagSet extends TIFFTagSet {
      *
      * @return a {@code GeoTIFFTagSet} instance.
      */
-    public static synchronized GeoTIFFTagSet getInstance() {
-        if (theInstance == null) {
-            initTags();
-            theInstance = new GeoTIFFTagSet();
-            tags = null;
-        }
-        return theInstance;
+    public static GeoTIFFTagSet getInstance() {
+        return THE_INSTANCE.get();
     }
 }

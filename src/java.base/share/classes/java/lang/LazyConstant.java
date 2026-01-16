@@ -200,7 +200,7 @@ import java.util.function.Supplier;
  * @jls 12.4 Initialization of Classes and Interfaces
  * @jls 17.4.5 Happens-before Order
  */
-@PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
+// @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
 public sealed interface LazyConstant<T>
         extends Supplier<T>
         permits LazyConstantImpl {

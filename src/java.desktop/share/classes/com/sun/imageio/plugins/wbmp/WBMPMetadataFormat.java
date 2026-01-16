@@ -25,14 +25,13 @@
 
 package com.sun.imageio.plugins.wbmp;
 
-import java.util.Arrays;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.metadata.IIOMetadataFormat;
 import javax.imageio.metadata.IIOMetadataFormatImpl;
 
 public class WBMPMetadataFormat extends IIOMetadataFormatImpl {
 
-    private static IIOMetadataFormat instance = null;
+    private static final LazyConstant<IIOMetadataFormat> INSTANCE = LazyConstant.of(WBMPMetadataFormat::new);
 
     private WBMPMetadataFormat() {
         super(WBMPMetadata.nativeMetadataFormatName,
@@ -62,10 +61,7 @@ public class WBMPMetadataFormat extends IIOMetadataFormatImpl {
         return true;
     }
 
-    public static synchronized IIOMetadataFormat getInstance() {
-        if (instance == null) {
-            instance = new WBMPMetadataFormat();
-        }
-        return instance;
+    public static IIOMetadataFormat getInstance() {
+        return INSTANCE.get();
     }
 }

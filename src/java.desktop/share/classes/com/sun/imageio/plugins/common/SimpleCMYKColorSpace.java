@@ -40,17 +40,14 @@ public final class SimpleCMYKColorSpace extends ColorSpace {
     @Serial
     private static final long serialVersionUID = 5387117338644522424L;
 
-    private static ColorSpace theInstance = null;
+    private static final LazyConstant<ColorSpace> THE_INSTANCE = LazyConstant.of(SimpleCMYKColorSpace::new);
     private ColorSpace csRGB;
 
     /** The exponent for gamma correction. */
     private static final double power1 = 1.0 / 2.4;
 
-    public static final synchronized ColorSpace getInstance() {
-        if(theInstance == null) {
-            theInstance = new SimpleCMYKColorSpace();
-        }
-        return theInstance;
+    public static ColorSpace getInstance() {
+        return THE_INSTANCE.get();
     }
 
     private SimpleCMYKColorSpace() {
@@ -65,7 +62,7 @@ public final class SimpleCMYKColorSpace extends ColorSpace {
 
     @Override
     public int hashCode() {
-        return System.identityHashCode(theInstance);
+        return System.identityHashCode(THE_INSTANCE);
     }
 
     @Override

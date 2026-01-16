@@ -532,7 +532,10 @@ class GTKEngine {
         native_paint_background(widget, state, x - x0, y - y0, w, h);
     }
 
-    private static final ColorModel[] COLOR_MODELS = new ColorModel[3];
+    private static final java.util.List<ColorModel> COLOR_MODELS = java.util.List.ofLazy(3, i ->
+            GraphicsEnvironment.getLocalGraphicsEnvironment()
+                    .getDefaultScreenDevice().getDefaultConfiguration()
+                    .getColorModel(i + 1));
 
     private static final int[][] BAND_OFFSETS = {
         { 0x00ff0000, 0x0000ff00, 0x000000ff },             // OPAQUE
@@ -612,15 +615,7 @@ class GTKEngine {
     }
 
     private ColorModel colorModelFor(int transparency) {
-        synchronized (COLOR_MODELS) {
-            int index = transparency - 1;
-            if (COLOR_MODELS[index] == null) {
-                COLOR_MODELS[index] = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                        .getDefaultScreenDevice().getDefaultConfiguration()
-                        .getColorModel(transparency);
-            }
-            return COLOR_MODELS[index];
-        }
+        return COLOR_MODELS.get(transparency-1);
     }
 
     /**

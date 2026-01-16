@@ -25,7 +25,6 @@
 
 package javax.imageio.plugins.tiff;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,7 +38,7 @@ import java.util.List;
  * @see   ExifTIFFTagSet
  */
 public final class ExifGPSTagSet extends TIFFTagSet {
-    private static ExifGPSTagSet theInstance = null;
+    private static final LazyConstant<ExifGPSTagSet> THE_INSTANCE = LazyConstant.of(ExifGPSTagSet::new);
 
     /**
      * A tag indicating the GPS tag version (type BYTE, count = 4).
@@ -713,10 +712,7 @@ public final class ExifGPSTagSet extends TIFFTagSet {
      *
      * @return an {@code ExifGPSTagSet} instance.
      */
-    public static synchronized ExifGPSTagSet getInstance() {
-        if (theInstance == null) {
-            theInstance = new ExifGPSTagSet();
-        }
-        return theInstance;
+    public static ExifGPSTagSet getInstance() {
+        return THE_INSTANCE.get();
     }
 }

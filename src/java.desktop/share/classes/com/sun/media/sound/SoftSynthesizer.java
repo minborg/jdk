@@ -185,7 +185,7 @@ public final class SoftSynthesizer implements AudioSynthesizer,
 
     private static SourceDataLine testline = null;
 
-    private static Soundbank defaultSoundBank = null;
+    private static final LazyConstant<Soundbank> DEFAULT_SOUND_BANK = LazyConstant.of(SoftSynthesizer::getDefaultSoundbank0);
 
     WeakAudioStream weakstream = null;
 
@@ -638,10 +638,11 @@ public final class SoftSynthesizer implements AudioSynthesizer,
 
     @Override
     public Soundbank getDefaultSoundbank() {
-        synchronized (SoftSynthesizer.class) {
-            if (defaultSoundBank != null)
-                return defaultSoundBank;
+        return DEFAULT_SOUND_BANK.get();
+    }
 
+    public static Soundbank getDefaultSoundbank0() {
+            Soundbank defaultSoundBank = null;
             List<RunnableAction<InputStream>> actions = new ArrayList<>();
 
             actions.add(new RunnableAction<InputStream>() {
@@ -806,7 +807,6 @@ public final class SoftSynthesizer implements AudioSynthesizer,
                     }
                 }
             }
-        }
         return defaultSoundBank;
     }
 

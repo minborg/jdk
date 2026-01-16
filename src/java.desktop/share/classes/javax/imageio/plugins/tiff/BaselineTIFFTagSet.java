@@ -60,7 +60,12 @@ import java.util.List;
  */
 public final class BaselineTIFFTagSet extends TIFFTagSet {
 
-    private static BaselineTIFFTagSet theInstance = null;
+    private static final LazyConstant<BaselineTIFFTagSet> THE_INSTANCE = LazyConstant.of(() -> {
+        initTags();
+        BaselineTIFFTagSet instance = new BaselineTIFFTagSet();
+        tags = null;
+        return instance;
+    });
 
     // Tags from TIFF 6.0 specification
 
@@ -2174,12 +2179,7 @@ public final class BaselineTIFFTagSet extends TIFFTagSet {
      *
      * @return a {@code BaselineTIFFTagSet} instance.
      */
-    public static synchronized BaselineTIFFTagSet getInstance() {
-        if (theInstance == null) {
-            initTags();
-            theInstance = new BaselineTIFFTagSet();
-            tags = null;
-        }
-        return theInstance;
+    public static BaselineTIFFTagSet getInstance() {
+        return THE_INSTANCE.get();
     }
 }

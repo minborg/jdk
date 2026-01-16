@@ -1253,7 +1253,7 @@ public interface List<E> extends SequencedCollection<E> {
      * @see LazyConstant
      * @since 26
      */
-    @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
+    //@PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
     static <E> List<E> ofLazy(int size,
                               IntFunction<? extends E> computingFunction) {
         Utils.checkNonNegativeArgument(size, "size");

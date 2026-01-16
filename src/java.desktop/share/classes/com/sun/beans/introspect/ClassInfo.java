@@ -28,6 +28,7 @@ package com.sun.beans.introspect;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import com.sun.beans.util.Cache;
 
@@ -56,55 +57,24 @@ public final class ClassInfo {
         CACHE.remove(clz);
     }
 
-    private final Object mutex = new Object();
     private final Class<?> type;
-    private volatile List<Method> methods;
-    private volatile Map<String,PropertyInfo> properties;
-    private volatile Map<String,EventSetInfo> eventSets;
+    private final LazyConstant<List<Method>> methods = LazyConstant.of(() -> MethodInfo.get(ClassInfo.this.type));
+    private final LazyConstant<Map<String, PropertyInfo>> properties = LazyConstant.of(() -> PropertyInfo.get(ClassInfo.this.type));
+    private final LazyConstant<Map<String,EventSetInfo>> eventSets = LazyConstant.of(() -> EventSetInfo.get(ClassInfo.this.type));
 
     private ClassInfo(Class<?> type) {
         this.type = type;
     }
 
     public List<Method> getMethods() {
-        List<Method> methods = this.methods;
-        if (methods == null) {
-            synchronized (this.mutex) {
-                methods = this.methods;
-                if (methods == null) {
-                    methods = MethodInfo.get(this.type);
-                    this.methods = methods;
-                }
-            }
-        }
-        return methods;
+        return methods.get();
     }
 
     public Map<String,PropertyInfo> getProperties() {
-        Map<String, PropertyInfo> properties = this.properties;
-        if (properties == null) {
-            synchronized (this.mutex) {
-                properties = this.properties;
-                if (properties == null) {
-                    properties = PropertyInfo.get(this.type);
-                    this.properties = properties;
-                }
-            }
-        }
-        return properties;
+        return properties.get();
     }
 
     public Map<String,EventSetInfo> getEventSets() {
-        Map<String, EventSetInfo> eventSets = this.eventSets;
-        if (eventSets == null) {
-            synchronized (this.mutex) {
-                eventSets = this.eventSets;
-                if (eventSets == null) {
-                    eventSets = EventSetInfo.get(this.type);
-                    this.eventSets = eventSets;
-                }
-            }
-        }
-        return eventSets;
+        return eventSets.get();
     }
 }

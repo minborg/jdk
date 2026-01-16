@@ -35,21 +35,19 @@ import sun.java2d.DisposerRecord;
  * stream being garbage collected.
  */
 public class CloseableDisposerRecord implements DisposerRecord {
-    private Closeable closeable;
+    private final LazyConstant<Boolean> disposable;
 
     public CloseableDisposerRecord(Closeable closeable) {
-        this.closeable = closeable;
+        this.disposable = LazyConstant.of(() -> {
+            try {
+                closeable.close();
+            } catch (IOException _) {}
+            return true;
+        });
     }
 
     @Override
-    public synchronized void dispose() {
-        if (closeable != null) {
-            try {
-                closeable.close();
-            } catch (IOException e) {
-            } finally {
-                closeable = null;
-            }
-        }
+    public void dispose() {
+        disposable.get();
     }
 }

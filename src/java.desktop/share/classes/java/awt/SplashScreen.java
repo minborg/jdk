@@ -29,6 +29,8 @@ import java.awt.image.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.io.File;
+import java.util.Optional;
+
 import sun.util.logging.PlatformLogger;
 import sun.awt.image.SunWritableRaster;
 
@@ -128,15 +130,25 @@ public final class SplashScreen {
                 throw new HeadlessException();
             }
             // SplashScreen class is now a singleton
-            if (!wasClosed && theInstance == null) {
-                System.loadLibrary("splashscreen");
-                long ptr = _getInstance();
-                if (ptr != 0 && _isVisible(ptr)) {
-                    theInstance = new SplashScreen(ptr);
-                }
-            }
-            return theInstance;
+            return THE_INSTANCE.get()
+                    .orElse(null);
         }
+    }
+
+    @SuppressWarnings("restricted")
+    static Optional<SplashScreen> splashScreen0() {
+        boolean wasClosed;
+        synchronized (SplashScreen.class) {
+            wasClosed = SplashScreen.wasClosed;
+        }
+        if (!wasClosed) {
+            System.loadLibrary("splashscreen");
+            long ptr = _getInstance();
+            if (ptr != 0 && _isVisible(ptr)) {
+                return Optional.of(new SplashScreen(ptr));
+            }
+        }
+        return Optional.empty();
     }
 
     /**
@@ -376,7 +388,6 @@ public final class SplashScreen {
     static void markClosed() {
         synchronized (SplashScreen.class) {
             wasClosed = true;
-            theInstance = null;
         }
     }
 
@@ -414,7 +425,7 @@ public final class SplashScreen {
      * @see #getSplashScreen
      * @see #close
      */
-    private static SplashScreen theInstance = null;
+    private static final LazyConstant<Optional<SplashScreen>> THE_INSTANCE = LazyConstant.of(SplashScreen::splashScreen0);
 
     private static final PlatformLogger log = PlatformLogger.getLogger("java.awt.SplashScreen");
 

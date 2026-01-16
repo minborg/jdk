@@ -52,10 +52,7 @@ import java.awt.image.ColorModel;
 import java.awt.image.IndexColorModel;
 import java.awt.image.ColorConvertOp;
 import java.io.IOException;
-import java.util.List;
-import java.util.Iterator;
-import java.util.ArrayList;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
@@ -1967,8 +1964,14 @@ class ImageTypeIterator implements Iterator<ImageTypeSpecifier> {
  */
 class ImageTypeProducer {
 
-    private ImageTypeSpecifier type = null;
-    boolean failed = false;
+    private final LazyConstant<Optional<ImageTypeSpecifier>> type = LazyConstant.of(() -> {
+        try {
+           return Optional.ofNullable(produce());
+       } catch (Throwable t) {
+            return Optional.empty();
+        }
+    });
+
     private int csCode;
 
     public ImageTypeProducer(int csCode) {
@@ -1979,28 +1982,18 @@ class ImageTypeProducer {
         csCode = -1; // undefined
     }
 
-    public synchronized ImageTypeSpecifier getType() {
-        if (!failed && type == null) {
-            try {
-                type = produce();
-            } catch (Throwable e) {
-                failed = true;
-            }
-        }
-        return type;
+    public ImageTypeSpecifier getType() {
+        return type.get()
+                .orElse(null);
     }
 
-    private static final ImageTypeProducer [] defaultTypes =
-            new ImageTypeProducer [JPEG.NUM_JCS_CODES];
+    private static final List<ImageTypeProducer> DEFAULT_TYPES = List.ofLazy(JPEG.NUM_JCS_CODES, ImageTypeProducer::new);
 
     public static synchronized ImageTypeProducer getTypeProducer(int csCode) {
         if (csCode < 0 || csCode >= JPEG.NUM_JCS_CODES) {
             return null;
         }
-        if (defaultTypes[csCode] == null) {
-            defaultTypes[csCode] = new ImageTypeProducer(csCode);
-        }
-        return defaultTypes[csCode];
+        return DEFAULT_TYPES.get(csCode);
     }
 
     protected ImageTypeSpecifier produce() {

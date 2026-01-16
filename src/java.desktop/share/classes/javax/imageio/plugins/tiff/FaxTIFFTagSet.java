@@ -37,7 +37,12 @@ import java.util.List;
  */
 public final class FaxTIFFTagSet extends TIFFTagSet {
 
-    private static FaxTIFFTagSet theInstance = null;
+    private static final LazyConstant<FaxTIFFTagSet> THE_INSTANCE = LazyConstant.of(() -> {
+        initTags();
+        var theInstance = new FaxTIFFTagSet();
+        tags = null;
+        return theInstance;
+    });
 
     /** Tag indicating the number of bad fax lines (type SHORT or LONG). */
     public static final int TAG_BAD_FAX_LINES = 326;
@@ -137,12 +142,7 @@ public final class FaxTIFFTagSet extends TIFFTagSet {
      *
      * @return a {@code FaxTIFFTagSet} instance.
      */
-    public static synchronized FaxTIFFTagSet getInstance() {
-        if (theInstance == null) {
-            initTags();
-            theInstance = new FaxTIFFTagSet();
-            tags = null;
-        }
-        return theInstance;
+    public static FaxTIFFTagSet getInstance() {
+        return THE_INSTANCE.get();
     }
 }

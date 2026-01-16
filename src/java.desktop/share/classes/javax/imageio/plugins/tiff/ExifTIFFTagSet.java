@@ -24,7 +24,6 @@
  */
 package javax.imageio.plugins.tiff;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +42,12 @@ import java.util.List;
  */
 public final class ExifTIFFTagSet extends TIFFTagSet {
 
-    private static ExifTIFFTagSet theInstance = null;
+    private static final LazyConstant<ExifTIFFTagSet> THE_INSTANCE = LazyConstant.of(() -> {
+        initTags();
+        var theInstance = new ExifTIFFTagSet();
+        tags = null;
+        return theInstance;
+    });
 
     /**
      * A tag pointing to a GPS info IFD (type LONG).  This tag has
@@ -1992,12 +1996,7 @@ public final class ExifTIFFTagSet extends TIFFTagSet {
      *
      * @return an {@code ExifTIFFTagSet} instance.
      */
-    public static synchronized ExifTIFFTagSet getInstance() {
-        if (theInstance == null) {
-            initTags();
-            theInstance = new ExifTIFFTagSet();
-            tags = null;
-        }
-        return theInstance;
+    public static ExifTIFFTagSet getInstance() {
+        return THE_INSTANCE.get();
     }
 }

@@ -25,14 +25,13 @@
 
 package com.sun.imageio.plugins.bmp;
 
-import java.util.Arrays;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.metadata.IIOMetadataFormat;
 import javax.imageio.metadata.IIOMetadataFormatImpl;
 
 public class BMPMetadataFormat extends IIOMetadataFormatImpl {
 
-    private static IIOMetadataFormat instance = null;
+    private static final LazyConstant<IIOMetadataFormat> INSTANCE = LazyConstant.of(BMPMetadataFormat::new);
 
     private BMPMetadataFormat() {
         super(BMPMetadata.nativeMetadataFormatName,
@@ -201,9 +200,6 @@ public class BMPMetadataFormat extends IIOMetadataFormatImpl {
     }
 
     public static synchronized IIOMetadataFormat getInstance() {
-        if (instance == null) {
-            instance = new BMPMetadataFormat();
-        }
-        return instance;
+        return INSTANCE.get();
     }
 }

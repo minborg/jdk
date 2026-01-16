@@ -235,6 +235,8 @@ public final class System {
         setErr0(err);
     }
 
+    private static volatile Console cons;
+
     /**
      * Returns the unique {@link Console Console} object associated
      * with the current Java virtual machine, if any.
@@ -244,12 +246,17 @@ public final class System {
      *
      * @since   1.6
      */
-     public static Console console() {
-         final class Holder {
-             private static final Console CONSOLE = SharedSecrets.getJavaIOAccess().console();
-         }
-         return Holder.CONSOLE;
-     }
+    public static Console console() {
+        Console c;
+        if ((c = cons) == null) {
+            synchronized (System.class) {
+                if ((c = cons) == null) {
+                    cons = c = SharedSecrets.getJavaIOAccess().console();
+                }
+            }
+        }
+        return c;
+    }
 
     /**
      * Returns the channel inherited from the entity that created this

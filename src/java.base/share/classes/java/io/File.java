@@ -2058,6 +2058,7 @@ public class File
         if (sep != separatorChar)
             pathField = pathField.replace(sep, separatorChar);
         String path = FS.normalize(pathField);
+        UNSAFE.putReference(this, FILE_PATH_OFFSET, filePath());
         UNSAFE.putReference(this, PATH_OFFSET, path);
         UNSAFE.putIntVolatile(this, PREFIX_LENGTH_OFFSET, FS.prefixLength(path));
     }
@@ -2068,6 +2069,8 @@ public class File
             = UNSAFE.objectFieldOffset(File.class, "path");
     private static final long PREFIX_LENGTH_OFFSET
             = UNSAFE.objectFieldOffset(File.class, "prefixLength");
+    private static final long FILE_PATH_OFFSET
+            = UNSAFE.objectFieldOffset(File.class, "filePath");
 
     /** use serialVersionUID from JDK 1.0.2 for interoperability */
     @java.io.Serial
@@ -2075,8 +2078,12 @@ public class File
 
     // -- Integration with java.nio.file --
 
-    private final transient LazyConstant<Path> filePath = LazyConstant.of(
-            new Supplier<>() { @Override public Path get() { return FileSystems.getDefault().getPath(path); }});
+    private final transient LazyConstant<Path> filePath = filePath();
+
+    private LazyConstant<Path> filePath() {
+        return LazyConstant.of(
+                new Supplier<>() { @Override public Path get() { return FileSystems.getDefault().getPath(path); }});
+    }
 
     /**
      * Returns a {@link Path java.nio.file.Path} object constructed from

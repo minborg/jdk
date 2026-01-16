@@ -38,7 +38,12 @@ import java.util.List;
  */
 public final class ExifParentTIFFTagSet extends TIFFTagSet {
 
-    private static ExifParentTIFFTagSet theInstance = null;
+    private static final LazyConstant<ExifParentTIFFTagSet> THE_INSTANCE = LazyConstant.of(() -> {
+        initTags();
+        var theInstance = new ExifParentTIFFTagSet();
+        tags = null;
+        return theInstance;
+    });
 
     // 34665 - Exif IFD Pointer                   (LONG/1)
     /** Tag pointing to the Exif IFD (type LONG). */
@@ -84,12 +89,7 @@ public final class ExifParentTIFFTagSet extends TIFFTagSet {
      *
      * @return an {@code ExifParentTIFFTagSet} instance.
      */
-    public static synchronized ExifParentTIFFTagSet getInstance() {
-        if (theInstance == null) {
-            initTags();
-            theInstance = new ExifParentTIFFTagSet();
-            tags = null;
-        }
-        return theInstance;
+    public static ExifParentTIFFTagSet getInstance() {
+        return THE_INSTANCE.get();
     }
 }

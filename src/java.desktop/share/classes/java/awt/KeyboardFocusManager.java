@@ -318,6 +318,7 @@ public abstract class KeyboardFocusManager
     /**
      * A description of any PropertyChangeListeners which have been registered.
      */
+    // Here, it would be useful with a LC::isInitialized method
     private PropertyChangeSupport changeSupport;
 
     /**

@@ -26,19 +26,16 @@
 package com.sun.imageio.plugins.jpeg;
 
 import javax.imageio.metadata.IIOMetadataFormat;
-import javax.imageio.metadata.IIOMetadataFormatImpl;
 import javax.imageio.ImageTypeSpecifier;
 
 import java.awt.color.ICC_Profile;
-import java.awt.color.ColorSpace;
-import java.awt.image.ColorModel;
 
 import java.util.List;
 import java.util.ArrayList;
 
 public class JPEGImageMetadataFormat extends JPEGMetadataFormat {
 
-    private static JPEGImageMetadataFormat theInstance = null;
+    private static final LazyConstant<JPEGImageMetadataFormat> THE_INSTANCE = LazyConstant.of(JPEGImageMetadataFormat::new);
 
     private JPEGImageMetadataFormat() {
         super(JPEG.nativeImageMetadataFormatName,
@@ -359,9 +356,6 @@ public class JPEGImageMetadataFormat extends JPEGMetadataFormat {
 
 
     public static synchronized IIOMetadataFormat getInstance() {
-        if (theInstance == null) {
-            theInstance = new JPEGImageMetadataFormat();
-        }
-        return theInstance;
+        return THE_INSTANCE.get();
     }
 }

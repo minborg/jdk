@@ -90,14 +90,10 @@ public final class CDataTransferer extends DataTransferer {
 
     private CDataTransferer() {}
 
-    private static CDataTransferer fTransferer;
+    private static final LazyConstant<CDataTransferer> F_TRANSFERER = LazyConstant.of(CDataTransferer::new);
 
-    static synchronized CDataTransferer getInstanceImpl() {
-        if (fTransferer == null) {
-            fTransferer = new CDataTransferer();
-        }
-
-        return fTransferer;
+    static CDataTransferer getInstanceImpl() {
+        return F_TRANSFERER.get();
     }
 
     @Override

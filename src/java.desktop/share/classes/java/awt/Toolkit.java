@@ -374,7 +374,7 @@ public abstract class Toolkit {
     /**
      * The default toolkit.
      */
-    private static Toolkit toolkit;
+    private static final LazyConstant<Toolkit> TOOLKIT = LazyConstant.of(Toolkit::getDefaultToolkit0);
 
     /**
      * Used internally by the assistive technologies functions; set at
@@ -575,19 +575,22 @@ public abstract class Toolkit {
      * @see java.util.ServiceLoader
      * @see javax.accessibility.AccessibilityProvider
      */
-    public static synchronized Toolkit getDefaultToolkit() {
-        if (toolkit == null) {
-            toolkit = PlatformGraphicsInfo.createToolkit();
-            if (GraphicsEnvironment.isHeadless() &&
+    public static Toolkit getDefaultToolkit() {
+        return TOOLKIT.get();
+    }
+
+    private static Toolkit getDefaultToolkit0() {
+        Toolkit toolkit = PlatformGraphicsInfo.createToolkit();
+        if (GraphicsEnvironment.isHeadless() &&
                 !(toolkit instanceof HeadlessToolkit)) {
-                toolkit = new HeadlessToolkit(toolkit);
-            }
-            if (!GraphicsEnvironment.isHeadless()) {
-                loadAssistiveTechnologies();
-            }
+            toolkit = new HeadlessToolkit(toolkit);
+        }
+        if (!GraphicsEnvironment.isHeadless()) {
+            loadAssistiveTechnologies();
         }
         return toolkit;
     }
+
 
     /**
      * Returns an image which gets pixel data from the specified file,

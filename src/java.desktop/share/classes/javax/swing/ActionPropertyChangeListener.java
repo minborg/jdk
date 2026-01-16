@@ -58,7 +58,7 @@ import java.lang.ref.WeakReference;
 @SuppressWarnings("serial") // Bound of type variable  is not serializable across versions
 abstract class ActionPropertyChangeListener<T extends JComponent>
         implements PropertyChangeListener, Serializable {
-    private static ReferenceQueue<JComponent> queue;
+    private static final LazyConstant<ReferenceQueue<JComponent>> QUEUE = LazyConstant.of(ReferenceQueue::new);
 
     // WeakReference's aren't serializable.
     private transient OwnedWeakReference<T> target;
@@ -67,12 +67,7 @@ abstract class ActionPropertyChangeListener<T extends JComponent>
     private Action action;
 
     private static ReferenceQueue<JComponent> getQueue() {
-        synchronized(ActionPropertyChangeListener.class) {
-            if (queue == null) {
-                queue = new ReferenceQueue<JComponent>();
-            }
-        }
-        return queue;
+        return QUEUE.get();
     }
 
     public ActionPropertyChangeListener(T c, Action a) {
