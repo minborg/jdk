@@ -26,43 +26,73 @@
  * @requires os.arch=="aarch64" | os.arch=="riscv64" | os.arch=="x86_64" | os.arch=="amd64"
  * @requires vm.gc.Parallel
  * @requires vm.compiler2.enabled
- * @summary Check LazyConstant folding
+ * @summary Check LazyConstant and lazy collection folding
  * @modules java.base/jdk.internal.lang
  * @library /test/lib /
  * @enablePreview
- * @run driver compiler.c2.irTests.stable.LazyConstantTest
+ * @run main compiler.c2.irTests.stable.LazyConstantsIrTest
  */
 
 package compiler.c2.irTests.stable;
 
 import compiler.lib.ir_framework.*;
-import jdk.internal.lang.LazyConstantImpl;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-public class LazyConstantTest {
+public class LazyConstantsIrTest {
 
     public static void main(String[] args) {
         TestFramework tf = new TestFramework();
         tf.addTestClassesToBootClassPath();
         tf.addFlags(
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:CompileThreshold=100",
-            "-XX:-TieredCompilation",
-            "-XX:+UseParallelGC",
-            "--add-opens", "java.base/jdk.internal.lang=ALL-UNNAMED"
+                "--enable-preview",
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:CompileThreshold=100",
+                "-XX:-TieredCompilation",
+                "-XX:+UseParallelGC"
         );
         tf.start();
     }
 
-    static final LazyConstantImpl<Integer> LAZY_42 = LazyConstantImpl.ofLazy(() -> 42);
+    static final int THE_VALUE = 42;
+
+    static final LazyConstant<Integer> LAZY_CONSTANT = LazyConstant.of(() -> THE_VALUE);
+    static final List<Integer> LAZY_LIST = List.ofLazy(1, _ -> THE_VALUE);
+    static final Set<Integer> LAZY_SET = Set.ofLazy(Set.of(THE_VALUE), _ -> true);
+    static final Map<Integer, Integer> LAZY_MAP = Map.ofLazy(Set.of(0), _ -> THE_VALUE);
 
     @Test
     @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR })
     static int foldLazyConstant() {
         // Access should be folded.
         // No barriers expected for a folded access (as opposed to a non-folded).
-        return LAZY_42.get();
+        return LAZY_CONSTANT.get();
+    }
+
+    @Test
+    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR })
+    static int foldLazyList() {
+        // Access should be folded.
+        // No barriers expected for a folded access (as opposed to a non-folded).
+        return LAZY_LIST.get(0);
+    }
+
+    @Test
+    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR })
+    static boolean foldLazySet() {
+        // Access should be folded.
+        // No barriers expected for a folded access (as opposed to a non-folded).
+        return LAZY_SET.contains(THE_VALUE);
+    }
+
+    @Test
+    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR })
+    static int foldLazyMap() {
+        // Access should be folded.
+        // No barriers expected for a folded access (as opposed to a non-folded).
+        return LAZY_MAP.get(0);
     }
 
 }
