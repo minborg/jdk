@@ -42,6 +42,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -349,6 +350,12 @@ final class LazySetTest {
 
         enum Option { VERBOSE, DRY_RUN, STRICT }
 
+        // Return true when the given Option is enabled
+        private static boolean isEnabled(Option option) {
+            // Parse command line, read configuration file, load database
+            return true;
+        }
+
         // Lazily initialized Set of Options
         static final Set<Option> OPTIONS =
                 Set.ofLazy(EnumSet.allOf(Option.class), Application::isEnabled);
@@ -358,14 +365,40 @@ final class LazySetTest {
                 // Skip processing in DRY_RUN mode
                 return;
             }
-            // Actual processing logic goes here
+            // Actual Processing logic
         }
 
-        // Determines if a given Option is enabled (true) or disabled (false)
-        private static boolean isEnabled(Option option) {
-            return true;
+    }
+
+    // Javadoc equivalent
+    class LazySet<E> extends AbstractCollection<E> implements Set<E> {
+
+        private final Map<E, LazyConstant<Boolean>> backingMap;
+
+        public LazySet(Set<E> elementCandidates, Predicate<E> computingFunction) {
+            this.backingMap = elementCandidates.stream()
+                    .collect(Collectors.toUnmodifiableMap(
+                            Function.identity(),
+                            k -> LazyConstant.of(() -> computingFunction.test(k))));
         }
 
+        @Override
+        public boolean contains(Object o) {
+            var lazyConstant = backingMap.get(o);
+            return lazyConstant == null
+                    ? false
+                    : lazyConstant.get();
+        }
+
+        @Override
+        public Iterator<E> iterator() {
+            return null;
+        }
+
+        @Override
+        public int size() {
+            return 0;
+        }
     }
 
 }

@@ -784,7 +784,7 @@ public interface Set<E> extends Collection<E> {
      * Here is an example involving an application that manages various configurable
      * options -- commonly referred to as "switches" -- that control its behavior. The
      * state of these switches can be determined through the command line, a configuration
-     * file, or even a remote connection. By using a lazy set, we ensure that the states
+     * file, or even a database connection. By using a lazy set, we ensure that the states
      * of these switches are evaluated only once. Once computed, the results are eligible
      * for constant folding by the JVM:
      * {@snippet lang = java:
@@ -796,17 +796,18 @@ public interface Set<E> extends Collection<E> {
      *     static final Set<Option> OPTIONS =
      *             Set.ofLazy(EnumSet.allOf(Option.class), Application::isEnabled);
      *
+     *     // Return true when the given Option is enabled
+     *     private static boolean isEnabled(Option option) {
+     *         // Parse command line, read configuration file, load database
+     *         ...
+     *     }
+     *
      *     public static void process() {
      *         if (OPTIONS.contains(Option.DRY_RUN)) {
      *             // Skip processing in DRY_RUN mode
      *             return;
      *         }
-     *         // Actual processing logic goes here
-     *     }
-     *
-     *     // Determines if a given Option is enabled (true) or disabled (false)
-     *     private static boolean isEnabled(Option option) {
-     *         ...
+     *         // Actual processing logic
      *     }
      *
      * }
@@ -819,6 +820,32 @@ public interface Set<E> extends Collection<E> {
      * {@linkplain Set#equals(Object) equals()} as its equivalence relation, or its
      * comparison method must be consistent with equals, otherwise the behavior is
      * unspecified.
+     * <p>
+     * The returned {@code Set<E>} can be thought of as a set backed by a
+     * {@code Map<E, LazyConstant<Boolean>>} field and where the {@linkplain Set#contains(Object)}
+     * operation is equivalent to:
+     * {@snippet lang = java:
+     * class LazySet<E> extends AbstractCollection<E> implements Set<E> {
+     *
+     *     private final Map<E, LazyConstant<Boolean>> backingMap;
+     *
+     *     public LazySet(Set<E> elementCandidates, Predicate<E> computingFunction) {
+     *         this.backingMap = elementCandidates.stream()
+     *                 .collect(Collectors.toUnmodifiableMap(
+     *                         Function.identity(),
+     *                         k -> LazyConstant.of(() -> computingFunction.test(k))));
+     *     }
+     *
+     *     @Override
+     *     public boolean contains(Object o) {
+     *         var lazyConstant = backingMap.get(o);
+     *         return lazyConstant == null
+     *                 ? false
+     *                 : lazyConstant.get();
+     *     }
+     * }
+     *}
+     * Except, performance and storage efficiency might be better.
      *
      * @implNote  after all element membership statuses have been initialized successfully,
      *            the computing function is no longer strongly referenced and becomes
