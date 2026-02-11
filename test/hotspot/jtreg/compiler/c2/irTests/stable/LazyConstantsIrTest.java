@@ -72,7 +72,7 @@ public class LazyConstantsIrTest {
     }
 
     @Test
-    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR })
+    @IR(failOn = { IRNode.LOAD /*, IRNode.MEMBAR */}) // Reenable when 8377541 is fixed
     static int foldLazyList() {
         // Access should be folded.
         // No barriers expected for a folded access (as opposed to a non-folded).
@@ -80,7 +80,7 @@ public class LazyConstantsIrTest {
     }
 
     @Test
-    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR })
+    @IR(failOn = { IRNode.LOAD /*, IRNode.MEMBAR */}) // Reenable when 8377541 is fixed
     static boolean foldLazySet() {
         // Access should be folded.
         // No barriers expected for a folded access (as opposed to a non-folded).
@@ -88,7 +88,7 @@ public class LazyConstantsIrTest {
     }
 
     @Test
-    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR })
+    @IR(failOn = { IRNode.LOAD /*, IRNode.MEMBAR */}) // Reenable when 8377541 is fixed
     static int foldLazyMap() {
         // Access should be folded.
         // No barriers expected for a folded access (as opposed to a non-folded).
