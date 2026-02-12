@@ -22,6 +22,7 @@
  */
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Type;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.*;
 
@@ -163,11 +164,11 @@ final class LazyConstantTestUtil {
         }
     }
 
-    static Supplier<?> computingFunction(LazyConstant<?> o) {
+    static Object computingFunction(LazyConstant<?> o) {
         try {
-            final Field field = field(o.getClass(), "computingFunction");
+            final Field field = field(o.getClass(), "computingFunctionOrExceptionType");
             field.setAccessible(true);
-            return (Supplier<?>) field.get(o);
+            return field.get(o);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }

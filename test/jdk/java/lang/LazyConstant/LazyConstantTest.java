@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.lang.LazyConstant;
@@ -73,9 +74,11 @@ final class LazyConstantTest {
         var lazy = factory.apply(cs);
         assertThrows(UnsupportedOperationException.class, lazy::get);
         assertEquals(1, cs.cnt());
-        assertThrows(UnsupportedOperationException.class, lazy::get);
-        assertEquals(2, cs.cnt());
-        assertTrue(lazy.toString().contains("computing function"));
+        var x = assertThrows(NoSuchElementException.class, lazy::get);
+        assertEquals("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation", x.getMessage());
+        assertEquals(1, cs.cnt());
+        var toString = lazy.toString();
+        assertTrue(toString.contains("failed with=java.lang.UnsupportedOperationException"), toString);
     }
 
     @ParameterizedTest
@@ -155,10 +158,10 @@ final class LazyConstantTest {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(SUPPLIER);
         var f1 = factory.apply(cs);
 
-        Supplier<?> underlyingBefore = LazyConstantTestUtil.computingFunction(f1);
+        Object underlyingBefore = LazyConstantTestUtil.computingFunction(f1);
         assertSame(cs, underlyingBefore);
         int v = f1.get();
-        Supplier<?> underlyingAfter = LazyConstantTestUtil.computingFunction(f1);
+        Object underlyingAfter = LazyConstantTestUtil.computingFunction(f1);
         assertNull(underlyingAfter);
     }
 
@@ -170,15 +173,15 @@ final class LazyConstantTest {
         });
         var f1 = factory.apply(cs);
 
-        Supplier<?> underlyingBefore = LazyConstantTestUtil.computingFunction(f1);
+        Object underlyingBefore = LazyConstantTestUtil.computingFunction(f1);
         assertSame(cs, underlyingBefore);
         try {
             int v = f1.get();
         } catch (UnsupportedOperationException _) {
             // Expected
         }
-        Supplier<?> underlyingAfter = LazyConstantTestUtil.computingFunction(f1);
-        assertSame(cs, underlyingAfter);
+        Object underlyingAfter = LazyConstantTestUtil.computingFunction(f1);
+        assertEquals(UnsupportedOperationException.class, underlyingAfter);
     }
 
     private static Stream<LazyConstant<Integer>> lazyConstants() {

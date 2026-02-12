@@ -89,6 +89,10 @@ import java.util.function.Supplier;
  * <p>
  * If the computing function recursively invokes itself via the lazy constant, an
  * {@linkplain IllegalStateException} is thrown, and the lazy constant is not initialized.
+ * <p>
+ * If evaluation of the computing function throws a {@linkplain Throwable}, the lazy
+ * constant transitions to an error state. Subsequent {@linkplain #get() get()} calls
+ * throw {@linkplain NoSuchElementException} without invoking the computing function again.
  *
  * <h2 id="composition">Composing lazy constants</h2>
  * A lazy constant can depend on other lazy constants, forming a dependency graph
@@ -210,9 +214,11 @@ public sealed interface LazyConstant<T>
      * After this method returns successfully, the constant is guaranteed to be
      * initialized.
      * <p>
-     * If the computing function throws, the throwable is relayed to the caller and
-     * the lazy constant remains uninitialized; a subsequent call to get() may then
-     * attempt the computation again.
+     * If the computing function throws, this method relays that {@code Throwable} to the
+     * caller and this lazy constant transitions to an error state. Subsequent invocations
+     * of {@code get()} throw {@code NoSuchElementException}.
+     *
+     * @throws NoSuchElementException if the computing function previously threw
      */
     T get();
 

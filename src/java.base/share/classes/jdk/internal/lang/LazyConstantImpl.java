@@ -30,6 +30,7 @@ import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -67,12 +68,12 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
     // The field needs to be `volatile` as a lazy constant can be
     // created by one thread and computed by another thread.
     // After the function is successfully invoked, the field is set to
-    // `null` to allow the function to be collected.
-    @Stable
-    private volatile Supplier<? extends T> computingFunction;
+    // `null` to allow the function to be collected. If the function fails, the field is
+    // set to the class of the Exception.
+    private volatile Object computingFunctionOrExceptionType;
 
     private LazyConstantImpl(Supplier<? extends T> computingFunction) {
-        this.computingFunction = computingFunction;
+        this.computingFunctionOrExceptionType = computingFunction;
     }
 
     @ForceInline
@@ -82,16 +83,32 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
         return (t != null) ? t : getSlowPath();
     }
 
+    @SuppressWarnings("unchecked")
     private T getSlowPath() {
         preventReentry();
         synchronized (this) {
             T t = getAcquire();
             if (t == null) {
-                t = computingFunction.get();
-                Objects.requireNonNull(t);
-                setRelease(t);
-                // Allow the underlying supplier to be collected after successful use
-                computingFunction = null;
+                if (computingFunctionOrExceptionType instanceof Supplier<?> supplier) {
+                    try {
+                        @SuppressWarnings("unchecked")
+                        final T newT = (T) supplier.get();
+                        t = newT;
+                        Objects.requireNonNull(t);
+                        setRelease(t);
+                        // Allow the underlying supplier to be collected after successful use
+                        computingFunctionOrExceptionType = null;
+                    } catch (Throwable ex) {
+                        // Release the original computing function and replace it with
+                        // an exception marker
+                        computingFunctionOrExceptionType = ex.getClass();
+                        throw ex;
+                    }
+                } else {
+                    throw new NoSuchElementException("Unable to access the constant because " +
+                            ((Class<?>) computingFunctionOrExceptionType).getName() +
+                            " was thrown at initial computation");
+                }
             }
             return t;
         }
@@ -117,12 +134,14 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
             return t.toString();
         }
         // Volatile read
-        final Supplier<? extends T> cf = computingFunction;
+        final Object cf = computingFunctionOrExceptionType;
         // There could be a race here
         if (cf != null) {
-            return "computing function=" + computingFunction.toString();
+            return (cf instanceof Supplier<?> supplier)
+                    ? "computing function=" + supplier
+                    : "failed with=" + ((Class<?>) cf).getName();
         }
-        // As we know `computingFunction` is `null` via a volatile read, we
+        // As we know `computingFunction` is `null` or via a volatile read, we
         // can now be sure that this lazy constant is initialized
         return getAcquire().toString();
     }
@@ -154,7 +173,7 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
 
     private void preventReentry() {
         if (Thread.holdsLock(this)) {
-            throw new IllegalStateException("Recursive invocation of a LazyConstant's computing function: " + computingFunction);
+            throw new IllegalStateException("Recursive invocation of a LazyConstant's computing function: " + computingFunctionOrExceptionType);
         }
     }
 
