@@ -91,8 +91,18 @@ final class LazyListTest {
         var lazy = List.ofLazy(SIZE, cif);
         assertThrows(UnsupportedOperationException.class, () -> lazy.get(INDEX));
         assertEquals(1, cif.cnt());
-        assertThrows(UnsupportedOperationException.class, () -> lazy.get(INDEX));
-        assertEquals(2, cif.cnt());
+        var x = assertThrows(NoSuchElementException.class, () -> lazy.get(INDEX));
+        assertEquals("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation for input " + INDEX, x.getMessage());
+        assertEquals(1, cif.cnt());
+
+        for (int i = 0; i < SIZE; i++) {
+            // Make sure all values are touched
+            final int finalI = i;
+            assertThrows(Exception.class, () -> lazy.get(finalI));
+        }
+
+        assertThrows(NoSuchElementException.class, lazy::toString);
+        assertEquals(SIZE, cif.cnt());
     }
 
     @Test

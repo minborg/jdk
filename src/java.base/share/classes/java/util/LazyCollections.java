@@ -25,6 +25,7 @@
 
 package java.util;
 
+import jdk.internal.ValueBased;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.ImmutableBitSetPredicate;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
@@ -32,6 +33,7 @@ import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.reflect.Array;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.*;
 
@@ -63,12 +65,15 @@ final class LazyCollections {
         final FunctionHolder<IntFunction<? extends E>> functionHolder;
         @Stable
         private final Mutexes mutexes;
+        @Stable
+        private final Throwables throwables;
 
         private LazyList(int size, IntFunction<? extends E> computingFunction) {
             this.elements = newGenericArray(size);
             this.size = size;
             this.functionHolder = new FunctionHolder<>(computingFunction, size);
             this.mutexes = new Mutexes(size);
+            this.throwables = new Throwables(size);
             super();
         }
 
@@ -84,7 +89,7 @@ final class LazyCollections {
         }
 
         private E getSlowPath(int i) {
-            return orElseComputeSlowPath(elements, i, mutexes, i, functionHolder);
+            return orElseComputeSlowPath(elements, i, mutexes, throwables, i, functionHolder);
         }
 
         @Override
@@ -245,6 +250,8 @@ final class LazyCollections {
         @Stable
         Mutexes mutexes;
         @Stable
+        Throwables throwables;
+        @Stable
         private final int size;
         @Stable
         final FunctionHolder<Function<? super K, ? extends V>> functionHolder;
@@ -259,6 +266,7 @@ final class LazyCollections {
             this.functionHolder = new FunctionHolder<>(computingFunction, size);
             this.values = newGenericArray(backingSize);
             this.mutexes = new Mutexes(backingSize);
+            this.throwables = new Throwables(backingSize);
             super();
             this.keySet = keySet;
             this.entrySet = LazyMapEntrySet.of(this);
@@ -288,7 +296,7 @@ final class LazyCollections {
             if (v != null) {
                 return v;
             }
-            return orElseComputeSlowPath(values, index, mutexes, key, functionHolder);
+            return orElseComputeSlowPath(values, index, mutexes, throwables, key, functionHolder);
         }
 
         @jdk.internal.ValueBased
@@ -532,7 +540,6 @@ final class LazyCollections {
 
     }
 
-
     static final class Mutexes {
 
         private static final Object TOMB_STONE = new Object();
@@ -569,6 +576,60 @@ final class LazyCollections {
                 mutexes = null;
                 counter = null;
             }
+        }
+
+    }
+
+    /** Holds the throwable classes produced by the computing function.
+     * <p>
+     * In order to save space, an `int` token is used to point to the actual
+     * throwable class.
+     * <p>
+     * This class is not thread safe as it will always be accessed under the same
+     * monitor for a given index.
+     */
+    static final class Throwables {
+
+        // Holds all the throwable-to-token mappings
+        static final Map<Class<? extends Throwable>, Integer> TOKENS = new ConcurrentHashMap<>();
+        // Holds all the token-to-throwable mappings
+        static final Map<Integer, Class<? extends Throwable>> THROWABLES = new ConcurrentHashMap<>();
+        // Start from 1 (and not zero) to allow constant folding in the `throable` `int` array.
+        static int nextToken = 1;
+
+        @Stable
+        int[] throwables;
+
+        Throwables(int size) {
+            this.throwables = new int[size];
+        }
+
+        @SuppressWarnings("unchecked")
+        Optional<Class<Throwable>> get(int index) {
+            final int token = throwables[index];
+            return (token == 0)
+                    ? Optional.empty()
+                    : Optional.of((Class<Throwable>) THROWABLES.get(token));
+        }
+
+        void set(int index, Class<? extends Throwable> throwable) {
+            final int token = TOKENS.computeIfAbsent(throwable, Throwables::newToken);
+            throwables[index] = token;
+        }
+
+        static synchronized Integer newToken(Class<? extends Throwable> throwable) {
+            if (TOKENS.containsKey(throwable)) {
+                // Someone beat us in a race.
+                return null;
+            }
+            // We are reading/modifying `nextToken` under synchronization
+            final int token = nextToken++;
+            if (token == 0) {
+                nextToken--;
+                throw new InternalError("More than 2^32-1 throwable classes detected");
+            }
+            THROWABLES.put(token, throwable);
+            return token;
         }
 
     }
@@ -622,6 +683,7 @@ final class LazyCollections {
     static <T> T orElseComputeSlowPath(final T[] array,
                                        final int index,
                                        final Mutexes mutexes,
+                                       final Throwables throwables,
                                        final Object input,
                                        final FunctionHolder<?> functionHolder) {
         final long offset = offsetFor(index);
@@ -630,21 +692,35 @@ final class LazyCollections {
         synchronized (mutex) {
             final T t = array[index];  // Plain semantics suffice here
             if (t == null) {
-                final T newValue = switch (functionHolder.function()) {
-                    case IntFunction<?> iFun -> (T) iFun.apply((int) input);
-                    case Function<?, ?> fun  ->  ((Function<Object, T>) fun).apply(input);
-                    default -> throw new InternalError("cannot reach here");
-                };
-                Objects.requireNonNull(newValue);
-                // Reduce the counter and if it reaches zero, clear the reference
-                // to the underlying holder.
-                functionHolder.countDown();
+                final var throwable = throwables.get(index);
+                if (throwable.isPresent()) {
+                    throw new NoSuchElementException("Unable to access the constant because " +
+                            throwable.get().getName() +
+                            " was thrown at initial computation for input " + input);
+                }
+                try {
+                    final T newValue = switch (functionHolder.function()) {
+                        case IntFunction<?> iFun -> (T) iFun.apply((int) input);
+                        case Function<?, ?> fun ->
+                                ((Function<Object, T>) fun).apply(input);
+                        default -> throw new InternalError("cannot reach here");
+                    };
+                    Objects.requireNonNull(newValue);
 
-                // The mutex is not reentrant so we know newValue should be returned
-                set(array, index, mutex, newValue);
-                // We do not need the mutex anymore
-                mutexes.releaseMutex(offset);
-                return newValue;
+                    // Reduce the counter and if it reaches zero, clear the reference
+                    // to the underlying holder.
+                    functionHolder.countDown();
+
+                    // The mutex is not reentrant so we know newValue should be returned
+                    set(array, index, mutex, newValue);
+                    // We do not need the mutex anymore
+                    mutexes.releaseMutex(offset);
+                    return newValue;
+                } catch (Throwable x) {
+                    throwables.set(index, x.getClass());
+                    // Rethrow the initial throwable
+                    throw x;
+                }
             }
             return t;
         }

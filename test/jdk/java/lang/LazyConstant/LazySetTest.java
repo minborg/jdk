@@ -113,16 +113,23 @@ final class LazySetTest {
     @ParameterizedTest
     @MethodSource("nonEmptySets")
     void exception(Set<Value> set) {
-        LazyConstantTestUtil.CountingFunction<Value, Integer> cif = new LazyConstantTestUtil.CountingFunction<>(_ -> {
+        LazyConstantTestUtil.CountingPredicate<Value> cif = new LazyConstantTestUtil.CountingPredicate<>(_ -> {
             throw new UnsupportedOperationException();
         });
-        var lazy = Map.ofLazy(set, cif);
-        assertThrows(UnsupportedOperationException.class, () -> lazy.get(ELEMENT));
+        var lazy = Set.ofLazy(set, cif);
+        assertThrows(UnsupportedOperationException.class, () -> lazy.contains(ELEMENT));
         assertEquals(1, cif.cnt());
-        assertThrows(UnsupportedOperationException.class, () -> lazy.get(ELEMENT));
-        assertEquals(2, cif.cnt());
-        assertThrows(UnsupportedOperationException.class, lazy::toString);
-        assertEquals(3, cif.cnt());
+        assertThrows(NoSuchElementException.class, () -> lazy.contains(ELEMENT));
+        assertEquals(1, cif.cnt());
+
+        for (Value v : set) {
+            // Make sure all values are touched
+            assertThrows(Exception.class, () -> lazy.contains(v));
+        }
+
+        var xToString = assertThrows(NoSuchElementException.class, lazy::toString);
+        assertTrue(xToString.getMessage().startsWith("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation for input"));
+        assertEquals(set.size(), cif.cnt());
     }
 
     @ParameterizedTest
@@ -338,11 +345,6 @@ final class LazySetTest {
     static Set<Value> populate(Set<Value> set, Value... values) {
         set.addAll(Arrays.asList(values));
         return set;
-    }
-
-    private static int functionCounter(Map<?, ?> lazy) {
-        final Object holder = LazyConstantTestUtil.functionHolder(lazy);
-        return LazyConstantTestUtil.functionHolderCounter(holder);
     }
 
     // JEP Example

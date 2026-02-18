@@ -1764,15 +1764,17 @@ public interface Map<K, V> {
      * threads accessing a value already under computation will block until an element
      * is computed or the computing function completes abnormally.
      * <p>
-     * If invoking the provided computing function throws an exception, it
-     * is rethrown to the initial caller and no value associated with the provided key
-     * is recorded.
-     * <p>
      * If the provided computing function returns {@code null},
      * a {@linkplain NullPointerException} will be thrown. Hence, just like other
      * unmodifiable maps created via the {@code Map::of} factories, a lazy map
      * cannot contain {@code null} values. Clients that want to use nullable values can
      * wrap values into an {@linkplain Optional} holder.
+     * <p>
+     * If evaluation of the computing function throws a {@linkplain Throwable} (for a
+     * key), it is rethrown to the initial caller and no value for the key is
+     * recorded and the associated value transitions to an error state. Subsequent
+     * {@linkplain Map#get(Object)} map::get} calls for the same key throw
+     * {@linkplain NoSuchElementException} without invoking the computing function again.
      * <p>
      * The values of any {@link Map#values()} or {@link Map#entrySet()} views of
      * the returned map are also lazily computed.
@@ -1785,7 +1787,8 @@ public interface Map<K, V> {
      * {@linkplain Object#equals(Object) equals()},
      * {@linkplain Object#hashCode() hashCode()}, and
      * {@linkplain Object#toString() toString()} methods may trigger initialization of
-     * one or more lazy elements.
+     * one or more lazy values.  If initialization fails for at least one value,
+     * the {@linkplain Object Object methods} may throw {@linkplain NoSuchElementException}.
      * <p>
      * The returned lazy map strongly references its underlying
      * computing function used to compute values at least as long as there are

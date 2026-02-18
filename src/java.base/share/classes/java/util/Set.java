@@ -769,11 +769,19 @@ public interface Set<E> extends Collection<E> {
      * the returned lazy set for the same element candidate, an
      * {@linkplain IllegalStateException} will be thrown.
      * <p>
+     * If evaluation of the computing function throws a {@linkplain Throwable} (for an
+     * element candidate), it is rethrown to the initial caller and no membership status
+     * for the element candidate is recorded and the associated lazy membership status
+     * transitions to an error state. Subsequent {@linkplain Set#contains(Object) Set::contains}
+     * calls for the same element candidate throw {@linkplain NoSuchElementException}
+     * without invoking the computing function again.
+     *
      * The returned set's {@linkplain Object Object methods};
      * {@linkplain Object#equals(Object) equals()},
      * {@linkplain Object#hashCode() hashCode()}, and
      * {@linkplain Object#toString() toString()} methods may trigger initialization of
-     * one or more lazy elements.
+     * one or more lazy elements. If initialization fails for at least one element,
+     * the {@linkplain Object Object methods} may throw {@linkplain NoSuchElementException}.
      * <p>
      * The returned lazy set strongly references its underlying
      * computing function used to compute membership status at least as long as there are

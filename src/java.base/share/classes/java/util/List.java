@@ -1209,14 +1209,17 @@ public interface List<E> extends SequencedCollection<E> {
      * Competing threads accessing an element already under computation will block until
      * an element is computed or the computing function completes abnormally.
      * <p>
-     * If invoking the provided computing function throws an exception, it is rethrown
-     * to the initial caller and no value for the element is recorded.
-     * <p>
      * If the provided computing function returns {@code null},
      * a {@linkplain NullPointerException} will be thrown. Hence, just like other
      * unmodifiable lists created via the {@code List::of} factories, a lazy list
      * cannot contain {@code null} elements. Clients that want to use nullable elements
      * can wrap elements into an {@linkplain Optional} holder.
+     * <p>
+     * If evaluation of the computing function throws a {@linkplain Throwable} (for an
+     * index), it is rethrown to the initial caller and no value for the element is
+     * recorded and the associated lazy element transitions to an error state. Subsequent
+     * {@linkplain List#get(int) List::get} calls for the same index throw
+     * {@linkplain NoSuchElementException} without invoking the computing function again.
      * <p>
      * The elements of any {@link List#subList(int, int) subList()} or
      * {@link List#reversed()} views of the returned list are also lazily computed.
@@ -1232,7 +1235,8 @@ public interface List<E> extends SequencedCollection<E> {
      * {@linkplain Object#equals(Object) equals()},
      * {@linkplain Object#hashCode() hashCode()}, and
      * {@linkplain Object#toString() toString()} methods may trigger initialization of
-     * one or more lazy elements.
+     * one or more lazy elements. If initialization fails for at least one element,
+     * the {@linkplain Object Object methods} may throw {@linkplain NoSuchElementException}.
      * <p>
      * The returned lazy list strongly references its computing
      * function used to compute elements at least as long as there are uninitialized

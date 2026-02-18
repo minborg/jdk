@@ -140,10 +140,18 @@ final class LazyMapTest {
         var lazy = Map.ofLazy(set, cif);
         assertThrows(UnsupportedOperationException.class, () -> lazy.get(KEY));
         assertEquals(1, cif.cnt());
-        assertThrows(UnsupportedOperationException.class, () -> lazy.get(KEY));
-        assertEquals(2, cif.cnt());
-        assertThrows(UnsupportedOperationException.class, lazy::toString);
-        assertEquals(3, cif.cnt());
+        var x = assertThrows(NoSuchElementException.class, () -> lazy.get(KEY));
+        assertEquals("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation for input " + KEY, x.getMessage());
+        assertEquals(1, cif.cnt());
+
+        for (Value v : set) {
+            // Make sure all values are touched
+            assertThrows(Exception.class, () -> lazy.get(v));
+        }
+
+        var xToString = assertThrows(NoSuchElementException.class, lazy::toString);
+        assertTrue(xToString.getMessage().startsWith("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation for input"));
+        assertEquals(set.size(), cif.cnt());
     }
 
     @ParameterizedTest
