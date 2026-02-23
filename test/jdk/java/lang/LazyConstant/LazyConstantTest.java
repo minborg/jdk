@@ -69,10 +69,12 @@ final class LazyConstantTest {
     @MethodSource("factories")
     void exception(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(() -> {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Initial exception");
         });
         var lazy = factory.apply(cs);
-        assertThrows(UnsupportedOperationException.class, lazy::get);
+        var ix = assertThrows(NoSuchElementException.class, lazy::get);
+        assertEquals(UnsupportedOperationException.class, ix.getCause().getClass());
+        assertEquals("Initial exception", ix.getCause().getMessage());
         assertEquals(1, cs.cnt());
         var x = assertThrows(NoSuchElementException.class, lazy::get);
         assertEquals("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation", x.getMessage());
@@ -107,7 +109,7 @@ final class LazyConstantTest {
     @MethodSource("lazyConstants")
     void testLazyConstantAsComputingFunction(LazyConstant<Integer> constant) {
         LazyConstant<Integer> c1 = LazyConstant.of(constant);
-        assertSame(constant, c1);
+        assertNotSame(constant, c1);
     }
 
     @Test
@@ -147,9 +149,9 @@ final class LazyConstantTest {
     void recursiveCall() {
         AtomicReference<LazyConstant<Integer>> ref = new AtomicReference<>();
         LazyConstant<Integer> constant = LazyConstant.of(() -> ref.get().get());
-        LazyConstant<Integer> constant1 = LazyConstant.of(constant);
-        ref.set(constant1);
-        assertThrows(IllegalStateException.class, constant::get);
+        ref.set(constant);
+        var x = assertThrows(NoSuchElementException.class, constant::get);
+        assertEquals(IllegalStateException.class, x.getCause().getClass());
     }
 
     @ParameterizedTest
@@ -175,11 +177,10 @@ final class LazyConstantTest {
 
         Object underlyingBefore = LazyConstantTestUtil.computingFunction(f1);
         assertSame(cs, underlyingBefore);
-        try {
-            int v = f1.get();
-        } catch (UnsupportedOperationException _) {
-            // Expected
-        }
+
+        var x = assertThrows(NoSuchElementException.class, f1::get);
+        assertEquals(UnsupportedOperationException.class, x.getCause().getClass());
+
         Object underlyingAfter = LazyConstantTestUtil.computingFunction(f1);
         assertEquals(UnsupportedOperationException.class, underlyingAfter);
     }

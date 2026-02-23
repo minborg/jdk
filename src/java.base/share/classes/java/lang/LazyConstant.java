@@ -29,7 +29,15 @@ import jdk.internal.javac.PreviewFeature;
 import jdk.internal.lang.LazyConstantImpl;
 
 import java.io.Serializable;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -49,8 +57,7 @@ import java.util.function.Supplier;
  * the constant.
  * <p>
  * Once a lazy constant is initialized, its contents can <em>never change</em>
- * and will be retrieved over and over again upon subsequent {@linkplain #get() get()}
- * invocations.
+ * and will always be returned by subsequent {@linkplain #get() get()} invocations.
  * <p>
  * Consider the following example where a lazy constant field "{@code logger}" holds
  * an object of type {@code Logger}:
@@ -83,16 +90,20 @@ import java.util.function.Supplier;
  * may result in storage resources being prepared.
  *
  * <h2 id="exception-handling">Exception handling</h2>
+ * If evaluation of the computing function throws an unchecked exception, the lazy
+ * constant is not initialized but instead transitions to an error state. Subsequent
+ * {@linkplain #get() get()} calls throw {@linkplain NoSuchElementException} without ever
+ * invoking the computing function again.
+ * <p>
+ * All failures are handled in this way. Here are two special cases that cause unchecked
+ * exceptions to be thrown:
+ * <p>
  * If the computing function returns {@code null}, a {@linkplain NullPointerException}
- * is thrown. Hence, a lazy constant can never hold a {@code null} value. Clients who
+ * is wrapped. Hence, a lazy constant can never hold a {@code null} value. Clients who
  * want to use a nullable constant can wrap the value into an {@linkplain Optional} holder.
  * <p>
  * If the computing function recursively invokes itself via the lazy constant, an
- * {@linkplain IllegalStateException} is thrown, and the lazy constant is not initialized.
- * <p>
- * If evaluation of the computing function throws a {@linkplain Throwable}, the lazy
- * constant transitions to an error state. Subsequent {@linkplain #get() get()} calls
- * throw {@linkplain NoSuchElementException} without invoking the computing function again.
+ * {@linkplain IllegalStateException} is wrapped.
  *
  * <h2 id="composition">Composing lazy constants</h2>
  * A lazy constant can depend on other lazy constants, forming a dependency graph
@@ -138,13 +149,17 @@ import java.util.function.Supplier;
  * competing threads are racing to initialize a lazy constant, only one updating thread
  * runs the computing function (which runs on the caller's thread and is hereafter denoted
  * <em>the computing thread</em>), while the other threads are blocked until the constant
- * is initialized, after which the other threads observe the lazy constant is initialized
+ * is initialized, after which the other threads observe thecomposability (arrays/segments need per-element or per-region lifecycle)
+ * misuse resistance (passing wrong lifecycle vs using wrong derived VH)
+ * performance (extra coordinate impacts MH/VH shapes and inlining) lazy constant is initialized
  * and leave the constant unchanged and will never invoke any computation.
  * <p>
  * The invocation of the computing function and the resulting initialization of
  * the constant {@linkplain java.util.concurrent##MemoryVisibility <em>happens-before</em>}
  * the initialized constant's content is read. Hence, the initialized constant's content,
  * including any {@code final} fields of any newly created objects, is safely published.
+ * As reading of the contents might be elided, there are no other memory ordering or
+ * visibility guarantees provided as a consequence of calling {@linkplain #get()}.
  * <p>
  * Thread interruption does not cancel the initialization of a lazy constant. In other
  * words, if the computing thread is interrupted, {@code LazyConstant::get} doesn't clear
@@ -171,7 +186,7 @@ import java.util.function.Supplier;
  * @apiNote Once a lazy constant is initialized, its contents cannot ever be removed.
  *          This can be a source of an unintended memory leak. More specifically,
  *          a lazy constant {@linkplain java.lang.ref##reachability strongly references}
- *          it contents. Hence, the contents of a lazy constant will be reachable as long
+ *          its contents. Hence, the contents of a lazy constant will be reachable as long
  *          as the lazy constant itself is reachable.
  *          <p>
  *          While it's possible to store an array inside a lazy constant, doing so will
@@ -208,17 +223,24 @@ public sealed interface LazyConstant<T>
         permits LazyConstantImpl {
 
     /**
-     * {@return the contents of this initialized constant. If not initialized, first
-     *          computes and initializes this constant using the computing function}
+     * {@return the initialized contents of this constant, computing it if necessary.}
+     * <p>
+     *  If this constant is not initialized, first computes and initializes it
+     *  using the computing function.
      * <p>
      * After this method returns successfully, the constant is guaranteed to be
      * initialized.
      * <p>
-     * If the computing function throws, this method relays that {@code Throwable} to the
-     * caller and this lazy constant transitions to an error state. Subsequent invocations
-     * of {@code get()} throw {@code NoSuchElementException}.
+     * If the computing function throws an unchecked exception (i.e., a runtime exception
+     * or an error), this lazy constant is not initialized but transitions to an error
+     * state and a {@linkplain NoSuchElementException} with the unchecked exception as
+     * a cause is thrown.
+     * <p>
+     * Subsequent invocations of {@code get()} in the error state will also
+     * throw {@code NoSuchElementException} but with no cause and with a message
+     * that includes the name of the unchecked exception's class.
      *
-     * @throws NoSuchElementException if the computing function previously threw
+     * @throws NoSuchElementException if initialization fails or has previously failed
      */
     T get();
 
@@ -264,19 +286,30 @@ public sealed interface LazyConstant<T>
     // Factory
 
     /**
-     * {@return a lazy constant whose contents is to be computed later via the provided
-     *          {@code computingFunction}}
+     * {@return a new lazy constant whose contents is to be computed later via the
+     *          provided {@code computingFunction}}
      * <p>
      * The returned lazy constant strongly references the provided
-     * {@code computingFunction} at least until initialization completes successfully.
+     * {@code computingFunction} until computation completes (successfully or with
+     * failure).
      * <p>
-     * If the provided computing function is already an instance of
-     * {@code LazyConstant}, the method is free to return the provided computing function
-     * directly.
+     * By design, the method always returns a new lazy constant even if the provided
+     * computing function is already an instance of {@code LazyConstant}. Clients that
+     * want to elide creation under this condition can write a utility method similar
+     * to the one in the snippet below and create lazy constants via this method rather
+     * than calling the built-in factory {@linkplain #of(Supplier)} directly:
      *
-     * @implNote  after initialization completes successfully, the computing function is
-     *            no longer strongly referenced and becomes eligible for
-     *            garbage collection.
+     * {@snippet lang = java:
+     * static <T> LazyConstant<T> ofFlattened(Supplier<? extends T> computingFunction) {
+     *     return (computingFunction instanceof LazyConstant<? extends T> lc)
+     *             ? (LazyConstant<T>) lc // unchecked cast is safe under normal generic usage
+     *             : LazyConstant.of(computingFunction);
+     *     }
+     * }
+     *
+     * @implNote  after the computing function completes (regardless of whether it
+     *            succeeds or throws an unchecked exception), the computing function is no
+     *            longer strongly referenced and becomes eligible for garbage collection.
      *
      * @param computingFunction in the form of a {@linkplain Supplier} to be used
      *                          to initialize the constant
@@ -286,9 +319,6 @@ public sealed interface LazyConstant<T>
     @SuppressWarnings("unchecked")
     static <T> LazyConstant<T> of(Supplier<? extends T> computingFunction) {
         Objects.requireNonNull(computingFunction);
-        if (computingFunction instanceof LazyConstant<? extends T> lc) {
-            return (LazyConstant<T>) lc;
-        }
         return LazyConstantImpl.ofLazy(computingFunction);
     }
 

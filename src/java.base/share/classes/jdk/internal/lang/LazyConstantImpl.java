@@ -102,7 +102,7 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
                         // Release the original computing function and replace it with
                         // an exception marker
                         computingFunctionOrExceptionType = ex.getClass();
-                        throw ex;
+                        throw new NoSuchElementException(ex);
                     }
                 } else {
                     throw new NoSuchElementException("Unable to access the constant because " +
