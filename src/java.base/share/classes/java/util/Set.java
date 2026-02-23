@@ -755,26 +755,23 @@ public interface Set<E> extends Collection<E> {
      * status is initialized (i.e., either as <em>a logical member</em> or as
      * <em>a logical non-member</em>).
      * <p>
-     * The provided computing function is guaranteed to be successfully invoked
+     * The provided computing function is guaranteed to be invoked
      * at most once per element candidate, even in a multi-threaded environment. Competing
      * threads accessing an element candidate already under membership status computation
      * will block until the membership status of the element candidate is computed or the
      * computing function completes abnormally.
      * <p>
-     * If invoking the provided computing function throws an exception, it
-     * is rethrown to the initial caller and no membership status associated with the
-     * provided element candidate is recorded.
+     * If evaluation of the computing function throws an unchecked exception (for a
+     * membership candidate), the lazy membership status is not initialized but instead
+     * transitions to an error state. Subsequent {@linkplain Set#contains(Object)} Set::contains}
+     * calls for the same membership candidate throw {@linkplain NoSuchElementException}
+     * without ever invoking the computing function.
      * <p>
-     * If the provided computing function recursively calls itself via
-     * the returned lazy set for the same element candidate, an
-     * {@linkplain IllegalStateException} will be thrown.
+     * All failures are handled in this way. Here is a special case that causes
+     * unchecked exceptions to be thrown:
      * <p>
-     * If evaluation of the computing function throws a {@linkplain Throwable} (for an
-     * element candidate), it is rethrown to the initial caller and no membership status
-     * for the element candidate is recorded and the associated lazy membership status
-     * transitions to an error state. Subsequent {@linkplain Set#contains(Object) Set::contains}
-     * calls for the same element candidate throw {@linkplain NoSuchElementException}
-     * without invoking the computing function again.
+     * If the computing function recursively invokes itself (for the same membership
+     * candidate) via the lazy set, an {@linkplain IllegalStateException} is wrapped.
      *
      * The returned set's {@linkplain Object Object methods};
      * {@linkplain Object#equals(Object) equals()},
@@ -826,8 +823,8 @@ public interface Set<E> extends Collection<E> {
      * <p>
      * The Set of {@code elementCandidates} must use
      * {@linkplain Set#equals(Object) equals()} as its equivalence relation, or its
-     * comparison method must be consistent with equals, otherwise the behavior is
-     * unspecified.
+     * comparison method must be consistent with {@code equals()}, otherwise the behavior
+     * is unspecified.
      * <p>
      * The returned {@code Set<E>} can be thought of as a set backed by a
      * {@code Map<E, LazyConstant<Boolean>>} field and where the {@linkplain Set#contains(Object)}

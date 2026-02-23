@@ -1204,22 +1204,28 @@ public interface List<E> extends SequencedCollection<E> {
      * provided {@code computingFunction} when they are first accessed
      * (e.g., via {@linkplain List#get(int) List::get}).
      * <p>
-     * The provided computing function is guaranteed to be successfully
+     * The provided computing function is guaranteed to be
      * invoked at most once per list index, even in a multi-threaded environment.
      * Competing threads accessing an element already under computation will block until
      * an element is computed or the computing function completes abnormally.
      * <p>
+     * If evaluation of the computing function throws an unchecked exception (for an
+     * index), the lazy element is not initialized but instead transitions to an error
+     * state. Subsequent {@linkplain List#get(int) List::get} calls for the same index
+     * throw {@linkplain NoSuchElementException} without ever invoking the computing
+     * function.
+     * <p>
+     * All failures are handled in this way. Here are two special cases that cause
+     * unchecked exceptions to be thrown:
+     * <p>
      * If the provided computing function returns {@code null},
-     * a {@linkplain NullPointerException} will be thrown. Hence, just like other
+     * a {@linkplain NullPointerException} will be wrapped. Hence, just like other
      * unmodifiable lists created via the {@code List::of} factories, a lazy list
      * cannot contain {@code null} elements. Clients that want to use nullable elements
      * can wrap elements into an {@linkplain Optional} holder.
      * <p>
-     * If evaluation of the computing function throws a {@linkplain Throwable} (for an
-     * index), it is rethrown to the initial caller and no value for the element is
-     * recorded and the associated lazy element transitions to an error state. Subsequent
-     * {@linkplain List#get(int) List::get} calls for the same index throw
-     * {@linkplain NoSuchElementException} without invoking the computing function again.
+     * If the computing function recursively invokes itself (for the same index) via the
+     * lazy list, an {@linkplain IllegalStateException} is wrapped.
      * <p>
      * The elements of any {@link List#subList(int, int) subList()} or
      * {@link List#reversed()} views of the returned list are also lazily computed.
