@@ -149,9 +149,7 @@ import java.util.function.Supplier;
  * competing threads are racing to initialize a lazy constant, only one updating thread
  * runs the computing function (which runs on the caller's thread and is hereafter denoted
  * <em>the computing thread</em>), while the other threads are blocked until the constant
- * is initialized, after which the other threads observe thecomposability (arrays/segments need per-element or per-region lifecycle)
- * misuse resistance (passing wrong lifecycle vs using wrong derived VH)
- * performance (extra coordinate impacts MH/VH shapes and inlining) lazy constant is initialized
+ * is initialized, after which the other threads observe the lazy constant is initialized
  * and leave the constant unchanged and will never invoke any computation.
  * <p>
  * The invocation of the computing function and the resulting initialization of
