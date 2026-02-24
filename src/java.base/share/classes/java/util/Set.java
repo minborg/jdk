@@ -851,10 +851,15 @@ public interface Set<E> extends Collection<E> {
      * }
      *}
      * Except, performance and storage efficiency might be better.
+     * <p>
+     * Elements in the returned set are eligible for certain performance optimizations
+     * such as <em>constant folding</em> as described in
+     * {@linkplain LazyConstant##performance LazyConstant}.
      *
-     * @implNote  after all element membership statuses have been initialized successfully,
-     *            the computing function is no longer strongly referenced and becomes
-     *            eligible for garbage collection.
+     * @implNote  after all element membership statuses have been initialized
+     *            successfully or transioned to an error state, the computing function is
+     *            no longer strongly referenced and becomes eligible for garbage
+     *            collection.
      *
      * @param elementCandidates the (non-null) element candidates to be evaluated
      * @param computingFunction to invoke whenever the membership status of an element

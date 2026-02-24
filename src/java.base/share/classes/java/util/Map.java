@@ -1834,10 +1834,14 @@ public interface Map<K, V> {
      * }
      *}
      * Except, performance and storage efficiency might be better.
+     * <p>
+     * Values in the returned map are eligible for certain performance optimizations
+     * such as <em>constant folding</em> as described in
+     * {@linkplain LazyConstant##performance LazyConstant}.
      *
-     * @implNote  after all values have been initialized successfully, the computing
-     *            function is no longer strongly referenced and becomes eligible for
-     *            garbage collection.
+     * @implNote  after all valuess have been initialized successfully or transioned to
+     *            an error state, the computing function is no longer strongly referenced
+     *            and becomes eligible for garbage collection.
      *
      * @param keys              the (non-null) keys in the returned computed map
      * @param computingFunction to invoke whenever an associated value is first accessed
