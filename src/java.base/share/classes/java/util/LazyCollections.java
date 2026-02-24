@@ -25,7 +25,6 @@
 
 package java.util;
 
-import jdk.internal.ValueBased;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.ImmutableBitSetPredicate;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
@@ -555,9 +554,15 @@ final class LazyCollections {
             this.counter = new AtomicInteger(length);
         }
 
-        @ForceInline
         private Object acquireMutex(long offset) {
-            assert mutexes != null;
+            // Snapshot
+            var mutexes = this.mutexes;
+            if (mutexes == null) {
+                // We have already computed all the elements and if we end up here
+                // there was at least one unchecked exception thrown by the
+                // computing function.
+                return null;
+            }
             // Check if there already is a mutex (Object or TOMB_STONE)
             final Object mutex = UNSAFE.getReferenceVolatile(mutexes, offset);
             if (mutex != null) {
@@ -688,47 +693,68 @@ final class LazyCollections {
                                        final FunctionHolder<?> functionHolder) {
         final long offset = offsetFor(index);
         final Object mutex = mutexes.acquireMutex(offset);
-        preventReentry(mutex);
+        if (mutex == null) {
+            throwIfPreviousException(index, throwables, input);
+            // There must be an exception
+            throw cannotReachHere(functionHolder, input);
+        }
+        preventReentry(mutex, input);
         synchronized (mutex) {
             final T t = array[index];  // Plain semantics suffice here
             if (t == null) {
-                final var throwable = throwables.get(index);
-                if (throwable.isPresent()) {
-                    throw new NoSuchElementException("Unable to access the constant because " +
-                            throwable.get().getName() +
-                            " was thrown at initial computation for input " + input);
-                }
+                throwIfPreviousException(index, throwables, input);
                 try {
                     final T newValue = switch (functionHolder.function()) {
                         case IntFunction<?> iFun -> (T) iFun.apply((int) input);
-                        case Function<?, ?> fun ->
-                                ((Function<Object, T>) fun).apply(input);
-                        default -> throw new InternalError("cannot reach here");
+                        case Function<?, ?> fun  -> ((Function<Object, T>) fun).apply(input);
+                        default                  -> throw cannotReachHere(functionHolder, input);
                     };
                     Objects.requireNonNull(newValue);
 
+                    // The mutex is not reentrant so we know newValue should be returned
+                    set(array, index, mutex, newValue);
+                    return newValue;
+                } catch (Throwable x) {
+                    throwables.set(index, x.getClass());
+                    // Wrap the initial throwable
+                    throw noSuchElementException(x.getClass(), input, x);
+                } finally {
                     // Reduce the counter and if it reaches zero, clear the reference
                     // to the underlying holder.
                     functionHolder.countDown();
 
-                    // The mutex is not reentrant so we know newValue should be returned
-                    set(array, index, mutex, newValue);
                     // We do not need the mutex anymore
                     mutexes.releaseMutex(offset);
-                    return newValue;
-                } catch (Throwable x) {
-                    throwables.set(index, x.getClass());
-                    // Rethrow the initial throwable
-                    throw x;
                 }
             }
             return t;
         }
     }
 
-    static void preventReentry(Object mutex) {
+    static void throwIfPreviousException(int index, Throwables throwables, Object input) {
+        final var throwable = throwables.get(index);
+        if (throwable.isPresent()) {
+            throw noSuchElementException(throwable.get(), input, null);
+        }
+    }
+
+    static NoSuchElementException noSuchElementException(Class<? extends Throwable> throwableClass,
+                                                         Object input,
+                                                         Throwable cause) {
+        var message = "Unable to access the lazy collection because " + throwableClass.getName() +
+                " was thrown at initial computation for input '" + input + "'";
+        return (cause == null)
+                ? new NoSuchElementException(message)
+                : new NoSuchElementException(message, cause);
+    }
+
+    static InternalError cannotReachHere(FunctionHolder<?> functionHolder, Object input) {
+        return new InternalError("cannot reach here: " + functionHolder.function() + " for " + input.toString());
+    }
+
+    static void preventReentry(Object mutex, Object input) {
         if (Thread.holdsLock(mutex)) {
-            throw new IllegalStateException("Recursive initialization of a lazy collection is illegal");
+            throw new IllegalStateException("Recursive initialization of a lazy collection is illegal: " + input);
         }
     }
 

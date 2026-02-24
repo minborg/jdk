@@ -135,14 +135,19 @@ final class LazyMapTest {
     @MethodSource("nonEmptySets")
     void exception(Set<Value> set) {
         LazyConstantTestUtil.CountingFunction<Value, Integer> cif = new LazyConstantTestUtil.CountingFunction<>(_ -> {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Initial exception");
         });
         var lazy = Map.ofLazy(set, cif);
-        assertThrows(UnsupportedOperationException.class, () -> lazy.get(KEY));
-        assertEquals(1, cif.cnt());
         var x = assertThrows(NoSuchElementException.class, () -> lazy.get(KEY));
-        assertEquals("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation for input " + KEY, x.getMessage());
+        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, KEY), x.getMessage());
+        assertEquals(UnsupportedOperationException.class, x.getCause().getClass());
         assertEquals(1, cif.cnt());
+
+        var x2 = assertThrows(NoSuchElementException.class, () -> lazy.get(KEY));
+        assertEquals(1, cif.cnt());
+        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, KEY), x2.getMessage());
+        // The initial cause should only be present on the _first_ unchecked exception
+        assertNull(x2.getCause());
 
         for (Value v : set) {
             // Make sure all values are touched
@@ -150,7 +155,8 @@ final class LazyMapTest {
         }
 
         var xToString = assertThrows(NoSuchElementException.class, lazy::toString);
-        assertTrue(xToString.getMessage().startsWith("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation for input"));
+        var xMessage = xToString.getMessage();
+        assertTrue(xMessage.startsWith(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, 0).substring(0, xMessage.indexOf("'"))));
         assertEquals(set.size(), cif.cnt());
     }
 
@@ -247,8 +253,10 @@ final class LazyMapTest {
         @SuppressWarnings("unchecked")
         Map<Value, Map<Value, Object>> lazy = Map.ofLazy(set, k -> (Map<Value, Object>) ref.get().get(k));
         ref.set(lazy);
-        var x = assertThrows(IllegalStateException.class, () -> lazy.get(KEY));
-        assertEquals("Recursive initialization of a lazy collection is illegal", x.getMessage());
+        var x = assertThrows(NoSuchElementException.class, () -> lazy.get(KEY));
+        assertEquals(LazyConstantTestUtil.expectedMessage(IllegalStateException.class, KEY), x.getMessage());
+        assertEquals("Recursive initialization of a lazy collection is illegal: " + KEY, x.getCause().getMessage());
+        assertEquals(IllegalStateException.class, x.getCause().getClass());
     }
 
     @ParameterizedTest
@@ -402,7 +410,9 @@ final class LazyMapTest {
     @Test
     void nullResult() {
         var lazy = Map.ofLazy(Set.of(0), _ -> null);
-        assertThrows(NullPointerException.class, () -> lazy.getOrDefault(0, 1));;
+        var x = assertThrows(NoSuchElementException.class, () -> lazy.getOrDefault(0, 1));;
+        assertEquals(LazyConstantTestUtil.expectedMessage(NullPointerException.class, 0), x.getMessage());
+        assertEquals(NullPointerException.class, x.getCause().getClass());
         assertTrue(lazy.containsKey(0));
     }
 

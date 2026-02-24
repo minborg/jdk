@@ -185,4 +185,8 @@ final class LazyConstantTestUtil {
         }
     }
 
+    static String expectedMessage(Class<? extends Throwable> throwableClass, Object input) {
+        return "Unable to access the lazy collection because " + throwableClass.getName() + " was thrown at initial computation for input '" + input + "'";
+    }
+
 }

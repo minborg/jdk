@@ -86,14 +86,19 @@ final class LazyListTest {
     @Test
     void getException() {
         LazyConstantTestUtil.CountingIntFunction<Integer> cif = new LazyConstantTestUtil.CountingIntFunction<Integer>(_ -> {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Initial exception");
         });
         var lazy = List.ofLazy(SIZE, cif);
-        assertThrows(UnsupportedOperationException.class, () -> lazy.get(INDEX));
-        assertEquals(1, cif.cnt());
         var x = assertThrows(NoSuchElementException.class, () -> lazy.get(INDEX));
-        assertEquals("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation for input " + INDEX, x.getMessage());
+        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, INDEX), x.getMessage());
+        assertEquals(UnsupportedOperationException.class, x.getCause().getClass());
         assertEquals(1, cif.cnt());
+
+        var x2 = assertThrows(NoSuchElementException.class, () -> lazy.get(INDEX));
+        assertEquals(1, cif.cnt());
+        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, INDEX), x2.getMessage());
+        // The initial cause should only be present on the _first_ unchecked exception
+        assertNull(x2.getCause());
 
         for (int i = 0; i < SIZE; i++) {
             // Make sure all values are touched
@@ -101,7 +106,8 @@ final class LazyListTest {
             assertThrows(Exception.class, () -> lazy.get(finalI));
         }
 
-        assertThrows(NoSuchElementException.class, lazy::toString);
+        var xToString = assertThrows(NoSuchElementException.class, lazy::toString);
+        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, 0), xToString.getMessage());
         assertEquals(SIZE, cif.cnt());
     }
 
@@ -270,8 +276,10 @@ final class LazyListTest {
         AtomicReference<IntFunction<Integer>> ref = new AtomicReference<>();
         var lazy = List.ofLazy(SIZE, i -> ref.get().apply(i));
         ref.set(lazy::get);
-        var x = assertThrows(IllegalStateException.class, () -> lazy.get(INDEX));
-        assertEquals("Recursive initialization of a lazy collection is illegal", x.getMessage());
+        var x = assertThrows(NoSuchElementException.class, () -> lazy.get(INDEX));
+        assertEquals(LazyConstantTestUtil.expectedMessage(IllegalStateException.class, INDEX), x.getMessage());
+        assertEquals("Recursive initialization of a lazy collection is illegal: " + INDEX, x.getCause().getMessage());
+        assertEquals(IllegalStateException.class, x.getCause().getClass());
     }
 
     // Immutability

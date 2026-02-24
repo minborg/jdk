@@ -114,13 +114,18 @@ final class LazySetTest {
     @MethodSource("nonEmptySets")
     void exception(Set<Value> set) {
         LazyConstantTestUtil.CountingPredicate<Value> cif = new LazyConstantTestUtil.CountingPredicate<>(_ -> {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Initial exception");
         });
         var lazy = Set.ofLazy(set, cif);
-        assertThrows(UnsupportedOperationException.class, () -> lazy.contains(ELEMENT));
+        var x = assertThrows(NoSuchElementException.class, () -> lazy.contains(ELEMENT));
+        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, ELEMENT), x.getMessage());
+        assertEquals(UnsupportedOperationException.class, x.getCause().getClass());
         assertEquals(1, cif.cnt());
-        assertThrows(NoSuchElementException.class, () -> lazy.contains(ELEMENT));
-        assertEquals(1, cif.cnt());
+
+        var x2 = assertThrows(NoSuchElementException.class, () -> lazy.contains(ELEMENT));
+        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, ELEMENT), x2.getMessage());
+        // The initial cause should only be present on the _first_ unchecked exception
+        assertNull(x2.getCause());
 
         for (Value v : set) {
             // Make sure all values are touched
@@ -128,7 +133,8 @@ final class LazySetTest {
         }
 
         var xToString = assertThrows(NoSuchElementException.class, lazy::toString);
-        assertTrue(xToString.getMessage().startsWith("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation for input"));
+        var xMessage = xToString.getMessage();
+        assertTrue(xMessage.startsWith(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, 0).substring(0, xMessage.indexOf("'"))));
         assertEquals(set.size(), cif.cnt());
     }
 
@@ -203,8 +209,10 @@ final class LazySetTest {
         @SuppressWarnings("unchecked")
         Set<Value> lazy = Set.ofLazy(set, k -> ref.get().contains(k));
         ref.set(lazy);
-        var x = assertThrows(IllegalStateException.class, () -> lazy.contains(ELEMENT));
-        assertEquals("Recursive initialization of a lazy collection is illegal", x.getMessage());
+        var x = assertThrows(NoSuchElementException.class, () -> lazy.contains(ELEMENT));
+        assertEquals(LazyConstantTestUtil.expectedMessage(IllegalStateException.class, ELEMENT), x.getMessage());
+        assertEquals("Recursive initialization of a lazy collection is illegal: " + ELEMENT, x.getCause().getMessage());
+        assertEquals(IllegalStateException.class, x.getCause().getClass());
     }
 
     @ParameterizedTest
