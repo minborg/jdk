@@ -90,20 +90,25 @@ import java.util.function.Supplier;
  * may result in storage resources being prepared.
  *
  * <h2 id="exception-handling">Exception handling</h2>
- * If evaluation of the computing function throws an unchecked exception, the lazy
- * constant is not initialized but instead transitions to an error state. Subsequent
- * {@linkplain #get() get()} calls throw {@linkplain NoSuchElementException} without ever
- * invoking the computing function again.
+ * If evaluation of the computing function throws an unchecked exception (i.e., a runtime
+ * exception or an error), the lazy constant is not initialized but instead transitions to
+ * an error state whereafter a {@linkplain NoSuchElementException} is thrown with the
+ * unchecked exception as a cause. Subsequent {@linkplain #get() get()} calls throw
+ * {@linkplain NoSuchElementException} (without ever invoking the computing function
+ * again) with no cause and with a message that includes the name of the original
+ * unchecked exception's class.
  * <p>
- * All failures are handled in this way. Here are two special cases that cause unchecked
+ * All failures are handled in this way. There are two special cases that cause unchecked
  * exceptions to be thrown:
  * <p>
- * If the computing function returns {@code null}, a {@linkplain NullPointerException}
- * is wrapped. Hence, a lazy constant can never hold a {@code null} value. Clients who
- * want to use a nullable constant can wrap the value into an {@linkplain Optional} holder.
+ * If the computing function returns {@code null}, a {@linkplain NoSuchElementException}
+ * (with a {@linkplain NullPointerException} as a cause) will be thrown. Hence, a
+ * lazy constant can never hold a {@code null} value. Clients who want to use a nullable
+ * constant can wrap the value into an {@linkplain Optional} holder.
  * <p>
- * If the computing function recursively invokes itself via the lazy constant, an
- * {@linkplain IllegalStateException} is wrapped.
+ * If the computing function recursively invokes itself via the lazy constant, a
+ * {@linkplain NoSuchElementException} (with an {@linkplain IllegalStateException} as a
+ * cause) will be thrown.
  *
  * <h2 id="composition">Composing lazy constants</h2>
  * A lazy constant can depend on other lazy constants, forming a dependency graph
@@ -221,7 +226,7 @@ public sealed interface LazyConstant<T>
         permits LazyConstantImpl {
 
     /**
-     * {@return the initialized contents of this constant, computing it if necessary.}
+     * {@return the initialized contents of this constant, computing it if necessary}
      * <p>
      *  If this constant is not initialized, first computes and initializes it
      *  using the computing function.
@@ -229,16 +234,12 @@ public sealed interface LazyConstant<T>
      * After this method returns successfully, the constant is guaranteed to be
      * initialized.
      * <p>
-     * If the computing function throws an unchecked exception (i.e., a runtime exception
-     * or an error), this lazy constant is not initialized but transitions to an error
-     * state and a {@linkplain NoSuchElementException} with the unchecked exception as
-     * a cause is thrown.
-     * <p>
-     * Subsequent invocations of {@code get()} in the error state will also
-     * throw {@code NoSuchElementException} but with no cause and with a message
-     * that includes the name of the unchecked exception's class.
+     * If an unchecked exception is thrown when evaluating the computing function, this
+     * lazy constant is not initialized but transitions to an error state whereafter a
+     * {@linkplain NoSuchElementException} is thrown as described in the
+     * {@linkplain ##exception-handling Exception handling} section.
      *
-     * @throws NoSuchElementException if initialization fails or has previously failed
+     * @throws NoSuchElementException if this lazy constant is in an error state
      */
     T get();
 

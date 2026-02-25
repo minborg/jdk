@@ -1764,30 +1764,30 @@ public interface Map<K, V> {
      * threads accessing a value already under computation will block until a value
      * is computed or the computing function completes abnormally.
      * <p>
-     * If evaluation of the computing function throws an unchecked exception (for a
-     * key), the lazy value is not initialized but instead transitions to an error
-     * state. Subsequent {@linkplain Map#get(Object) Map::get} calls for the same key
-     * throw {@linkplain NoSuchElementException} without ever invoking the computing
-     * function.
+     * If evaluation of the provided computing function throws an unchecked exception (for
+     * a key), the lazy value is not initialized but instead transitions to an error
+     * state whereafter a {@linkplain NoSuchElementException} is thrown with the unchecked
+     * exception as a cause. Subsequent {@linkplain Map#get(Object) Map::get} calls for
+     * the same key throw {@linkplain NoSuchElementException} (without ever invoking the
+     * computing function again) with no cause and with a message that includes the name
+     * of the original unchecked exception's class.
      * <p>
-     * All failures are handled in this way. Here are two special cases that cause
+     * All failures are handled in this way. There are two special cases that cause
      * unchecked exceptions to be thrown:
      * <p>
-     * If the provided computing function returns {@code null},
-     * a {@linkplain NullPointerException} will be wrapped. Hence, just like other
-     * unmodifiable maps created via the {@code Map::of} factories, a lazy map
-     * cannot contain {@code null} values. Clients that want to use nullable values
-     * can wrap values into an {@linkplain Optional} holder.
+     * If the computing function returns {@code null},
+     * a {@linkplain NoSuchElementException} (with a {@linkplain NullPointerException} as
+     * a cause) will be thrown. Hence, just like other unmodifiable maps created via the
+     * {@code Map::of} factories, a lazy map can never contain {@code null} values.
+     * Clients that want to use nullable values can wrap elements into an
+     * {@linkplain Optional} holder.
      * <p>
      * If the computing function recursively invokes itself (for the same key) via the
-     * lazy map, an {@linkplain IllegalStateException} is wrapped.
+     * returned lazy map, a {@linkplain NoSuchElementException}
+     * (with an {@linkplain IllegalStateException} as a cause) will be thrown.
      * <p>
      * The values of any {@link Map#values()} or {@link Map#entrySet()} views of
      * the returned map are also lazily computed.
-     * <p>
-     * If the provided computing function recursively calls itself via
-     * the returned lazy map for the same key, an {@linkplain IllegalStateException}
-     * will be thrown.
      * <p>
      * The returned map's {@linkplain Object Object methods};
      * {@linkplain Object#equals(Object) equals()},
@@ -1839,7 +1839,7 @@ public interface Map<K, V> {
      * such as <em>constant folding</em> as described in
      * {@linkplain LazyConstant##performance LazyConstant}.
      *
-     * @implNote  after all valuess have been initialized successfully or transioned to
+     * @implNote  after all values have been initialized successfully or transitioned to
      *            an error state, the computing function is no longer strongly referenced
      *            and becomes eligible for garbage collection.
      *

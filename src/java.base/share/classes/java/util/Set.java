@@ -741,9 +741,9 @@ public interface Set<E> extends Collection<E> {
     }
 
     /**
-     * {@return a new lazily computed set whose logical membership for each provided
-     *          {@code elementCandidates} is computed via the provided
-     *          {@code computingFunction} on demand}
+     * {@return a new lazily computed set whose logical membership for each distinct
+     *          element candidate in the set of {@code elementCandidates} is
+     *          computed via the provided {@code computingFunction} on demand}
      * <p>
      * In the following, the term <em>membership status</em> means whether an element is a
      * logical member or a non-member. The returned set is an
@@ -761,17 +761,21 @@ public interface Set<E> extends Collection<E> {
      * will block until the membership status of the element candidate is computed or the
      * computing function completes abnormally.
      * <p>
-     * If evaluation of the computing function throws an unchecked exception (for a
-     * membership candidate), the lazy membership status is not initialized but instead
-     * transitions to an error state. Subsequent {@linkplain Set#contains(Object)} Set::contains}
-     * calls for the same membership candidate throw {@linkplain NoSuchElementException}
-     * without ever invoking the computing function.
+     * If evaluation of the provided computing function throws an unchecked exception (for
+     * an element candidate), the lazy membership status is not initialized but instead
+     * transitions to an error state whereafter a {@linkplain NoSuchElementException} is
+     * thrown with the unchecked exception as a cause. Subsequent
+     * {@linkplain Set#contains(Object) Set::contains} calls for the same membership
+     * candidate throw {@linkplain NoSuchElementException} (without ever invoking the
+     * computing function again) with no cause and with a message that includes the name
+     * of the original unchecked exception's class.
      * <p>
-     * All failures are handled in this way. Here is a special case that causes
+     * All failures are handled in this way. There is a special cases that cause
      * unchecked exceptions to be thrown:
      * <p>
      * If the computing function recursively invokes itself (for the same membership
-     * candidate) via the lazy set, an {@linkplain IllegalStateException} is wrapped.
+     * candidate) via the returned lazy set, a {@linkplain NoSuchElementException}
+     * (with an {@linkplain IllegalStateException} as a cause) will be thrown.
      *
      * The returned set's {@linkplain Object Object methods};
      * {@linkplain Object#equals(Object) equals()},
@@ -857,8 +861,8 @@ public interface Set<E> extends Collection<E> {
      * {@linkplain LazyConstant##performance LazyConstant}.
      *
      * @implNote  after all element membership statuses have been initialized
-     *            successfully or transioned to an error state, the computing function is
-     *            no longer strongly referenced and becomes eligible for garbage
+     *            successfully or transitioned to an error state, the computing function
+     *            is no longer strongly referenced and becomes eligible for garbage
      *            collection.
      *
      * @param elementCandidates the (non-null) element candidates to be evaluated

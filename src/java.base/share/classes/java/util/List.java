@@ -1200,8 +1200,8 @@ public interface List<E> extends SequencedCollection<E> {
      * {@return a new lazily computed list of the provided {@code size}}
      * <p>
      * The returned list is an {@linkplain Collection##unmodifiable unmodifiable} list
-     * with the provided {@code size}. The list's elements are lazily computed via the
-     * provided {@code computingFunction} when they are first accessed
+     * for which the elements are lazily computed via the provided
+     * {@code computingFunction} when they are first accessed
      * (e.g., via {@linkplain List#get(int) List::get}).
      * <p>
      * The provided computing function is guaranteed to be
@@ -1209,33 +1209,33 @@ public interface List<E> extends SequencedCollection<E> {
      * Competing threads accessing an element already under computation will block until
      * an element is computed or the computing function completes abnormally.
      * <p>
-     * If evaluation of the computing function throws an unchecked exception (for an
-     * index), the lazy element is not initialized but instead transitions to an error
-     * state. Subsequent {@linkplain List#get(int) List::get} calls for the same index
-     * throw {@linkplain NoSuchElementException} without ever invoking the computing
-     * function.
+     * If evaluation of the provided computing function throws an unchecked exception (for
+     * an index), the lazy element is not initialized but instead transitions to an error
+     * state whereafter a {@linkplain NoSuchElementException} is thrown with the unchecked
+     * exception as a cause. Subsequent {@linkplain List#get(int) List::get} calls for the
+     * same index throw {@linkplain NoSuchElementException} (without ever invoking the
+     * computing function again) with no cause and with a message that includes the name
+     * of the original unchecked exception's class.
      * <p>
-     * All failures are handled in this way. Here are two special cases that cause
+     * All failures are handled in this way. There are two special cases that cause
      * unchecked exceptions to be thrown:
      * <p>
-     * If the provided computing function returns {@code null},
-     * a {@linkplain NullPointerException} will be wrapped. Hence, just like other
-     * unmodifiable lists created via the {@code List::of} factories, a lazy list
-     * cannot contain {@code null} elements. Clients that want to use nullable elements
-     * can wrap elements into an {@linkplain Optional} holder.
+     * If the computing function returns {@code null},
+     * a {@linkplain NoSuchElementException} (with a {@linkplain NullPointerException} as
+     * a cause) will be thrown. Hence, just like other unmodifiable lists created via the
+     * {@code List::of} factories, a lazy list can never contain {@code null}
+     * elements. Clients that want to use nullable elements can wrap elements into an
+     * {@linkplain Optional} holder.
      * <p>
      * If the computing function recursively invokes itself (for the same index) via the
-     * lazy list, an {@linkplain IllegalStateException} is wrapped.
+     * returned lazy list, a {@linkplain NoSuchElementException}
+     * (with an {@linkplain IllegalStateException} as a cause) will be thrown.
      * <p>
      * The elements of any {@link List#subList(int, int) subList()} or
      * {@link List#reversed()} views of the returned list are also lazily computed.
      * <p>
      * The returned list and its {@link List#subList(int, int) subList()} or
      * {@link List#reversed()} views implement the {@link RandomAccess} interface.
-     * <p>
-     * If the provided computing function recursively calls itself via the returned
-     * lazy list for the same index, an {@linkplain IllegalStateException}
-     * will be thrown.
      * <p>
      * The returned list's {@linkplain Object Object methods};
      * {@linkplain Object#equals(Object) equals()},
@@ -1276,7 +1276,7 @@ public interface List<E> extends SequencedCollection<E> {
      * such as <em>constant folding</em> as described in
      * {@linkplain LazyConstant##performance LazyConstant}.
      *
-     * @implNote  after all elements have been initialized successfully or transioned to
+     * @implNote  after all elements have been initialized successfully or transitioned to
      *            an error state, the computing function is no longer strongly referenced
      *            and becomes eligible for garbage collection.
      *
