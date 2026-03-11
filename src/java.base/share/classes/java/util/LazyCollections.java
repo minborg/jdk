@@ -34,7 +34,12 @@ import jdk.internal.vm.annotation.Stable;
 import java.lang.reflect.Array;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.IntPredicate;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Container class for lazy collections implementations. Not part of the public API.
