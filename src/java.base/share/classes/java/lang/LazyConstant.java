@@ -43,20 +43,20 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 /**
- * A lazy constant is a holder of contents that can be set at most once.
+ * A lazy constant is a holder of content that can be set at most once.
  * <p>
  * A lazy constant is created using the factory method
  * {@linkplain LazyConstant#of(Supplier) LazyConstant.of({@code <computing function>})}.
  * <p>
- * When created, the lazy constant is <em>not initialized</em>, meaning it has no contents.
+ * When created, the lazy constant is <em>not initialized</em>, meaning it has no content.
  * <p>
  * The lazy constant (of type {@code T}) can then be <em>initialized</em>
- * (and its contents retrieved) by calling {@linkplain #get() get()}. The first time
+ * (and its content retrieved) by calling {@linkplain #get() get()}. The first time
  * {@linkplain #get() get()} is called, the underlying <em>computing function</em>
  * (provided at construction) will be invoked and the result will be used to initialize
  * the constant.
  * <p>
- * Once a lazy constant is initialized, its contents can <em>never change</em>
+ * Once a lazy constant is initialized, its content can <em>never change</em>
  * and will always be returned by subsequent {@linkplain #get() get()} invocations.
  * <p>
  * Consider the following example where a lazy constant field "{@code logger}" holds
@@ -161,7 +161,7 @@ import java.util.function.Supplier;
  * the constant {@linkplain java.util.concurrent##MemoryVisibility <em>happens-before</em>}
  * the initialized constant's content is read. Hence, the initialized constant's content,
  * including any {@code final} fields of any newly created objects, is safely published.
- * As reading of the contents might be elided, there are no other memory ordering or
+ * As reading of the content might be elided, there are no other memory ordering or
  * visibility guarantees provided as a consequence of calling {@linkplain #get()}.
  * <p>
  * Thread interruption does not cancel the initialization of a lazy constant. In other
@@ -172,9 +172,9 @@ import java.util.function.Supplier;
  * lazy constant may block indefinitely; no timeouts or cancellations are provided.
  *
  * <h2 id="performance">Performance</h2>
- * The contents of a lazy constant can never change after the lazy constant has been
+ * The content of a lazy constant can never change after the lazy constant has been
  * initialized. Therefore, a JVM implementation may, for an initialized lazy constant,
- * elide all future reads of that lazy constant's contents and instead use the contents
+ * elide all future reads of that lazy constant's content and instead use the content
  * that has been previously observed. We call this optimization <em>constant folding</em>.
  * This is only possible if there is a direct reference from a {@code static final} field
  * to a lazy constant or if there is a chain from a {@code static final} field -- via one
@@ -186,10 +186,10 @@ import java.util.function.Supplier;
  * Except for {@linkplain Object#equals(Object) equals(obj)}, all method parameters must
  * be <em>non-null</em>, or a {@link NullPointerException} will be thrown.
  *
- * @apiNote Once a lazy constant is initialized, its contents cannot ever be removed.
+ * @apiNote Once a lazy constant is initialized, its content cannot ever be removed.
  *          This can be a source of an unintended memory leak. More specifically,
  *          a lazy constant {@linkplain java.lang.ref##reachability strongly references}
- *          its contents. Hence, the contents of a lazy constant will be reachable as long
+ *          its content. Hence, the content of a lazy constant will be reachable as long
  *          as the lazy constant itself is reachable.
  *          <p>
  *          While it's possible to store an array inside a lazy constant, doing so will
@@ -206,7 +206,7 @@ import java.util.function.Supplier;
  * @implNote
  *           A lazy constant is free to synchronize on itself. Hence, care must be
  *           taken when directly or indirectly synchronizing on a lazy constant.
- *           A lazy constant is unmodifiable but its contents may or may not be
+ *           A lazy constant is unmodifiable but its content may or may not be
  *           immutable (e.g., it may hold an {@linkplain ArrayList}).
  *
  * @param <T> type of the constant
@@ -226,7 +226,7 @@ public sealed interface LazyConstant<T>
         permits LazyConstantImpl {
 
     /**
-     * {@return the initialized contents of this constant, computing it if necessary}
+     * {@return the initialized content of this constant, computing it if necessary}
      * <p>
      *  If this constant is not initialized, first computes and initializes it
      *  using the computing function.
@@ -250,7 +250,7 @@ public sealed interface LazyConstant<T>
      *          the provided {@code obj}, otherwise {@code false}}
      * <p>
      * In other words, equals compares the identity of this lazy constant and {@code obj}
-     * to determine equality. Hence, two distinct lazy constants with the same contents are
+     * to determine equality. Hence, two distinct lazy constants with the same content are
      * <em>not</em> equal.
      * <p>
      * This method never triggers initialization of this lazy constant.
@@ -272,11 +272,11 @@ public sealed interface LazyConstant<T>
      * <p>
      * This method never triggers initialization of this lazy constant and will observe
      * initialization by other threads atomically (i.e., it observes the
-     * contents if and only if the initialization has already completed).
+     * content if and only if the initialization has already completed).
      * <p>
      * If this lazy constant is initialized, an implementation-dependent string
      * containing the {@linkplain Object#toString()} of the
-     * contents will be returned; otherwise, an implementation-dependent string is
+     * content will be returned; otherwise, an implementation-dependent string is
      * returned that indicates this lazy constant is not yet initialized.
      */
     @Override
@@ -285,7 +285,7 @@ public sealed interface LazyConstant<T>
     // Factory
 
     /**
-     * {@return a new lazy constant whose contents is to be computed later via the
+     * {@return a new lazy constant whose content is to be computed later via the
      *          provided {@code computingFunction}}
      * <p>
      * The returned lazy constant strongly references the provided
