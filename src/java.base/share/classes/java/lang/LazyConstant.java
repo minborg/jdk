@@ -118,31 +118,25 @@ import java.util.function.Supplier;
  * which are held by lazy constants:
  *
  * {@snippet lang = java:
- * public final class DependencyUtil {
+ * public static class Foo {
+ *      // ...
+ *  }
  *
- *     private DependencyUtil() {}
- *
- *     public static class Foo {
+ * public static class Bar {
+ *     public Bar(Foo foo) {
  *          // ...
- *      }
- *
- *     public static class Bar {
- *         public Bar(Foo foo) {
- *              // ...
- *         }
  *     }
+ * }
  *
- *     private static final LazyConstant<Foo> FOO = LazyConstant.of( Foo::new );
- *     private static final LazyConstant<Bar> BAR = LazyConstant.of( () -> new Bar(FOO.get()) );
+ * static final LazyConstant<Foo> FOO = LazyConstant.of( Foo::new );
+ * static final LazyConstant<Bar> BAR = LazyConstant.of( () -> new Bar(FOO.get()) );
  *
- *     public static Foo foo() {
- *         return FOO.get();
- *     }
+ * public static Foo foo() {
+ *     return FOO.get();
+ * }
  *
- *     public static Bar bar() {
- *         return BAR.get();
- *     }
- *
+ * public static Bar bar() {
+ *     return BAR.get();
  * }
  * }
  * Calling {@code BAR.get()} will create the {@code Bar} singleton if it is not already
@@ -154,8 +148,9 @@ import java.util.function.Supplier;
  * competing threads are racing to initialize a lazy constant, only one updating thread
  * runs the computing function (which runs on the caller's thread and is hereafter denoted
  * <em>the computing thread</em>), while the other threads are blocked until the constant
- * is initialized, after which the other threads observe the lazy constant is initialized
- * and leave the constant unchanged and will never invoke any computation.
+ * is initialized (or computation fails), after which the other threads observe the lazy
+ * constant is initialized (or has transisioned to an error state) and leave the constant
+ * unchanged and will never invoke any computation.
  * <p>
  * The invocation of the computing function and the resulting initialization of
  * the constant {@linkplain java.util.concurrent##MemoryVisibility <em>happens-before</em>}
@@ -181,10 +176,6 @@ import java.util.function.Supplier;
  * or more <em>trusted fields</em> (i.e., {@code static final} fields,
  * {@linkplain Record record} fields, or final instance fields in hidden classes) --
  * to a lazy constant.
- *
- * <h2 id="miscellaneous">Miscellaneous</h2>
- * Except for {@linkplain Object#equals(Object) equals(obj)}, all method parameters must
- * be <em>non-null</em>, or a {@link NullPointerException} will be thrown.
  *
  * @apiNote Once a lazy constant is initialized, its content cannot ever be removed.
  *          This can be a source of an unintended memory leak. More specifically,
@@ -313,6 +304,8 @@ public sealed interface LazyConstant<T>
      * @param computingFunction in the form of a {@linkplain Supplier} to be used
      *                          to initialize the constant
      * @param <T>               type of the constant
+     * @throws NullPointerException if the provided {@code computingFunction} is
+     *                              {@code null}
      *
      */
     @SuppressWarnings("unchecked")
