@@ -33,7 +33,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.NoSuchElementException;
-import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.lang.LazyConstant;
 import java.util.function.Function;
@@ -47,6 +50,8 @@ final class LazyConstantTest {
 
     private static final int VALUE = 42;
     private static final Supplier<Integer> SUPPLIER = () -> VALUE;
+    private static final long TIME_OUT_S = 5;
+    private static final long SCHEDULE_TIME_MS = 100;
 
     @Test
     void factoryInvariants() {
@@ -81,6 +86,24 @@ final class LazyConstantTest {
         assertEquals(1, cs.cnt());
         var toString = lazy.toString();
         assertTrue(toString.contains("failed with=java.lang.UnsupportedOperationException"), toString);
+        assertNull(x.getCause());
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void nullResult(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+        LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(() -> {
+            return null;
+        });
+        var lazy = factory.apply(cs);
+        var ix = assertThrows(NoSuchElementException.class, lazy::get);
+        assertEquals(NullPointerException.class, ix.getCause().getClass());
+        assertEquals(1, cs.cnt());
+        var x = assertThrows(NoSuchElementException.class, lazy::get);
+        assertEquals("Unable to access the constant because java.lang.NullPointerException was thrown at initial computation", x.getMessage());
+        assertEquals(1, cs.cnt());
+        var toString = lazy.toString();
+        assertTrue(toString.contains("failed with=java.lang.NullPointerException"), toString);
     }
 
     @ParameterizedTest
@@ -90,19 +113,28 @@ final class LazyConstantTest {
     }
 
     @ParameterizedTest
-    @MethodSource("lazyConstants")
-    void testHashCode(LazyConstant<Integer> constant) {
-        assertEquals(System.identityHashCode(constant), constant.hashCode());
+    @MethodSource("factories")
+    void testHashCode(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+        LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(SUPPLIER);
+        var lazy = factory.apply(cs);
+        assertEquals(System.identityHashCode(lazy), lazy.hashCode());
+        assertEquals(System.identityHashCode(lazy), lazy.hashCode());
+        // The supplier should never be invoked
+        assertEquals(0, cs.cnt());
     }
 
     @ParameterizedTest
-    @MethodSource("lazyConstants")
-    void testEquals(LazyConstant<Integer> c0) {
-        assertNotEquals(null, c0);
+    @MethodSource("factories")
+    void testEquals(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+        LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(SUPPLIER);
+        var lazy = factory.apply(cs);
+        assertNotEquals(null, lazy);
         LazyConstant<Integer> different = LazyConstant.of(SUPPLIER);
-        assertNotEquals(different, c0);
-        assertNotEquals(c0, different);
-        assertNotEquals("a", c0);
+        assertNotEquals(different, lazy);
+        assertNotEquals(lazy, different);
+        assertNotEquals("a", lazy);
+        // The supplier should never be invoked
+        assertEquals(0, cs.cnt());
     }
 
     @ParameterizedTest
@@ -152,6 +184,105 @@ final class LazyConstantTest {
         ref.set(constant);
         var x = assertThrows(NoSuchElementException.class, constant::get);
         assertEquals(IllegalStateException.class, x.getCause().getClass());
+    }
+
+    @Test
+    void atMostOnceComputationUnderContention() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        LazyConstant<Integer> constant = LazyConstant.of(() -> {
+            calls.incrementAndGet();
+            entered.countDown();
+            try {
+                assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+            return VALUE;
+        });
+
+        var f1 = CompletableFuture.supplyAsync(constant::get);
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+
+        var f2 = CompletableFuture.supplyAsync(constant::get);
+        var f3 = CompletableFuture.supplyAsync(constant::get);
+
+        // While computation is blocked, only one thread should have entered supplier
+        Thread.sleep(SCHEDULE_TIME_MS);
+        assertEquals(1, calls.get());
+
+        release.countDown();
+
+        assertEquals(VALUE, f1.get(TIME_OUT_S, TimeUnit.SECONDS));
+        assertEquals(VALUE, f2.get(TIME_OUT_S, TimeUnit.SECONDS));
+        assertEquals(VALUE, f3.get(TIME_OUT_S, TimeUnit.SECONDS));
+        assertEquals(1, calls.get());
+    }
+
+    @Test
+    void competingThreadsBlockUntilInitializationCompletes() throws Exception {
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        LazyConstant<Integer> constant = LazyConstant.of(() -> {
+            entered.countDown();
+            try {
+                assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+            return VALUE;
+        });
+
+        var computingThread = CompletableFuture.supplyAsync(constant::get);
+        assertTrue(entered.await(TIME_OUT_S, TimeUnit.SECONDS));
+
+        var waitingThread = CompletableFuture.supplyAsync(constant::get);
+
+        Thread.sleep(SCHEDULE_TIME_MS);
+        assertFalse(waitingThread.isDone(), "contending thread should be be blocked");
+
+        release.countDown();
+
+        assertEquals(VALUE, computingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
+        assertEquals(VALUE, waitingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void interruptStatusIsPreservedForComputingThread() throws Exception {
+        int unset = -1;
+        int notInterrupted = 0;
+        int interrupted = 1;
+        AtomicInteger observedInterrupted = new AtomicInteger(unset);
+        CountDownLatch supplierRunning = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        LazyConstant<Integer> constant = LazyConstant.of(() -> {
+            supplierRunning.countDown();
+            try {
+                assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+            } catch (InterruptedException e) {
+                observedInterrupted.set(Thread.currentThread().isInterrupted() ? interrupted : notInterrupted);
+                Thread.currentThread().interrupt(); // restore if await cleared it
+            }
+            return VALUE;
+        });
+
+        AtomicInteger interruptedAfterGet = new AtomicInteger(unset);
+
+        Thread t = Thread.ofPlatform().start(() -> {
+            assertEquals(VALUE, constant.get());
+            interruptedAfterGet.set(Thread.currentThread().isInterrupted() ? interrupted : notInterrupted);
+        });
+
+        assertTrue(supplierRunning.await(TIME_OUT_S, TimeUnit.SECONDS));
+        t.interrupt();
+        release.countDown();
+        t.join();
+
+        assertEquals(interrupted, interruptedAfterGet.get(), "get() cleared interrupt status");
     }
 
     @ParameterizedTest
