@@ -23,17 +23,13 @@
 
 /*
  * @test
- * @requires os.arch=="aarch64" | os.arch=="riscv64" | os.arch=="x86_64" | os.arch=="amd64"
- * @requires vm.gc.Parallel
- * @requires vm.compiler2.enabled
- * @summary Check LazyConstant and lazy collection folding
+ * @summary Check LazyConstant and lazy collection coinstant folding
  * @modules java.base/jdk.internal.lang
  * @library /test/lib /
- * @enablePreview
- * @run main compiler.c2.irTests.stable.LazyConstantsIrTest
+ * @run driver ${test.main.class}
  */
 
-package compiler.c2.irTests.stable;
+package compiler.stable;
 
 import compiler.lib.ir_framework.*;
 
@@ -44,16 +40,16 @@ import java.util.Set;
 public class LazyConstantsIrTest {
 
     public static void main(String[] args) {
-        TestFramework tf = new TestFramework();
-        tf.addTestClassesToBootClassPath();
-        tf.addFlags(
-                "--enable-preview",
-                "-XX:+UnlockExperimentalVMOptions",
-                "-XX:CompileThreshold=100",
-                "-XX:-TieredCompilation",
-                "-XX:+UseParallelGC"
-        );
-        tf.start();
+        new TestFramework()
+                .addTestClassesToBootClassPath()
+                .addFlags(
+                        "--enable-preview",
+                        "-XX:+UnlockExperimentalVMOptions")
+                .addCrossProductScenarios(
+                        Set.of("-XX:+UseEpsilonGC", "-XX:+UseSerialGC", "-XX:+UseParallelGC", "-XX:+UseG1GC", "-XX:+UseZGC"),
+                        Set.of("-XX:+TieredCompilation", "-XX:-TieredCompilation"))
+                .setDefaultWarmup(5000)
+                .start();
     }
 
     static final int THE_VALUE = 42;
