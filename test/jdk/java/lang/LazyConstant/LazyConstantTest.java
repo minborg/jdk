@@ -33,9 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.NoSuchElementException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.lang.LazyConstant;
@@ -188,79 +186,85 @@ final class LazyConstantTest {
 
     @Test
     void atMostOnceComputationUnderContention() throws Exception {
-        AtomicInteger calls = new AtomicInteger();
-        CountDownLatch entered = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        CountDownLatch competing = new CountDownLatch(2);
+        // Mitigate thread starvation via a dedicated thread pool != FJP
+        try (var testExecutor = Executors.newFixedThreadPool(3)) {
+            AtomicInteger calls = new AtomicInteger();
+            CountDownLatch entered = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+            CountDownLatch competing = new CountDownLatch(2);
 
-        LazyConstant<Integer> constant = LazyConstant.of(() -> {
-            calls.incrementAndGet();
-            entered.countDown();
-            try {
-                assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
-            } catch (InterruptedException e) {
-                throw new AssertionError(e);
-            }
-            return VALUE;
-        });
+            LazyConstant<Integer> constant = LazyConstant.of(() -> {
+                calls.incrementAndGet();
+                entered.countDown();
+                try {
+                    assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                return VALUE;
+            });
 
-        var f1 = CompletableFuture.supplyAsync(constant::get);
-        assertTrue(entered.await(5, TimeUnit.SECONDS));
+            var f1 = CompletableFuture.supplyAsync(constant::get, testExecutor);
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
 
-        var f2 = CompletableFuture.supplyAsync(() -> {
-            competing.countDown();
-            return constant.get();
-        });
-        var f3 = CompletableFuture.supplyAsync(() -> {
-            competing.countDown();
-            return constant.get();
-        });
+            var f2 = CompletableFuture.supplyAsync(() -> {
+                competing.countDown();
+                return constant.get();
+            }, testExecutor);
+            var f3 = CompletableFuture.supplyAsync(() -> {
+                competing.countDown();
+                return constant.get();
+            }, testExecutor);
 
-        competing.await(TIME_OUT_S, TimeUnit.SECONDS);
-        // While computation is blocked, only one thread should have entered supplier
-        Thread.sleep(OVERLAP_TIME_MS);
-        assertEquals(1, calls.get());
+            assertTrue(competing.await(TIME_OUT_S, TimeUnit.SECONDS));
+            // While computation is blocked, only one thread should have entered supplier
+            Thread.sleep(OVERLAP_TIME_MS);
+            assertEquals(1, calls.get());
 
-        release.countDown();
+            release.countDown();
 
-        assertEquals(VALUE, f1.get(TIME_OUT_S, TimeUnit.SECONDS));
-        assertEquals(VALUE, f2.get(TIME_OUT_S, TimeUnit.SECONDS));
-        assertEquals(VALUE, f3.get(TIME_OUT_S, TimeUnit.SECONDS));
-        assertEquals(1, calls.get());
+            assertEquals(VALUE, f1.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(VALUE, f2.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(VALUE, f3.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(1, calls.get());
+        }
     }
 
     @Test
     void competingThreadsBlockUntilInitializationCompletes() throws Exception {
-        CountDownLatch entered = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        CountDownLatch waiting = new CountDownLatch(1);
+        // Mitigate thread starvation via a dedicated thread pool != FJP
+        try (var testExecutor = Executors.newFixedThreadPool(2)) {
+            CountDownLatch entered = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+            CountDownLatch waiting = new CountDownLatch(1);
 
-        LazyConstant<Integer> constant = LazyConstant.of(() -> {
-            entered.countDown();
-            try {
-                assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
-            } catch (InterruptedException e) {
-                throw new AssertionError(e);
-            }
-            return VALUE;
-        });
+            LazyConstant<Integer> constant = LazyConstant.of(() -> {
+                entered.countDown();
+                try {
+                    assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                return VALUE;
+            });
 
-        var computingThread = CompletableFuture.supplyAsync(constant::get);
-        assertTrue(entered.await(TIME_OUT_S, TimeUnit.SECONDS));
+            var computingThread = CompletableFuture.supplyAsync(constant::get, testExecutor);
+            assertTrue(entered.await(TIME_OUT_S, TimeUnit.SECONDS));
 
-        var waitingThread = CompletableFuture.supplyAsync(() -> {
-            waiting.countDown();
-            return constant.get();
-        });
+            var waitingThread = CompletableFuture.supplyAsync(() -> {
+                waiting.countDown();
+                return constant.get();
+            }, testExecutor);
 
-        waiting.await(TIME_OUT_S, TimeUnit.SECONDS);
-        Thread.sleep(OVERLAP_TIME_MS);
-        assertFalse(waitingThread.isDone(), "contending thread should be be blocked");
+            assertTrue(waiting.await(TIME_OUT_S, TimeUnit.SECONDS));
+            Thread.sleep(OVERLAP_TIME_MS);
+            assertFalse(waitingThread.isDone(), "contending thread should be be blocked");
 
-        release.countDown();
+            release.countDown();
 
-        assertEquals(VALUE, computingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
-        assertEquals(VALUE, waitingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(VALUE, computingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(VALUE, waitingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
+        }
     }
 
     @Test
@@ -295,6 +299,7 @@ final class LazyConstantTest {
         release.countDown();
         t.join();
 
+        assertEquals(notInterrupted, observedInterrupted.get()); // Observed before restoration of the status
         assertEquals(interrupted, interruptedAfterGet.get(), "get() cleared interrupt status");
     }
 
