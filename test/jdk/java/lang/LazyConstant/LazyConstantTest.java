@@ -51,7 +51,7 @@ final class LazyConstantTest {
     private static final int VALUE = 42;
     private static final Supplier<Integer> SUPPLIER = () -> VALUE;
     private static final long TIME_OUT_S = 5;
-    private static final long SCHEDULE_TIME_MS = 100;
+    private static final long OVERLAP_TIME_MS = 100;
 
     @Test
     void factoryInvariants() {
@@ -191,6 +191,7 @@ final class LazyConstantTest {
         AtomicInteger calls = new AtomicInteger();
         CountDownLatch entered = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch competing = new CountDownLatch(2);
 
         LazyConstant<Integer> constant = LazyConstant.of(() -> {
             calls.incrementAndGet();
@@ -206,11 +207,18 @@ final class LazyConstantTest {
         var f1 = CompletableFuture.supplyAsync(constant::get);
         assertTrue(entered.await(5, TimeUnit.SECONDS));
 
-        var f2 = CompletableFuture.supplyAsync(constant::get);
-        var f3 = CompletableFuture.supplyAsync(constant::get);
+        var f2 = CompletableFuture.supplyAsync(() -> {
+            competing.countDown();
+            return constant.get();
+        });
+        var f3 = CompletableFuture.supplyAsync(() -> {
+            competing.countDown();
+            return constant.get();
+        });
 
+        competing.await(TIME_OUT_S, TimeUnit.SECONDS);
         // While computation is blocked, only one thread should have entered supplier
-        Thread.sleep(SCHEDULE_TIME_MS);
+        Thread.sleep(OVERLAP_TIME_MS);
         assertEquals(1, calls.get());
 
         release.countDown();
@@ -225,6 +233,7 @@ final class LazyConstantTest {
     void competingThreadsBlockUntilInitializationCompletes() throws Exception {
         CountDownLatch entered = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch waiting = new CountDownLatch(1);
 
         LazyConstant<Integer> constant = LazyConstant.of(() -> {
             entered.countDown();
@@ -239,9 +248,13 @@ final class LazyConstantTest {
         var computingThread = CompletableFuture.supplyAsync(constant::get);
         assertTrue(entered.await(TIME_OUT_S, TimeUnit.SECONDS));
 
-        var waitingThread = CompletableFuture.supplyAsync(constant::get);
+        var waitingThread = CompletableFuture.supplyAsync(() -> {
+            waiting.countDown();
+            return constant.get();
+        });
 
-        Thread.sleep(SCHEDULE_TIME_MS);
+        waiting.await(TIME_OUT_S, TimeUnit.SECONDS);
+        Thread.sleep(OVERLAP_TIME_MS);
         assertFalse(waitingThread.isDone(), "contending thread should be be blocked");
 
         release.countDown();
