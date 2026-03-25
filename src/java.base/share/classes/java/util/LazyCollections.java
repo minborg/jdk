@@ -604,7 +604,7 @@ final class LazyCollections {
         static final Map<Class<? extends Throwable>, Integer> TOKENS = new ConcurrentHashMap<>();
         // Holds all the token-to-throwable mappings
         static final Map<Integer, Class<? extends Throwable>> THROWABLES = new ConcurrentHashMap<>();
-        // Start from 1 (and not zero) to allow constant folding in the `throable` `int` array.
+        // Start from 1 (and not zero) to allow constant folding in the `throwable` `int` array.
         static int nextToken = 1;
 
         @Stable
@@ -634,9 +634,9 @@ final class LazyCollections {
             }
             // We are reading/modifying `nextToken` under synchronization
             final int token = nextToken++;
-            if (token == 0) {
+            if (token < 0) {
                 nextToken--;
-                throw new InternalError("More than 2^32-1 throwable classes detected");
+                throw new InternalError("More than 2^31-1 throwable classes detected");
             }
             THROWABLES.put(token, throwable);
             return token;
