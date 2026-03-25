@@ -34,13 +34,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -52,6 +55,9 @@ final class LazyListTest {
     private static final int INDEX = 7;
     private static final int SIZE = 31;
     private static final IntFunction<Integer> IDENTITY = i -> i;
+
+    private static final long TIME_OUT_S = 5;
+    private static final long OVERLAP_TIME_MS = 100;
 
     @Test
     void factoryInvariants() {
@@ -84,19 +90,32 @@ final class LazyListTest {
     }
 
     @Test
-    void getException() {
+    void exeptionInComputingFunction() {
         LazyConstantTestUtil.CountingIntFunction<Integer> cif = new LazyConstantTestUtil.CountingIntFunction<Integer>(_ -> {
             throw new UnsupportedOperationException("Initial exception");
         });
+        exceptionInComputingFunction(cif, UnsupportedOperationException.class);
+    }
+
+    @Test
+    void nullResultInComputingFunction() {
+        LazyConstantTestUtil.CountingIntFunction<Integer> cif = new LazyConstantTestUtil.CountingIntFunction<Integer>(_ -> {
+            return null;
+        });
+        exceptionInComputingFunction(cif, NullPointerException.class);
+    }
+
+    void exceptionInComputingFunction(LazyConstantTestUtil.CountingIntFunction<Integer> cif,
+                                      Class<? extends RuntimeException> causeType) {
         var lazy = List.ofLazy(SIZE, cif);
         var x = assertThrows(NoSuchElementException.class, () -> lazy.get(INDEX));
-        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, INDEX), x.getMessage());
-        assertEquals(UnsupportedOperationException.class, x.getCause().getClass());
+        assertEquals(LazyConstantTestUtil.expectedMessage(causeType, INDEX), x.getMessage());
+        assertEquals(causeType, x.getCause().getClass());
         assertEquals(1, cif.cnt());
 
         var x2 = assertThrows(NoSuchElementException.class, () -> lazy.get(INDEX));
         assertEquals(1, cif.cnt());
-        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, INDEX), x2.getMessage());
+        assertEquals(LazyConstantTestUtil.expectedMessage(causeType, INDEX), x2.getMessage());
         // The initial cause should only be present on the _first_ unchecked exception
         assertNull(x2.getCause());
 
@@ -107,7 +126,7 @@ final class LazyListTest {
         }
 
         var xToString = assertThrows(NoSuchElementException.class, lazy::toString);
-        assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, 0), xToString.getMessage());
+        assertEquals(LazyConstantTestUtil.expectedMessage(causeType, 0), xToString.getMessage());
         assertEquals(SIZE, cif.cnt());
     }
 
@@ -282,6 +301,143 @@ final class LazyListTest {
         assertEquals(IllegalStateException.class, x.getCause().getClass());
     }
 
+    @ParameterizedTest
+    @MethodSource("viewOperations")
+    void atMostOnceComputationUnderContention(UnaryOperation viewOp) throws Exception {
+        final int index = SIZE / 2;
+        // Mitigate thread starvation via a dedicated thread pool != FJP
+        try (var testExecutor = Executors.newFixedThreadPool(3)) {
+            AtomicInteger calls = new AtomicInteger();
+            CountDownLatch entered = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+            CountDownLatch competing = new CountDownLatch(2);
+
+            List<Integer> ref = viewOp.apply(newRegularList());
+            List<Integer> constant = viewOp.apply(List.ofLazy(SIZE, i -> {
+                calls.incrementAndGet();
+                entered.countDown();
+                try {
+                    assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                return i;
+            }));
+
+            var f1 = CompletableFuture.supplyAsync(() -> constant.get(index), testExecutor);
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+
+            var f2 = CompletableFuture.supplyAsync(() -> {
+                competing.countDown();
+                return constant.get(index);
+            }, testExecutor);
+            var f3 = CompletableFuture.supplyAsync(() -> {
+                competing.countDown();
+                return constant.get(index);
+            }, testExecutor);
+
+            assertTrue(competing.await(TIME_OUT_S, TimeUnit.SECONDS));
+            // While computation is blocked, only one thread should have entered supplier
+            Thread.sleep(OVERLAP_TIME_MS);
+            assertEquals(1, calls.get());
+
+            release.countDown();
+
+            assertEquals(ref.get(index), f1.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(ref.get(index), f2.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(ref.get(index), f3.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(1, calls.get());
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("viewOperations")
+    void competingThreadsBlockUntilInitializationCompletes(UnaryOperation viewOp) throws Exception {
+        final int index = SIZE / 2;
+        // Mitigate thread starvation via a dedicated thread pool != FJP
+        try (var testExecutor = Executors.newFixedThreadPool(2)) {
+            CountDownLatch entered = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+            CountDownLatch waiting = new CountDownLatch(1);
+
+            List<Integer> ref = viewOp.apply(newRegularList());
+            List<Integer> constant = viewOp.apply(List.ofLazy(SIZE, i -> {
+                entered.countDown();
+                try {
+                    assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                return i;
+            }));
+
+            var computingThread = CompletableFuture.supplyAsync(() -> constant.get(index), testExecutor);
+            assertTrue(entered.await(TIME_OUT_S, TimeUnit.SECONDS));
+
+            var waitingThread = CompletableFuture.supplyAsync(() -> {
+                waiting.countDown();
+                return constant.get(index);
+            }, testExecutor);
+
+            assertTrue(waiting.await(TIME_OUT_S, TimeUnit.SECONDS));
+            Thread.sleep(OVERLAP_TIME_MS);
+            assertFalse(waitingThread.isDone(), "contending thread should be be blocked");
+
+            release.countDown();
+
+            assertEquals(ref.get(index), computingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(ref.get(index), waitingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("viewOperations")
+    void interruptStatusIsPreservedForComputingThread(UnaryOperation viewOp) throws Exception {
+        final int index = SIZE / 2;
+        int unset = -1;
+        int notInterrupted = 0;
+        int interrupted = 1;
+        AtomicInteger observedInterrupted = new AtomicInteger(unset);
+        CountDownLatch supplierRunning = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        List<Integer> constant = viewOp.apply(List.ofLazy(SIZE, i -> {
+            supplierRunning.countDown();
+            try {
+                assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+            } catch (InterruptedException e) {
+                observedInterrupted.set(Thread.currentThread().isInterrupted() ? interrupted : notInterrupted);
+                Thread.currentThread().interrupt(); // restore if await cleared it
+            }
+            return i;
+        }));
+
+        AtomicInteger interruptedAfterGet = new AtomicInteger(unset);
+
+        Thread t = Thread.ofPlatform().start(() -> {
+            assertEquals(index, constant.get(index));
+            interruptedAfterGet.set(Thread.currentThread().isInterrupted() ? interrupted : notInterrupted);
+        });
+
+        assertTrue(supplierRunning.await(TIME_OUT_S, TimeUnit.SECONDS));
+        t.interrupt();
+        release.countDown();
+        t.join();
+
+        assertEquals(notInterrupted, observedInterrupted.get()); // Observed before restoration of the status
+        assertEquals(interrupted, interruptedAfterGet.get(), "get() cleared interrupt status");
+    }
+
+    @ParameterizedTest
+    @MethodSource("iteratorOperations")
+    void iterators(ListFunction viewOp) throws Exception {
+        List<Integer> lazy = newLazyList();
+        Iterator<Integer> iter = (Iterator<Integer>) viewOp.apply(lazy);
+        List<Integer> actual = new ArrayList<>();
+        iter.forEachRemaining(actual::add);
+        assertEquals(newRegularList(), actual);
+    }
+
     // Immutability
 
     @ParameterizedTest
@@ -379,16 +535,16 @@ final class LazyListTest {
                 // We need identity to capture all combinations
                 new UnaryOperation("identity", l -> l),
                 new UnaryOperation("reversed", List::reversed),
-                new UnaryOperation("subList", l -> l.subList(0, l.size()))
+                new UnaryOperation("subList", l -> l.subList(0, l.size() - 1))
         );
     }
 
-    static Stream<ListFunction> childOperations() {
+    static Stream<ListFunction> iteratorOperations() {
         return Stream.of(
                 // We need identity to capture all combinations
                 new ListFunction("iterator", List::iterator),
                 new ListFunction("listIterator", List::listIterator),
-                new ListFunction("listIterator", List::stream)
+                new ListFunction("stream::iterator", l -> l.stream().iterator())
         );
     }
 

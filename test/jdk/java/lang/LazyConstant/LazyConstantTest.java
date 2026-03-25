@@ -70,38 +70,39 @@ final class LazyConstantTest {
 
     @ParameterizedTest
     @MethodSource("factories")
-    void exception(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+    void exceptionInComputingFunction(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(() -> {
             throw new UnsupportedOperationException("Initial exception");
         });
-        var lazy = factory.apply(cs);
-        var ix = assertThrows(NoSuchElementException.class, lazy::get);
-        assertEquals(UnsupportedOperationException.class, ix.getCause().getClass());
-        assertEquals("Initial exception", ix.getCause().getMessage());
-        assertEquals(1, cs.cnt());
-        var x = assertThrows(NoSuchElementException.class, lazy::get);
-        assertEquals("Unable to access the constant because java.lang.UnsupportedOperationException was thrown at initial computation", x.getMessage());
-        assertEquals(1, cs.cnt());
-        var toString = lazy.toString();
-        assertTrue(toString.contains("failed with=java.lang.UnsupportedOperationException"), toString);
-        assertNull(x.getCause());
+        exceptionInComputingFunction(factory, cs, UnsupportedOperationException.class, "Initial exception");
     }
 
     @ParameterizedTest
     @MethodSource("factories")
-    void nullResult(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+    void nullInComputingFunction(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(() -> {
             return null;
         });
+        exceptionInComputingFunction(factory, cs, NullPointerException.class, null);
+    }
+
+    void exceptionInComputingFunction(Function<Supplier<Integer>, LazyConstant<Integer>> factory,
+                                      LazyConstantTestUtil.CountingSupplier<Integer> cs,
+                                      Class<? extends RuntimeException> causeType,
+                                      String message) {
         var lazy = factory.apply(cs);
         var ix = assertThrows(NoSuchElementException.class, lazy::get);
-        assertEquals(NullPointerException.class, ix.getCause().getClass());
+        assertEquals(causeType, ix.getCause().getClass());
+        if (message != null) {
+            assertEquals(message, ix.getCause().getMessage());
+        }
         assertEquals(1, cs.cnt());
         var x = assertThrows(NoSuchElementException.class, lazy::get);
-        assertEquals("Unable to access the constant because java.lang.NullPointerException was thrown at initial computation", x.getMessage());
+        assertEquals("Unable to access the constant because "+causeType.getName()+" was thrown at initial computation", x.getMessage());
         assertEquals(1, cs.cnt());
         var toString = lazy.toString();
-        assertTrue(toString.contains("failed with=java.lang.NullPointerException"), toString);
+        assertTrue(toString.contains("failed with="+causeType.getName()), toString);
+        assertNull(x.getCause());
     }
 
     @ParameterizedTest
