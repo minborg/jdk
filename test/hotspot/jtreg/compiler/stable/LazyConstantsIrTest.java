@@ -26,7 +26,8 @@
  * @summary Check LazyConstant and lazy collection constant folding
  * @modules java.base/jdk.internal.lang
  * @library /test/lib /
- * @run driver ${test.main.class}
+ * @enablePreview
+ * @run main ${test.main.class}
  */
 
 package compiler.stable;
