@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @summary Check LazyConstant and lazy collection coinstant folding
+ * @summary Check LazyConstant and lazy collection constant folding
  * @modules java.base/jdk.internal.lang
  * @library /test/lib /
  * @run driver ${test.main.class}
