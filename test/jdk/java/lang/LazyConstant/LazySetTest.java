@@ -40,6 +40,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -84,6 +89,9 @@ final class LazySetTest {
     private static final Value ELEMENT = Value.FORTY_TWO;
     private static final Set<Value> SET = Set.of(Value.THIRTEEN, ELEMENT);
     private static final Predicate<Value> PREDICATE = SET::contains; ;
+
+    private static final long TIME_OUT_S = 5;
+    private static final long OVERLAP_TIME_MS = 100;
 
     @ParameterizedTest
     @MethodSource("allSets")
@@ -238,6 +246,130 @@ final class LazySetTest {
         encountered.add(value);
         iterator.forEachRemaining(encountered::add);
         assertEquals(expected, encountered);
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("nonEmptySets")
+    void atMostOnceComputationUnderContention(Set<Value> set) throws Exception {
+        // Mitigate thread starvation via a dedicated thread pool != FJP
+        try (var testExecutor = Executors.newFixedThreadPool(3)) {
+            AtomicInteger calls = new AtomicInteger();
+            CountDownLatch entered = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+            CountDownLatch competing = new CountDownLatch(2);
+
+            Set<Value> constant = Set.ofLazy(set, i -> {
+                calls.incrementAndGet();
+                entered.countDown();
+                try {
+                    assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                return PREDICATE.test(i);
+            });
+
+            var f1 = CompletableFuture.supplyAsync(() -> constant.contains(ELEMENT), testExecutor);
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+
+            var f2 = CompletableFuture.supplyAsync(() -> {
+                competing.countDown();
+                return constant.contains(ELEMENT);
+            }, testExecutor);
+            var f3 = CompletableFuture.supplyAsync(() -> {
+                competing.countDown();
+                return constant.contains(ELEMENT);
+            }, testExecutor);
+
+            assertTrue(competing.await(TIME_OUT_S, TimeUnit.SECONDS));
+            // While computation is blocked, only one thread should have entered supplier
+            Thread.sleep(OVERLAP_TIME_MS);
+            assertEquals(1, calls.get());
+
+            release.countDown();
+
+            assertTrue(f1.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertTrue(f2.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertTrue(f3.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertEquals(1, calls.get());
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("nonEmptySets")
+    void competingThreadsBlockUntilInitializationCompletes(Set<Value> set) throws Exception {
+        // Mitigate thread starvation via a dedicated thread pool != FJP
+        try (var testExecutor = Executors.newFixedThreadPool(2)) {
+            CountDownLatch entered = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+            CountDownLatch waiting = new CountDownLatch(1);
+
+            Set<Value> constant = Set.ofLazy(set, i -> {
+                entered.countDown();
+                try {
+                    assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                return PREDICATE.test(i);
+            });
+
+            var computingThread = CompletableFuture.supplyAsync(() -> constant.contains(ELEMENT), testExecutor);
+            assertTrue(entered.await(TIME_OUT_S, TimeUnit.SECONDS));
+
+            var waitingThread = CompletableFuture.supplyAsync(() -> {
+                waiting.countDown();
+                return constant.contains(ELEMENT);
+            }, testExecutor);
+
+            assertTrue(waiting.await(TIME_OUT_S, TimeUnit.SECONDS));
+            Thread.sleep(OVERLAP_TIME_MS);
+            assertFalse(waitingThread.isDone(), "contending thread should be be blocked");
+
+            release.countDown();
+
+            assertTrue(computingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
+            assertTrue(waitingThread.get(TIME_OUT_S, TimeUnit.SECONDS));
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("nonEmptySets")
+    void interruptStatusIsPreservedForComputingThread(Set<Value> set) throws Exception {
+        int unset = -1;
+        int notInterrupted = 0;
+        int interrupted = 1;
+        AtomicInteger observedInterrupted = new AtomicInteger(unset);
+        CountDownLatch supplierRunning = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        Set<Value> constant = Set.ofLazy(set, i -> {
+            supplierRunning.countDown();
+            try {
+                assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
+            } catch (InterruptedException e) {
+                observedInterrupted.set(Thread.currentThread().isInterrupted() ? interrupted : notInterrupted);
+                Thread.currentThread().interrupt(); // restore if await cleared it
+            }
+            return PREDICATE.test(i);
+        });
+
+        AtomicInteger interruptedAfterGet = new AtomicInteger(unset);
+
+        Thread t = Thread.ofPlatform().start(() -> {
+            assertTrue(constant.contains(ELEMENT));
+            interruptedAfterGet.set(Thread.currentThread().isInterrupted() ? interrupted : notInterrupted);
+        });
+
+        assertTrue(supplierRunning.await(TIME_OUT_S, TimeUnit.SECONDS));
+        Thread.sleep(OVERLAP_TIME_MS);
+        t.interrupt();
+        release.countDown();
+        t.join();
+
+        assertEquals(notInterrupted, observedInterrupted.get()); // Observed before restoration of the status
+        assertEquals(interrupted, interruptedAfterGet.get(), "get() cleared interrupt status");
     }
 
     // Immutability

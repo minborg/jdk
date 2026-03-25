@@ -296,6 +296,7 @@ final class LazyConstantTest {
         });
 
         assertTrue(supplierRunning.await(TIME_OUT_S, TimeUnit.SECONDS));
+        Thread.sleep(OVERLAP_TIME_MS);
         t.interrupt();
         release.countDown();
         t.join();
