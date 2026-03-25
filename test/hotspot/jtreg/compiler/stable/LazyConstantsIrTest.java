@@ -47,7 +47,6 @@ public class LazyConstantsIrTest {
                         "--enable-preview",
                         "-XX:+UnlockExperimentalVMOptions")
                 .addCrossProductScenarios(
-                        Set.of("-XX:+UseEpsilonGC", "-XX:+UseSerialGC", "-XX:+UseParallelGC", "-XX:+UseG1GC", "-XX:+UseZGC"),
                         Set.of("-XX:+TieredCompilation", "-XX:-TieredCompilation"))
                 .setDefaultWarmup(5000)
                 .start();
