@@ -139,7 +139,7 @@ public:
   bool is_constant() const { return _is_constant; }
 
   // Get the constant value of the static field.
-  ciConstant constant_value();
+  ciConstant constant_value(bool stable_access = false);
 
   bool is_static_constant() {
     return is_static() && is_constant() && constant_value().is_valid();
@@ -147,7 +147,7 @@ public:
 
   // Get the constant value of non-static final field in the given
   // object.
-  ciConstant constant_value_of(ciObject* object);
+  ciConstant constant_value_of(ciObject* object, bool stable_access = false);
 
   // Check for link time errors.  Accessing a field from a
   // certain method via a certain bytecode may or may not be legal.

@@ -441,6 +441,24 @@ bool vmIntrinsics::disabled_by_jvm_flags(vmIntrinsics::ID id) {
   case vmIntrinsics::_compareAndExchangeReferenceAcquire:
   case vmIntrinsics::_compareAndExchangeReferenceRelease:
   case vmIntrinsics::_allocateInstance:
+  case vmIntrinsics::_getReferenceStable:
+  case vmIntrinsics::_getBooleanStable:
+  case vmIntrinsics::_getByteStable:
+  case vmIntrinsics::_getShortStable:
+  case vmIntrinsics::_getCharStable:
+  case vmIntrinsics::_getIntStable:
+  case vmIntrinsics::_getLongStable:
+  case vmIntrinsics::_getFloatStable:
+  case vmIntrinsics::_getDoubleStable:
+  case vmIntrinsics::_getReferenceStableVolatile:
+  case vmIntrinsics::_getBooleanStableVolatile:
+  case vmIntrinsics::_getByteStableVolatile:
+  case vmIntrinsics::_getShortStableVolatile:
+  case vmIntrinsics::_getCharStableVolatile:
+  case vmIntrinsics::_getIntStableVolatile:
+  case vmIntrinsics::_getLongStableVolatile:
+  case vmIntrinsics::_getFloatStableVolatile:
+  case vmIntrinsics::_getDoubleStableVolatile:
     if (!InlineUnsafeOps) return true;
     break;
   case vmIntrinsics::_getShortUnaligned:

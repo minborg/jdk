@@ -1631,7 +1631,7 @@ Node* GraphKit::make_load(Node* ctl, Node* adr, const Type* t, BasicType bt,
   const TypePtr* adr_type = nullptr; // debug-mode-only argument
   DEBUG_ONLY(adr_type = C->get_adr_type(adr_idx));
   Node* mem = memory(adr_idx);
-  Node* ld = LoadNode::make(_gvn, ctl, mem, adr, adr_type, t, bt, mo, control_dependency, require_atomic_access, unaligned, mismatched, unsafe, barrier_data);
+  Node* ld = LoadNode::make(_gvn, ctl, mem, adr, adr_type, t, bt, mo, control_dependency, require_atomic_access, unaligned, mismatched, unsafe, barrier_data, /*stable_access=*/false);
   ld = _gvn.transform(ld);
   if (((bt == T_OBJECT) && C->do_escape_analysis()) || C->eliminate_boxing()) {
     // Improve graph before escape analysis and boxing elimination.
@@ -4331,8 +4331,8 @@ void GraphKit::inflate_string_slow(Node* src, Node* dst, Node* start, Node* coun
   set_memory(st, TypeAryPtr::BYTES);
 }
 
-Node* GraphKit::make_constant_from_field(ciField* field, Node* obj) {
-  if (!field->is_constant()) {
+Node* GraphKit::make_constant_from_field(ciField* field, Node* obj, bool stable_access) {
+  if (!field->is_constant() && !stable_access) {
     return nullptr; // Field not marked as constant.
   }
   ciInstance* holder = nullptr;
@@ -4343,7 +4343,7 @@ Node* GraphKit::make_constant_from_field(ciField* field, Node* obj) {
     }
   }
   const Type* con_type = Type::make_constant_from_field(field, holder, field->layout_type(),
-                                                        /*is_unsigned_load=*/false);
+                                                        /*is_unsigned_load=*/false, stable_access);
   if (con_type != nullptr) {
     return makecon(con_type);
   }

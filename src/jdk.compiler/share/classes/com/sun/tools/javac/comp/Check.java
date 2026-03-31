@@ -1117,8 +1117,10 @@ public class Check {
                 mask = ReceiverParamFlags;
             else if (sym.owner.kind != TYP)
                 mask = LocalVarFlags;
-            else if ((sym.owner.flags_field & INTERFACE) != 0)
-                mask = implicit = InterfaceVarFlags;
+            else if ((sym.owner.flags_field & INTERFACE) != 0) {
+                implicit = InterfaceVarFlags;
+                mask = InterfaceVarFlags;
+            }
             else
                 mask = VarFlags;
             break;
@@ -1157,6 +1159,9 @@ public class Check {
             if (((flags|implicit) & Flags.ABSTRACT) == 0 ||
                 ((flags) & Flags.DEFAULT) != 0)
                 implicit |= sym.owner.flags_field & STRICTFP;
+            if ((flags & ABSTRACT) == 0) {
+                mask |= CACHED;
+            }
             break;
         case TYP:
             if (sym.owner.kind.matches(KindSelector.VAL_MTH) ||
@@ -1251,9 +1256,13 @@ public class Check {
                  && checkDisjoint(pos, flags,
                                 SEALED,
                            FINAL | NON_SEALED)
+                  && checkDisjoint(pos, flags,
+                                 SEALED,
+                                 ANNOTATION)
+                // @@@: the generated diagnostic here is messy, because CACHED is shared with UNION
                  && checkDisjoint(pos, flags,
-                                SEALED,
-                                ANNOTATION)) {
+                                 CACHED,
+                            ABSTRACT | DEFAULT | NATIVE)) {
             // skip
         }
         return flags & (mask | ~ExtendedStandardFlags) | implicit;

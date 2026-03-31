@@ -170,4 +170,13 @@ public interface JavaLangInvokeAccess {
      * This method should only be used by ReflectionFactory::newConstructorForSerialization.
      */
     MethodHandle serializableConstructor(Class<?> decl, Constructor<?> ctorToCall) throws IllegalAccessException;
+
+    /**
+     * Returns a information associated to a direct var handle.
+     *
+     * Used by StableAccessor
+     */
+    FieldVarHandleInfo fieldVarHandleInfo(VarHandle varHandle) throws IllegalAccessException;
+
+    record FieldVarHandleInfo(boolean isStatic, Object base, long offset) { }
 }

@@ -584,7 +584,13 @@ public class Items {
                     this.value = LoadableConstant.Double((double)value);
                     break;
                 case OBJECTcode:
-                    this.value = LoadableConstant.String((String)value);
+                    if (value instanceof LoadableConstant) {
+                        this.value = (LoadableConstant)value;
+                    } else if (value instanceof String) {
+                        this.value = LoadableConstant.String((String)value);
+                    } else {
+                        throw new UnsupportedOperationException("unsupported constant value: " + value);
+                    }
                     break;
                 default:
                     throw new UnsupportedOperationException("unsupported tag: " + typecode);

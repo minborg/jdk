@@ -193,6 +193,7 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
   bool unknown_control = (decorators & C2_UNKNOWN_CONTROL_LOAD) != 0;
   bool unsafe = (decorators & C2_UNSAFE_ACCESS) != 0;
   bool immutable = (decorators & C2_IMMUTABLE_MEMORY) != 0;
+  bool stable = (decorators & ACCESS_STABLE) != 0;
 
   MemNode::MemOrd mo = access.mem_node_mo();
   LoadNode::ControlDependency dep = unknown_control ? LoadNode::UnknownControl : LoadNode::DependsOnlyOnTest;
@@ -203,12 +204,12 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
     GraphKit* kit = parse_access.kit();
     Node* control = control_dependent ? kit->control() : nullptr;
 
-    if (immutable) {
+    if (immutable | stable) {
       Compile* C = Compile::current();
       Node* mem = kit->immutable_memory();
       load = LoadNode::make(kit->gvn(), control, mem, adr,
                             adr_type, val_type, access.type(), mo, dep, requires_atomic_access,
-                            unaligned, mismatched, unsafe, access.barrier_data());
+                            unaligned, mismatched, unsafe, access.barrier_data(), stable);
       load = kit->gvn().transform(load);
     } else {
       load = kit->make_load(control, adr, val_type, access.type(), mo,
@@ -223,7 +224,7 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
     PhaseGVN& gvn = opt_access.gvn();
     Node* mem = mm->memory_at(gvn.C->get_alias_index(adr_type));
     load = LoadNode::make(gvn, control, mem, adr, adr_type, val_type, access.type(), mo, dep,
-                          requires_atomic_access, unaligned, mismatched, unsafe, access.barrier_data());
+                          requires_atomic_access, unaligned, mismatched, unsafe, access.barrier_data(), stable);
     load = gvn.transform(load);
   }
   access.set_raw_access(load);

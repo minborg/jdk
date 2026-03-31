@@ -221,3 +221,8 @@ compiler.warn.restricted.method
 # Pending removal
 compiler.note.implicit.annotation.processing
 compiler.warn.proc.use.proc.or.implicit
+
+# const methods
+compiler.err.const.method.void
+compiler.err.const.method.generic
+compiler.err.const.method.params

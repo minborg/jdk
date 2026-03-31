@@ -3513,6 +3513,189 @@ public final class Unsafe {
         throw new NoSuchMethodError();
     }
 
+    // Stable semantics
+
+    /**
+     * Fetches a reference value from a given Java variable using <em>stable</em>
+     * semantics initially using plain reads.
+     * <p>
+     * Stable semantics means, if the VM observes a non-default value,
+     * (i.e, a non-{@code null} value), the VM is free to reuse said value indefinitely
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
+     *
+     * @see #getReference(Object, long)
+     * @since 99
+     */
+    @IntrinsicCandidate
+    public Object getReferenceStable(Object o, long offset) {
+        return getReference(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public boolean getBooleanStable(Object o, long offset) {
+        return getBoolean(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public byte getByteStable(Object o, long offset) {
+        return getByte(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public short getShortStable(Object o, long offset) {
+        return getShort(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public char getCharStable(Object o, long offset) {
+        return getChar(o, offset);
+    }
+
+    /**
+     * Fetches a value from a given Java variable using <em>stable</em>
+     * semantics initially using plain reads.
+     * <p>
+     * Stable semantics means, if the VM observes a non-default value,
+     * (i.e, a non-zero value), the VM is free to reuse said value indefinitely
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
+     * <p>
+     * By adding various memory fences after a plain stable access, other memory semantics
+     * can be emulated.
+     *
+     * @param o Java heap object in which the variable resides, if any, else
+     *        null
+     * @param offset indication of where the variable resides in a Java heap
+     *        object, if any, else a memory address locating the variable
+     *        statically
+     * @return the value fetched from the indicated Java variable using plain
+     *         stable semantics
+     * @throws RuntimeException No defined exceptions are thrown, not even
+     *         {@link NullPointerException}
+     *
+     * @see #getInt(Object, long)
+     * @since 99
+     */
+    @IntrinsicCandidate
+    public int getIntStable(Object o, long offset) {
+        return getInt(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public long getLongStable(Object o, long offset){
+        return getLong(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public float getFloatStable(Object o, long offset) {
+        return getFloat(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public double getDoubleStable(Object o, long offset) {
+        return getDouble(o, offset);
+    }
+
+    /**
+     * Fetches a reference value from a given Java variable using <em>stable</em>
+     * semantics initially using volatile reads.
+     * <p>
+     * Stable semantics means, if the VM observes a non-default value,
+     * (i.e, a non-{@code null} value), the VM is free to reuse said value indefinitely
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
+     * <p>
+     * Warning: Once the VM elects to reusing the value, the VM is also free to
+     * eliminate any and all memory barriers associated with volatile semantics.
+     *
+     * @see #getReferenceVolatile(Object, long)
+     * @since 99
+     */
+    @IntrinsicCandidate
+    public Object getReferenceStableVolatile(Object o, long offset) {
+        return getReferenceVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public boolean getBooleanStableVolatile(Object o, long offset) {
+        return getBooleanVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public byte getByteStableVolatile(Object o, long offset) {
+        return getByteVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public short getShortStableVolatile(Object o, long offset) {
+        return getShortVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public char getCharStableVolatile(Object o, long offset) {
+        return getCharVolatile(o, offset);
+    }
+
+    /**
+     * Fetches a value from a given Java variable using <em>stable</em>
+     * semantics initially using volatile reads.
+     * <p>
+     * Stable semantics means, if the VM observes a non-default value,
+     * (i.e, a non-zero value), the VM is free to reuse said value indefinitely
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
+     * <p>
+     * Warning: Once the VM elects to reusing the value, the VM is also free to
+     * eliminate any and all memory barriers associated with volatile semantics.
+     *
+     * @param o Java heap object in which the variable resides, if any, else
+     *        null
+     * @param offset indication of where the variable resides in a Java heap
+     *        object, if any, else a memory address locating the variable
+     *        statically
+     * @return the value fetched from the indicated Java variable using plain
+     *         stable semantics
+     * @throws RuntimeException No defined exceptions are thrown, not even
+     *         {@link NullPointerException}
+     *
+     * @see #getIntVolatile(Object, long)
+     * @since 99
+     */
+    @IntrinsicCandidate
+    public int getIntStableVolatile(Object o, long offset) {
+        return getIntVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public long getLongStableVolatile(Object o, long offset){
+        return getLongVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public float getFloatStableVolatile(Object o, long offset) {
+        return getFloatVolatile(o, offset);
+    }
+
+    /** @see #getIntStableVolatile(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public double getDoubleStableVolatile(Object o, long offset) {
+        return getDoubleVolatile(o, offset);
+    }
+
     /**
      * @return Returns true if the native byte ordering of this
      * platform is big-endian, false if it is little-endian.

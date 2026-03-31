@@ -347,7 +347,7 @@ const Type* Type::make_constant_from_array_element(ciArray* array, int off, int 
   return nullptr;
 }
 
-const Type* Type::make_constant_from_field(ciInstance* holder, int off, bool is_unsigned_load, BasicType loadbt) {
+const Type* Type::make_constant_from_field(ciInstance* holder, int off, bool is_unsigned_load, BasicType loadbt, bool stable_access) {
   ciField* field;
   ciType* type = holder->java_mirror_type();
   if (type != nullptr && type->is_instance_klass() && off >= InstanceMirrorKlass::offset_of_static_fields()) {
@@ -360,24 +360,24 @@ const Type* Type::make_constant_from_field(ciInstance* holder, int off, bool is_
   if (field == nullptr) {
     return nullptr; // Wrong offset
   }
-  return Type::make_constant_from_field(field, holder, loadbt, is_unsigned_load);
+  return Type::make_constant_from_field(field, holder, loadbt, is_unsigned_load, stable_access);
 }
 
 const Type* Type::make_constant_from_field(ciField* field, ciInstance* holder,
-                                           BasicType loadbt, bool is_unsigned_load) {
-  if (!field->is_constant()) {
+                                           BasicType loadbt, bool is_unsigned_load, bool stable_access) {
+  if (!field->is_constant() && !stable_access) {
     return nullptr; // Non-constant field
   }
   ciConstant field_value;
   if (field->is_static()) {
     // final static field
-    field_value = field->constant_value();
+    field_value = field->constant_value(stable_access);
   } else if (holder != nullptr) {
     // final or stable non-static field
     // Treat final non-static fields of trusted classes (classes in
     // java.lang.invoke and sun.invoke packages and subpackages) as
     // compile time constants.
-    field_value = field->constant_value_of(holder);
+    field_value = field->constant_value_of(holder, stable_access);
   }
   if (!field_value.is_valid()) {
     return nullptr; // Not a constant

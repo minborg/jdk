@@ -63,6 +63,7 @@ import com.sun.tools.javac.code.Symbol.CompletionFailure;
 import com.sun.tools.javac.code.Symbol.ModuleSymbol;
 import com.sun.tools.javac.code.Symbol.PackageSymbol;
 import com.sun.tools.javac.comp.*;
+import com.sun.tools.javac.comp.TransCachedMethods;
 import com.sun.tools.javac.comp.CompileStates.CompileState;
 import com.sun.tools.javac.file.JavacFileManager;
 import com.sun.tools.javac.jvm.*;
@@ -1672,6 +1673,15 @@ public class JavaCompiler {
             }
 
             compileStates.put(env, CompileState.TRANSPATTERNS);
+
+            if (shouldStop(CompileState.TRANSCONSTANTMETHODS))
+                return;
+
+            env.tree = TransCachedMethods
+                    .instance(context)
+                    .translateTopLevelClass(env, env.tree, localMake);
+
+            compileStates.put(env, CompileState.TRANSCONSTANTMETHODS);
 
             if (shouldStop(CompileState.LOWER))
                 return;

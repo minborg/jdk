@@ -45,6 +45,7 @@ import java.lang.classfile.ClassFile;
 import java.lang.constant.ClassDesc;
 import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.VarHandleBooleans.FieldInstanceReadOnly;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -1645,6 +1646,16 @@ abstract class MethodHandleImpl {
                 return IMPL_LOOKUP.serializableConstructor(decl, ctorToCall);
             }
 
+            @Override
+            public FieldVarHandleInfo fieldVarHandleInfo(VarHandle varHandle) {
+                if (varHandle instanceof VarHandleReferences.FieldInstanceReadOnly fieldInstanceReadOnly) {
+                    return new FieldVarHandleInfo(false, null, fieldInstanceReadOnly.fieldOffset);
+                } else if (varHandle instanceof VarHandleReferences.FieldStaticReadOnly fieldStaticReadOnly) {
+                    return new FieldVarHandleInfo(true, fieldStaticReadOnly.base, fieldStaticReadOnly.fieldOffset);
+                } else {
+                    throw new UnsupportedOperationException("Unhandled VarHandle: " + varHandle);
+                }
+            }
         });
     }
 

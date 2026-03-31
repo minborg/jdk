@@ -996,6 +996,7 @@ public class Attr extends JCTree.Visitor {
     public void visitMethodDef(JCMethodDecl tree) {
         MethodSymbol m = tree.sym;
         boolean isDefaultMethod = (m.flags() & DEFAULT) != 0;
+        boolean isConstMethod = (m.flags() & CACHED) != 0;
 
         Lint lint = env.info.lint.augment(m);
         Lint prevLint = chk.setLint(lint);
@@ -1024,6 +1025,21 @@ public class Attr extends JCTree.Visitor {
 
             if (isDefaultMethod && types.overridesObjectMethod(m.enclClass(), m)) {
                 log.error(tree, Errors.DefaultOverridesObjectMember(m.name, Kinds.kindName(m.location()), m.location()));
+            }
+
+            if (isConstMethod) {
+                // must not take parameters
+                if (tree.params.nonEmpty()) {
+                    log.error(tree.params.head, Errors.CachedMethodParams);
+                }
+                // must not be void
+                if (tree.sym.type.getReturnType().hasTag(VOID)) {
+                    log.error(tree.restype, Errors.CachedMethodVoid);
+                }
+                // must not belong to an interface/annotation
+                if (tree.sym.owner.isInterface()) {
+                    log.error(tree, Errors.CachedMethodNotIntf);
+                }
             }
 
             // Enter all type parameters into the local method scope.

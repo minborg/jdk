@@ -473,12 +473,14 @@ public:
   static const Type* make_constant_from_field(ciInstance* holder,
                                               int off,
                                               bool is_unsigned_load,
-                                              BasicType loadbt);
+                                              BasicType loadbt,
+                                              bool stable_access = false);
 
   static const Type* make_constant_from_field(ciField* field,
                                               ciInstance* holder,
                                               BasicType loadbt,
-                                              bool is_unsigned_load);
+                                              bool is_unsigned_load,
+                                              bool stable_access = false);
 
   static const Type* make_constant_from_array_element(ciArray* array,
                                                       int off,

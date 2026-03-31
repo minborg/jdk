@@ -359,6 +359,26 @@ bool LibraryCallKit::try_to_inline(int predicate) {
   case vmIntrinsics::_putFloatVolatile:         return inline_unsafe_access( is_store, T_FLOAT,    Volatile, false);
   case vmIntrinsics::_putDoubleVolatile:        return inline_unsafe_access( is_store, T_DOUBLE,   Volatile, false);
 
+  case vmIntrinsics::_getReferenceStable:       return inline_unsafe_access(!is_store, T_OBJECT,   Stable, false);
+  case vmIntrinsics::_getBooleanStable:         return inline_unsafe_access(!is_store, T_BOOLEAN,  Stable, false);
+  case vmIntrinsics::_getByteStable:            return inline_unsafe_access(!is_store, T_BYTE,     Stable, false);
+  case vmIntrinsics::_getShortStable:           return inline_unsafe_access(!is_store, T_SHORT,    Stable, false);
+  case vmIntrinsics::_getCharStable:            return inline_unsafe_access(!is_store, T_CHAR,     Stable, false);
+  case vmIntrinsics::_getIntStable:             return inline_unsafe_access(!is_store, T_INT,      Stable, false);
+  case vmIntrinsics::_getLongStable:            return inline_unsafe_access(!is_store, T_LONG,     Stable, false);
+  case vmIntrinsics::_getFloatStable:           return inline_unsafe_access(!is_store, T_FLOAT,    Stable, false);
+  case vmIntrinsics::_getDoubleStable:          return inline_unsafe_access(!is_store, T_DOUBLE,   Stable, false);
+
+  case vmIntrinsics::_getReferenceStableVolatile:  return inline_unsafe_access(!is_store, T_OBJECT,   Stable_Volatile, false);
+  case vmIntrinsics::_getBooleanStableVolatile:    return inline_unsafe_access(!is_store, T_BOOLEAN,  Stable_Volatile, false);
+  case vmIntrinsics::_getByteStableVolatile:       return inline_unsafe_access(!is_store, T_BYTE,     Stable_Volatile, false);
+  case vmIntrinsics::_getShortStableVolatile:      return inline_unsafe_access(!is_store, T_SHORT,    Stable_Volatile, false);
+  case vmIntrinsics::_getCharStableVolatile:       return inline_unsafe_access(!is_store, T_CHAR,     Stable_Volatile, false);
+  case vmIntrinsics::_getIntStableVolatile:        return inline_unsafe_access(!is_store, T_INT,      Stable_Volatile, false);
+  case vmIntrinsics::_getLongStableVolatile:       return inline_unsafe_access(!is_store, T_LONG,     Stable_Volatile, false);
+  case vmIntrinsics::_getFloatStableVolatile:      return inline_unsafe_access(!is_store, T_FLOAT,    Stable_Volatile, false);
+  case vmIntrinsics::_getDoubleStableVolatile:     return inline_unsafe_access(!is_store, T_DOUBLE,   Stable_Volatile, false);
+
   case vmIntrinsics::_getShortUnaligned:        return inline_unsafe_access(!is_store, T_SHORT,    Relaxed, true);
   case vmIntrinsics::_getCharUnaligned:         return inline_unsafe_access(!is_store, T_CHAR,     Relaxed, true);
   case vmIntrinsics::_getIntUnaligned:          return inline_unsafe_access(!is_store, T_INT,      Relaxed, true);
@@ -2319,6 +2339,7 @@ const TypeOopPtr* LibraryCallKit::sharpen_unsafe_type(Compile::AliasType* alias_
 DecoratorSet LibraryCallKit::mo_decorator_for_access_kind(AccessKind kind) {
   switch (kind) {
       case Relaxed:
+      case Stable:
         return MO_UNORDERED;
       case Opaque:
         return MO_RELAXED;
@@ -2327,6 +2348,7 @@ DecoratorSet LibraryCallKit::mo_decorator_for_access_kind(AccessKind kind) {
       case Release:
         return MO_RELEASE;
       case Volatile:
+      case Stable_Volatile:
         return MO_SEQ_CST;
       default:
         ShouldNotReachHere();
@@ -2397,7 +2419,12 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
   // Save state and restore on bailout
   SavedState old_state(this);
 
-  Node* adr = make_unsafe_address(base, offset, type, kind == Relaxed);
+  bool is_stable = (kind == Stable) || (kind == Stable_Volatile);
+  if (is_stable) {
+    decorators |= ACCESS_STABLE;
+  }
+
+  Node* adr = make_unsafe_address(base, offset, type, (kind == Relaxed || is_stable));
   assert(!stopped(), "Inlining of unsafe access failed: address construction stopped unexpectedly");
 
   if (_gvn.type(base->uncast())->isa_ptr() == TypePtr::NULL_PTR) {
@@ -2488,9 +2515,9 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
     Node* p = nullptr;
     // Try to constant fold a load from a constant field
     ciField* field = alias_type->field();
-    if (heap_base_oop != top() && field != nullptr && field->is_constant() && !mismatched) {
+    if (heap_base_oop != top() && field != nullptr && (field->is_constant() || is_stable) && !mismatched) {
       // final or stable field
-      p = make_constant_from_field(field, heap_base_oop);
+      p = make_constant_from_field(field, heap_base_oop, is_stable);
     }
 
     if (p == nullptr) { // Could not constant fold the load

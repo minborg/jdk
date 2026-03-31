@@ -244,6 +244,9 @@ public class Symtab {
     public final Type objectInputType;
     public final Type objectOutputType;
 
+    // cached methods
+    public final Type stableAccessorType;
+
     /** The symbol representing the length field of an array.
      */
     public final VarSymbol lengthVar;
@@ -631,6 +634,9 @@ public class Symtab {
         externalizableType = enterClass("java.io.Externalizable");
         objectInputType  = enterClass("java.io.ObjectInput");
         objectOutputType = enterClass("java.io.ObjectOutput");
+
+        stableAccessorType = enterClass("java.lang.runtime.StableAccessor");
+
         synthesizeEmptyInterfaceIfMissing(autoCloseableType);
         synthesizeEmptyInterfaceIfMissing(cloneableType);
         synthesizeEmptyInterfaceIfMissing(serializableType);
