@@ -23,8 +23,7 @@
 
 /*
  * @test
- * @summary Check LazyConstant and lazy collection constant folding
- * @modules java.base/jdk.internal.lang
+ * @summary Check cached constant folding
  * @library /test/lib /
  * @enablePreview
  * @run main ${test.main.class}
@@ -32,13 +31,14 @@
 
 package compiler.stable;
 
-import compiler.lib.ir_framework.*;
+import compiler.lib.ir_framework.IR;
+import compiler.lib.ir_framework.IRNode;
+import compiler.lib.ir_framework.Test;
+import compiler.lib.ir_framework.TestFramework;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-public class LazyConstantsIrTest {
+public class CachedIrTest {
 
     public static void main(String[] args) {
         new TestFramework()
@@ -52,43 +52,33 @@ public class LazyConstantsIrTest {
                 .start();
     }
 
-    static final int THE_VALUE = 42;
 
-    static final LazyConstant<Integer> LAZY_CONSTANT = LazyConstant.of(() -> THE_VALUE);
-    static final List<Integer> LAZY_LIST = List.ofLazy(1, _ -> THE_VALUE);
-    static final Set<Integer> LAZY_SET = Set.ofLazy(Set.of(THE_VALUE), _ -> true);
-    static final Map<Integer, Integer> LAZY_MAP = Map.ofLazy(Set.of(0), _ -> THE_VALUE);
+    record Point(int x,  int y) {
+        public cached float distance() {
+            return (float) Math.sqrt(x * x + y * y);
+        }
+
+        public static cached Point unit() {
+            return new Point(1, 1);
+        }
+    }
+
+    private static final Point POINT = new Point(3, 4);
 
     @Test
     @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR })
-    static int foldLazyConstant() {
+    static float foldCached() {
         // Access should be folded.
         // No barriers expected for a folded access (as opposed to a non-folded).
-        return LAZY_CONSTANT.get();
+        return POINT.distance();
     }
 
     @Test
-    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR})
-    static int foldLazyList() {
+    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR })
+    static Point foldCachedStatic() {
         // Access should be folded.
         // No barriers expected for a folded access (as opposed to a non-folded).
-        return LAZY_LIST.get(0);
-    }
-
-    @Test
-    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR})
-    static boolean foldLazySet() {
-        // Access should be folded.
-        // No barriers expected for a folded access (as opposed to a non-folded).
-        return LAZY_SET.contains(THE_VALUE);
-    }
-
-    @Test
-    @IR(failOn = { IRNode.LOAD, IRNode.MEMBAR})
-    static int foldLazyMap() {
-        // Access should be folded.
-        // No barriers expected for a folded access (as opposed to a non-folded).
-        return LAZY_MAP.get(0);
+        return Point.unit();
     }
 
 }

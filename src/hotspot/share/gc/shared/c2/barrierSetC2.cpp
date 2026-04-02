@@ -204,7 +204,7 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
     GraphKit* kit = parse_access.kit();
     Node* control = control_dependent ? kit->control() : nullptr;
 
-    if (immutable | stable) {
+    if (immutable) {
       Compile* C = Compile::current();
       Node* mem = kit->immutable_memory();
       load = LoadNode::make(kit->gvn(), control, mem, adr,
@@ -214,7 +214,7 @@ Node* BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) con
     } else {
       load = kit->make_load(control, adr, val_type, access.type(), mo,
                             dep, requires_atomic_access, unaligned, mismatched, unsafe,
-                            access.barrier_data());
+                            access.barrier_data(), stable);
     }
   } else {
     assert(access.is_opt_access(), "either parse or opt access");

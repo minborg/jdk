@@ -29,6 +29,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
+import java.util.Objects;
 
 import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.JavaLangInvokeAccess.FieldVarHandleInfo;
@@ -40,7 +41,9 @@ import jdk.internal.vm.annotation.TrustFinalFields;
 
 import static java.util.Objects.requireNonNull;
 
-/** Stable field accessor. */
+/** Stable field accessor.
+ * @since 27
+ */
 @TrustFinalFields
 public abstract class StableAccessor {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
@@ -51,8 +54,11 @@ public abstract class StableAccessor {
     final MethodHandle initHandle;
 
     private StableAccessor(long offset, MethodHandle initHandle) {
+        if (offset < 0) {
+            throw new IllegalArgumentException("offset < 0: " + offset);
+        }
         this.offset = offset;
-        this.initHandle = initHandle;
+        this.initHandle = Objects.requireNonNull(initHandle, "no init handle");
     }
 
     /**
@@ -105,15 +111,10 @@ public abstract class StableAccessor {
 
     @DontInline
     private Object slowGetOrInit(Object actualBase, Object receiver) throws Throwable {
-        if (initHandle == null) {
-            throw new IllegalStateException("no init handle");
-        }
         Object value = initHandle.invokeExact(receiver);
         Object encoded = encode(value);
-        if (UNSAFE.compareAndSetReference(actualBase, offset, null, encoded)) {
-            return value;
-        }
-        return decode(UNSAFE.getReferenceStableVolatile(actualBase, offset));
+        Object witness = UNSAFE.compareAndExchangeReference(actualBase, offset, null, encoded);
+        return witness == null ? value : decode(witness);
     }
 
     @ForceInline

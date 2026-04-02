@@ -222,7 +222,8 @@ compiler.warn.restricted.method
 compiler.note.implicit.annotation.processing
 compiler.warn.proc.use.proc.or.implicit
 
-# const methods
-compiler.err.const.method.void
-compiler.err.const.method.generic
-compiler.err.const.method.params
+# Cached methods
+compiler.err.cached.method.void
+compiler.err.cached.method.params
+compiler.err.cached.method.not.intf
+compiler.misc.feature.cached.methods

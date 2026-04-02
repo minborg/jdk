@@ -1,3 +1,6 @@
+
+// key: compiler.misc.feature.cached.methods
+
 /*
  * @test /nodynamiccopyright/
  * @enablePreview
