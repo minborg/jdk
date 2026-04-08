@@ -2424,7 +2424,7 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
     decorators |= ACCESS_STABLE;
   }
 
-  Node* adr = make_unsafe_address(base, offset, type, (kind == Relaxed || is_stable));
+  Node* adr = make_unsafe_address(base, offset, type, (kind == Relaxed || kind == Stable));
   assert(!stopped(), "Inlining of unsafe access failed: address construction stopped unexpectedly");
 
   if (_gvn.type(base->uncast())->isa_ptr() == TypePtr::NULL_PTR) {
