@@ -581,7 +581,7 @@ final class LazyCollections {
 
         private void releaseMutex(long offset) {
             // Replace the old mutex with a tomb stone since now the old mutex can be collected.
-            UNSAFE.putReference(mutexes, offset, TOMB_STONE);
+            UNSAFE.putReferenceVolatile(mutexes, offset, TOMB_STONE);
             if (counter != null && counter.decrementAndGet() == 0) {
                 mutexes = null;
                 counter = null;
@@ -746,8 +746,16 @@ final class LazyCollections {
     static NoSuchElementException noSuchElementException(Class<? extends Throwable> throwableClass,
                                                          Object input,
                                                          Throwable cause) {
+        String isolatedInput;
+        // Protect against user-controlled `input.toString` methods that might throw or recurse.
+        try {
+            isolatedInput = input.toString();
+        } catch (Throwable t) {
+            isolatedInput = "{instance of type " + input.getClass().toString() + "}";
+        }
+
         var message = "Unable to access the lazy collection because " + throwableClass.getName() +
-                " was thrown at initial computation for input '" + input + "'";
+                " was thrown at initial computation for input '" + isolatedInput + "'";
         return (cause == null)
                 ? new NoSuchElementException(message)
                 : new NoSuchElementException(message, cause);

@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.*;
 final class LazyConstantSafePublicationTest {
 
     private static final int SIZE = 100_000;
-    private static final int THREADS = Runtime.getRuntime().availableProcessors();
+    private static final int THREADS = Math.max(2, Runtime.getRuntime().availableProcessors());
 
     static final class Holder {
         // These are non-final fields but should be seen
@@ -83,7 +83,7 @@ final class LazyConstantSafePublicationTest {
                 int c = h.c;
                 int d = h.d;
                 int e = h.e;
-                observations[i] = a + (b << 1) + (c << 2) + (c << 3) + (d << 4) + (e << 5);
+                observations[i] = a + (b << 1) + (c << 2) + (d << 3) + (e << 4);
             }
         }
     }
@@ -133,7 +133,7 @@ final class LazyConstantSafePublicationTest {
         join(constants, consumers, producerThread);
         join(constants, consumers, consumersThreads.toArray(Thread[]::new));
 
-        int[] histogram = new int[64];
+        int[] histogram = new int[32];
         for (Consumer consumer : consumers) {
             for (int i = 0; i < SIZE; i++) {
                 histogram[consumer.observations[i]]++;
@@ -141,12 +141,12 @@ final class LazyConstantSafePublicationTest {
         }
 
         // unless a = 1, ..., e = 1, zero observations should be seen
-        for (int i = 0; i < 63; i++) {
-            assertEquals(0, histogram[i]);
+        for (int i = 0; i < 31; i++) {
+            assertEquals(0, histogram[i], Integer.toString(i));
         }
-        // a = 1, ..., e = 1 : index 2^5-1 = 63
+        // a = 1, ..., e = 1 : index 2^4-1 = 31
         // All observations should end up in this bucket
-        assertEquals(THREADS * SIZE, histogram[63]);
+        assertEquals(THREADS * SIZE, histogram[31]);
     }
 
     static void join(final LazyConstantImpl<Holder>[] constants, List<Consumer> consumers, Thread... threads) {
