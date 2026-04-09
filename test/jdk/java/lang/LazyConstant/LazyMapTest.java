@@ -608,6 +608,7 @@ final class LazyMapTest {
 
     @Test
     void usesOptimizedVersion() {
+        // This test is using name magic but we are in control of the naming.
         Map<Value, Integer> enumMap = Map.ofLazy(EnumSet.of(KEY), Value::asInt);
         assertTrue(enumMap.getClass().getName().contains("Enum"), enumMap.getClass().getName());
         Map<Value, Integer> emptyMap = Map.ofLazy(EnumSet.noneOf(Value.class), Value::asInt);

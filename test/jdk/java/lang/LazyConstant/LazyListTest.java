@@ -140,14 +140,14 @@ final class LazyListTest {
     void toArrayWithArrayLarger() {
         Integer[] actual = new Integer[SIZE];
         for (int i = 0; i < SIZE; i++) {
-            actual[INDEX] = 100 + i;
+            actual[i] = 100 + i;
         }
         var lazy = List.ofLazy(INDEX, IDENTITY);
         assertSame(actual, lazy.toArray(actual));
-        Integer[] expected = IntStream.range(0, SIZE)
-                .mapToObj(i -> i < INDEX ? i : null)
-                .toArray(Integer[]::new);
-        assertArrayEquals(expected, actual);
+        for (int i = 0; i < INDEX; i++) {
+            assertEquals(i, actual[i]);
+        }
+        assertNull(actual[INDEX]);
     }
 
     @Test
