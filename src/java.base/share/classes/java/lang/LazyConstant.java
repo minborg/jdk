@@ -43,7 +43,7 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 /**
- * A lazy constant is a holder of content that can be set at most once.
+ * A lazy constant is a holder of content that can be initialized at most once.
  * <p>
  * A lazy constant is created using the factory method
  * {@linkplain LazyConstant#of(Supplier) LazyConstant.of({@code <computing function>})}.

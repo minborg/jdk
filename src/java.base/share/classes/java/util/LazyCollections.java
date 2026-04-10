@@ -32,7 +32,6 @@ import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.reflect.Array;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -55,6 +54,7 @@ final class LazyCollections {
     // Unsafe allows LazyCollection classes to be used early in the boot sequence
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
+    @jdk.internal.vm.annotation.TrustFinalFields
     @jdk.internal.ValueBased
     static final class LazyList<E>
             extends ImmutableCollections.AbstractImmutableList<E> {
@@ -63,13 +63,9 @@ final class LazyCollections {
         private final E[] elements;
         // Keeping track of `size` separately reduces bytecode size compared to
         // using `elements.length`.
-        @Stable
         private final int size;
-        @Stable
         final FunctionHolder<IntFunction<? extends E>> functionHolder;
-        @Stable
         private final Mutexes mutexes;
-        @Stable
         private final Throwables throwables;
 
         private LazyList(int size, IntFunction<? extends E> computingFunction) {
@@ -147,16 +143,14 @@ final class LazyCollections {
 
     }
 
+    @jdk.internal.vm.annotation.TrustFinalFields
     static final class LazyEnumMap<K extends Enum<K>, V>
             extends AbstractLazyMap<K, V> {
 
-        @Stable
         private final Class<K> enumType;
-        @Stable
         // We are using a wrapper class here to be able to use a min value of zero that
         // is also stable.
         private final Integer min;
-        @Stable
         private final IntPredicate member;
 
         public LazyEnumMap(Set<K> set,
@@ -203,12 +197,12 @@ final class LazyCollections {
 
     }
 
+    @jdk.internal.vm.annotation.TrustFinalFields
     static final class LazyMap<K, V>
             extends AbstractLazyMap<K, V> {
 
         // Use an unmodifiable map with known entries that are @Stable. Lookups through this map can be folded because
         // it is created using Map.ofEntrie. This allows us to avoid creating a separate hashing function.
-        @Stable
         private final Map<K, Integer> indexMapper;
 
         public LazyMap(Set<K> keys, Function<? super K, ? extends V> computingFunction) {
@@ -242,24 +236,19 @@ final class LazyCollections {
         }
     }
 
+    @jdk.internal.vm.annotation.TrustFinalFields
     static sealed abstract class AbstractLazyMap<K, V>
             extends ImmutableCollections.AbstractImmutableMap<K, V> {
 
         // This field shadows AbstractMap.keySet which is not @Stable.
-        @Stable
         Set<K> keySet;
         // This field shadows AbstractMap.values which is of another type
         @Stable
         final V[] values;
-        @Stable
         Mutexes mutexes;
-        @Stable
         Throwables throwables;
-        @Stable
         private final int size;
-        @Stable
         final FunctionHolder<Function<? super K, ? extends V>> functionHolder;
-        @Stable
         private final Set<Entry<K, V>> entrySet;
 
         private AbstractLazyMap(Set<K> keySet,
@@ -303,12 +292,12 @@ final class LazyCollections {
             return orElseComputeSlowPath(values, index, mutexes, throwables, key, functionHolder);
         }
 
+        @jdk.internal.vm.annotation.TrustFinalFields
         @jdk.internal.ValueBased
         static final class LazyMapEntrySet<K, V> extends ImmutableCollections.AbstractImmutableSet<Entry<K, V>> {
 
             // Use a separate field for the outer class in order to facilitate
-            // a @Stable annotation.
-            @Stable
+            // a trusted field.
             private final AbstractLazyMap<K, V> map;
 
             private LazyMapEntrySet(AbstractLazyMap<K, V> map) {
@@ -325,14 +314,13 @@ final class LazyCollections {
                 return new LazyMapEntrySet<>(outer);
             }
 
+            @jdk.internal.vm.annotation.TrustFinalFields
             @jdk.internal.ValueBased
             static final class LazyMapIterator<K, V> implements Iterator<Entry<K, V>> {
 
                 // Use a separate field for the outer class in order to facilitate
-                // a @Stable annotation.
-                @Stable
+                // a trusted field.
                 private final AbstractLazyMap<K, V> map;
-                @Stable
                 private final Iterator<K> keyIterator;
 
                 private LazyMapIterator(AbstractLazyMap<K, V> map) {
@@ -341,7 +329,7 @@ final class LazyCollections {
                     super();
                 }
 
-                @Override  public boolean hasNext() { return keyIterator.hasNext(); }
+                @Override public boolean hasNext() { return keyIterator.hasNext(); }
 
                 @Override
                 public Entry<K, V> next() {
@@ -396,12 +384,12 @@ final class LazyCollections {
             return LazyMapValues.of(this);
         }
 
+        @jdk.internal.vm.annotation.TrustFinalFields
         @jdk.internal.ValueBased
         static final class LazyMapValues<K, V> extends ImmutableCollections.AbstractImmutableCollection<V> {
 
             // Use a separate field for the outer class in order to facilitate
-            // a @Stable annotation.
-            @Stable
+            // a trusted field.
             private final AbstractLazyMap<K, V> map;
 
             private LazyMapValues(AbstractLazyMap<K, V> map) {
@@ -423,19 +411,16 @@ final class LazyCollections {
 
     }
 
+    @jdk.internal.vm.annotation.TrustFinalFields
     static final class LazySet<E>
             extends ImmutableCollections.AbstractImmutableSet<E>
             implements Set<E> {
 
-        @Stable
         private final Map<E, Boolean> map;
 
         // -1 is used as a sentinel value for zero so we can get
         // stable access for all `size` values.
-        @Stable
         private int size;
-
-        @Stable
         private int hash;
 
         public LazySet(Set<? extends E> elementCandidates,
@@ -473,9 +458,9 @@ final class LazyCollections {
             return new LazySetIterator<>(map.entrySet().iterator());
         }
 
+        @jdk.internal.vm.annotation.TrustFinalFields
         static final class LazySetIterator<E> implements Iterator<E> {
 
-            @Stable
             private final Iterator<Map.Entry<E, Boolean>> iterator;
 
             E current;
@@ -590,58 +575,30 @@ final class LazyCollections {
 
     }
 
-    /** Holds the throwable classes produced by the computing function.
+    /** Holds the throwable class names produced by the computing function.
      * <p>
-     * In order to save space, an `int` token is used to point to the actual
-     * throwable class.
+     * Class names are used instead of Class objects to avoid pinning class loaders after
+     * a failed computation.
      * <p>
-     * This class is not thread safe as it will always be accessed under the same
-     * monitor for a given index.
+     * This class is not thread safe across indices. However, it will always be accessed
+     * under the same monitor for a given index.
      */
     static final class Throwables {
 
-        // Holds all the throwable-to-token mappings
-        static final Map<Class<? extends Throwable>, Integer> TOKENS = new ConcurrentHashMap<>();
-        // Holds all the token-to-throwable mappings
-        static final Map<Integer, Class<? extends Throwable>> THROWABLES = new ConcurrentHashMap<>();
-        // Start from 1 (and not zero) to allow constant folding in the `throwable` `int` array.
-        static int nextToken = 1;
-
         @Stable
-        int[] throwables;
+        final String[] throwables;
 
         Throwables(int size) {
-            this.throwables = new int[size];
+            this.throwables = new String[size];
         }
 
-        @SuppressWarnings("unchecked")
-        Optional<Class<Throwable>> get(int index) {
-            final int token = throwables[index];
-            return (token == 0)
-                    ? Optional.empty()
-                    : Optional.of((Class<Throwable>) THROWABLES.get(token));
+        Optional<String> get(int index) {
+            return Optional.ofNullable(throwables[index]);
         }
 
-        void set(int index, Class<? extends Throwable> throwable) {
-            final int token = TOKENS.computeIfAbsent(throwable, Throwables::newToken);
-            throwables[index] = token;
+        void set(int index, Throwable throwable) {
+            throwables[index] = throwable.getClass().getName().intern();
         }
-
-        static synchronized Integer newToken(Class<? extends Throwable> throwable) {
-            if (TOKENS.containsKey(throwable)) {
-                // Someone beat us in a race.
-                return null;
-            }
-            // We are reading/modifying `nextToken` under synchronization
-            final int token = nextToken++;
-            if (token < 0) {
-                nextToken--;
-                throw new InternalError("More than 2^31-1 throwable classes detected");
-            }
-            THROWABLES.put(token, throwable);
-            return token;
-        }
-
     }
 
     @ForceInline
@@ -720,9 +677,9 @@ final class LazyCollections {
                     set(array, index, mutex, newValue);
                     return newValue;
                 } catch (Throwable x) {
-                    throwables.set(index, x.getClass());
-                    // Wrap the initial throwable
-                    throw noSuchElementException(x.getClass(), input, x);
+                    throwables.set(index, x);
+                    // Wrap the initial throwable without pinning its class loader.
+                    throw noSuchElementException(x.getClass().getName(), input, x);
                 } finally {
                     // Reduce the counter and if it reaches zero, clear the reference
                     // to the underlying holder.
@@ -743,7 +700,7 @@ final class LazyCollections {
         }
     }
 
-    static NoSuchElementException noSuchElementException(Class<? extends Throwable> throwableClass,
+    static NoSuchElementException noSuchElementException(String throwableName,
                                                          Object input,
                                                          Throwable cause) {
         String isolatedInput;
@@ -754,7 +711,7 @@ final class LazyCollections {
             isolatedInput = "{instance of type " + input.getClass().toString() + "}";
         }
 
-        var message = "Unable to access the lazy collection because " + throwableClass.getName() +
+        var message = "Unable to access the lazy collection because " + throwableName +
                 " was thrown at initial computation for input '" + isolatedInput + "'";
         return (cause == null)
                 ? new NoSuchElementException(message)
