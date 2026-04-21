@@ -237,7 +237,7 @@ final class LazyCollections {
     }
 
     @jdk.internal.vm.annotation.TrustFinalFields
-    static sealed abstract class AbstractLazyMap<K, V>
+    static abstract sealed class AbstractLazyMap<K, V>
             extends ImmutableCollections.AbstractImmutableMap<K, V> {
 
         // This field shadows AbstractMap.keySet which is not @Stable.
