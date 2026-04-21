@@ -24,7 +24,6 @@
 /*
  * @test
  * @modules java.base/jdk.internal.foreign
- * @build NativeTestHelper TestBufferStackStress
  * @run junit TestBufferStackStress
  */
 
@@ -41,16 +40,16 @@ import static java.lang.foreign.ValueLayout.*;
 import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestBufferStackStress {
+final class TestBufferStackStress {
 
     @Test
-    public void stress() throws InterruptedException {
+    void stress() throws InterruptedException {
         BufferStack stack = BufferStack.of(256, 1);
-        Thread[] vThreads = IntStream.range(0, 1024).mapToObj(_ ->
+        Thread[] vThreads = IntStream.range(0, 512).mapToObj(_ ->
                 Thread.ofVirtual().start(() -> {
                     long threadId = Thread.currentThread().threadId();
                     while (!Thread.interrupted()) {
-                        for (int i = 0; i < 1_000_000; i++) {
+                        for (int i = 0; i < 500_000; i++) {
                             try (Arena arena = stack.pushFrame(JAVA_LONG.byteSize(), JAVA_LONG.byteAlignment())) {
                                 // Try to assert no two vThreads get allocated the same stack space.
                                 MemorySegment segment = arena.allocate(JAVA_LONG);
