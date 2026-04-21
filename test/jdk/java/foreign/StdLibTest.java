@@ -93,7 +93,7 @@ final class StdLibTest extends NativeTestHelper {
         assertEquals(localTime.getHour(), tm.hour());
         //day pf year in Java has 1-offset
         assertEquals(localTime.getDayOfYear() - 1, tm.yday());
-        assertEquals( localTime.getDayOfMonth(), tm.mday());
+        assertEquals(localTime.getDayOfMonth(), tm.mday());
         //days of week starts from Sunday in C, but on Monday in Java, also account for 1-offset
         assertEquals(localTime.getDayOfWeek().getValue() - 1,  (tm.wday() + 6) % 7);
         //month in Java has 1-offset
