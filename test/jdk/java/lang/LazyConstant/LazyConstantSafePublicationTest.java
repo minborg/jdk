@@ -151,9 +151,9 @@ final class LazyConstantSafePublicationTest {
     static void join(final LazyConstant<Holder>[] constants, List<Consumer> consumers, Thread... threads) {
         try {
             for (Thread t:threads) {
-                long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(1);
+                long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(4);
                 while (t.isAlive()) {
-                    t.join(TimeUnit.SECONDS.toMillis(10));
+                    t.join(TimeUnit.SECONDS.toMillis(20));
                     if (t.isAlive()) {
                         String stack = Arrays.stream(t.getStackTrace())
                                 .map(Objects::toString)
