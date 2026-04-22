@@ -25,10 +25,12 @@
  * @summary Basic tests for making sure ComputedConstant publishes values safely
  * @modules java.base/jdk.internal.misc
  * @modules java.base/jdk.internal.lang
+ * @library /test/lib
  * @enablePreview
  * @run junit LazyConstantSafePublicationTest
  */
 
+import jdk.test.lib.Utils;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -151,7 +153,7 @@ final class LazyConstantSafePublicationTest {
     static void join(final LazyConstant<Holder>[] constants, List<Consumer> consumers, Thread... threads) {
         try {
             for (Thread t:threads) {
-                long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(4);
+                long deadline = System.nanoTime() + Utils.adjustTimeout(TimeUnit.MINUTES.toNanos(4));
                 while (t.isAlive()) {
                     t.join(TimeUnit.SECONDS.toMillis(20));
                     if (t.isAlive()) {
