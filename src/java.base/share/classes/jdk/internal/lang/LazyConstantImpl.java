@@ -132,18 +132,19 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
             return "(this LazyConstant)";
         } else if (t != null) {
             return t.toString();
+        } else {
+            // Volatile read
+            final Object cf = computingFunctionOrExceptionType;
+            // There could be a race here
+            if (cf != null) {
+                return (cf instanceof Supplier<?> supplier)
+                        ? "computing function=" + supplier
+                        : "failed with=" + ((Class<?>) cf).getName();
+            }
+            // As we know `computingFunction` is `null` or via a volatile read, we
+            // can now be sure that this lazy constant is initialized
+            return getAcquire().toString();
         }
-        // Volatile read
-        final Object cf = computingFunctionOrExceptionType;
-        // There could be a race here
-        if (cf != null) {
-            return (cf instanceof Supplier<?> supplier)
-                    ? "computing function=" + supplier
-                    : "failed with=" + ((Class<?>) cf).getName();
-        }
-        // As we know `computingFunction` is `null` or via a volatile read, we
-        // can now be sure that this lazy constant is initialized
-        return getAcquire().toString();
     }
 
 
