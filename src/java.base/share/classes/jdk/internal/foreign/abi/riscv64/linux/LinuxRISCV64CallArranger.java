@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, Institute of Software, Chinese Academy of Sciences.
  * All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -189,7 +189,12 @@ public class LinuxRISCV64CallArranger {
         }
 
         VMStorage[] getStorages(MemoryLayout layout, boolean isVariadicArg) {
-            int regCnt = (int) SharedUtils.alignUp(layout.byteSize(), 8) / 8;
+            int regCnt;
+            try {
+                regCnt = Math.toIntExact(SharedUtils.alignUp(layout.byteSize(), 8) / 8);
+            } catch (ArithmeticException ae) {
+                throw new IllegalArgumentException("Layout too large: " + layout, ae);
+            }
             if (isVariadicArg && layout.byteAlignment() == 16 && layout.byteSize() <= 16) {
                 alignStorage();
                 // Two registers or stack slots will be allocated, even layout.byteSize <= 8B.

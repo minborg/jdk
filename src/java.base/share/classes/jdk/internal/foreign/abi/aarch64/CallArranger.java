@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, 2022, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -23,6 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package jdk.internal.foreign.abi.aarch64;
 
 import jdk.internal.foreign.Utils;
@@ -262,8 +263,13 @@ public abstract class CallArranger {
         Windows, VF     | CW in regs       | CW split between regs and stack | CW on the stack
          */
         StructStorage[] structStorages(GroupLayout layout, boolean forHFA) {
-            int numChunks = (int)Utils.alignUp(layout.byteSize(), MAX_COPY_SIZE) / MAX_COPY_SIZE;
-
+            // Allocate enough gp slots (regs and stack) such that the struct fits in them.
+            final int numChunks;
+            try {
+                numChunks = Math.toIntExact(Utils.alignUp(layout.byteSize(), MAX_COPY_SIZE) / MAX_COPY_SIZE);
+            } catch (ArithmeticException ae) {
+                throw new IllegalArgumentException("Layout too large: " + layout, ae);
+            }
             int regType = StorageType.INTEGER;
             List<MemoryLayout> scalarLayouts = null;
             int requiredStorages = numChunks;
