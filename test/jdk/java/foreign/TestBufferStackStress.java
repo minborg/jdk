@@ -24,10 +24,12 @@
 /*
  * @test
  * @modules java.base/jdk.internal.foreign
+ * @library /test/lib
  * @run junit TestBufferStackStress
  */
 
 import jdk.internal.foreign.BufferStack;
+import jdk.test.lib.Platform;
 import org.junit.jupiter.api.Test;
 
 import java.lang.foreign.Arena;
@@ -45,11 +47,9 @@ final class TestBufferStackStress {
 
     @Test
     void stress() throws InterruptedException {
-        boolean isMac = System.getProperty("os.name").toLowerCase().startsWith("mac");
-        if (isMac) {
-            float osVersion = Float.parseFloat(System.getProperty("os.version"));
+        if (Platform.isOSX()) {
             // 8350455 was only fixed in macOS versions 26 or higher
-            assumeFalse(osVersion < 26, "Unsupported OS version: " + osVersion);
+            assumeFalse(Platform.getOsVersionMajor() < 26, "Unsupported OS version: " + Platform.getOsVersionMajor());
         }
 
         BufferStack stack = BufferStack.of(256, 1);
