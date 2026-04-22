@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,11 +39,19 @@ import java.util.stream.IntStream;
 import static java.lang.foreign.ValueLayout.*;
 import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.*;
 
 final class TestBufferStackStress {
 
     @Test
     void stress() throws InterruptedException {
+        boolean isMac = System.getProperty("os.name").toLowerCase().startsWith("mac");
+        if (isMac) {
+            float osVersion = Float.parseFloat(System.getProperty("os.version"));
+            // 8350455 was only fixed in macOS versions 26 or higher
+            assumeFalse(osVersion < 26, "Unsupported OS version: " + osVersion);
+        }
+
         BufferStack stack = BufferStack.of(256, 1);
         Thread[] vThreads = IntStream.range(0, 512).mapToObj(_ ->
                 Thread.ofVirtual().start(() -> {
