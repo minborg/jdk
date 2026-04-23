@@ -323,6 +323,15 @@ final class LazyMapTest {
 
     @ParameterizedTest
     @MethodSource("nonEmptySets")
+    void keySet(Set<Value> set) {
+        var lazy = newLazyMap(set);
+        var keySet = lazy.keySet();
+        assertEquals(set, keySet);
+        assertThrows(UnsupportedOperationException.class, () -> lazy.remove(KEY));
+    }
+
+    @ParameterizedTest
+    @MethodSource("nonEmptySets")
     void entrySetValue(Set<Value> set) {
         var entry = newLazyMap(set).entrySet().iterator().next();
         assertThrows(UnsupportedOperationException.class, () -> entry.setValue(null));
@@ -362,6 +371,7 @@ final class LazyMapTest {
 
         assertEquals(set.size(), lazyValues.size());
         assertFalse(lazyValues.isEmpty());
+        assertTrue(lazyValues.contains(VALUE));
 
         // Mod ops
         assertThrows(UnsupportedOperationException.class, () -> lazyValues.remove(val));
