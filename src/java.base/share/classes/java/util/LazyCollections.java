@@ -25,6 +25,7 @@
 
 package java.util;
 
+import jdk.internal.lang.LazyConstantImpl;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.ImmutableBitSetPredicate;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
@@ -703,28 +704,21 @@ final class LazyCollections {
     static NoSuchElementException noSuchElementException(String throwableName,
                                                          Object input,
                                                          Throwable cause) {
-        String isolatedInput;
-        // Protect against user-controlled `input.toString` methods that might throw or recurse.
-        try {
-            isolatedInput = input.toString();
-        } catch (Throwable t) {
-            isolatedInput = "{instance of type " + input.getClass().toString() + "}";
-        }
-
+        final String isolatedToString = LazyConstantImpl.isolateToString(input);
         var message = "Unable to access the lazy collection because " + throwableName +
-                " was thrown at initial computation for input '" + isolatedInput + "'";
+                " was thrown at initial computation for input '" + isolatedToString + "'";
         return (cause == null)
                 ? new NoSuchElementException(message)
                 : new NoSuchElementException(message, cause);
     }
 
     static InternalError cannotReachHere(FunctionHolder<?> functionHolder, Object input) {
-        return new InternalError("cannot reach here: " + functionHolder.function() + " for " + input.toString());
+        return new InternalError("cannot reach here: " + functionHolder.function() + " for " + LazyConstantImpl.isolateToString(input));
     }
 
     static void preventReentry(Object mutex, Object input) {
         if (Thread.holdsLock(mutex)) {
-            throw new IllegalStateException("Recursive initialization of a lazy collection is illegal: " + input);
+            throw new IllegalStateException("Recursive initialization of a lazy collection is illegal: " + LazyConstantImpl.isolateToString(input));
         }
     }
 

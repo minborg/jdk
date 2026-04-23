@@ -140,6 +140,23 @@ final class LazyMapTest {
 
     @ParameterizedTest
     @MethodSource("nonEmptySets")
+    void getOrDefault(Set<Value> set) {
+        LazyConstantTestUtil.CountingFunction<Value, Integer> cf = new LazyConstantTestUtil.CountingFunction<>(MAPPER);
+        var lazy = Map.ofLazy(set, cf);
+        int cnt = 1;
+        for (Value v : set) {
+            assertEquals(MAPPER.apply(v), lazy.getOrDefault(v, Integer.MIN_VALUE));
+            assertEquals(cnt, cf.cnt());
+            assertEquals(MAPPER.apply(v), lazy.getOrDefault(v, Integer.MIN_VALUE));
+            assertEquals(cnt++, cf.cnt());
+        }
+        assertEquals(Integer.MIN_VALUE, lazy.getOrDefault(Value.ILLEGAL_BETWEEN, Integer.MIN_VALUE));
+        assertEquals(Integer.MIN_VALUE, lazy.getOrDefault("a", Integer.MIN_VALUE));
+        assertThrows(NullPointerException.class, () -> lazy.getOrDefault(null, Integer.MIN_VALUE));
+    }
+
+    @ParameterizedTest
+    @MethodSource("nonEmptySets")
     void exception(Set<Value> set) {
         LazyConstantTestUtil.CountingFunction<Value, Integer> cif = new LazyConstantTestUtil.CountingFunction<>(_ -> {
             throw new UnsupportedOperationException("Initial exception");
@@ -175,6 +192,8 @@ final class LazyMapTest {
             assertTrue(lazy.containsKey(v));
         }
         assertFalse(lazy.containsKey(Value.ILLEGAL_BETWEEN));
+        assertThrows(NullPointerException.class, () -> lazy.containsKey(null));
+        assertFalse(lazy.containsKey("a"));
     }
 
     @ParameterizedTest
@@ -266,6 +285,31 @@ final class LazyMapTest {
         assertEquals(IllegalStateException.class, x.getCause().getClass());
     }
 
+    @Test
+    void recursiveCallWithKeysToStringThrowing() {
+        AtomicInteger cnt = new AtomicInteger();
+
+        final class NaughtyKey {
+
+            @Override
+            public String toString() {
+                cnt.incrementAndGet();
+                throw new UnsupportedOperationException("I should never be seen");
+            }
+        }
+
+        final NaughtyKey key = new NaughtyKey();
+        final Set<NaughtyKey> set = Set.of(key);
+
+        final AtomicReference<Map<NaughtyKey, ?>> ref = new AtomicReference<>();
+        @SuppressWarnings("unchecked")
+        Map<NaughtyKey, Map<Value, Object>> lazy = Map.ofLazy(set, k -> (Map<Value, Object>) ref.get().get(k));
+        ref.set(lazy);
+        var x = assertThrows(NoSuchElementException.class, () -> lazy.get(key));
+        assertTrue(cnt.get() > 0);
+        assertTrue(x.getCause().getMessage().contains(NaughtyKey.class.getName()));
+    }
+
     @ParameterizedTest
     @MethodSource("nonEmptySets")
     void entrySet(Set<Value> set) {
@@ -274,6 +318,15 @@ final class LazyMapTest {
         assertTrue(regular.equals(lazy));
         assertTrue(lazy.equals(regular));
         assertTrue(regular.equals(lazy));
+        assertEquals(lazy.hashCode(), regular.hashCode());
+    }
+
+    @ParameterizedTest
+    @MethodSource("nonEmptySets")
+    void entrySetValue(Set<Value> set) {
+        var entry = newLazyMap(set).entrySet().iterator().next();
+        assertThrows(UnsupportedOperationException.class, () -> entry.setValue(null));
+        assertThrows(UnsupportedOperationException.class, () -> entry.setValue(1));
     }
 
     @ParameterizedTest
@@ -290,6 +343,15 @@ final class LazyMapTest {
     }
 
     @ParameterizedTest
+    @MethodSource("emptySets")
+    void emptyValues(Set<Value> set) {
+        var lazy = newLazyMap(set);
+        var lazyValues = lazy.values();
+        assertEquals(0, lazyValues.size());
+        assertTrue(lazyValues.isEmpty());
+    }
+
+    @ParameterizedTest
     @MethodSource("nonEmptySets")
     void values(Set<Value> set) {
         var lazy = newLazyMap(set);
@@ -297,6 +359,9 @@ final class LazyMapTest {
         // Look at one of the elements
         var val = lazyValues.stream().iterator().next();
         assertEquals(lazy.size() - 1, functionCounter(lazy));
+
+        assertEquals(set.size(), lazyValues.size());
+        assertFalse(lazyValues.isEmpty());
 
         // Mod ops
         assertThrows(UnsupportedOperationException.class, () -> lazyValues.remove(val));

@@ -186,6 +186,33 @@ final class LazyConstantTest {
     }
 
     @Test
+    void recursiveCallWithComputingFunctionsToStringThrowing() {
+        AtomicReference<LazyConstant<Integer>> ref = new AtomicReference<>();
+        AtomicInteger cnt = new AtomicInteger();
+
+        final class NaughtySupplier implements Supplier<Integer> {
+            @Override
+            public Integer get() {
+                return ref.get().get();
+            }
+
+            @Override
+            public String toString() {
+                cnt.incrementAndGet();
+                throw new UnsupportedOperationException("I should never be seen");
+            }
+        }
+
+        LazyConstant<Integer> constant = LazyConstant.of(new NaughtySupplier());
+
+        ref.set(constant);
+        var x = assertThrows(NoSuchElementException.class, constant::get);
+        assertEquals(IllegalStateException.class, x.getCause().getClass());
+        assertEquals(1, cnt.get());
+        assertTrue(x.getMessage().contains(NaughtySupplier.class.getName()));
+    }
+
+    @Test
     void atMostOnceComputationUnderContention() throws Exception {
         // Mitigate thread starvation via a dedicated thread pool != FJP
         try (var testExecutor = Executors.newFixedThreadPool(3)) {

@@ -174,8 +174,19 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
 
     private void preventReentry() {
         if (Thread.holdsLock(this)) {
-            throw new IllegalStateException("Recursive invocation of a LazyConstant's computing function: " + computingFunctionOrExceptionType);
+            throw new IllegalStateException("Recursive invocation of a LazyConstant's computing function: " + isolateToString(computingFunctionOrExceptionType));
         }
+    }
+
+    public static String isolateToString(Object input) {
+        String isolatedInput;
+        // Protect against user-controlled `input.toString` methods that might throw or recurse.
+        try {
+            isolatedInput = input.toString();
+        } catch (Throwable t) {
+            isolatedInput = "{instance of type " + input.getClass().toString() + "}";
+        }
+        return isolatedInput;
     }
 
     // Factory
