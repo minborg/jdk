@@ -179,14 +179,12 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
     }
 
     public static String isolateToString(Object input) {
-        String isolatedInput;
         // Protect against user-controlled `input.toString` methods that might throw or recurse.
         try {
-            isolatedInput = input.toString();
+            return input.toString();
         } catch (Throwable t) {
-            isolatedInput = "{instance of type " + input.getClass().toString() + "}";
+            return Objects.toIdentityString(input);
         }
-        return isolatedInput;
     }
 
     // Factory
