@@ -48,11 +48,9 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Spliterator;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -725,237 +723,235 @@ public abstract sealed class AbstractMemorySegmentImpl
     @ForceInline
     @Override
     public byte get(ValueLayout.OfByte layout, long offset) {
-        return (byte) layout.varHandle().get((MemorySegment)this, offset);
+        return SegmentAccessors.getByte(this, layout, offset, 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void set(ValueLayout.OfByte layout, long offset, byte value) {
-        layout.varHandle().set((MemorySegment)this, offset, value);
+        SegmentAccessors.putByte(this, layout, offset, 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public boolean get(ValueLayout.OfBoolean layout, long offset) {
-        return (boolean) layout.varHandle().get((MemorySegment)this, offset);
+        return SegmentAccessors.getBoolean(this, layout, offset, 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void set(ValueLayout.OfBoolean layout, long offset, boolean value) {
-        layout.varHandle().set((MemorySegment)this, offset, value);
+        SegmentAccessors.putBoolean(this, layout, offset, 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public char get(ValueLayout.OfChar layout, long offset) {
-        return (char) layout.varHandle().get((MemorySegment)this, offset);
+        return SegmentAccessors.getChar(this, layout, offset, 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void set(ValueLayout.OfChar layout, long offset, char value) {
-        layout.varHandle().set((MemorySegment)this, offset, value);
+        SegmentAccessors.putChar(this, layout, offset, 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public short get(ValueLayout.OfShort layout, long offset) {
-        return (short) layout.varHandle().get((MemorySegment)this, offset);
+        return SegmentAccessors.getShort(this, layout, offset, 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void set(ValueLayout.OfShort layout, long offset, short value) {
-        layout.varHandle().set((MemorySegment)this, offset, value);
+        SegmentAccessors.putShort(this, layout, offset, 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public int get(ValueLayout.OfInt layout, long offset) {
-        return (int) layout.varHandle().get((MemorySegment)this, offset);
+        return SegmentAccessors.getInt(this, layout, offset, 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void set(ValueLayout.OfInt layout, long offset, int value) {
-        layout.varHandle().set((MemorySegment)this, offset, value);
+        SegmentAccessors.putInt(this, layout, offset, 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public float get(ValueLayout.OfFloat layout, long offset) {
-        return (float) layout.varHandle().get((MemorySegment)this, offset);
+        return SegmentAccessors.getFloat(this, layout, offset, 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void set(ValueLayout.OfFloat layout, long offset, float value) {
-        layout.varHandle().set((MemorySegment)this, offset, value);
+        SegmentAccessors.putFloat(this, layout, offset, 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public long get(ValueLayout.OfLong layout, long offset) {
-        return (long) layout.varHandle().get((MemorySegment)this, offset);
+        return SegmentAccessors.getLong(this, layout, offset, 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void set(ValueLayout.OfLong layout, long offset, long value) {
-        layout.varHandle().set((MemorySegment)this, offset, value);
+        SegmentAccessors.putLong(this, layout, offset, 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public double get(ValueLayout.OfDouble layout, long offset) {
-        return (double) layout.varHandle().get((MemorySegment)this, offset);
+        return SegmentAccessors.getDouble(this, layout, offset, 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void set(ValueLayout.OfDouble layout, long offset, double value) {
-        layout.varHandle().set((MemorySegment)this, offset, value);
+        SegmentAccessors.putDouble(this, layout, offset, 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public MemorySegment get(AddressLayout layout, long offset) {
-        return (MemorySegment) layout.varHandle().get((MemorySegment)this, offset);
+        return SegmentAccessors.getAddress(this, layout, offset, 0L);
     }
 
     @ForceInline
     @Override
     public void set(AddressLayout layout, long offset, MemorySegment value) {
-        Objects.requireNonNull(value);
-        layout.varHandle().set((MemorySegment)this, offset, value);
+        SegmentAccessors.putAddress(this, layout, offset, 0L, value);
     }
 
     @ForceInline
     @Override
     public byte getAtIndex(ValueLayout.OfByte layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (byte) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        return SegmentAccessors.getByte(this, layout, index * layout.byteSize(), 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public boolean getAtIndex(ValueLayout.OfBoolean layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (boolean) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        return SegmentAccessors.getBoolean(this, layout, index * layout.byteSize(), 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public char getAtIndex(ValueLayout.OfChar layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (char) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        return SegmentAccessors.getChar(this, layout, index * layout.byteSize(), 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfChar layout, long index, char value) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        SegmentAccessors.putChar(this, layout, index * layout.byteSize(), 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public short getAtIndex(ValueLayout.OfShort layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (short) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        return SegmentAccessors.getShort(this, layout, index * layout.byteSize(), 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfByte layout, long index, byte value) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        SegmentAccessors.putByte(this, layout, index * layout.byteSize(), 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfBoolean layout, long index, boolean value) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        SegmentAccessors.putBoolean(this, layout, index * layout.byteSize(), 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfShort layout, long index, short value) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        SegmentAccessors.putShort(this, layout, index * layout.byteSize(), 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public int getAtIndex(ValueLayout.OfInt layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (int) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        return SegmentAccessors.getInt(this, layout, index * layout.byteSize(), 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfInt layout, long index, int value) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        SegmentAccessors.putInt(this, layout, index * layout.byteSize(), 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public float getAtIndex(ValueLayout.OfFloat layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (float) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        return SegmentAccessors.getFloat(this, layout, index * layout.byteSize(), 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfFloat layout, long index, float value) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        SegmentAccessors.putFloat(this, layout, index * layout.byteSize(), 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public long getAtIndex(ValueLayout.OfLong layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (long) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        return SegmentAccessors.getLong(this, layout, index * layout.byteSize(), 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfLong layout, long index, long value) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        SegmentAccessors.putLong(this, layout, index * layout.byteSize(), 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public double getAtIndex(ValueLayout.OfDouble layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (double) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        return SegmentAccessors.getDouble(this, layout, index * layout.byteSize(), 0L, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfDouble layout, long index, double value) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        SegmentAccessors.putDouble(this, layout, index * layout.byteSize(), 0L, value, layout.order() == ByteOrder.BIG_ENDIAN);
     }
 
     @ForceInline
     @Override
     public MemorySegment getAtIndex(AddressLayout layout, long index) {
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (MemorySegment) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        return SegmentAccessors.getAddress(this, layout, index * layout.byteSize(), 0L);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(AddressLayout layout, long index, MemorySegment value) {
-        Objects.requireNonNull(value);
         Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        SegmentAccessors.putAddress(this, layout, index * layout.byteSize(), 0L, value);
     }
 
     @ForceInline

@@ -25,6 +25,7 @@
 package java.lang.invoke;
 
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.SegmentAccessors;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.MemorySegment;
@@ -62,25 +63,7 @@ import static java.lang.invoke.SegmentVarHandle.*;
     @ForceInline
     static $type$ get(VarHandle ob, Object obb, long base, long offset) {
         SegmentVarHandle handle = (SegmentVarHandle)ob;
-        AbstractMemorySegmentImpl bb = handle.checkSegment(obb, base, true);
-#if[floatingPoint]
-        $rawType$ rawValue = SCOPED_MEMORY_ACCESS.get$RawType$Unaligned(bb.sessionImpl(),
-                bb.unsafeGetBase(),
-                offset(bb, base, offset),
-                handle.be);
-        return $Type$.$rawType$BitsTo$Type$(rawValue);
-#else[floatingPoint]
-#if[byte]
-        return SCOPED_MEMORY_ACCESS.get$Type$(bb.sessionImpl(),
-                bb.unsafeGetBase(),
-                offset(bb, base, offset));
-#else[byte]
-        return SCOPED_MEMORY_ACCESS.get$Type$Unaligned(bb.sessionImpl(),
-                bb.unsafeGetBase(),
-                offset(bb, base, offset),
-                handle.be);
-#end[byte]
-#end[floatingPoint]
+        return SegmentAccessors.get$Type$(obb, handle.enclosing, base, offset, handle.be);
     }
 
     @ForceInline
@@ -91,27 +74,7 @@ import static java.lang.invoke.SegmentVarHandle.*;
     @ForceInline
     static void set(VarHandle ob, Object obb, long base, long offset, $type$ value) {
         SegmentVarHandle handle = (SegmentVarHandle)ob;
-        AbstractMemorySegmentImpl bb = handle.checkSegment(obb, base, false);
-#if[floatingPoint]
-        SCOPED_MEMORY_ACCESS.put$RawType$Unaligned(bb.sessionImpl(),
-                bb.unsafeGetBase(),
-                offset(bb, base, offset),
-                $Type$.$type$ToRaw$RawType$Bits(value),
-                handle.be);
-#else[floatingPoint]
-#if[byte]
-        SCOPED_MEMORY_ACCESS.put$Type$(bb.sessionImpl(),
-                bb.unsafeGetBase(),
-                offset(bb, base, offset),
-                value);
-#else[byte]
-        SCOPED_MEMORY_ACCESS.put$Type$Unaligned(bb.sessionImpl(),
-                bb.unsafeGetBase(),
-                offset(bb, base, offset),
-                value,
-                handle.be);
-#end[byte]
-#end[floatingPoint]
+        SegmentAccessors.put$Type$(obb, handle.enclosing, base, offset, value, handle.be);
     }
 #if[!byte]
 }
