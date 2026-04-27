@@ -90,7 +90,7 @@ import static java.lang.invoke.SegmentVarHandle.*;
 
     @ForceInline
     static void set(VarHandle ob, Object obb, long base, long offset, $type$ value) {
-        final SegmentVarHandle handle = (SegmentVarHandle)ob;
+        SegmentVarHandle handle = (SegmentVarHandle)ob;
         AbstractMemorySegmentImpl bb = handle.checkSegment(obb, base, false);
 #if[floatingPoint]
         SCOPED_MEMORY_ACCESS.put$RawType$Unaligned(bb.sessionImpl(),
