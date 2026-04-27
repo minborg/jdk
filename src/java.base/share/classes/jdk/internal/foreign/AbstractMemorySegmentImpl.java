@@ -883,173 +883,119 @@ public abstract sealed class AbstractMemorySegmentImpl
     @Override
     public byte getAtIndex(ValueLayout.OfByte layout, long index) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, true);
-        return SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset);
+        return get(layout, index * layout.byteSize());
     }
 
     @ForceInline
     @Override
     public boolean getAtIndex(ValueLayout.OfBoolean layout, long index) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, true);
-        return Utils.byteToBoolean(SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset));
+        return get(layout, index * layout.byteSize());
     }
 
     @ForceInline
     @Override
     public char getAtIndex(ValueLayout.OfChar layout, long index) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, true);
-        return SCOPED_MEMORY_ACCESS.getCharUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                layout.order() == ByteOrder.BIG_ENDIAN);
+        return get(layout, index * layout.byteSize());
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfChar layout, long index, char value) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, false);
-        SCOPED_MEMORY_ACCESS.putCharUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset, value,
-                layout.order() == ByteOrder.BIG_ENDIAN);
+        set(layout, index * layout.byteSize(), value);
     }
 
     @ForceInline
     @Override
     public short getAtIndex(ValueLayout.OfShort layout, long index) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, true);
-        return SCOPED_MEMORY_ACCESS.getShortUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                layout.order() == ByteOrder.BIG_ENDIAN);
+        return get(layout, index * layout.byteSize());
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfByte layout, long index, byte value) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, false);
-        SCOPED_MEMORY_ACCESS.putByte(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset, value);
+        set(layout, index * layout.byteSize(), value);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfBoolean layout, long index, boolean value) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, false);
-        SCOPED_MEMORY_ACCESS.putByte(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset, value ? (byte) 1 : (byte) 0);
+        set(layout, index * layout.byteSize(), value);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfShort layout, long index, short value) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, false);
-        SCOPED_MEMORY_ACCESS.putShortUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset, value,
-                layout.order() == ByteOrder.BIG_ENDIAN);
+        set(layout, index * layout.byteSize(), value);
     }
 
     @ForceInline
     @Override
     public int getAtIndex(ValueLayout.OfInt layout, long index) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, true);
-        return SCOPED_MEMORY_ACCESS.getIntUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                layout.order() == ByteOrder.BIG_ENDIAN);
+        return get(layout, index * layout.byteSize());
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfInt layout, long index, int value) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, false);
-        SCOPED_MEMORY_ACCESS.putIntUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset, value,
-                layout.order() == ByteOrder.BIG_ENDIAN);
+        set(layout, index * layout.byteSize(), value);
     }
 
     @ForceInline
     @Override
     public float getAtIndex(ValueLayout.OfFloat layout, long index) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, true);
-        return Float.intBitsToFloat(SCOPED_MEMORY_ACCESS.getIntUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                layout.order() == ByteOrder.BIG_ENDIAN));
+        return get(layout, index * layout.byteSize());
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfFloat layout, long index, float value) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, false);
-        SCOPED_MEMORY_ACCESS.putIntUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                Float.floatToRawIntBits(value), layout.order() == ByteOrder.BIG_ENDIAN);
+        set(layout, index * layout.byteSize(), value);
     }
 
     @ForceInline
     @Override
     public long getAtIndex(ValueLayout.OfLong layout, long index) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, true);
-        return SCOPED_MEMORY_ACCESS.getLongUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                layout.order() == ByteOrder.BIG_ENDIAN);
+        return get(layout, index * layout.byteSize());
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfLong layout, long index, long value) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, false);
-        SCOPED_MEMORY_ACCESS.putLongUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset, value,
-                layout.order() == ByteOrder.BIG_ENDIAN);
+        set(layout, index * layout.byteSize(), value);
     }
 
     @ForceInline
     @Override
     public double getAtIndex(ValueLayout.OfDouble layout, long index) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, true);
-        return Double.longBitsToDouble(SCOPED_MEMORY_ACCESS.getLongUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                layout.order() == ByteOrder.BIG_ENDIAN));
+        return get(layout, index * layout.byteSize());
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfDouble layout, long index, double value) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, false);
-        SCOPED_MEMORY_ACCESS.putLongUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                Double.doubleToRawLongBits(value), layout.order() == ByteOrder.BIG_ENDIAN);
+        set(layout, index * layout.byteSize(), value);
     }
 
     @ForceInline
     @Override
     public MemorySegment getAtIndex(AddressLayout layout, long index) {
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, true);
-        if (Unsafe.ADDRESS_SIZE == Long.BYTES) {
-            long value = SCOPED_MEMORY_ACCESS.getLongUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                    layout.order() == ByteOrder.BIG_ENDIAN);
-            return Utils.longToAddress(value, layout);
-        } else {
-            int value = SCOPED_MEMORY_ACCESS.getIntUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                    layout.order() == ByteOrder.BIG_ENDIAN);
-            return Utils.longToAddress(value, layout);
-        }
+        return get(layout, index * layout.byteSize());
     }
 
     @ForceInline
@@ -1057,15 +1003,7 @@ public abstract sealed class AbstractMemorySegmentImpl
     public void setAtIndex(AddressLayout layout, long index, MemorySegment value) {
         Objects.requireNonNull(value);
         Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
-        final long offset = index * layout.byteSize();
-        checkEnclosingLayout(offset, layout, false);
-        if (Unsafe.ADDRESS_SIZE == Long.BYTES) {
-            SCOPED_MEMORY_ACCESS.putLongUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                    SharedUtils.unboxSegment(value), layout.order() == ByteOrder.BIG_ENDIAN);
-        } else {
-            SCOPED_MEMORY_ACCESS.putIntUnaligned(sessionImpl(), unsafeGetBase(), unsafeGetOffset() + offset,
-                    SharedUtils.unboxSegment32(value), layout.order() == ByteOrder.BIG_ENDIAN);
-        }
+        set(layout, index * layout.byteSize(), value);
     }
 
     @ForceInline
