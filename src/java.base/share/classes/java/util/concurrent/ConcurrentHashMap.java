@@ -68,6 +68,8 @@ import java.util.function.ToIntFunction;
 import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
+
+import jdk.internal.ValueBased;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.vm.annotation.AOTRuntimeSetup;
@@ -828,12 +830,6 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      */
     private transient volatile CounterCell[] counterCells;
 
-    // views
-    private transient KeySetView<K,V> keySet;
-    private transient ValuesView<K,V> values;
-    private transient EntrySetView<K,V> entrySet;
-
-
     /* ---------------- Public operations -------------- */
 
     /**
@@ -1251,9 +1247,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * @return the set view
      */
     public KeySetView<K,V> keySet() {
-        KeySetView<K,V> ks;
-        if ((ks = keySet) != null) return ks;
-        return keySet = new KeySetView<K,V>(this, null);
+        return new KeySetView<K,V>(this, null);
     }
 
     /**
@@ -1275,9 +1269,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * @return the collection view
      */
     public Collection<V> values() {
-        ValuesView<K,V> vs;
-        if ((vs = values) != null) return vs;
-        return values = new ValuesView<K,V>(this);
+        return new ValuesView<K,V>(this);
     }
 
     /**
@@ -1298,9 +1290,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * @return the set view
      */
     public Set<Map.Entry<K,V>> entrySet() {
-        EntrySetView<K,V> es;
-        if ((es = entrySet) != null) return es;
-        return entrySet = new EntrySetView<K,V>(this);
+        return new EntrySetView<K,V>(this);
     }
 
     /**
@@ -4447,7 +4437,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
         implements Collection<E>, java.io.Serializable permits EntrySetView, KeySetView, ValuesView {
         private static final long serialVersionUID = 7249069246763182397L;
         final ConcurrentHashMap<K,V> map;
-        CollectionView(ConcurrentHashMap<K,V> map)  { this.map = map; }
+        CollectionView(ConcurrentHashMap<K,V> map)  { this.map = map; super(); }
 
         /**
          * Returns the map backing this view.
@@ -4619,6 +4609,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      *
      * @since 1.8
      */
+    @ValueBased
     public static final class KeySetView<K,V> extends CollectionView<K,V,K>
         implements Set<K>, java.io.Serializable {
         private static final long serialVersionUID = 7249069246763182397L;
@@ -4626,8 +4617,8 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
         @SuppressWarnings("serial") // Conditionally serializable
         private final V value;
         KeySetView(ConcurrentHashMap<K,V> map, V value) {  // non-public
-            super(map);
             this.value = value;
+            super(map);
         }
 
         /**
@@ -4744,6 +4735,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * values, in which additions are disabled. This class cannot be
      * directly instantiated. See {@link #values()}.
      */
+    @ValueBased
     static final class ValuesView<K,V> extends CollectionView<K,V,V>
         implements Collection<V>, java.io.Serializable {
         private static final long serialVersionUID = 2249069246763182397L;
@@ -4818,6 +4810,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * entries.  This class cannot be directly instantiated. See
      * {@link #entrySet()}.
      */
+    @ValueBased
     static final class EntrySetView<K,V> extends CollectionView<K,V,Map.Entry<K,V>>
         implements Set<Map.Entry<K,V>>, java.io.Serializable {
         private static final long serialVersionUID = 2249069246763182397L;

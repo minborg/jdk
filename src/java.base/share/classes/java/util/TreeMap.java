@@ -25,6 +25,9 @@
 
 package java.util;
 
+import jdk.internal.ValueBased;
+import jdk.internal.vm.annotation.TrustFinalFields;
+
 import java.io.Serializable;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -949,9 +952,6 @@ public class TreeMap<K,V>
         clone.root = null;
         clone.size = 0;
         clone.modCount = 0;
-        clone.entrySet = null;
-        clone.navigableKeySet = null;
-        clone.descendingMap = null;
 
         // Initialize clone with our mappings
         try {
@@ -1091,15 +1091,6 @@ public class TreeMap<K,V>
     // Views
 
     /**
-     * Fields initialized to contain an instance of the entry set view
-     * the first time this view is requested.  Views are stateless, so
-     * there's no reason to create more than one.
-     */
-    private transient EntrySet entrySet;
-    private transient KeySet<K> navigableKeySet;
-    private transient NavigableMap<K,V> descendingMap;
-
-    /**
      * Returns a {@link Set} view of the keys contained in this map.
      *
      * <p>The set's iterator returns the keys in ascending order.
@@ -1132,8 +1123,7 @@ public class TreeMap<K,V>
      * @since 1.6
      */
     public NavigableSet<K> navigableKeySet() {
-        KeySet<K> nks = navigableKeySet;
-        return (nks != null) ? nks : (navigableKeySet = new KeySet<>(this));
+        return new NavigableKeySet<>(this);
     }
 
     /**
@@ -1165,12 +1155,7 @@ public class TreeMap<K,V>
      * support the {@code add} or {@code addAll} operations.
      */
     public Collection<V> values() {
-        Collection<V> vs = values;
-        if (vs == null) {
-            vs = new Values();
-            values = vs;
-        }
-        return vs;
+        return new Values();
     }
 
     /**
@@ -1198,19 +1183,16 @@ public class TreeMap<K,V>
      * @return {@inheritDoc SortedMap}
      */
     public Set<Map.Entry<K,V>> entrySet() {
-        EntrySet es = entrySet;
-        return (es != null) ? es : (entrySet = new EntrySet());
+        return new EntrySet();
     }
 
     /**
      * @since 1.6
      */
     public NavigableMap<K, V> descendingMap() {
-        NavigableMap<K, V> km = descendingMap;
-        return (km != null) ? km :
-            (descendingMap = new DescendingSubMap<>(this,
-                                                    true, null, true,
-                                                    true, null, true));
+        return new DescendingSubMap<>(this,
+                true, null, true,
+                true, null, true);
     }
 
     /**
@@ -1339,7 +1321,8 @@ public class TreeMap<K,V>
 
     // View class support
 
-    class Values extends AbstractCollection<V> {
+    @ValueBased
+    final class Values extends AbstractCollection<V> {
         public Iterator<V> iterator() {
             return new ValueIterator(getFirstEntry());
         }
@@ -1371,7 +1354,8 @@ public class TreeMap<K,V>
         }
     }
 
-    class EntrySet extends AbstractSet<Map.Entry<K,V>> {
+    @ValueBased
+    final class EntrySet extends AbstractSet<Map.Entry<K,V>> {
         public Iterator<Map.Entry<K,V>> iterator() {
             return new EntryIterator(getFirstEntry());
         }
@@ -1425,9 +1409,11 @@ public class TreeMap<K,V>
         return new DescendingKeyIterator(getLastEntry());
     }
 
-    static final class KeySet<E> extends AbstractSet<E> implements NavigableSet<E> {
+    @ValueBased
+    @TrustFinalFields
+    static final class NavigableKeySet<E> extends AbstractSet<E> implements NavigableSet<E> {
         private final NavigableMap<E, ?> m;
-        KeySet(NavigableMap<E,?> map) { m = map; }
+        NavigableKeySet(NavigableMap<E,?> map) { m = map; }
 
         public Iterator<E> iterator() {
             if (m instanceof TreeMap)
@@ -1469,14 +1455,14 @@ public class TreeMap<K,V>
         }
         public NavigableSet<E> subSet(E fromElement, boolean fromInclusive,
                                       E toElement,   boolean toInclusive) {
-            return new KeySet<>(m.subMap(fromElement, fromInclusive,
+            return new NavigableKeySet<>(m.subMap(fromElement, fromInclusive,
                                           toElement,   toInclusive));
         }
         public NavigableSet<E> headSet(E toElement, boolean inclusive) {
-            return new KeySet<>(m.headMap(toElement, inclusive));
+            return new NavigableKeySet<>(m.headMap(toElement, inclusive));
         }
         public NavigableSet<E> tailSet(E fromElement, boolean inclusive) {
-            return new KeySet<>(m.tailMap(fromElement, inclusive));
+            return new NavigableKeySet<>(m.tailMap(fromElement, inclusive));
         }
         public SortedSet<E> subSet(E fromElement, E toElement) {
             return subSet(fromElement, true, toElement, false);
@@ -1488,7 +1474,7 @@ public class TreeMap<K,V>
             return tailSet(fromElement, true);
         }
         public NavigableSet<E> descendingSet() {
-            return new KeySet<>(m.descendingMap());
+            return new NavigableKeySet<>(m.descendingMap());
         }
 
         public Spliterator<E> spliterator() {
@@ -1944,14 +1930,8 @@ public class TreeMap<K,V>
         }
 
         // Views
-        transient NavigableMap<K,V> descendingMapView;
-        transient EntrySetView entrySetView;
-        transient KeySet<K> navigableKeySetView;
-
         public final NavigableSet<K> navigableKeySet() {
-            KeySet<K> nksv = navigableKeySetView;
-            return (nksv != null) ? nksv :
-                (navigableKeySetView = new TreeMap.KeySet<>(this));
+            return new NavigableKeySet<>(this);
         }
 
         public final Set<K> keySet() {
@@ -2202,6 +2182,7 @@ public class TreeMap<K,V>
     /**
      * @serial include
      */
+    @ValueBased
     static final class AscendingSubMap<K,V> extends NavigableSubMap<K,V> {
         @java.io.Serial
         private static final long serialVersionUID = 912986545866124060L;
@@ -2244,12 +2225,9 @@ public class TreeMap<K,V>
         }
 
         public NavigableMap<K,V> descendingMap() {
-            NavigableMap<K,V> mv = descendingMapView;
-            return (mv != null) ? mv :
-                (descendingMapView =
-                 new DescendingSubMap<>(m,
-                                        fromStart, lo, loInclusive,
-                                        toEnd,     hi, hiInclusive));
+            return new DescendingSubMap<>(m,
+                    fromStart, lo, loInclusive,
+                    toEnd,     hi, hiInclusive);
         }
 
         Iterator<K> keyIterator() {
@@ -2271,8 +2249,7 @@ public class TreeMap<K,V>
         }
 
         public Set<Map.Entry<K,V>> entrySet() {
-            EntrySetView es = entrySetView;
-            return (es != null) ? es : (entrySetView = new AscendingEntrySetView());
+            return new AscendingEntrySetView();
         }
 
         TreeMap.Entry<K,V> subLowest()       { return absLowest(); }
@@ -2286,6 +2263,7 @@ public class TreeMap<K,V>
     /**
      * @serial include
      */
+    @ValueBased
     static final class DescendingSubMap<K,V>  extends NavigableSubMap<K,V> {
         @java.io.Serial
         private static final long serialVersionUID = 912986545866120460L;
@@ -2332,12 +2310,9 @@ public class TreeMap<K,V>
         }
 
         public NavigableMap<K,V> descendingMap() {
-            NavigableMap<K,V> mv = descendingMapView;
-            return (mv != null) ? mv :
-                (descendingMapView =
-                 new AscendingSubMap<>(m,
-                                       fromStart, lo, loInclusive,
-                                       toEnd,     hi, hiInclusive));
+            return new AscendingSubMap<>(m,
+                    fromStart, lo, loInclusive,
+                    toEnd,     hi, hiInclusive);
         }
 
         Iterator<K> keyIterator() {
@@ -2359,8 +2334,7 @@ public class TreeMap<K,V>
         }
 
         public Set<Map.Entry<K,V>> entrySet() {
-            EntrySetView es = entrySetView;
-            return (es != null) ? es : (entrySetView = new DescendingEntrySetView());
+            return new DescendingEntrySetView();
         }
 
         TreeMap.Entry<K,V> subLowest()       { return absHighest(); }
@@ -2980,24 +2954,12 @@ public class TreeMap<K,V>
      * returns null.
      */
     static <K> Spliterator<K> keySpliteratorFor(NavigableMap<K,?> m) {
-        if (m instanceof TreeMap) {
-            @SuppressWarnings("unchecked") TreeMap<K,Object> t =
-                (TreeMap<K,Object>) m;
-            return t.keySpliterator();
-        }
-        if (m instanceof DescendingSubMap) {
-            DescendingSubMap<K,?> dm =
-                (DescendingSubMap<K,?>) m;
-            TreeMap<K,?> tm = dm.m;
-            if (dm == tm.descendingMap) {
-                @SuppressWarnings("unchecked") TreeMap<K,Object> t =
-                    (TreeMap<K,Object>) tm;
-                return t.descendingKeySpliterator();
-            }
-        }
-        NavigableSubMap<K,?> sm =
-            (NavigableSubMap<K,?>) m;
-        return sm.keySpliterator();
+        return switch (m) {
+            case TreeMap<K, ?> t -> t.keySpliterator();
+            case DescendingSubMap<K, ?> dm when dm.fromStart && dm.toEnd ->
+                    dm.m.descendingKeySpliterator();
+            default -> ((NavigableSubMap<K, ?>) m).keySpliterator();
+        };
     }
 
     final Spliterator<K> keySpliterator() {
@@ -3045,6 +3007,7 @@ public class TreeMap<K,V>
                            TreeMap.Entry<K,V> origin, TreeMap.Entry<K,V> fence,
                            int side, int est, int expectedModCount) {
             this.tree = tree;
+            super();
             this.current = origin;
             this.fence = fence;
             this.side = side;

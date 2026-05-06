@@ -39,6 +39,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
+import jdk.internal.ValueBased;
 import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.CDS;
@@ -1137,7 +1138,7 @@ class ImmutableCollections {
 
     // ---------- Map Implementations ----------
 
-    // Not a jdk.internal.ValueBased class; disqualified by fields in superclass AbstractMap
+    @jdk.internal.ValueBased
     abstract static class AbstractImmutableMap<K,V> extends AbstractMap<K,V> {
         @Override public void clear() { throw uoe(); }
         @Override public V compute(K key, BiFunction<? super K,? super V,? extends V> rf) { throw uoe(); }
@@ -1168,16 +1169,17 @@ class ImmutableCollections {
         }
     }
 
-    // Not a jdk.internal.ValueBased class; disqualified by fields in superclass AbstractMap
+    @jdk.internal.ValueBased
     static final class Map1<K,V> extends AbstractImmutableMap<K,V> implements Serializable {
         @Stable
         private final K k0;
         @Stable
         private final V v0;
 
-        Map1(K k0, V v0) {
+        private Map1(K k0, V v0) {
             this.k0 = Objects.requireNonNull(k0);
             this.v0 = Objects.requireNonNull(v0);
+            super();
         }
 
         @Override
@@ -1229,6 +1231,10 @@ class ImmutableCollections {
         public void forEach(BiConsumer<? super K, ? super V> action) {
             action.accept(k0, v0); // implicit null check
         }
+
+        static <K, V> Map<K, V> create(K k0, V v0) {
+            return new Map1<>(k0, v0);
+        }
     }
 
     /**
@@ -1240,7 +1246,7 @@ class ImmutableCollections {
      * @param <K> the key type
      * @param <V> the value type
      */
-    // Not a jdk.internal.ValueBased class; disqualified by fields in superclass AbstractMap
+    @jdk.internal.ValueBased
     static final class MapN<K,V> extends AbstractImmutableMap<K,V> implements Serializable {
 
         @Stable
@@ -1249,7 +1255,7 @@ class ImmutableCollections {
         @Stable
         final int size; // number of pairs
 
-        MapN(Object... input) {
+        private MapN(Object... input) {
             if ((input.length & 1) != 0) { // implicit nullcheck of input
                 throw new InternalError("length is odd");
             }
@@ -1258,7 +1264,7 @@ class ImmutableCollections {
             int len = EXPAND_FACTOR * input.length;
             len = (len + 1) & ~1; // ensure table is even length
             table = new Object[len];
-
+            super();
             for (int i = 0; i < input.length; i += 2) {
                 @SuppressWarnings("unchecked")
                     K k = Objects.requireNonNull((K)input[i]);
@@ -1273,6 +1279,7 @@ class ImmutableCollections {
                     table[dest+1] = v;
                 }
             }
+
         }
 
         @Override
@@ -1380,7 +1387,8 @@ class ImmutableCollections {
 
         @Override
         public Set<Map.Entry<K,V>> entrySet() {
-            return new AbstractSet<>() {
+            @ValueBased
+            final class EntrySet extends AbstractSet<Map.Entry<K,V>> {
                 @Override
                 public int size() {
                     return MapN.this.size;
@@ -1391,6 +1399,7 @@ class ImmutableCollections {
                     return new MapNIterator();
                 }
             };
+            return new EntrySet();
         }
 
         // returns index at which the probe key is present; or if absent,
@@ -1429,6 +1438,10 @@ class ImmutableCollections {
                 }
             }
             return new CollSer(CollSer.IMM_MAP, array);
+        }
+
+        static <K, V> Map<K, V> create(Object... input) {
+            return new MapN<>(input);
         }
     }
 
@@ -1586,9 +1599,9 @@ final class CollSer implements Serializable {
                     if (array.length == 0) {
                         return ImmutableCollections.EMPTY_MAP;
                     } else if (array.length == 2) {
-                        return new ImmutableCollections.Map1<>(array[0], array[1]);
+                        return ImmutableCollections.Map1.create(array[0], array[1]);
                     } else {
-                        return new ImmutableCollections.MapN<>(array);
+                        return ImmutableCollections.MapN.create(array);
                     }
                 default:
                     throw new InvalidObjectException(String.format("invalid flags 0x%x", tag));

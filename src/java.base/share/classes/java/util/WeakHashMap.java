@@ -25,6 +25,8 @@
 
 package java.util;
 
+import jdk.internal.ValueBased;
+
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.function.BiConsumer;
@@ -858,8 +860,6 @@ public class WeakHashMap<@jdk.internal.RequiresIdentity K,V>
 
     // Views
 
-    private transient Set<Map.Entry<K,V>> entrySet;
-
     /**
      * Returns a {@link Set} view of the keys contained in this map.
      * The set is backed by the map, so changes to the map are
@@ -874,15 +874,11 @@ public class WeakHashMap<@jdk.internal.RequiresIdentity K,V>
      * operations.
      */
     public Set<K> keySet() {
-        Set<K> ks = keySet;
-        if (ks == null) {
-            ks = new KeySet();
-            keySet = ks;
-        }
-        return ks;
+        return new KeySet();
     }
 
-    private class KeySet extends AbstractSet<K> {
+    @ValueBased
+    private final class KeySet extends AbstractSet<K> {
         public Iterator<K> iterator() {
             return new KeyIterator();
         }
@@ -927,15 +923,11 @@ public class WeakHashMap<@jdk.internal.RequiresIdentity K,V>
      * support the {@code add} or {@code addAll} operations.
      */
     public Collection<V> values() {
-        Collection<V> vs = values;
-        if (vs == null) {
-            vs = new Values();
-            values = vs;
-        }
-        return vs;
+        return new Values();
     }
 
-    private class Values extends AbstractCollection<V> {
+    @ValueBased
+    private final class Values extends AbstractCollection<V> {
         public Iterator<V> iterator() {
             return new ValueIterator();
         }
@@ -972,11 +964,11 @@ public class WeakHashMap<@jdk.internal.RequiresIdentity K,V>
      * {@code add} or {@code addAll} operations.
      */
     public Set<Map.Entry<K,V>> entrySet() {
-        Set<Map.Entry<K,V>> es = entrySet;
-        return es != null ? es : (entrySet = new EntrySet());
+        return new EntrySet();
     }
 
-    private class EntrySet extends AbstractSet<Map.Entry<K,V>> {
+    @ValueBased
+    private final class EntrySet extends AbstractSet<Map.Entry<K,V>> {
         public Iterator<Map.Entry<K,V>> iterator() {
             return new EntryIterator();
         }

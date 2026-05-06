@@ -30,6 +30,7 @@ import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
+import jdk.internal.ValueBased;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 
 /**
@@ -307,120 +308,35 @@ public abstract class AbstractMap<K,V> implements Map<K,V> {
     // Views
 
     /**
-     * Each of these fields are initialized to contain an instance of the
-     * appropriate view the first time this view is requested.  The views are
-     * stateless, so there's no reason to create more than one of each.
-     *
-     * <p>Since there is no synchronization performed while accessing these fields,
-     * it is expected that java.util.Map view classes using these fields have
-     * no non-final fields (or any fields at all except for outer-this). Adhering
-     * to this rule would make the races on these fields benign.
-     *
-     * <p>It is also imperative that implementations read the field only once,
-     * as in:
-     *
-     * <pre> {@code
-     * public Set<K> keySet() {
-     *   Set<K> ks = keySet;  // single racy read
-     *   if (ks == null) {
-     *     ks = new KeySet();
-     *     keySet = ks;
-     *   }
-     *   return ks;
-     * }
-     *}</pre>
-     */
-    transient Set<K>        keySet;
-    transient Collection<V> values;
-
-    /**
      * {@inheritDoc}
      *
      * @implSpec
-     * This implementation returns a set that subclasses {@link AbstractSet}.
+     * This implementation returns a <em>fresh</em> set that subclasses {@link AbstractSet}.
      * The subclass's iterator method returns a "wrapper object" over this
      * map's {@code entrySet()} iterator.  The {@code size} method
      * delegates to this map's {@code size} method and the
      * {@code contains} method delegates to this map's
      * {@code containsKey} method.
      *
-     * <p>The set is created the first time this method is called,
-     * and returned in response to all subsequent calls.  No synchronization
-     * is performed, so there is a slight chance that multiple calls to this
-     * method will not all return the same set.
      */
+    @Override
     public Set<K> keySet() {
-        Set<K> ks = keySet;
-        if (ks == null) {
-            ks = new AbstractSet<>() {
-                public Iterator<K> iterator() {
-                    return new KeyIterator();
-                }
-
-                public int size() {
-                    return AbstractMap.this.size();
-                }
-
-                public boolean isEmpty() {
-                    return AbstractMap.this.isEmpty();
-                }
-
-                public void clear() {
-                    AbstractMap.this.clear();
-                }
-
-                public boolean contains(Object k) {
-                    return AbstractMap.this.containsKey(k);
-                }
-            };
-            keySet = ks;
-        }
-        return ks;
+        return new AmKeySetView();
     }
 
     /**
      * {@inheritDoc}
      *
      * @implSpec
-     * This implementation returns a collection that subclasses {@link
+     * This implementation returns a <em>fresh</em> collection that subclasses {@link
      * AbstractCollection}.  The subclass's iterator method returns a
      * "wrapper object" over this map's {@code entrySet()} iterator.
      * The {@code size} method delegates to this map's {@code size}
      * method and the {@code contains} method delegates to this map's
      * {@code containsValue} method.
-     *
-     * <p>The collection is created the first time this method is called, and
-     * returned in response to all subsequent calls.  No synchronization is
-     * performed, so there is a slight chance that multiple calls to this
-     * method will not all return the same collection.
      */
     public Collection<V> values() {
-        Collection<V> vals = values;
-        if (vals == null) {
-            vals = new AbstractCollection<>() {
-                public Iterator<V> iterator() {
-                    return new ValueIterator();
-                }
-
-                public int size() {
-                    return AbstractMap.this.size();
-                }
-
-                public boolean isEmpty() {
-                    return AbstractMap.this.isEmpty();
-                }
-
-                public void clear() {
-                    AbstractMap.this.clear();
-                }
-
-                public boolean contains(Object v) {
-                    return AbstractMap.this.containsValue(v);
-                }
-            };
-            values = vals;
-        }
-        return vals;
+        return new AmValuesView();
     }
 
     public abstract Set<Entry<K,V>> entrySet();
@@ -542,10 +458,7 @@ public abstract class AbstractMap<K,V> implements Map<K,V> {
      * @return a shallow copy of this map
      */
     protected Object clone() throws CloneNotSupportedException {
-        AbstractMap<?,?> result = (AbstractMap<?,?>)super.clone();
-        result.keySet = null;
-        result.values = null;
-        return result;
+        return super.clone();
     }
 
     /**
@@ -754,6 +667,7 @@ public abstract class AbstractMap<K,V> implements Map<K,V> {
         public SimpleImmutableEntry(K key, V value) {
             this.key   = key;
             this.value = value;
+            super();
         }
 
         /**
@@ -765,6 +679,7 @@ public abstract class AbstractMap<K,V> implements Map<K,V> {
         public SimpleImmutableEntry(Entry<? extends K, ? extends V> entry) {
             this.key   = entry.getKey();
             this.value = entry.getValue();
+            super();
         }
 
         /**
@@ -913,6 +828,7 @@ public abstract class AbstractMap<K,V> implements Map<K,V> {
 
     // Iterator implementations.
 
+    @ValueBased
     final class KeyIterator implements Iterator<K> {
         private final Iterator<Entry<K,V>> i = entrySet().iterator();
         public boolean hasNext() { return i.hasNext(); }
@@ -920,10 +836,30 @@ public abstract class AbstractMap<K,V> implements Map<K,V> {
         public K next() { return i.next().getKey(); }
     }
 
+    @ValueBased
     final class ValueIterator implements Iterator<V> {
         private final Iterator<Entry<K,V>> i = entrySet().iterator();
         public boolean hasNext() { return i.hasNext(); }
         public void remove() { i.remove(); }
         public V next() { return i.next().getValue(); }
     }
+
+    @ValueBased
+    final class AmKeySetView extends AbstractSet<K> {
+        public Iterator<K> iterator() { return new KeyIterator(); }
+        public int size() { return AbstractMap.this.size(); }
+        public boolean isEmpty() { return AbstractMap.this.isEmpty(); }
+        public void clear() { AbstractMap.this.clear(); }
+        public boolean contains(Object k) { return AbstractMap.this.containsKey(k); }
+    };
+
+    @ValueBased
+    final class AmValuesView extends AbstractCollection<V> {
+        public Iterator<V> iterator() { return new ValueIterator(); }
+        public int size() { return AbstractMap.this.size(); }
+        public boolean isEmpty() { return AbstractMap.this.isEmpty(); }
+        public void clear() { AbstractMap.this.clear(); }
+        public boolean contains(Object v) { return AbstractMap.this.containsValue(v); }
+    };
+
 }

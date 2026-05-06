@@ -31,6 +31,8 @@ import java.lang.reflect.Array;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+
+import jdk.internal.ValueBased;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -724,7 +726,6 @@ public class IdentityHashMap<K,V>
     public Object clone() {
         try {
             IdentityHashMap<?,?> m = (IdentityHashMap<?,?>) super.clone();
-            m.entrySet = null;
             m.table = table.clone();
             return m;
         } catch (CloneNotSupportedException e) {
@@ -939,13 +940,6 @@ public class IdentityHashMap<K,V>
     // Views
 
     /**
-     * This field is initialized to contain an instance of the entry set
-     * view the first time this view is requested.  The view is stateless,
-     * so there's no reason to create more than one.
-     */
-    private transient Set<Map.Entry<K,V>> entrySet;
-
-    /**
      * Returns an identity-based set view of the keys contained in this map.
      * The set is backed by the map, so changes to the map are reflected in
      * the set, and vice-versa.  If the map is modified while an iteration
@@ -984,15 +978,11 @@ public class IdentityHashMap<K,V>
      * @see System#identityHashCode(Object)
      */
     public Set<K> keySet() {
-        Set<K> ks = keySet;
-        if (ks == null) {
-            ks = new KeySet();
-            keySet = ks;
-        }
-        return ks;
+        return new KeySet();
     }
 
-    private class KeySet extends AbstractSet<K> {
+    @ValueBased
+    private final class KeySet extends AbstractSet<K> {
         public Iterator<K> iterator() {
             return new KeyIterator();
         }
@@ -1090,15 +1080,11 @@ public class IdentityHashMap<K,V>
      * {@code containsAll} methods.</b>
      */
     public Collection<V> values() {
-        Collection<V> vs = values;
-        if (vs == null) {
-            vs = new Values();
-            values = vs;
-        }
-        return vs;
+        return new Values();
     }
 
-    private class Values extends AbstractCollection<V> {
+    @ValueBased
+    private final class Values extends AbstractCollection<V> {
         public Iterator<V> iterator() {
             return new ValueIterator();
         }
@@ -1197,14 +1183,11 @@ public class IdentityHashMap<K,V>
      * @return a set view of the identity-mappings contained in this map
      */
     public Set<Map.Entry<K,V>> entrySet() {
-        Set<Map.Entry<K,V>> es = entrySet;
-        if (es != null)
-            return es;
-        else
-            return entrySet = new EntrySet();
+        return new EntrySet();
     }
 
-    private class EntrySet extends AbstractSet<Map.Entry<K,V>> {
+    @ValueBased
+    private final class EntrySet extends AbstractSet<Map.Entry<K,V>> {
         public Iterator<Map.Entry<K,V>> iterator() {
             return new EntryIterator();
         }

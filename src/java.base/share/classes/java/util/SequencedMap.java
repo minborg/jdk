@@ -25,6 +25,7 @@
 
 package java.util;
 
+import jdk.internal.ValueBased;
 import jdk.internal.util.NullableKeyValueHolder;
 
 /**
@@ -280,6 +281,7 @@ public interface SequencedMap<K, V> extends Map<K, V> {
      * @return a {@code SequencedSet} view of this map's {@code keySet}
      */
     default SequencedSet<K> sequencedKeySet() {
+        @ValueBased
         class SeqKeySet extends AbstractMap.ViewCollection<K> implements SequencedSet<K> {
             Collection<K> view() {
                 return SequencedMap.this.keySet();
@@ -330,7 +332,8 @@ public interface SequencedMap<K, V> extends Map<K, V> {
      * @return a {@code SequencedCollection} view of this map's {@code values} collection
      */
     default SequencedCollection<V> sequencedValues() {
-        class SeqValues extends AbstractMap.ViewCollection<V> implements SequencedCollection<V> {
+        @ValueBased
+        final class SeqValues extends AbstractMap.ViewCollection<V> implements SequencedCollection<V> {
             Collection<V> view() {
                 return SequencedMap.this.values();
             }
@@ -373,7 +376,8 @@ public interface SequencedMap<K, V> extends Map<K, V> {
      * @return a {@code SequencedSet} view of this map's {@code entrySet}
      */
     default SequencedSet<Map.Entry<K, V>> sequencedEntrySet() {
-        class SeqEntrySet extends AbstractMap.ViewCollection<Map.Entry<K, V>>
+        @ValueBased
+        final class SeqEntrySet extends AbstractMap.ViewCollection<Map.Entry<K, V>>
                 implements SequencedSet<Map.Entry<K, V>> {
             Collection<Map.Entry<K, V>> view() {
                 return SequencedMap.this.entrySet();

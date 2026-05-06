@@ -25,6 +25,8 @@
 
 package java.util;
 
+import jdk.internal.ValueBased;
+
 import java.util.function.Consumer;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -639,16 +641,7 @@ public class LinkedHashMap<K,V>
      * @since 21
      */
     public SequencedSet<K> sequencedKeySet() {
-        Set<K> ks = keySet;
-        if (ks == null) {
-            SequencedSet<K> sks = new LinkedKeySet(false);
-            keySet = sks;
-            return sks;
-        } else {
-            // The cast should never fail, since the only assignment of non-null to keySet is
-            // above, and assignments in AbstractMap and HashMap are in overridden methods.
-            return (SequencedSet<K>) ks;
-        }
+        return new LinkedKeySet(false);
     }
 
     static <K1,V1> Node<K1,V1> nsee(Node<K1,V1> node) {
@@ -692,6 +685,7 @@ public class LinkedHashMap<K,V>
         return a;
     }
 
+    @ValueBased
     final class LinkedKeySet extends AbstractSet<K> implements SequencedSet<K> {
         final boolean reversed;
         LinkedKeySet(boolean reversed)          { this.reversed = reversed; }
@@ -788,18 +782,10 @@ public class LinkedHashMap<K,V>
      * @since 21
      */
     public SequencedCollection<V> sequencedValues() {
-        Collection<V> vs = values;
-        if (vs == null) {
-            SequencedCollection<V> svs = new LinkedValues(false);
-            values = svs;
-            return svs;
-        } else {
-            // The cast should never fail, since the only assignment of non-null to values is
-            // above, and assignments in AbstractMap and HashMap are in overridden methods.
-            return (SequencedCollection<V>) vs;
-        }
+        return new LinkedValues(false);
     }
 
+    @ValueBased
     final class LinkedValues extends AbstractCollection<V> implements SequencedCollection<V> {
         final boolean reversed;
         LinkedValues(boolean reversed)          { this.reversed = reversed; }
@@ -893,22 +879,14 @@ public class LinkedHashMap<K,V>
      * @since 21
      */
     public SequencedSet<Map.Entry<K, V>> sequencedEntrySet() {
-        Set<Map.Entry<K, V>> es = entrySet;
-        if (es == null) {
-            SequencedSet<Map.Entry<K, V>> ses = new LinkedEntrySet(false);
-            entrySet = ses;
-            return ses;
-        } else {
-            // The cast should never fail, since the only assignment of non-null to entrySet is
-            // above, and assignments in HashMap are in overridden methods.
-            return (SequencedSet<Map.Entry<K, V>>) es;
-        }
+        return new LinkedEntrySet(false);
     }
 
+    @ValueBased
     final class LinkedEntrySet extends AbstractSet<Map.Entry<K,V>>
         implements SequencedSet<Map.Entry<K,V>> {
         final boolean reversed;
-        LinkedEntrySet(boolean reversed)        { this.reversed = reversed; }
+        LinkedEntrySet(boolean reversed)        { this.reversed = reversed; super(); }
         public final int size()                 { return size; }
         public final void clear()               { LinkedHashMap.this.clear(); }
         public final Iterator<Map.Entry<K,V>> iterator() {
@@ -1095,12 +1073,14 @@ public class LinkedHashMap<K,V>
         return new ReversedLinkedHashMapView<>(this);
     }
 
-    static class ReversedLinkedHashMapView<K, V> extends AbstractMap<K, V>
+    @ValueBased
+    static final class ReversedLinkedHashMapView<K, V> extends AbstractMap<K, V>
                                                  implements SequencedMap<K, V> {
         final LinkedHashMap<K, V> base;
 
         ReversedLinkedHashMapView(LinkedHashMap<K, V> lhm) {
             base = lhm;
+            super();
         }
 
         // Object

@@ -35,6 +35,8 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import jdk.internal.ValueBased;
 import jdk.internal.access.SharedSecrets;
 
 /**
@@ -388,12 +390,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * bootstrapping mechanics that are currently not needed.)
      */
     transient Node<K,V>[] table;
-
-    /**
-     * Holds cached entrySet(). Note that AbstractMap fields are used
-     * for keySet() and values().
-     */
-    transient Set<Map.Entry<K,V>> entrySet;
 
     /**
      * The number of key-value mappings contained in this map.
@@ -935,12 +931,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @return a set view of the keys contained in this map
      */
     public Set<K> keySet() {
-        Set<K> ks = keySet;
-        if (ks == null) {
-            ks = new KeySet();
-            keySet = ks;
-        }
-        return ks;
+        return new KeySet();
     }
 
     /**
@@ -1011,6 +1002,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         return a;
     }
 
+    @ValueBased
     final class KeySet extends AbstractSet<K> {
         public final int size()                 { return size; }
         public final void clear()               { HashMap.this.clear(); }
@@ -1063,14 +1055,10 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @return a view of the values contained in this map
      */
     public Collection<V> values() {
-        Collection<V> vs = values;
-        if (vs == null) {
-            vs = new Values();
-            values = vs;
-        }
-        return vs;
+        return new Values();
     }
 
+    @ValueBased
     final class Values extends AbstractCollection<V> {
         public final int size()                 { return size; }
         public final void clear()               { HashMap.this.clear(); }
@@ -1121,10 +1109,10 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @return a set view of the mappings contained in this map
      */
     public Set<Map.Entry<K,V>> entrySet() {
-        Set<Map.Entry<K,V>> es;
-        return (es = entrySet) == null ? (entrySet = new EntrySet()) : es;
+        return new EntrySet();
     }
 
+    @ValueBased
     final class EntrySet extends AbstractSet<Map.Entry<K,V>> {
         public final int size()                 { return size; }
         public final void clear()               { HashMap.this.clear(); }
@@ -1955,9 +1943,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      */
     void reinitialize() {
         table = null;
-        entrySet = null;
-        keySet = null;
-        values = null;
         modCount = 0;
         threshold = 0;
         size = 0;

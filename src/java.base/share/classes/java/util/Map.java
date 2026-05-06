@@ -1365,7 +1365,7 @@ public interface Map<K, V> {
      * @since 9
      */
     static <K, V> Map<K, V> of(K k1, V v1) {
-        return new ImmutableCollections.Map1<>(k1, v1);
+        return ImmutableCollections.Map1.create(k1, v1);
     }
 
     /**
@@ -1385,7 +1385,7 @@ public interface Map<K, V> {
      * @since 9
      */
     static <K, V> Map<K, V> of(K k1, V v1, K k2, V v2) {
-        return new ImmutableCollections.MapN<>(k1, v1, k2, v2);
+        return ImmutableCollections.MapN.create(k1, v1, k2, v2);
     }
 
     /**
@@ -1407,7 +1407,7 @@ public interface Map<K, V> {
      * @since 9
      */
     static <K, V> Map<K, V> of(K k1, V v1, K k2, V v2, K k3, V v3) {
-        return new ImmutableCollections.MapN<>(k1, v1, k2, v2, k3, v3);
+        return ImmutableCollections.MapN.create(k1, v1, k2, v2, k3, v3);
     }
 
     /**
@@ -1431,7 +1431,7 @@ public interface Map<K, V> {
      * @since 9
      */
     static <K, V> Map<K, V> of(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4) {
-        return new ImmutableCollections.MapN<>(k1, v1, k2, v2, k3, v3, k4, v4);
+        return ImmutableCollections.MapN.create(k1, v1, k2, v2, k3, v3, k4, v4);
     }
 
     /**
@@ -1457,7 +1457,7 @@ public interface Map<K, V> {
      * @since 9
      */
     static <K, V> Map<K, V> of(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5) {
-        return new ImmutableCollections.MapN<>(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5);
+        return ImmutableCollections.MapN.create(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5);
     }
 
     /**
@@ -1486,8 +1486,8 @@ public interface Map<K, V> {
      */
     static <K, V> Map<K, V> of(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5,
                                K k6, V v6) {
-        return new ImmutableCollections.MapN<>(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
-                                               k6, v6);
+        return ImmutableCollections.MapN.create(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
+                                                k6, v6);
     }
 
     /**
@@ -1518,8 +1518,8 @@ public interface Map<K, V> {
      */
     static <K, V> Map<K, V> of(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5,
                                K k6, V v6, K k7, V v7) {
-        return new ImmutableCollections.MapN<>(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
-                                               k6, v6, k7, v7);
+        return ImmutableCollections.MapN.create(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
+                                                k6, v6, k7, v7);
     }
 
     /**
@@ -1552,8 +1552,8 @@ public interface Map<K, V> {
      */
     static <K, V> Map<K, V> of(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5,
                                K k6, V v6, K k7, V v7, K k8, V v8) {
-        return new ImmutableCollections.MapN<>(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
-                                               k6, v6, k7, v7, k8, v8);
+        return ImmutableCollections.MapN.create(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
+                                                k6, v6, k7, v7, k8, v8);
     }
 
     /**
@@ -1588,8 +1588,8 @@ public interface Map<K, V> {
      */
     static <K, V> Map<K, V> of(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5,
                                K k6, V v6, K k7, V v7, K k8, V v8, K k9, V v9) {
-        return new ImmutableCollections.MapN<>(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
-                                               k6, v6, k7, v7, k8, v8, k9, v9);
+        return ImmutableCollections.MapN.create(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
+                                                k6, v6, k7, v7, k8, v8, k9, v9);
     }
 
     /**
@@ -1626,8 +1626,8 @@ public interface Map<K, V> {
      */
     static <K, V> Map<K, V> of(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5,
                                K k6, V v6, K k7, V v7, K k8, V v8, K k9, V v9, K k10, V v10) {
-        return new ImmutableCollections.MapN<>(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
-                                               k6, v6, k7, v7, k8, v8, k9, v9, k10, v10);
+        return ImmutableCollections.MapN.create(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5,
+                                                k6, v6, k7, v7, k8, v8, k9, v9, k10, v10);
     }
 
     /**
@@ -1669,7 +1669,7 @@ public interface Map<K, V> {
             return map;
         } else if (entries.length == 1) {
             // implicit null check of the array slot
-            return new ImmutableCollections.Map1<>(entries[0].getKey(),
+            return ImmutableCollections.Map1.create(entries[0].getKey(),
                     entries[0].getValue());
         } else {
             Object[] kva = new Object[entries.length << 1];
@@ -1679,7 +1679,7 @@ public interface Map<K, V> {
                 kva[a++] = entry.getKey();
                 kva[a++] = entry.getValue();
             }
-            return new ImmutableCollections.MapN<>(kva);
+            return ImmutableCollections.MapN.create(kva);
         }
     }
 

@@ -35,6 +35,8 @@
 
 package java.util.concurrent;
 
+import jdk.internal.ValueBased;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.io.Serializable;
@@ -341,14 +343,6 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     private transient Index<K,V> head;
     /** Lazily initialized element count */
     private transient LongAdder adder;
-    /** Lazily initialized key set */
-    private transient KeySet<K,V> keySet;
-    /** Lazily initialized values collection */
-    private transient Values<K,V> values;
-    /** Lazily initialized entry set */
-    private transient EntrySet<K,V> entrySet;
-    /** Lazily initialized descending map */
-    private transient SubMap<K,V> descendingMap;
 
     /**
      * Nodes hold keys and values, and are singly linked in sorted
@@ -1128,10 +1122,6 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
             @SuppressWarnings("unchecked")
             ConcurrentSkipListMap<K,V> clone =
                 (ConcurrentSkipListMap<K,V>) super.clone();
-            clone.keySet = null;
-            clone.entrySet = null;
-            clone.values = null;
-            clone.descendingMap = null;
             clone.adder = null;
             clone.buildFromSorted(this);
             return clone;
@@ -1613,15 +1603,11 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @return a navigable set view of the keys in this map
      */
     public NavigableSet<K> keySet() {
-        KeySet<K,V> ks;
-        if ((ks = keySet) != null) return ks;
-        return keySet = new KeySet<>(this);
+        return new KeySet<>(this);
     }
 
     public NavigableSet<K> navigableKeySet() {
-        KeySet<K,V> ks;
-        if ((ks = keySet) != null) return ks;
-        return keySet = new KeySet<>(this);
+        return new KeySet<>(this);
     }
 
     /**
@@ -1644,9 +1630,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * <a href="package-summary.html#Weakly"><i>weakly consistent</i></a>.
      */
     public Collection<V> values() {
-        Values<K,V> vs;
-        if ((vs = values) != null) return vs;
-        return values = new Values<>(this);
+        return new Values<>(this);
     }
 
     /**
@@ -1677,16 +1661,11 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      *         sorted in ascending key order
      */
     public Set<Map.Entry<K,V>> entrySet() {
-        EntrySet<K,V> es;
-        if ((es = entrySet) != null) return es;
-        return entrySet = new EntrySet<K,V>(this);
+        return new EntrySet<K,V>(this);
     }
 
     public ConcurrentNavigableMap<K,V> descendingMap() {
-        ConcurrentNavigableMap<K,V> dm;
-        if ((dm = descendingMap) != null) return dm;
-        return descendingMap =
-            new SubMap<K,V>(this, null, false, null, false, true);
+        return new SubMap<K,V>(this, null, false, null, false, true);
     }
 
     public NavigableSet<K> descendingKeySet() {
@@ -2194,10 +2173,11 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         return list;
     }
 
+    @ValueBased
     static final class KeySet<K,V>
             extends AbstractSet<K> implements NavigableSet<K> {
         final ConcurrentNavigableMap<K,V> m;
-        KeySet(ConcurrentNavigableMap<K,V> map) { m = map; }
+        KeySet(ConcurrentNavigableMap<K,V> map) { m = map; super(); }
         public int size() { return m.size(); }
         public boolean isEmpty() { return m.isEmpty(); }
         public boolean contains(Object o) { return m.containsKey(o); }
@@ -2273,10 +2253,12 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         }
     }
 
+    @ValueBased
     static final class Values<K,V> extends AbstractCollection<V> {
         final ConcurrentNavigableMap<K,V> m;
         Values(ConcurrentNavigableMap<K,V> map) {
             m = map;
+            super();
         }
         public Iterator<V> iterator() {
             return (m instanceof ConcurrentSkipListMap)
@@ -2314,10 +2296,12 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         }
     }
 
+    @ValueBased
     static final class EntrySet<K,V> extends AbstractSet<Map.Entry<K,V>> {
         final ConcurrentNavigableMap<K,V> m;
         EntrySet(ConcurrentNavigableMap<K,V> map) {
             m = map;
+            super();
         }
         public Iterator<Map.Entry<K,V>> iterator() {
             return (m instanceof ConcurrentSkipListMap)
@@ -2397,6 +2381,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      *
      * @serial include
      */
+    @ValueBased
     static final class SubMap<K,V> extends AbstractMap<K,V>
         implements ConcurrentNavigableMap<K,V>, Serializable {
         private static final long serialVersionUID = -7647078645895051609L;
@@ -2416,15 +2401,10 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         /** @serial direction */
         final boolean isDescending;
 
-        // Lazily initialized view holders
-        private transient KeySet<K,V> keySetView;
-        private transient Values<K,V> valuesView;
-        private transient EntrySet<K,V> entrySetView;
-
         /**
          * Creates a new submap, initializing all fields.
          */
-        SubMap(ConcurrentSkipListMap<K,V> map,
+        private SubMap(ConcurrentSkipListMap<K,V> map,
                K fromKey, boolean fromInclusive,
                K toKey, boolean toInclusive,
                boolean isDescending) {
@@ -2438,6 +2418,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
             this.loInclusive = fromInclusive;
             this.hiInclusive = toInclusive;
             this.isDescending = isDescending;
+            super();
         }
 
         /* ----------------  Utilities -------------- */
@@ -2872,27 +2853,19 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         /* ---------------- Submap Views -------------- */
 
         public NavigableSet<K> keySet() {
-            KeySet<K,V> ks;
-            if ((ks = keySetView) != null) return ks;
-            return keySetView = new KeySet<>(this);
+            return new KeySet<>(this);
         }
 
         public NavigableSet<K> navigableKeySet() {
-            KeySet<K,V> ks;
-            if ((ks = keySetView) != null) return ks;
-            return keySetView = new KeySet<>(this);
+            return new KeySet<>(this);
         }
 
         public Collection<V> values() {
-            Values<K,V> vs;
-            if ((vs = valuesView) != null) return vs;
-            return valuesView = new Values<>(this);
+            return new Values<>(this);
         }
 
         public Set<Map.Entry<K,V>> entrySet() {
-            EntrySet<K,V> es;
-            if ((es = entrySetView) != null) return es;
-            return entrySetView = new EntrySet<K,V>(this);
+            return new EntrySet<K,V>(this);
         }
 
         public NavigableSet<K> descendingKeySet() {
