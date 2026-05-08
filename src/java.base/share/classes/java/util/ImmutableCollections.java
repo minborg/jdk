@@ -716,7 +716,7 @@ class ImmutableCollections {
         private final boolean allowNulls;
 
         // caller must ensure that elements has no nulls if allowNulls is false
-        private ListN(E[] elements, boolean allowNulls) {
+        ListN(E[] elements, boolean allowNulls) {
             this.elements = elements;
             this.allowNulls = allowNulls;
         }
@@ -1176,7 +1176,7 @@ class ImmutableCollections {
         @Stable
         private final V v0;
 
-        private Map1(K k0, V v0) {
+        Map1(K k0, V v0) {
             this.k0 = Objects.requireNonNull(k0);
             this.v0 = Objects.requireNonNull(v0);
             super();
@@ -1232,9 +1232,6 @@ class ImmutableCollections {
             action.accept(k0, v0); // implicit null check
         }
 
-        static <K, V> Map<K, V> create(K k0, V v0) {
-            return new Map1<>(k0, v0);
-        }
     }
 
     /**
@@ -1255,7 +1252,7 @@ class ImmutableCollections {
         @Stable
         final int size; // number of pairs
 
-        private MapN(Object... input) {
+        MapN(Object... input) {
             if ((input.length & 1) != 0) { // implicit nullcheck of input
                 throw new InternalError("length is odd");
             }
@@ -1440,9 +1437,6 @@ class ImmutableCollections {
             return new CollSer(CollSer.IMM_MAP, array);
         }
 
-        static <K, V> Map<K, V> create(Object... input) {
-            return new MapN<>(input);
-        }
     }
 
 }
@@ -1599,9 +1593,9 @@ final class CollSer implements Serializable {
                     if (array.length == 0) {
                         return ImmutableCollections.EMPTY_MAP;
                     } else if (array.length == 2) {
-                        return ImmutableCollections.Map1.create(array[0], array[1]);
+                        return new ImmutableCollections.Map1(array[0], array[1]);
                     } else {
-                        return ImmutableCollections.MapN.create(array);
+                        return new ImmutableCollections.MapN(array);
                     }
                 default:
                     throw new InvalidObjectException(String.format("invalid flags 0x%x", tag));
