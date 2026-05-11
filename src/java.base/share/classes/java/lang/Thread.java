@@ -27,6 +27,7 @@ package java.lang;
 
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;
+import java.lang.foreign.SegmentAllocator;
 import java.time.Duration;
 import java.util.Map;
 import java.util.HashMap;
@@ -349,6 +350,20 @@ public class Thread implements Runnable {
 
     void setInheritableThreadLocals(ThreadLocal.ThreadLocalMap map) {
         inheritableThreadLocals = map;
+    }
+
+    /*
+     * Lazily initialized allocator used to speed up small allocations made by
+     * confined arenas owned by this thread.
+     */
+    private SegmentAllocator confinedArenaAllocator;
+
+    SegmentAllocator confinedArenaAllocator() {
+        return confinedArenaAllocator;
+    }
+
+    void setConfinedArenaAllocator(SegmentAllocator allocator) {
+        confinedArenaAllocator = allocator;
     }
 
     /*
@@ -1547,6 +1562,16 @@ public class Thread implements Runnable {
     void clearReferences() {
         threadLocals = null;
         inheritableThreadLocals = null;
+        if (confinedArenaAllocator != null) {
+            try {
+                if (confinedArenaAllocator instanceof AutoCloseable closeable) {
+                    closeable.close();
+                }
+            } catch (Exception ignore) {
+            } finally {
+                confinedArenaAllocator = null;
+            }
+        }
         if (uncaughtExceptionHandler != null)
             uncaughtExceptionHandler = null;
         if (nioBlocker != null)

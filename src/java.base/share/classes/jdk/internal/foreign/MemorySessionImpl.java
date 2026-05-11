@@ -26,6 +26,8 @@
 
 package jdk.internal.foreign;
 
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.GlobalSession.HeapSession;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
@@ -35,6 +37,7 @@ import jdk.internal.vm.annotation.Stable;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
@@ -142,6 +145,22 @@ public abstract sealed class MemorySessionImpl
 
     public static MemorySessionImpl createConfined(Thread thread) {
         return new ConfinedSession(thread);
+    }
+
+    public static Arena createConfinedArena(Thread thread) {
+        JavaLangAccess javaLangAccess = SharedSecrets.getJavaLangAccess();
+        if (javaLangAccess == null) {
+            return createConfined(thread).asArena();
+        }
+        SegmentAllocator allocator = javaLangAccess.confinedArenaAllocator(thread);
+        if (allocator == null) {
+            allocator = new ThreadConfinedArenaAllocator();
+            javaLangAccess.setConfinedArenaAllocator(thread, allocator);
+        }
+        if (allocator instanceof ThreadConfinedArenaAllocator confinedAllocator) {
+            return confinedAllocator.acquire(thread);
+        }
+        return createConfined(thread).asArena();
     }
 
     public static MemorySessionImpl createShared() {

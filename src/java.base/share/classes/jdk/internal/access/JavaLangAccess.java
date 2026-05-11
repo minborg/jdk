@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -565,6 +566,16 @@ public interface JavaLangAccess {
      * Removes the value of the current carrier thread's copy of a thread-local.
      */
     void removeCarrierThreadLocal(CarrierThreadLocal<?> local);
+
+    /**
+     * Returns the thread's cached confined arena allocator, if any.
+     */
+    SegmentAllocator confinedArenaAllocator(Thread thread);
+
+    /**
+     * Sets the thread's cached confined arena allocator.
+     */
+    void setConfinedArenaAllocator(Thread thread, SegmentAllocator allocator);
 
     /**
      * Returns the current thread's scoped values cache
