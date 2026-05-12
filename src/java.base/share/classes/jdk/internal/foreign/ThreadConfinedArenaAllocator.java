@@ -26,14 +26,17 @@
 package jdk.internal.foreign;
 
 import jdk.internal.misc.VM;
+import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 
+// This class is not thread safe.
 final class ThreadConfinedArenaAllocator implements SegmentAllocator, AutoCloseable {
 
-    private static final long POOL_SIZE = 4096;
+    private static final String PROPERTY_NAME = "java.lang.foreign.confined.pool-size";
+    private static final long POOL_SIZE = Integer.getInteger(PROPERTY_NAME, 512);
     private static final long POOL_ALIGNMENT = 64;
 
     private Arena backingArena;
@@ -76,16 +79,17 @@ final class ThreadConfinedArenaAllocator implements SegmentAllocator, AutoClosea
 
     private SlicingAllocator slicingAllocator(long byteSize, long byteAlignment) {
         if (VM.isDirectMemoryPageAligned() || byteSize == 0 || byteSize > POOL_SIZE || byteAlignment > POOL_ALIGNMENT) {
+            // Give up on the spot
             return null;
         }
         SlicingAllocator allocator = slicingAllocator;
         if (allocator == null) {
             try {
                 backingArena = Arena.ofShared();
-                MemorySegment segment = backingArena.allocate(POOL_SIZE, POOL_ALIGNMENT);
+                final MemorySegment segment = backingArena.allocate(POOL_SIZE, POOL_ALIGNMENT);
                 allocator = (SlicingAllocator) SegmentAllocator.slicingAllocator(segment);
                 slicingAllocator = allocator;
-            } catch (OutOfMemoryError ignore) {
+            } catch (OutOfMemoryError _) {
                 backingArena = null;
                 return null;
             }
@@ -93,35 +97,42 @@ final class ThreadConfinedArenaAllocator implements SegmentAllocator, AutoClosea
         return allocator.canAllocate(byteSize, byteAlignment) ? allocator : null;
     }
 
-    private final class PooledArena implements Arena {
-
-        private final MemorySessionImpl session;
+    public final class PooledArena extends ArenaImpl implements Arena {
 
         PooledArena(MemorySessionImpl session) {
-            this.session = session;
-        }
-
-        @Override
-        public MemorySegment.Scope scope() {
-            return session;
+            super(session);
         }
 
         @Override
         public void close() {
-            session.close();
+            super.close();
             release();
         }
 
         @Override
-        public MemorySegment allocate(long byteSize, long byteAlignment) {
+        public NativeMemorySegmentImpl allocate(long byteSize, long byteAlignment) {
+            return allocate0(byteSize, byteAlignment, true);
+        }
+
+        @Override
+        public NativeMemorySegmentImpl allocateNoInit(long byteSize, long byteAlignment) {
+            return allocate0(byteSize, byteAlignment, false);
+        }
+
+        @ForceInline
+        private NativeMemorySegmentImpl allocate0(long byteSize, long byteAlignment, boolean init) {
             Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
             session.checkValidState();
-            SlicingAllocator allocator = slicingAllocator(byteSize, byteAlignment);
+            final SlicingAllocator allocator = slicingAllocator(byteSize, byteAlignment);
             if (allocator != null) {
-                MemorySegment segment = allocator.allocate(byteSize, byteAlignment).fill((byte) 0);
+                final MemorySegment segment = allocator.allocate(byteSize, byteAlignment);
+                if (init) {
+                    segment.fill((byte) 0);
+                }
                 return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), byteSize, session);
             }
-            return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, false, true);
+            return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, init);
         }
+
     }
 }

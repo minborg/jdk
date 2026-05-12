@@ -1562,16 +1562,13 @@ public class Thread implements Runnable {
     void clearReferences() {
         threadLocals = null;
         inheritableThreadLocals = null;
-        if (confinedArenaAllocator != null) {
+        if (confinedArenaAllocator instanceof AutoCloseable closeable) {
             try {
-                if (confinedArenaAllocator instanceof AutoCloseable closeable) {
-                    closeable.close();
-                }
-            } catch (Exception ignore) {
-            } finally {
-                confinedArenaAllocator = null;
+                closeable.close();
+            } catch (Exception _) {
             }
         }
+        confinedArenaAllocator = null;
         if (uncaughtExceptionHandler != null)
             uncaughtExceptionHandler = null;
         if (nioBlocker != null)

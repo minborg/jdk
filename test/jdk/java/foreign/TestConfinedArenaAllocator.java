@@ -23,24 +23,29 @@
 
 /*
  * @test
- * @run testng/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
- *                   --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
- *                   TestConfinedArenaAllocator
+ * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
+ *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
+ *                    TestConfinedArenaAllocator
  */
 
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Field;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
+import java.util.stream.Stream;
 
-import static org.testng.Assert.*;
+import static org.junit.Assert.*;
 
-public class TestConfinedArenaAllocator {
+final class TestConfinedArenaAllocator {
 
     static final Field THREAD_ALLOCATOR_FIELD;
     static final Field BACKING_ARENA_FIELD;
@@ -57,16 +62,18 @@ public class TestConfinedArenaAllocator {
         }
     }
 
-    @Test(dataProvider = "threadFactories")
-    public void testThreadLocalAllocator(String name, ThreadFactory threadFactory) throws Throwable {
+    @ParameterizedTest
+    @MethodSource("threadFactories")
+    void testThreadLocalAllocator(String name, Thread.Builder threadBuilder) throws Throwable {
         AtomicReference<Object> allocatorRef = new AtomicReference<>();
         AtomicReference<Throwable> failureRef = new AtomicReference<>();
-        Thread thread = threadFactory.newThread(() -> {
+        Thread thread = threadBuilder.factory().newThread(() -> {
             try {
                 assertNull(threadAllocator(Thread.currentThread()));
 
                 long firstAddress;
                 try (Arena arena = Arena.ofConfined()) {
+                    assertEquals("PooledArena", arena.getClass().getSimpleName());
                     Object allocator = threadAllocator(Thread.currentThread());
                     assertNotNull(allocator);
                     assertNull(backingArena(allocator));
@@ -79,6 +86,7 @@ public class TestConfinedArenaAllocator {
                 }
 
                 try (Arena arena = Arena.ofConfined()) {
+                    assertEquals("PooledArena", arena.getClass().getSimpleName());
                     MemorySegment segment = arena.allocate(ValueLayout.JAVA_LONG);
                     assertEquals(segment.address(), firstAddress);
                     assertEquals(segment.get(ValueLayout.JAVA_LONG, 0), 0L);
@@ -94,16 +102,26 @@ public class TestConfinedArenaAllocator {
         if (failureRef.get() != null) {
             throw failureRef.get();
         }
-        assertNull(threadAllocator(thread), name);
-        assertNull(backingArena(allocatorRef.get()), name);
+
+        if (thread.isVirtual()) {
+            // Give the virtual thread some time to clean up
+            long timeOut = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
+            while (System.nanoTime() < timeOut) {
+                if (threadAllocator(thread) == null) {
+                    break;
+                }
+                LockSupport.parkNanos(1_000_000L);
+            }
+        }
+
+        assertNull(name, threadAllocator(thread));
+        assertNull(name, backingArena(allocatorRef.get()));
     }
 
-    @DataProvider
-    public Object[][] threadFactories() {
-        return new Object[][] {
-                { "platform", (ThreadFactory) Thread::new },
-                { "virtual", (ThreadFactory) task -> Thread.ofVirtual().unstarted(task) }
-        };
+    static Stream<Arguments> threadFactories() {
+        return Stream.of(
+                Arguments.of("platform", Thread.ofPlatform()),
+                Arguments.of("virtual", Thread.ofVirtual()));
     }
 
     static Object threadAllocator(Thread thread) throws ReflectiveOperationException {

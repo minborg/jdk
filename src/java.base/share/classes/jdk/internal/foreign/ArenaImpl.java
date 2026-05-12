@@ -28,13 +28,15 @@ package jdk.internal.foreign;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment.Scope;
 
-public final class ArenaImpl implements Arena {
+public sealed class ArenaImpl implements Arena permits ThreadConfinedArenaAllocator.PooledArena {
 
-    private final MemorySessionImpl session;
-    private final boolean shouldReserveMemory;
+    final MemorySessionImpl session;
+    final boolean shouldReserveMemory;
+
     ArenaImpl(MemorySessionImpl session) {
         this.session = session;
         shouldReserveMemory = session instanceof ImplicitSession;
+        super();
     }
 
     @Override
