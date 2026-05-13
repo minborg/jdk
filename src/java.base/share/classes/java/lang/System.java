@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package java.lang;
 
 import java.io.BufferedInputStream;
@@ -36,7 +37,6 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.module.ModuleDescriptor;
@@ -2266,11 +2266,11 @@ public final class System {
                 ((ThreadLocal<?>)local).removeCarrierThreadLocal();
             }
 
-            public SegmentAllocator confinedArenaAllocator(Thread thread) {
+            public AutoCloseable confinedArenaAllocator(Thread thread) {
                 return thread.confinedArenaAllocator();
             }
 
-            public void setConfinedArenaAllocator(Thread thread, SegmentAllocator allocator) {
+            public void setConfinedArenaAllocator(Thread thread, AutoCloseable allocator) {
                 thread.setConfinedArenaAllocator(allocator);
             }
 

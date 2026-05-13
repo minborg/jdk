@@ -29,7 +29,6 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -570,12 +569,12 @@ public interface JavaLangAccess {
     /**
      * Returns the thread's cached confined arena allocator, if any.
      */
-    SegmentAllocator confinedArenaAllocator(Thread thread);
+    AutoCloseable confinedArenaAllocator(Thread thread);
 
     /**
      * Sets the thread's cached confined arena allocator.
      */
-    void setConfinedArenaAllocator(Thread thread, SegmentAllocator allocator);
+    void setConfinedArenaAllocator(Thread thread, AutoCloseable allocator);
 
     /**
      * Returns the current thread's scoped values cache

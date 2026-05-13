@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,6 @@ import jdk.internal.vm.annotation.Stable;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
-import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
@@ -152,9 +151,12 @@ public abstract sealed class MemorySessionImpl
         if (javaLangAccess == null) {
             return createConfined(thread).asArena();
         }
-        SegmentAllocator allocator = javaLangAccess.confinedArenaAllocator(thread);
+        AutoCloseable allocator = javaLangAccess.confinedArenaAllocator(thread);
         if (allocator == null) {
-            allocator = new ThreadConfinedArenaAllocator();
+            allocator = ThreadConfinedArenaAllocator.of();
+            if (allocator == null) {
+                return createConfined(thread).asArena();
+            }
             javaLangAccess.setConfinedArenaAllocator(thread, allocator);
         }
         if (allocator instanceof ThreadConfinedArenaAllocator confinedAllocator) {

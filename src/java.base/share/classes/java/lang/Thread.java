@@ -27,7 +27,6 @@ package java.lang;
 
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;
-import java.lang.foreign.SegmentAllocator;
 import java.time.Duration;
 import java.util.Map;
 import java.util.HashMap;
@@ -356,13 +355,14 @@ public class Thread implements Runnable {
      * Lazily initialized allocator used to speed up small allocations made by
      * confined arenas owned by this thread.
      */
-    private SegmentAllocator confinedArenaAllocator;
+    @Stable
+    private AutoCloseable confinedArenaAllocator;
 
-    SegmentAllocator confinedArenaAllocator() {
+    AutoCloseable confinedArenaAllocator() {
         return confinedArenaAllocator;
     }
 
-    void setConfinedArenaAllocator(SegmentAllocator allocator) {
+    void setConfinedArenaAllocator(AutoCloseable allocator) {
         confinedArenaAllocator = allocator;
     }
 
@@ -1562,9 +1562,9 @@ public class Thread implements Runnable {
     void clearReferences() {
         threadLocals = null;
         inheritableThreadLocals = null;
-        if (confinedArenaAllocator instanceof AutoCloseable closeable) {
+        if (confinedArenaAllocator != null) {
             try {
-                closeable.close();
+                confinedArenaAllocator.close();
             } catch (Exception _) {
             }
         }

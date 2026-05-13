@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import jdk.internal.vm.annotation.ForceInline;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Reference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -100,31 +99,63 @@ public final class BufferStack {
         return "BufferStack[byteSize=" + byteSize + ", byteAlignment=" + byteAlignment + "]";
     }
 
-    private record PerThread(ReentrantLock lock,
-                             Arena arena,
-                             SlicingAllocator stack,
-                             CleanupAction cleanupAction) {
+    record PerThread(ReentrantLock lock,
+                     Arena arena,
+                     SlicingAllocator stack,
+                     CleanupAction cleanupAction,
+                     boolean closeable) implements AutoCloseable {
 
         @ForceInline
         public Arena pushFrame(long size, long byteAlignment) {
+            return pushFrame(Thread.currentThread(), size, byteAlignment, false, false);
+        }
+
+        @ForceInline
+        Arena pushFrame(Thread owner, long size, long byteAlignment, boolean clear, boolean fallbackAllocations) {
             boolean needsLock = Thread.currentThread().isVirtual() && !lock.isHeldByCurrentThread();
             if (needsLock && !lock.tryLock()) {
                 // Rare: another virtual thread on the same carrier competed for acquisition.
-                return Arena.ofConfined();
+                return MemorySessionImpl.createConfined(owner).asArena();
             }
             if (!stack.canAllocate(size, byteAlignment)) {
                 if (needsLock) lock.unlock();
-                return Arena.ofConfined();
+                return MemorySessionImpl.createConfined(owner).asArena();
             }
-            return new Frame(needsLock, size, byteAlignment);
+            return new Frame(owner, needsLock, size, byteAlignment, clear, fallbackAllocations);
         }
 
         static PerThread of(long byteSize, long byteAlignment) {
-            final Arena arena = Arena.ofAuto();
-            return new PerThread(new ReentrantLock(),
-                    arena,
-                    new SlicingAllocator(arena.allocate(byteSize, byteAlignment)),
-                    new CleanupAction(arena));
+            return of(byteSize, byteAlignment, Arena.ofAuto(), false);
+        }
+
+        static PerThread ofCloseable(long byteSize, long byteAlignment) {
+            return of(byteSize, byteAlignment, Arena.ofShared(), true);
+        }
+
+        private static PerThread of(long byteSize, long byteAlignment, Arena arena, boolean closeable) {
+            try {
+                return new PerThread(new ReentrantLock(),
+                        arena,
+                        new SlicingAllocator(arena.allocate(byteSize, byteAlignment)),
+                        new CleanupAction(arena),
+                        closeable);
+            } catch (Throwable ex) {
+                if (closeable) {
+                    try {
+                        arena.close();
+                    } catch (Throwable suppressed) {
+                        ex.addSuppressed(suppressed);
+                    }
+                }
+                throw ex;
+            }
+        }
+
+        @Override
+        public void close() {
+            if (closeable) {
+                arena.close();
+            }
         }
 
         private record CleanupAction(Arena arena) implements Consumer<MemorySegment> {
@@ -134,26 +165,30 @@ public final class BufferStack {
             }
         }
 
-        private final class Frame implements Arena {
+        final class Frame extends ArenaImpl {
 
             private final boolean locked;
             private final long parentOffset;
             private final long topOfStack;
-            private final Arena confinedArena;
-            private final SegmentAllocator frame;
+            private final SlicingAllocator frame;
+            private final boolean clear;
+            private final boolean fallbackAllocations;
 
             @SuppressWarnings("restricted")
             @ForceInline
-            public Frame(boolean locked, long byteSize, long byteAlignment) {
+            public Frame(Thread owner, boolean locked, long byteSize, long byteAlignment,
+                         boolean clear, boolean fallbackAllocations) {
                 this.locked = locked;
+                this.clear = clear;
+                this.fallbackAllocations = fallbackAllocations;
                 this.parentOffset = stack.currentOffset();
                 final MemorySegment frameSegment = stack.allocate(byteSize, byteAlignment);
                 this.topOfStack = stack.currentOffset();
-                this.confinedArena = Arena.ofConfined();
+                super(MemorySessionImpl.createConfined(owner));
                 // The cleanup action will keep the original automatic `arena` (from which
                 // the reusable segment is first allocated) alive even if this Frame
                 // becomes unreachable but there are reachable segments still alive.
-                this.frame = new SlicingAllocator(frameSegment.reinterpret(confinedArena, cleanupAction));
+                this.frame = new SlicingAllocator(frameSegment.reinterpret(this, cleanupAction));
             }
 
             @ForceInline
@@ -165,16 +200,30 @@ public final class BufferStack {
             @ForceInline
             @Override
             @SuppressWarnings("restricted")
-            public MemorySegment allocate(long byteSize, long byteAlignment) {
-                // Make sure we are on the right thread and not closed
-                MemorySessionImpl.toMemorySession(confinedArena).checkValidState();
-                return frame.allocate(byteSize, byteAlignment);
+            public NativeMemorySegmentImpl allocate(long byteSize, long byteAlignment) {
+                return allocate0(byteSize, byteAlignment, clear);
             }
 
             @ForceInline
             @Override
-            public MemorySegment.Scope scope() {
-                return confinedArena.scope();
+            public NativeMemorySegmentImpl allocateNoInit(long byteSize, long byteAlignment) {
+                return allocate0(byteSize, byteAlignment, false);
+            }
+
+            @ForceInline
+            private NativeMemorySegmentImpl allocate0(long byteSize, long byteAlignment, boolean init) {
+                Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
+                session.checkValidState();
+                if (frame.canAllocate(byteSize, byteAlignment)) {
+                    final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl)frame.allocate(byteSize, byteAlignment);
+                    if (init) {
+                        segment.fill((byte) 0);
+                    }
+                    return segment;
+                }
+                return fallbackAllocations ?
+                        init ? super.allocate(byteSize, byteAlignment) : super.allocateNoInit(byteSize, byteAlignment) :
+                        (NativeMemorySegmentImpl)frame.allocate(byteSize, byteAlignment);
             }
 
             @ForceInline
@@ -184,7 +233,7 @@ public final class BufferStack {
                 // the Arena::close method is called "early" as it checks thread
                 // confinement and crucially before any mutation of the internal
                 // state takes place.
-                confinedArena.close();
+                super.close();
                 stack.resetTo(parentOffset);
                 if (locked) {
                     lock.unlock();
