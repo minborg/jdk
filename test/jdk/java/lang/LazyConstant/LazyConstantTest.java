@@ -22,7 +22,7 @@
  */
 
 /* @test
- * @summary Basic tests for the LazyConstant implementation
+ * @summary Basic tests for the Supplier implementation
  * @enablePreview
  * @library /test/lib
  * @modules java.base/jdk.internal.lang
@@ -40,7 +40,6 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.lang.LazyConstant;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -58,12 +57,12 @@ final class LazyConstantTest {
 
     @Test
     void factoryInvariants() {
-        assertThrows(NullPointerException.class, () -> LazyConstant.of(null));
+        assertThrows(NullPointerException.class, () -> Supplier.ofLazy(null));
     }
 
     @ParameterizedTest
     @MethodSource("factories")
-    void basic(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+    void basic(Function<Supplier<Integer>, Supplier<Integer>> factory) {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(SUPPLIER);
         var lazy = factory.apply(cs);
         assertEquals(SUPPLIER.get(), lazy.get());
@@ -75,7 +74,7 @@ final class LazyConstantTest {
 
     @ParameterizedTest
     @MethodSource("factories")
-    void exceptionInComputingFunction(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+    void exceptionInComputingFunction(Function<Supplier<Integer>, Supplier<Integer>> factory) {
         // Test different Throwable categories
         for (LazyConstantTestUtil.Thrower thrower : LazyConstantTestUtil.throwers()) {
             AtomicReference<Throwable> exceptionThrown = new AtomicReference<>();
@@ -91,14 +90,14 @@ final class LazyConstantTest {
 
     @ParameterizedTest
     @MethodSource("factories")
-    void nullInComputingFunction(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+    void nullInComputingFunction(Function<Supplier<Integer>, Supplier<Integer>> factory) {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(() -> {
             return null;
         });
         exceptionInComputingFunction(factory, cs, () -> NullPointerException.class, null);
     }
 
-    void exceptionInComputingFunction(Function<Supplier<Integer>, LazyConstant<Integer>> factory,
+    void exceptionInComputingFunction(Function<Supplier<Integer>, Supplier<Integer>> factory,
                                       LazyConstantTestUtil.CountingSupplier<Integer> cs,
                                       Supplier<Class<? extends Throwable>> causeTypeSupplier,
                                       String message) {
@@ -121,13 +120,13 @@ final class LazyConstantTest {
 
     @ParameterizedTest
     @MethodSource("lazyConstants")
-    void get(LazyConstant<Integer> constant) {
+    void get(Supplier<Integer> constant) {
         assertEquals(VALUE, constant.get());
     }
 
     @ParameterizedTest
     @MethodSource("factories")
-    void testHashCode(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+    void testHashCode(Function<Supplier<Integer>, Supplier<Integer>> factory) {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(SUPPLIER);
         var lazy = factory.apply(cs);
         assertEquals(System.identityHashCode(lazy), lazy.hashCode());
@@ -138,11 +137,11 @@ final class LazyConstantTest {
 
     @ParameterizedTest
     @MethodSource("factories")
-    void testEquals(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+    void testEquals(Function<Supplier<Integer>, Supplier<Integer>> factory) {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(SUPPLIER);
         var lazy = factory.apply(cs);
         assertNotEquals(null, lazy);
-        LazyConstant<Integer> different = LazyConstant.of(SUPPLIER);
+        Supplier<Integer> different = Supplier.ofLazy(SUPPLIER);
         assertNotEquals(different, lazy);
         assertNotEquals(lazy, different);
         assertNotEquals("a", lazy);
@@ -152,15 +151,15 @@ final class LazyConstantTest {
 
     @ParameterizedTest
     @MethodSource("lazyConstants")
-    void testLazyConstantAsComputingFunction(LazyConstant<Integer> constant) {
-        LazyConstant<Integer> c1 = LazyConstant.of(constant);
+    void testLazySupplierAsComputingFunction(Supplier<Integer> constant) {
+        Supplier<Integer> c1 = Supplier.ofLazy(constant);
         assertNotSame(constant, c1);
     }
 
     @Test
     void toStringTest() {
         Supplier<String> supplier = () -> "str";
-        LazyConstant<String> lazy = LazyConstant.of(supplier);
+        Supplier<String> lazy = Supplier.ofLazy(supplier);
         var expectedSubstring = "computing function=" + supplier;
         assertTrue(lazy.toString().contains(expectedSubstring));
         lazy.get();
@@ -169,7 +168,7 @@ final class LazyConstantTest {
 
     @ParameterizedTest
     @MethodSource("lazyConstants")
-    void toStringUnset(LazyConstant<Integer> constant) {
+    void toStringUnset(Supplier<Integer> constant) {
         String unInitializedToString = constant.toString();
         int suffixEnd = unInitializedToString.indexOf("[");
         String suffix = unInitializedToString.substring(0, suffixEnd);
@@ -182,18 +181,18 @@ final class LazyConstantTest {
 
     @Test
     void toStringCircular() {
-        AtomicReference<LazyConstant<?>> ref = new AtomicReference<>();
-        LazyConstant<LazyConstant<?>> constant = LazyConstant.of(ref::get);
+        AtomicReference<Supplier<?>> ref = new AtomicReference<>();
+        Supplier<Supplier<?>> constant = Supplier.ofLazy(ref::get);
         ref.set(constant);
         constant.get();
         String toString = assertDoesNotThrow(constant::toString);
-        assertTrue(constant.toString().contains("(this LazyConstant)"), toString);
+        assertTrue(constant.toString().contains("(this Supplier)"), toString);
     }
 
     @Test
     void recursiveCall() {
-        AtomicReference<LazyConstant<Integer>> ref = new AtomicReference<>();
-        LazyConstant<Integer> constant = LazyConstant.of(() -> ref.get().get());
+        AtomicReference<Supplier<Integer>> ref = new AtomicReference<>();
+        Supplier<Integer> constant = Supplier.ofLazy(() -> ref.get().get());
         ref.set(constant);
         var x = assertThrows(NoSuchElementException.class, constant::get);
         assertEquals(IllegalStateException.class, x.getCause().getClass());
@@ -201,7 +200,7 @@ final class LazyConstantTest {
 
     @Test
     void recursiveCallWithComputingFunctionsToStringThrowing() {
-        AtomicReference<LazyConstant<Integer>> ref = new AtomicReference<>();
+        AtomicReference<Supplier<Integer>> ref = new AtomicReference<>();
         AtomicInteger cnt = new AtomicInteger();
 
         final class NaughtySupplier implements Supplier<Integer> {
@@ -217,7 +216,7 @@ final class LazyConstantTest {
             }
         }
 
-        LazyConstant<Integer> constant = LazyConstant.of(new NaughtySupplier());
+        Supplier<Integer> constant = Supplier.ofLazy(new NaughtySupplier());
 
         ref.set(constant);
         var x = assertThrows(NoSuchElementException.class, constant::get);
@@ -236,7 +235,7 @@ final class LazyConstantTest {
             CountDownLatch release = new CountDownLatch(1);
             CountDownLatch competing = new CountDownLatch(2);
 
-            LazyConstant<Integer> constant = LazyConstant.of(() -> {
+            Supplier<Integer> constant = Supplier.ofLazy(() -> {
                 calls.incrementAndGet();
                 entered.countDown();
                 try {
@@ -280,7 +279,7 @@ final class LazyConstantTest {
             CountDownLatch release = new CountDownLatch(1);
             CountDownLatch waiting = new CountDownLatch(1);
 
-            LazyConstant<Integer> constant = LazyConstant.of(() -> {
+            Supplier<Integer> constant = Supplier.ofLazy(() -> {
                 entered.countDown();
                 try {
                     assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
@@ -318,7 +317,7 @@ final class LazyConstantTest {
         CountDownLatch supplierRunning = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
 
-        LazyConstant<Integer> constant = LazyConstant.of(() -> {
+        Supplier<Integer> constant = Supplier.ofLazy(() -> {
             supplierRunning.countDown();
             try {
                 assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
@@ -348,7 +347,7 @@ final class LazyConstantTest {
 
     @ParameterizedTest
     @MethodSource("factories")
-    void underlying(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+    void underlying(Function<Supplier<Integer>, Supplier<Integer>> factory) {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(SUPPLIER);
         var f1 = factory.apply(cs);
 
@@ -361,7 +360,7 @@ final class LazyConstantTest {
 
     @ParameterizedTest
     @MethodSource("factories")
-    void functionHolderException(Function<Supplier<Integer>, LazyConstant<Integer>> factory) {
+    void functionHolderException(Function<Supplier<Integer>, Supplier<Integer>> factory) {
         LazyConstantTestUtil.CountingSupplier<Integer> cs = new LazyConstantTestUtil.CountingSupplier<>(() -> {
             throw new UnsupportedOperationException();
         });
@@ -377,22 +376,22 @@ final class LazyConstantTest {
         assertEquals(UnsupportedOperationException.class.getName(), underlyingAfter);
     }
 
-    private static Stream<LazyConstant<Integer>> lazyConstants() {
+    private static Stream<Supplier<Integer>> lazyConstants() {
         return factories()
                 .map(f -> f.apply(() -> VALUE));
     }
 
-    private static Stream<Function<Supplier<Integer>, LazyConstant<Integer>>> factories() {
+    private static Stream<Function<Supplier<Integer>, Supplier<Integer>>> factories() {
         return Stream.of(
-                supplier("ComputedConstant.of(<lambda>)", LazyConstant::of)
+                supplier("Supplier.ofLazy(<lambda>)", Supplier::ofLazy)
         );
     }
 
-    private static Function<Supplier<Integer>, LazyConstant<Integer>> supplier(String name,
-                                                                               Function<Supplier<Integer>, LazyConstant<Integer>> underlying) {
-        return new Function<Supplier<Integer>, LazyConstant<Integer>>() {
+    private static Function<Supplier<Integer>, Supplier<Integer>> supplier(String name,
+                                                                               Function<Supplier<Integer>, Supplier<Integer>> underlying) {
+        return new Function<Supplier<Integer>, Supplier<Integer>>() {
             @Override
-            public LazyConstant<Integer> apply(Supplier<Integer> supplier) {
+            public Supplier<Integer> apply(Supplier<Integer> supplier) {
                 return underlying.apply(supplier);
             }
 

@@ -95,7 +95,7 @@ public final class BaseLocale {
     }
 
     // Interned BaseLocale cache
-    @Stable private static LazyConstant<ReferencedKeySet<BaseLocale>> CACHE;
+    @Stable private static Supplier<ReferencedKeySet<BaseLocale>> CACHE;
     static {
         runtimeSetup();
     }
@@ -103,7 +103,7 @@ public final class BaseLocale {
     @AOTRuntimeSetup
     private static void runtimeSetup() {
         CACHE =
-            LazyConstant.of(new Supplier<>() {
+            Supplier.ofLazy(new Supplier<>() {
                 @Override
                 public ReferencedKeySet<BaseLocale> get() {
                     return ReferencedKeySet.create(true, ReferencedKeySet.concurrentHashMapSupplier());

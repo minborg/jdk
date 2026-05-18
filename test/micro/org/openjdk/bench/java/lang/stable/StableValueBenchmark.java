@@ -28,7 +28,6 @@ import org.openjdk.jmh.annotations.*;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.lang.LazyConstant;
 import java.util.function.Supplier;
 
 /**
@@ -49,8 +48,8 @@ public class StableValueBenchmark {
     private static final int VALUE = 42;
     private static final int VALUE2 = 23;
 
-    private static final LazyConstant<Integer> STABLE = init(VALUE);
-    private static final LazyConstant<Integer> STABLE2 = init(VALUE2);
+    private static final Supplier<Integer> STABLE = init(VALUE);
+    private static final Supplier<Integer> STABLE2 = init(VALUE2);
     private static final Supplier<Integer> DCL = new Dcl<>(() -> VALUE);
     private static final Supplier<Integer> DCL2 = new Dcl<>(() -> VALUE2);
     private static final AtomicReference<Integer> ATOMIC = new AtomicReference<>(VALUE);
@@ -60,13 +59,13 @@ public class StableValueBenchmark {
     private static final RecordHolder RECORD_HOLDER = new RecordHolder(VALUE);
     private static final RecordHolder RECORD_HOLDER2 = new RecordHolder(VALUE2);
 
-    private static final LazyConstant<Optional<Integer>> OPTIONAL_42 = LazyConstant.of(() -> Optional.of(42));
-    private static final LazyConstant<Optional<Integer>> OPTIONAL_42_2 = LazyConstant.of(() -> Optional.of(42));
-    private static final LazyConstant<Optional<Integer>> OPTIONAL_EMPTY = LazyConstant.of(Optional::empty);
-    private static final LazyConstant<Optional<Integer>> OPTIONAL_EMPTY2 = LazyConstant.of(Optional::empty);
+    private static final Supplier<Optional<Integer>> OPTIONAL_42 = Supplier.ofLazy(() -> Optional.of(42));
+    private static final Supplier<Optional<Integer>> OPTIONAL_42_2 = Supplier.ofLazy(() -> Optional.of(42));
+    private static final Supplier<Optional<Integer>> OPTIONAL_EMPTY = Supplier.ofLazy(Optional::empty);
+    private static final Supplier<Optional<Integer>> OPTIONAL_EMPTY2 = Supplier.ofLazy(Optional::empty);
 
-    private final LazyConstant<Integer> stable = init(VALUE);
-    private final LazyConstant<Integer> stable2 = init(VALUE2);
+    private final Supplier<Integer> stable = init(VALUE);
+    private final Supplier<Integer> stable2 = init(VALUE2);
     private final Supplier<Integer> dcl = new Dcl<>(() -> VALUE);
     private final Supplier<Integer> dcl2 = new Dcl<>(() -> VALUE2);
     private final AtomicReference<Integer> atomic = new AtomicReference<>(VALUE);
@@ -131,16 +130,16 @@ public class StableValueBenchmark {
     }
 
 
-    private static LazyConstant<Integer> init(Integer value) {
-        return LazyConstant.of(() -> value);
+    private static Supplier<Integer> init(Integer value) {
+        return Supplier.ofLazy(() -> value);
     }
 
     private static final class Holder {
 
-        private final LazyConstant<Integer> delegate;
+        private final Supplier<Integer> delegate;
 
         Holder(int value) {
-            delegate = LazyConstant.of(() -> value);
+            delegate = Supplier.ofLazy(() -> value);
         }
 
         int get() {
@@ -149,10 +148,10 @@ public class StableValueBenchmark {
 
     }
 
-    private record RecordHolder(LazyConstant<Integer> delegate) {
+    private record RecordHolder(Supplier<Integer> delegate) {
 
         RecordHolder(int value) {
-            this(LazyConstant.of(() -> value));
+            this(Supplier.ofLazy(() -> value));
         }
 
         int get() {

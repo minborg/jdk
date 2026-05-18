@@ -22,7 +22,7 @@
  */
 
 /* @test
- * @summary Basic tests for making sure ComputedConstant publishes values safely
+ * @summary Basic tests for making sure lazy supplier publishes values safely
  * @modules java.base/jdk.internal.misc
  * @modules java.base/jdk.internal.lang
  * @library /test/lib
@@ -41,7 +41,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.lang.LazyConstant;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -55,7 +54,7 @@ final class LazyConstantSafePublicationTest {
 
     static final class Holder {
         // These are non-final fields but should be seen
-        // fully initialized thanks to the HB properties of ComputedConstants.
+        // fully initialized thanks to the HB properties of lazy suppliers.
         int a, b, c, d, e;
 
         Holder() {
@@ -78,7 +77,7 @@ final class LazyConstantSafePublicationTest {
             for (; i < SIZE; i++) {
                 LazyConstantImpl<Holder> s = constants[i];
                 Holder h;
-                // Wait until the ComputedConstant has a holder value
+                // Wait until the lazy supplier has a holder value
                 while ((h = s.orElse(null)) == null) { Thread.onSpinWait();}
                 int a = h.a;
                 int b = h.b;
@@ -172,7 +171,7 @@ final class LazyConstantSafePublicationTest {
                                         .map(s -> s.orElse(null))
                                         .filter(Objects::nonNull)
                                         .count(), Executors.newSingleThreadExecutor()).join();
-                        fail("Giving up! Set lazy constants seen by a new thread: " + nonNulls);
+                        fail("Giving up! Set lazy suppliers seen by a new thread: " + nonNulls);
                     }
                 }
             }

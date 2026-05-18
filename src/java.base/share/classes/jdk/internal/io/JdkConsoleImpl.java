@@ -110,7 +110,7 @@ public final class JdkConsoleImpl implements JdkConsole {
     // check if `System.console()` returns a Console instance and use it if available. Otherwise,
     // it should call this method to obtain a JdkConsoleImpl. This ensures only one Console
     // instance exists in the Java runtime.
-    private static final LazyConstant<Optional<JdkConsoleImpl>> PASSWORD_CONSOLE = LazyConstant.of(
+    private static final Supplier<Optional<JdkConsoleImpl>> PASSWORD_CONSOLE = Supplier.ofLazy(
         new Supplier<Optional<JdkConsoleImpl>>() {
             @Override
             public Optional<JdkConsoleImpl> get() {

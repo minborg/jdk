@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @summary Check LazyConstant and lazy collection constant folding
+ * @summary Check Supplier#ofLazy(Supplier) and lazy collection constant folding
  * @modules java.base/jdk.internal.lang
  * @library /test/lib /
  * @enablePreview
@@ -37,6 +37,7 @@ import compiler.lib.ir_framework.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public class LazyConstantsIrTest {
 
@@ -54,7 +55,7 @@ public class LazyConstantsIrTest {
 
     static final int THE_VALUE = 42;
 
-    static final LazyConstant<Integer> LAZY_CONSTANT = LazyConstant.of(() -> THE_VALUE);
+    static final Supplier<Integer> LAZY_CONSTANT = Supplier.ofLazy(() -> THE_VALUE);
     static final List<Integer> LAZY_LIST = List.ofLazy(1, _ -> THE_VALUE);
     static final Set<Integer> LAZY_SET = Set.ofLazy(Set.of(THE_VALUE), _ -> true);
     static final Map<Integer, Integer> LAZY_MAP = Map.ofLazy(Set.of(0), _ -> THE_VALUE);

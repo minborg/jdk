@@ -30,6 +30,7 @@ import jdk.internal.javac.PreviewFeature;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.io.Serializable;
 
 /**
@@ -1835,18 +1836,18 @@ public interface Map<K, V> {
      * }
      * <p>
      * The returned {@code Map<K, V>} can be thought of as a map backed by a
-     * {@code Map<K, LazyConstant<V>>} field and where the {@linkplain Map#get(Object)}
+     * {@code Map<K, Supplier<V>>} field and where the {@linkplain Map#get(Object)}
      * operation is equivalent to:
      * {@snippet lang = java:
      * class LazyMap<K, V> extends AbstractMap<K, V> {
      *
-     *     private final Map<K, LazyConstant<V>> backingMap;
+     *     private final Map<K, Supplier<V>> backingMap;
      *
      *     public LazyMap(Set<K> keys, Function<K, V> computingFunction) {
      *         this.backingMap = keys.stream()
      *                 .collect(Collectors.toUnmodifiableMap(
      *                         Function.identity(),
-     *                         k -> LazyConstant.of(() -> computingFunction.apply(k))));
+     *                         k -> Supplier.ofLazy(() -> computingFunction.apply(k))));
      *     }
      *
      *     @Override
@@ -1862,7 +1863,7 @@ public interface Map<K, V> {
      * <p>
      * Values in the returned map are eligible for certain performance optimizations
      * such as <em>constant folding</em> as described in
-     * {@linkplain LazyConstant##performance LazyConstant}.
+     * {@linkplain Supplier##performance Supplier.ofLazy}.
      *
      * @implNote  after all values have been initialized successfully or transitioned to
      *            an error state, the computing function is no longer strongly referenced
@@ -1876,7 +1877,7 @@ public interface Map<K, V> {
      *         if the set of {@code keys} contains a {@code null} element, or
      *         if the provided {@code computingFunction} is {@code null}
      *
-     * @see LazyConstant
+     * @see Supplier#ofLazy(Supplier)
      * @since 26
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)

@@ -39,15 +39,15 @@ import jdk.internal.io.JdkConsole;
 @ValueBased
 final class ProxyingConsole extends Console {
     private final JdkConsole delegate;
-    private final LazyConstant<Reader> reader =
-        LazyConstant.of(new Supplier<>(){
+    private final Supplier<Reader> reader =
+        Supplier.ofLazy(new Supplier<>(){
             @Override
             public Reader get() {
                 return new WrappingReader(delegate.reader());
             }
         });
-    private final LazyConstant<PrintWriter> printWriter =
-        LazyConstant.of(new Supplier<>() {
+    private final Supplier<PrintWriter> printWriter =
+        Supplier.ofLazy(new Supplier<>() {
             @Override
             public PrintWriter get() {
                 return new WrappingWriter(delegate.writer());

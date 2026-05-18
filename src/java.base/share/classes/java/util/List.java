@@ -30,6 +30,7 @@ import jdk.internal.javac.PreviewFeature;
 
 import java.io.Serializable;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 /**
@@ -1274,16 +1275,16 @@ public interface List<E> extends SequencedCollection<E> {
      * }
      * <p>
      * The returned {@code List<E>} can be thought of as a list backed by a
-     * {@code List<LazyConstant<E>>} field and where the {@linkplain List#get(int)}
+     * {@code List<Supplier<E>>} field and where the {@linkplain List#get(int)}
      * operation is equivalent to:
      * {@snippet lang = java:
      * class LazyList<E> extends AbstractList<E> {
      *
-     *     private final List<LazyConstant<E>> backingList;
+     *     private final List<Supplier<E>> backingList;
      *
      *     public LazyList(int size, IntFunction<E> computingFunction) {
      *         this.backingList = IntStream.range(0, size)
-     *                 .mapToObj(i -> LazyConstant.of(() -> computingFunction.apply(i)))
+     *                 .mapToObj(i -> Supplier.ofLazy(() -> computingFunction.apply(i)))
      *                 .toList();
      *     }
      *
@@ -1297,7 +1298,7 @@ public interface List<E> extends SequencedCollection<E> {
      * <p>
      * Elements in the returned list are eligible for certain performance optimizations
      * such as <em>constant folding</em> as described in
-     * {@linkplain LazyConstant##performance LazyConstant}.
+     * {@linkplain Supplier##performance Supplier.ofLazy}.
      *
      * @implNote  after all elements have been initialized successfully or transitioned to
      *            an error state, the computing function is no longer strongly referenced
@@ -1310,7 +1311,7 @@ public interface List<E> extends SequencedCollection<E> {
      * @throws IllegalArgumentException if the provided {@code size} is negative.
      * @throws NullPointerException     if the provided {@code computingFunction} is {@code null}
      *
-     * @see LazyConstant
+     * @see Supplier#ofLazy(Supplier)
      * @since 26
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)

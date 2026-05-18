@@ -39,7 +39,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.InaccessibleObjectException;
-import java.lang.LazyConstant;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -53,45 +52,45 @@ final class TrustedFieldTypeTest {
     void varHandle() throws NoSuchFieldException, IllegalAccessException {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-        LazyConstant<Integer> originalValue = LazyConstant.of(SUPPLIER);
+        Supplier<Integer> originalValue = Supplier.ofLazy(SUPPLIER);
         @SuppressWarnings("unchecked")
-        LazyConstant<Integer>[] originalArrayValue = new LazyConstant[10];
+        Supplier<Integer>[] originalArrayValue = new Supplier[10];
 
         final class Holder {
-            private final LazyConstant<Integer> value = originalValue;
+            private final Supplier<Integer> value = originalValue;
         }
         final class ArrayHolder {
-            private final LazyConstant<Integer>[] array = originalArrayValue;
+            private final Supplier<Integer>[] array = originalArrayValue;
         }
 
 
-        VarHandle valueVarHandle = lookup.findVarHandle(Holder.class, "value", LazyConstant.class);
+        VarHandle valueVarHandle = lookup.findVarHandle(Holder.class, "value", Supplier.class);
         Holder holder = new Holder();
 
         assertThrows(UnsupportedOperationException.class, () ->
-                valueVarHandle.set(holder, LazyConstant.of(SUPPLIER))
+                valueVarHandle.set(holder, Supplier.ofLazy(SUPPLIER))
         );
 
         assertThrows(UnsupportedOperationException.class, () ->
-                valueVarHandle.compareAndSet(holder, originalValue, LazyConstant.of(SUPPLIER))
+                valueVarHandle.compareAndSet(holder, originalValue, Supplier.ofLazy(SUPPLIER))
         );
 
-        VarHandle arrayVarHandle = lookup.findVarHandle(ArrayHolder.class, "array", LazyConstant[].class);
+        VarHandle arrayVarHandle = lookup.findVarHandle(ArrayHolder.class, "array", Supplier[].class);
         ArrayHolder arrayHolder = new ArrayHolder();
 
         assertThrows(UnsupportedOperationException.class, () ->
-                arrayVarHandle.set(arrayHolder, new LazyConstant[1])
+                arrayVarHandle.set(arrayHolder, new Supplier[1])
         );
 
         assertThrows(UnsupportedOperationException.class, () ->
-                arrayVarHandle.compareAndSet(arrayHolder, originalArrayValue, new LazyConstant[1])
+                arrayVarHandle.compareAndSet(arrayHolder, originalArrayValue, new Supplier[1])
         );
 
     }
 
     @Test
     void updateComputedConstantContentVia_j_i_m_Unsafe() {
-        LazyConstant<Integer> lazyConstant = LazyConstant.of(SUPPLIER);
+        Supplier<Integer> lazyConstant = Supplier.ofLazy(SUPPLIER);
         lazyConstant.get();
         jdk.internal.misc.Unsafe unsafe = Unsafe.getUnsafe();
 
@@ -112,7 +111,7 @@ final class TrustedFieldTypeTest {
             Field field = LazyConstantImpl.class.getDeclaredField("constant");
             field.setAccessible(true);
 
-            LazyConstant<Integer> lazyConstant = LazyConstant.of(SUPPLIER);
+            Supplier<Integer> lazyConstant = Supplier.ofLazy(SUPPLIER);
             lazyConstant.get();
 
             Object oldData = field.get(lazyConstant);

@@ -29,6 +29,7 @@ import jdk.internal.javac.PreviewFeature;
 
 import java.io.Serializable;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * A collection that contains no duplicate elements.  More formally, sets
@@ -839,18 +840,18 @@ public interface Set<E> extends Collection<E> {
      * }
      * <p>
      * The returned {@code Set<E>} can be thought of as a set backed by a
-     * {@code Map<E, LazyConstant<Boolean>>} field and where the {@linkplain Set#contains(Object)}
+     * {@code Map<E, Supplier<Boolean>>} field and where the {@linkplain Set#contains(Object)}
      * operation is equivalent to:
      * {@snippet lang = java:
      * class LazySet<E> extends AbstractCollection<E> implements Set<E> {
      *
-     *     private final Map<E, LazyConstant<Boolean>> backingMap;
+     *     private final Map<E, Supplier<Boolean>> backingMap;
      *
      *     public LazySet(Set<E> elementCandidates, Predicate<E> computingFunction) {
      *         this.backingMap = elementCandidates.stream()
      *                 .collect(Collectors.toUnmodifiableMap(
      *                         Function.identity(),
-     *                         k -> LazyConstant.of(() -> computingFunction.test(k))));
+     *                         k -> Supplier.ofLazy(() -> computingFunction.test(k))));
      *     }
      *
      *     @Override
@@ -866,7 +867,7 @@ public interface Set<E> extends Collection<E> {
      * <p>
      * Elements in the returned set are eligible for certain performance optimizations
      * such as <em>constant folding</em> as described in
-     * {@linkplain LazyConstant##performance LazyConstant}.
+     * {@linkplain Supplier##performance Supplier.ofLazy}.
      *
      * @implNote  after all element membership statuses have been initialized
      *            successfully or transitioned to an error state, the computing function
@@ -882,7 +883,7 @@ public interface Set<E> extends Collection<E> {
      *                              contains a {@code null} element, or if the provided
      *                              {@code computingFunction} is {@code null}
      *
-     * @see LazyConstant
+     * @see Supplier#ofLazy(Supplier)
      * @since 27
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)

@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @summary LazyConstant should not retain throwable classes after failed computation
+ * @summary Supplier should not retain throwable classes after failed computation
  * @enablePreview
  * @modules java.base/java.lang.ref:open
  * @library /test/lib
@@ -41,7 +41,6 @@ import jdk.test.lib.Utils;
 import jdk.test.whitebox.WhiteBox;
 
 import java.io.ByteArrayOutputStream;
-import java.lang.LazyConstant;
 import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -103,7 +102,7 @@ public class LazyConstantClassUnloading {
         Supplier<String> supplier =
                 (Supplier<String>) supplierClass.getConstructor().newInstance();
 
-        LazyConstant<?> lazyConstant = LazyConstant.of(supplier);
+        Supplier<?> lazyConstant = Supplier.ofLazy(supplier);
         assertLazyAccessFails(lazyConstant, THROWABLE_NAME);
 
         supplier = null;
@@ -136,7 +135,7 @@ public class LazyConstantClassUnloading {
         }
     }
 
-    private static void assertLazyAccessFails(LazyConstant<?> lazyConstant, String throwableName) {
+    private static void assertLazyAccessFails(Supplier<?> lazyConstant, String throwableName) {
         var x = assertThrows(NoSuchElementException.class, () -> lazyConstant.get());
         var message = x.getMessage();
         assertTrue(message.contains(throwableName), "Missing throwable name in message: " + message);
@@ -180,5 +179,5 @@ public class LazyConstantClassUnloading {
         }
     }
 
-    private record TestState(LazyConstant<?> lazyConstant, WeakReference<ClassLoader> loaderRef) { }
+    private record TestState(Supplier<?> lazyConstant, WeakReference<ClassLoader> loaderRef) { }
 }

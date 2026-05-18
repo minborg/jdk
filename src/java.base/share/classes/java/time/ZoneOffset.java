@@ -178,8 +178,8 @@ public final class ZoneOffset
     /**
      * The zone rules for an offset will always return this offset. Cache it for efficiency.
      */
-    private final transient LazyConstant<ZoneRules> rules =
-        LazyConstant.of(new Supplier<ZoneRules>() {
+    private final transient Supplier<ZoneRules> rules =
+        Supplier.ofLazy(new Supplier<ZoneRules>() {
             @Override
             public ZoneRules get() {
                 return ZoneRules.of(ZoneOffset.this);

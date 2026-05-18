@@ -60,6 +60,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -131,12 +132,12 @@ public class LocaleResources {
 
     // Input Skeleton map for "preferred" and "allowed"
     // Map<"preferred"/"allowed", Map<"region", "skeleton">>
-    private static final LazyConstant<Map<String, Map<String, String>>> INPUT_SKELETONS =
-        LazyConstant.of(LocaleResources::initSkeletons);
+    private static final Supplier<Map<String, Map<String, String>>> INPUT_SKELETONS =
+        Supplier.ofLazy(LocaleResources::initSkeletons);
 
     // Skeletons for "j" and "C" input skeleton symbols for this locale
-    private final LazyConstant<String> jPattern = LazyConstant.of(() -> resolveInputSkeleton("preferred"));
-    private final LazyConstant<String> CPattern = LazyConstant.of(this::initCPattern);
+    private final Supplier<String> jPattern = Supplier.ofLazy(() -> resolveInputSkeleton("preferred"));
+    private final Supplier<String> CPattern = Supplier.ofLazy(this::initCPattern);
 
     LocaleResources(ResourceBundleBasedAdapter adapter, Locale locale) {
         this.locale = locale;
