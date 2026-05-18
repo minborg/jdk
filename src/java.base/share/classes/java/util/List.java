@@ -1312,9 +1312,8 @@ public interface List<E> extends SequencedCollection<E> {
      * @throws NullPointerException     if the provided {@code computingFunction} is {@code null}
      *
      * @see Supplier#ofLazy(Supplier)
-     * @since 26
+     * @since 28
      */
-    @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
     static <E> List<E> ofLazy(int size,
                               IntFunction<? extends E> computingFunction) {
         Utils.checkNonNegativeArgument(size, "size");

@@ -258,7 +258,7 @@ public interface Supplier<T> {
      * @see Map#ofLazy(Set, Function)
      * @jls 12.4 Initialization of Classes and Interfaces
      * @jls 17.4.5 Happens-before Order
-     * @since 26
+     * @since 28
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
     static <T> Supplier<T> ofLazy(Supplier<? extends T> computingFunction) {

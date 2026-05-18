@@ -1878,9 +1878,8 @@ public interface Map<K, V> {
      *         if the provided {@code computingFunction} is {@code null}
      *
      * @see Supplier#ofLazy(Supplier)
-     * @since 26
+     * @since 28
      */
-    @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
     static <K, V> Map<K, V> ofLazy(Set<? extends K> keys,
                                    Function<? super K, ? extends V> computingFunction) {
         // Protect against TOC-TOU attacks.
