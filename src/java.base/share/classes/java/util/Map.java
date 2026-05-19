@@ -1863,7 +1863,7 @@ public interface Map<K, V> {
      * <p>
      * Values in the returned map are eligible for certain performance optimizations
      * such as <em>constant folding</em> as described in
-     * {@linkplain Supplier##performance Supplier.ofLazy}.
+     * {@linkplain java.util##lazy-values-performance lazy values and collections}.
      *
      * @implNote  after all values have been initialized successfully or transitioned to
      *            an error state, the computing function is no longer strongly referenced
