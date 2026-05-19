@@ -25,7 +25,7 @@
 
 package java.util;
 
-import jdk.internal.lang.LazyConstantImpl;
+import jdk.internal.lang.LazySupplier;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.ImmutableBitSetPredicate;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
@@ -722,19 +722,19 @@ final class LazyCollections {
     private static NoSuchElementException noSuchElementException(String throwableName,
                                                          Object input,
                                                          Throwable cause) {
-        final String isolatedToString = LazyConstantImpl.isolateToString(input);
+        final String isolatedToString = LazySupplier.isolateToString(input);
         var message = "Unable to access the lazy collection because " + throwableName +
                 " was thrown at initial computation for input '" + isolatedToString + "'";
         return new NoSuchElementException(message, cause);
     }
 
     private static InternalError cannotReachHere(FunctionHolder<?> functionHolder, Object input) {
-        return new InternalError("cannot reach here: " + functionHolder.function() + " for " + LazyConstantImpl.isolateToString(input));
+        return new InternalError("cannot reach here: " + functionHolder.function() + " for " + LazySupplier.isolateToString(input));
     }
 
     private static void preventReentry(Object mutex, Object input) {
         if (Thread.holdsLock(mutex)) {
-            throw new IllegalStateException("Recursive initialization of a lazy collection is illegal: " + LazyConstantImpl.isolateToString(input));
+            throw new IllegalStateException("Recursive initialization of a lazy collection is illegal: " + LazySupplier.isolateToString(input));
         }
     }
 

@@ -42,14 +42,14 @@ import java.util.function.Supplier;
  * rely on reflection, MethodHandles, Streams etc.
  */
 @AOTSafeClassInitializer
-public final class LazyConstantImpl<T> implements Supplier<T> {
+public final class LazySupplier<T> implements Supplier<T> {
 
     // Unsafe allows lazy supplier instances to be used early in the boot sequence
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     // Unsafe offset for access of the `constant` field
     private static final long CONSTANT_OFFSET =
-            UNSAFE.objectFieldOffset(LazyConstantImpl.class, "constant");
+            UNSAFE.objectFieldOffset(LazySupplier.class, "constant");
 
     // Generally, fields annotated with `@Stable` are accessed by the JVM using special
     // memory semantics rules (see `parse.hpp` and `parse(1|2|3).cpp`).
@@ -73,7 +73,7 @@ public final class LazyConstantImpl<T> implements Supplier<T> {
     // exception class as that would have pinned the class loader of the exception.
     private volatile Object computingFunctionOrExceptionType;
 
-    private LazyConstantImpl(Supplier<? extends T> computingFunction) {
+    private LazySupplier(Supplier<? extends T> computingFunction) {
         this.computingFunctionOrExceptionType = computingFunction;
     }
 
@@ -139,7 +139,7 @@ public final class LazyConstantImpl<T> implements Supplier<T> {
     private String toStringSuffix() {
         final T t = getAcquire();
         if (t == this) {
-            return "(this Supplier)";
+            return "(this lazy Supplier)";
         } else if (t != null) {
             return t.toString();
         } else {
@@ -184,7 +184,7 @@ public final class LazyConstantImpl<T> implements Supplier<T> {
 
     private void preventReentry() {
         if (Thread.holdsLock(this)) {
-            throw new IllegalStateException("Recursive invocation of a Supplier's computing function: " + isolateToString(computingFunctionOrExceptionType));
+            throw new IllegalStateException("Recursive invocation of a lazy Supplier's computing function: " + isolateToString(computingFunctionOrExceptionType));
         }
     }
 
@@ -199,8 +199,8 @@ public final class LazyConstantImpl<T> implements Supplier<T> {
 
     // Factory
 
-    public static <T> LazyConstantImpl<T> ofLazy(Supplier<? extends T> computingFunction) {
-        return new LazyConstantImpl<>(computingFunction);
+    public static <T> LazySupplier<T> ofLazy(Supplier<? extends T> computingFunction) {
+        return new LazySupplier<>(computingFunction);
     }
 
 }

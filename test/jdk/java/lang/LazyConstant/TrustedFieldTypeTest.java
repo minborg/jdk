@@ -31,7 +31,7 @@
  * @run junit/othervm -Dopens=false TrustedFieldTypeTest
  */
 
-import jdk.internal.lang.LazyConstantImpl;
+import jdk.internal.lang.LazySupplier;
 import jdk.internal.misc.Unsafe;
 import org.junit.jupiter.api.Test;
 
@@ -108,7 +108,7 @@ final class TrustedFieldTypeTest {
 
         if (Boolean.getBoolean("opens")) {
             // Unfortunately, add-opens allows direct access to the `value` field
-            Field field = LazyConstantImpl.class.getDeclaredField("constant");
+            Field field = LazySupplier.class.getDeclaredField("constant");
             field.setAccessible(true);
 
             Supplier<Integer> lazyConstant = Supplier.ofLazy(SUPPLIER);
@@ -120,7 +120,7 @@ final class TrustedFieldTypeTest {
             field.set(lazyConstant, 13);
             assertEquals(13, lazyConstant.get());
         } else {
-            Field field = LazyConstantImpl.class.getDeclaredField("constant");
+            Field field = LazySupplier.class.getDeclaredField("constant");
             assertThrows(InaccessibleObjectException.class, ()-> field.setAccessible(true));
         }
     }

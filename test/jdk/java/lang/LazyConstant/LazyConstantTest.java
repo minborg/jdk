@@ -186,7 +186,7 @@ final class LazyConstantTest {
         ref.set(constant);
         constant.get();
         String toString = assertDoesNotThrow(constant::toString);
-        assertTrue(constant.toString().contains("(this Supplier)"), toString);
+        assertTrue(constant.toString().contains("(this lazy Supplier)"), toString);
     }
 
     @Test

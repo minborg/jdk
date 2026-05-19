@@ -25,7 +25,7 @@
 package java.util.function;
 
 import jdk.internal.javac.PreviewFeature;
-import jdk.internal.lang.LazyConstantImpl;
+import jdk.internal.lang.LazySupplier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -263,6 +263,6 @@ public interface Supplier<T> {
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
     static <T> Supplier<T> ofLazy(Supplier<? extends T> computingFunction) {
         Objects.requireNonNull(computingFunction);
-        return LazyConstantImpl.ofLazy(computingFunction);
+        return LazySupplier.ofLazy(computingFunction);
     }
 }
