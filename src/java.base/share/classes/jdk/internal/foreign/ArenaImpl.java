@@ -26,10 +26,10 @@
 package jdk.internal.foreign;
 
 import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
 
-public sealed class ArenaImpl implements Arena permits BufferStack.PerThread.Frame {
+public sealed class ArenaImpl implements Arena
+        permits BufferStack.PerThread.Frame, ThreadConfinedArenaAllocator.CachedArena {
 
     final MemorySessionImpl session;
     final boolean shouldReserveMemory;

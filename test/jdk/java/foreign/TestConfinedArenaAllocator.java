@@ -48,19 +48,15 @@ import static org.junit.Assert.*;
 final class TestConfinedArenaAllocator {
 
     static final Field THREAD_ALLOCATOR_FIELD;
-    static final Field STACK_FIELD;
-    static final Field STACK_ARENA_FIELD;
+    static final Field BACKING_ARENA_FIELD;
 
     static {
         try {
             THREAD_ALLOCATOR_FIELD = Thread.class.getDeclaredField("confinedArenaAllocator");
             THREAD_ALLOCATOR_FIELD.setAccessible(true);
             Class<?> allocatorClass = Class.forName("jdk.internal.foreign.ThreadConfinedArenaAllocator");
-            STACK_FIELD = allocatorClass.getDeclaredField("stack");
-            STACK_FIELD.setAccessible(true);
-            Class<?> perThreadClass = Class.forName("jdk.internal.foreign.BufferStack$PerThread");
-            STACK_ARENA_FIELD = perThreadClass.getDeclaredField("arena");
-            STACK_ARENA_FIELD.setAccessible(true);
+            BACKING_ARENA_FIELD = allocatorClass.getDeclaredField("backingArena");
+            BACKING_ARENA_FIELD.setAccessible(true);
         } catch (ReflectiveOperationException ex) {
             throw new ExceptionInInitializerError(ex);
         }
@@ -77,7 +73,7 @@ final class TestConfinedArenaAllocator {
 
                 long firstAddress;
                 try (Arena arena = Arena.ofConfined()) {
-                    assertEquals("Frame", arena.getClass().getSimpleName());
+                    assertEquals("CachedArena", arena.getClass().getSimpleName());
                     Object allocator = threadAllocator(Thread.currentThread());
                     assertNotNull(allocator);
                     assertTrue(backingArena(allocator).scope().isAlive());
@@ -92,7 +88,7 @@ final class TestConfinedArenaAllocator {
                 }
 
                 try (Arena arena = Arena.ofConfined()) {
-                    assertEquals("Frame", arena.getClass().getSimpleName());
+                    assertEquals("CachedArena", arena.getClass().getSimpleName());
                     MemorySegment firstSegment = arena.allocate(ValueLayout.JAVA_LONG);
                     MemorySegment secondSegment = arena.allocate(ValueLayout.JAVA_LONG);
                     assertEquals(firstSegment.address(), firstAddress);
@@ -138,6 +134,29 @@ final class TestConfinedArenaAllocator {
     }
 
     static Arena backingArena(Object allocator) throws ReflectiveOperationException {
-        return (Arena) STACK_ARENA_FIELD.get(STACK_FIELD.get(allocator));
+        return (Arena) BACKING_ARENA_FIELD.get(allocator);
+    }
+
+    @Test
+    void testOutOfOrderClose() {
+        Arena firstArena = Arena.ofConfined();
+        MemorySegment firstSegment = firstArena.allocate(ValueLayout.JAVA_LONG);
+        long firstAddress = firstSegment.address();
+        firstSegment.set(ValueLayout.JAVA_LONG, 0, -1L);
+
+        Arena secondArena = Arena.ofConfined();
+        MemorySegment secondSegment = secondArena.allocate(ValueLayout.JAVA_LONG);
+        secondSegment.set(ValueLayout.JAVA_LONG, 0, 42L);
+
+        firstArena.close();
+
+        try (Arena thirdArena = Arena.ofConfined()) {
+            MemorySegment thirdSegment = thirdArena.allocate(ValueLayout.JAVA_LONG);
+            assertEquals(thirdSegment.address(), firstAddress);
+            assertEquals(thirdSegment.get(ValueLayout.JAVA_LONG, 0), 0L);
+            assertEquals(secondSegment.get(ValueLayout.JAVA_LONG, 0), 42L);
+        }
+
+        secondArena.close();
     }
 }
