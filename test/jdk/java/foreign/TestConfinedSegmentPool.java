@@ -33,10 +33,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
@@ -49,6 +52,7 @@ final class TestConfinedSegmentPool {
 
     static final Field THREAD_ALLOCATOR_FIELD;
     static final Field BACKING_ARENA_FIELD;
+    static final Field POOL_SLOTS_FIELD;
 
     static {
         try {
@@ -57,6 +61,8 @@ final class TestConfinedSegmentPool {
             Class<?> allocatorClass = Class.forName("jdk.internal.foreign.ThreadConfinedSegmentPool");
             BACKING_ARENA_FIELD = allocatorClass.getDeclaredField("backingArena");
             BACKING_ARENA_FIELD.setAccessible(true);
+            POOL_SLOTS_FIELD = allocatorClass.getDeclaredField("POOL_SLOTS");
+            POOL_SLOTS_FIELD.setAccessible(true);
         } catch (ReflectiveOperationException ex) {
             throw new ExceptionInInitializerError(ex);
         }
@@ -134,6 +140,82 @@ final class TestConfinedSegmentPool {
 
     static Arena backingArena(Object allocator) throws ReflectiveOperationException {
         return (Arena) BACKING_ARENA_FIELD.get(allocator);
+    }
+
+    static int poolSlots() throws ReflectiveOperationException {
+        return POOL_SLOTS_FIELD.getInt(null);
+    }
+
+    @Test
+    void testCachedSegmentScope() {
+        try (Arena arena = Arena.ofConfined()) {
+            assertEquals("CachedArena", arena.getClass().getSimpleName());
+            MemorySegment segment = arena.allocate(ValueLayout.JAVA_LONG);
+            assertSame(arena.scope(), segment.scope());
+        }
+    }
+
+    @Test
+    void testCachedSegmentIsClosedWithArena() {
+        Arena arena = Arena.ofConfined();
+        assertEquals("CachedArena", arena.getClass().getSimpleName());
+        MemorySegment segment = arena.allocate(ValueLayout.JAVA_LONG);
+        segment.set(ValueLayout.JAVA_LONG, 0, 42L);
+
+        arena.close();
+
+        assertFalse(segment.scope().isAlive());
+        assertThrows(IllegalStateException.class,
+                () -> segment.get(ValueLayout.JAVA_LONG, 0));
+        assertThrows(IllegalStateException.class,
+                () -> segment.set(ValueLayout.JAVA_LONG, 0, -1L));
+    }
+
+    @Test
+    void testClosedCachedSegmentCannotAccessReusedSlot() {
+        MemorySegment firstSegment;
+        long firstAddress;
+        try (Arena firstArena = Arena.ofConfined()) {
+            assertEquals("CachedArena", firstArena.getClass().getSimpleName());
+            firstSegment = firstArena.allocate(ValueLayout.JAVA_LONG);
+            firstAddress = firstSegment.address();
+            firstSegment.set(ValueLayout.JAVA_LONG, 0, 42L);
+        }
+
+        try (Arena secondArena = Arena.ofConfined()) {
+            assertEquals("CachedArena", secondArena.getClass().getSimpleName());
+            MemorySegment secondSegment = secondArena.allocate(ValueLayout.JAVA_LONG);
+            assertEquals(secondSegment.address(), firstAddress);
+            secondSegment.set(ValueLayout.JAVA_LONG, 0, -1L);
+            assertThrows(IllegalStateException.class,
+                    () -> firstSegment.get(ValueLayout.JAVA_LONG, 0));
+            assertThrows(IllegalStateException.class,
+                    () -> firstSegment.set(ValueLayout.JAVA_LONG, 0, 0L));
+        }
+    }
+
+    @Test
+    void testPoolExhaustionFallsBackToRegularArena() throws ReflectiveOperationException {
+        Arena[] arenas = new Arena[poolSlots() + 1];
+        try {
+            for (int i = 0; i < arenas.length; i++) {
+                arenas[i] = Arena.ofConfined();
+            }
+            for (int i = 0; i < arenas.length - 1; i++) {
+                assertEquals("CachedArena", arenas[i].getClass().getSimpleName());
+            }
+
+            Arena fallbackArena = arenas[arenas.length - 1];
+            assertNotEquals("CachedArena", fallbackArena.getClass().getSimpleName());
+            MemorySegment fallbackSegment = fallbackArena.allocate(ValueLayout.JAVA_LONG);
+            assertSame(fallbackArena.scope(), fallbackSegment.scope());
+        } finally {
+            for (int i = arenas.length - 1; i >= 0; i--) {
+                if (arenas[i] != null) {
+                    arenas[i].close();
+                }
+            }
+        }
     }
 
     @Test

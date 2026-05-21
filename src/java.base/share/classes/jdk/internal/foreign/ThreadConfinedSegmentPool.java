@@ -72,8 +72,6 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
         for (int i = 0; i < POOL_SLOTS; i++) {
             allocators[i] = new SlicingAllocator(backingSegment.asSlice(i * POOL_SLOT_SIZE, POOL_SLOT_SIZE));
         }
-
-        IO.println("Created " + this + " with backing arena " + backingArenaImpl);
     }
 
     static ThreadConfinedSegmentPool of(Thread thread) {
@@ -148,6 +146,7 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
             Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
             session.checkValidState();
             if (!allocator.canAllocate(byteSize, byteAlignment)) {
+                // Fall back to normal allocation
                 return init ? super.allocate(byteSize, byteAlignment) : super.allocateNoInit(byteSize, byteAlignment);
             }
             final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl) allocator.allocate(byteSize, byteAlignment);
@@ -155,7 +154,7 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
                 segment.fill((byte) 0);
             }
             // Reinterpret the slice to use this arena's scope.
-            return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), segment.byteSize(), segment.scope);
+            return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), segment.byteSize(), session);
         }
 
         @ForceInline
