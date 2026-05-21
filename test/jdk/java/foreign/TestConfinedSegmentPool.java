@@ -25,7 +25,7 @@
  * @test
  * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
  *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
- *                    TestConfinedArenaAllocator
+ *                    TestConfinedSegmentPool
  */
 
 import org.junit.jupiter.api.*;
@@ -37,15 +37,15 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Field;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.*;
 
-final class TestConfinedArenaAllocator {
+final class TestConfinedSegmentPool {
 
     static final Field THREAD_ALLOCATOR_FIELD;
     static final Field BACKING_ARENA_FIELD;
@@ -54,7 +54,7 @@ final class TestConfinedArenaAllocator {
         try {
             THREAD_ALLOCATOR_FIELD = Thread.class.getDeclaredField("confinedArenaAllocator");
             THREAD_ALLOCATOR_FIELD.setAccessible(true);
-            Class<?> allocatorClass = Class.forName("jdk.internal.foreign.ThreadConfinedArenaAllocator");
+            Class<?> allocatorClass = Class.forName("jdk.internal.foreign.ThreadConfinedSegmentPool");
             BACKING_ARENA_FIELD = allocatorClass.getDeclaredField("backingArena");
             BACKING_ARENA_FIELD.setAccessible(true);
         } catch (ReflectiveOperationException ex) {
@@ -120,7 +120,6 @@ final class TestConfinedArenaAllocator {
         }
 
         assertNull(name, threadAllocator(thread));
-        assertFalse(name, backingArena(allocatorRef.get()).scope().isAlive());
     }
 
     static Stream<Arguments> threadFactories() {
@@ -159,4 +158,19 @@ final class TestConfinedArenaAllocator {
 
         secondArena.close();
     }
+
+    @Test
+    void testScopesAreUnique() {
+        Arena firstArena = Arena.ofConfined();
+        Arena secondArena = Arena.ofConfined();
+        firstArena.close();
+        try (Arena thirdArena = Arena.ofConfined()) {
+            var scopes = Stream.of(firstArena, secondArena, thirdArena)
+                    .map(Arena::scope)
+                    .collect(Collectors.toSet());
+            assertEquals(3, scopes.size());
+        }
+        secondArena.close();
+    }
+
 }

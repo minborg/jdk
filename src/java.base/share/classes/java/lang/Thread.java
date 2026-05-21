@@ -1565,9 +1565,12 @@ public class Thread implements Runnable {
         if (confinedArenaAllocator != null) {
             try {
                 confinedArenaAllocator.close();
-            } catch (Exception _) {
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
+        // It is safe to reset this variable to null even though it might be constant
+        // folded (as the thread died anyhow).
         confinedArenaAllocator = null;
         if (uncaughtExceptionHandler != null)
             uncaughtExceptionHandler = null;

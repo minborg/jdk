@@ -29,7 +29,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment.Scope;
 
 public sealed class ArenaImpl implements Arena
-        permits BufferStack.PerThread.Frame, ThreadConfinedArenaAllocator.CachedArena {
+        permits BufferStack.PerThread.Frame, ThreadConfinedSegmentPool.CachedArena {
 
     final MemorySessionImpl session;
     final boolean shouldReserveMemory;
@@ -41,7 +41,7 @@ public sealed class ArenaImpl implements Arena
     }
 
     @Override
-    public Scope scope() {
+    public final Scope scope() {
         return session;
     }
 

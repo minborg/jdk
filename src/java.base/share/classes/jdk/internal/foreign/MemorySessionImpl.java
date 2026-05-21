@@ -59,6 +59,8 @@ public abstract sealed class MemorySessionImpl
         implements Scope
         permits ConfinedSession, GlobalSession, SharedSession {
 
+    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+
     /**
      * The value of the {@code state} of a {@code MemorySessionImpl}. The only possible transition
      * is OPEN -> CLOSED. As a result, the states CLOSED and NONCLOSEABLE are stable. This allows
@@ -147,22 +149,16 @@ public abstract sealed class MemorySessionImpl
     }
 
     public static Arena createConfinedArena(Thread thread) {
-        JavaLangAccess javaLangAccess = SharedSecrets.getJavaLangAccess();
-        if (javaLangAccess == null) {
-            return createConfined(thread).asArena();
-        }
-        AutoCloseable allocator = javaLangAccess.confinedArenaAllocator(thread);
+        AutoCloseable allocator = JLA.confinedArenaAllocator(thread);
         if (allocator == null) {
-            allocator = ThreadConfinedArenaAllocator.of();
+            allocator = ThreadConfinedSegmentPool.of(thread);
             if (allocator == null) {
+                // Unable. Fall back to a non-pooled arena
                 return createConfined(thread).asArena();
             }
-            javaLangAccess.setConfinedArenaAllocator(thread, allocator);
+            JLA.setConfinedArenaAllocator(thread, allocator);
         }
-        if (allocator instanceof ThreadConfinedArenaAllocator confinedAllocator) {
-            return confinedAllocator.acquire(thread);
-        }
-        return createConfined(thread).asArena();
+        return ((ThreadConfinedSegmentPool) allocator).acquire(thread);
     }
 
     public static MemorySessionImpl createShared() {
