@@ -62,16 +62,18 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
             : (1L << POOL_SLOTS) - 1;
 
     private ThreadConfinedSegmentPool(Thread thread) {
-        final ArenaImpl backingArenaImpl = MemorySessionImpl.createConfined(thread).asArena();
-        this.backingArena = backingArenaImpl;
-        this.allocators = new SlicingAllocator[POOL_SLOTS];
-        this.backingSegment = backingArenaImpl.allocate(POOL_SLOTS * POOL_SLOT_SIZE, POOL_SLOT_ALIGNMENT);
-        super();
+        final ArenaImpl backingArena = MemorySessionImpl.createConfined(thread).asArena();
+        this.backingArena = backingArena;
+        final SlicingAllocator[] allocators = new SlicingAllocator[POOL_SLOTS];
+        this.allocators = allocators;
+        final MemorySegment backingSegment = backingArena.allocate(POOL_SLOTS * POOL_SLOT_SIZE, POOL_SLOT_ALIGNMENT);
+        this.backingSegment = backingSegment;
         // By slicing up a single memory segment, the allocators return segments with a
         // more likely hi degree of locality compared to allocating them separately.
         for (int i = 0; i < POOL_SLOTS; i++) {
             allocators[i] = new SlicingAllocator(backingSegment.asSlice(i * POOL_SLOT_SIZE, POOL_SLOT_SIZE));
         }
+        super();
     }
 
     static ThreadConfinedSegmentPool of(Thread thread) {
