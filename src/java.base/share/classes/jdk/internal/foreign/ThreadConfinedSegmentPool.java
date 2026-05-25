@@ -88,12 +88,7 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
     }
 
     Arena acquire(Thread owner) {
-        final int allocatorIndex = acquireAllocator();
-        if (allocatorIndex < Long.SIZE) {
-            return new CachedArena(this, owner, allocatorIndex, allocators[allocatorIndex]);
-        }
-        // No pools left ...
-        return MemorySessionImpl.createConfined(owner).asArena();
+        return new CachedArena(this, owner);
     }
 
     private int acquireAllocator() {
@@ -117,16 +112,12 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
 
     static final class CachedArena extends ArenaImpl {
         private final ThreadConfinedSegmentPool outerInstance;
-        private final int allocatorIndex;
-        private final SlicingAllocator allocator;
+        private int allocatorIndex;
+        private SlicingAllocator allocator;
 
         CachedArena(ThreadConfinedSegmentPool outerInstance,
-                    Thread owner,
-                    int allocatorIndex,
-                    SlicingAllocator allocator) {
+                    Thread owner) {
             this.outerInstance = outerInstance;
-            this.allocatorIndex = allocatorIndex;
-            this.allocator = allocator;
             super(MemorySessionImpl.createConfined(owner));
         }
 
@@ -145,18 +136,28 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
 
         @ForceInline
         private NativeMemorySegmentImpl allocate0(long byteSize, long byteAlignment, boolean init) {
-            if (byteSize > POOL_SLOT_SIZE || !allocator.canAllocate(byteSize, byteAlignment)) {
-                // Fall back to normal allocation
-                return init ? super.allocate(byteSize, byteAlignment) : super.allocateNoInit(byteSize, byteAlignment);
+            if (byteSize <= POOL_SLOT_SIZE) {
+                SlicingAllocator allocator = this.allocator;
+                if (allocator == null) {
+                    final int allocatorIndex = outerInstance.acquireAllocator();
+                    if (allocatorIndex < Long.SIZE) {
+                        this.allocatorIndex = allocatorIndex;
+                        this.allocator = allocator = outerInstance.allocators[allocatorIndex];
+                    }
+                }
+                if (allocator != null) {
+                    // We need this check here as `allocator.allocate()` and `segment.fill()` has side effects.
+                    session.checkValidState();
+                    final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl) allocator.allocate(byteSize, byteAlignment);
+                    if (init) {
+                        segment.fill((byte) 0);
+                    }
+                    // Reinterpret the slice to use this arena's scope.
+                    return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), segment.byteSize(), session);
+                }
             }
-            // We need this check here as `allocator.allocate()` and `segment.fill()` has side effects.
-            session.checkValidState();
-            final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl) allocator.allocate(byteSize, byteAlignment);
-            if (init) {
-                segment.fill((byte) 0);
-            }
-            // Reinterpret the slice to use this arena's scope.
-            return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), segment.byteSize(), session);
+            // Fall back to normal allocation
+            return init ? super.allocate(byteSize, byteAlignment) : super.allocateNoInit(byteSize, byteAlignment);
         }
 
         @ForceInline
@@ -165,9 +166,11 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
             // The Arena::close method is called first as it checks thread
             // confinement and liveness before cached chunks are made available again.
             super.close();
-            // Reset the allocator allowing future reuse
-            allocator.resetTo(0);
-            outerInstance.releaseAllocator(allocatorIndex);
+            if (allocator != null) {
+                // Reset the allocator allowing future reuse
+                allocator.resetTo(0);
+                outerInstance.releaseAllocator(allocatorIndex);
+            }
         }
     }
 }

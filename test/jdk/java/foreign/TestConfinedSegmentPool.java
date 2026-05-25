@@ -195,30 +195,6 @@ final class TestConfinedSegmentPool {
     }
 
     @Test
-    void testPoolExhaustionFallsBackToRegularArena() throws ReflectiveOperationException {
-        Arena[] arenas = new Arena[poolSlots() + 1];
-        try {
-            for (int i = 0; i < arenas.length; i++) {
-                arenas[i] = Arena.ofConfined();
-            }
-            for (int i = 0; i < arenas.length - 1; i++) {
-                assertEquals("CachedArena", arenas[i].getClass().getSimpleName());
-            }
-
-            Arena fallbackArena = arenas[arenas.length - 1];
-            assertNotEquals("CachedArena", fallbackArena.getClass().getSimpleName());
-            MemorySegment fallbackSegment = fallbackArena.allocate(ValueLayout.JAVA_LONG);
-            assertSame(fallbackArena.scope(), fallbackSegment.scope());
-        } finally {
-            for (int i = arenas.length - 1; i >= 0; i--) {
-                if (arenas[i] != null) {
-                    arenas[i].close();
-                }
-            }
-        }
-    }
-
-    @Test
     void testOutOfOrderClose() {
         Arena firstArena = Arena.ofConfined();
         MemorySegment firstSegment = firstArena.allocate(ValueLayout.JAVA_LONG);
