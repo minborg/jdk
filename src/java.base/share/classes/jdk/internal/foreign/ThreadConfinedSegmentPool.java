@@ -145,12 +145,12 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
 
         @ForceInline
         private NativeMemorySegmentImpl allocate0(long byteSize, long byteAlignment, boolean init) {
-            Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
-            session.checkValidState();
-            if (!allocator.canAllocate(byteSize, byteAlignment)) {
+            if (byteSize > POOL_SLOT_SIZE || !allocator.canAllocate(byteSize, byteAlignment)) {
                 // Fall back to normal allocation
                 return init ? super.allocate(byteSize, byteAlignment) : super.allocateNoInit(byteSize, byteAlignment);
             }
+            // We need this check here as `allocator.allocate()` and `segment.fill()` has side effects.
+            session.checkValidState();
             final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl) allocator.allocate(byteSize, byteAlignment);
             if (init) {
                 segment.fill((byte) 0);
