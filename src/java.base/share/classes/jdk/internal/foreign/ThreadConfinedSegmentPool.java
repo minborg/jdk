@@ -87,16 +87,19 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
         }
     }
 
+    @ForceInline
     Arena acquire(Thread owner) {
         return new CachedArena(this, owner);
     }
 
+    @ForceInline
     private int acquireAllocator() {
         final int allocatorIndex = Long.numberOfTrailingZeros(allocatorSet);
         allocatorSet &= ~(1L << allocatorIndex); // 1 -> 0
         return allocatorIndex;
     }
 
+    @ForceInline
     private void releaseAllocator(int allocatorIndex) {
         allocatorSet |= 1L << allocatorIndex; // 0 -> 1
     }
@@ -111,10 +114,12 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
     }
 
     static final class CachedArena extends ArenaImpl {
+
         private final ThreadConfinedSegmentPool outerInstance;
         private int allocatorIndex;
         private SlicingAllocator allocator;
 
+        @ForceInline
         CachedArena(ThreadConfinedSegmentPool outerInstance,
                     Thread owner) {
             this.outerInstance = outerInstance;
