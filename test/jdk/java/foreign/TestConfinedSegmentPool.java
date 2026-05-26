@@ -26,6 +26,10 @@
  * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
  *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
  *                    TestConfinedSegmentPool
+ * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
+ *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
+ *                    -Djava.lang.foreign.native.confined.arena.power.pool-slot-size=2
+ *                    TestConfinedSegmentPool
  */
 
 import org.junit.jupiter.api.*;
@@ -38,8 +42,11 @@ import java.io.PrintStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.lang.ref.Cleaner;
+import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
@@ -53,6 +60,7 @@ final class TestConfinedSegmentPool {
     static final Field THREAD_ALLOCATOR_FIELD;
     static final Field BACKING_ARENA_FIELD;
     static final Field POOL_SLOTS_FIELD;
+    static final Field POOL_SLOT_SIZE_FIELD;
 
     static {
         try {
@@ -63,10 +71,15 @@ final class TestConfinedSegmentPool {
             BACKING_ARENA_FIELD.setAccessible(true);
             POOL_SLOTS_FIELD = allocatorClass.getDeclaredField("POOL_SLOTS");
             POOL_SLOTS_FIELD.setAccessible(true);
+            POOL_SLOT_SIZE_FIELD = allocatorClass.getDeclaredField("POOL_SLOT_SIZE");
+            POOL_SLOT_SIZE_FIELD.setAccessible(true);
         } catch (ReflectiveOperationException ex) {
             throw new ExceptionInInitializerError(ex);
         }
     }
+
+    static final boolean IS_POOL_ACCOMODATES_LONG =
+            Integer.getInteger("java.lang.foreign.native.confined.arena.power.pool-slot-size", 6) >= 4 ;
 
     @ParameterizedTest
     @MethodSource("threadFactories")
@@ -88,7 +101,9 @@ final class TestConfinedSegmentPool {
                     MemorySegment firstSegment = arena.allocate(ValueLayout.JAVA_LONG);
                     MemorySegment secondSegment = arena.allocate(ValueLayout.JAVA_LONG);
                     firstAddress = firstSegment.address();
-                    assertEquals(secondSegment.address(), firstAddress + ValueLayout.JAVA_LONG.byteSize());
+                    if (IS_POOL_ACCOMODATES_LONG) {
+                        assertEquals(secondSegment.address(), firstAddress + ValueLayout.JAVA_LONG.byteSize());
+                    }
                     firstSegment.set(ValueLayout.JAVA_LONG, 0, -1L);
                     secondSegment.set(ValueLayout.JAVA_LONG, 0, -1L);
                 }
@@ -97,8 +112,10 @@ final class TestConfinedSegmentPool {
                     assertEquals("CachedArena", arena.getClass().getSimpleName());
                     MemorySegment firstSegment = arena.allocate(ValueLayout.JAVA_LONG);
                     MemorySegment secondSegment = arena.allocate(ValueLayout.JAVA_LONG);
-                    assertEquals(firstSegment.address(), firstAddress);
-                    assertEquals(secondSegment.address(), firstAddress + ValueLayout.JAVA_LONG.byteSize());
+                    if (IS_POOL_ACCOMODATES_LONG) {
+                        assertEquals(firstSegment.address(), firstAddress);
+                        assertEquals(secondSegment.address(), firstAddress + ValueLayout.JAVA_LONG.byteSize());
+                    }
                     assertEquals(firstSegment.get(ValueLayout.JAVA_LONG, 0), 0L);
                     assertEquals(secondSegment.get(ValueLayout.JAVA_LONG, 0), 0L);
                 }
@@ -229,6 +246,68 @@ final class TestConfinedSegmentPool {
             assertEquals(3, scopes.size());
         }
         secondArena.close();
+    }
+
+    @Test
+    void testCleanerThreadCannotCloseCachedArena() throws Exception {
+        AtomicReference<Thread> cleanerThreadRef = new AtomicReference<>();
+        Cleaner cleaner = Cleaner.create(runnable -> {
+            Thread cleanerThread = new Thread(runnable, "TestConfinedSegmentPool-Cleaner");
+            cleanerThread.setDaemon(true);
+            cleanerThreadRef.set(cleanerThread);
+            return cleanerThread;
+        });
+        CountDownLatch cleanupLatch = new CountDownLatch(1);
+        AtomicReference<Thread> cleanupThreadRef = new AtomicReference<>();
+        AtomicReference<Throwable> failureRef = new AtomicReference<>();
+
+        Arena arena = Arena.ofConfined();
+        assertEquals("CachedArena", arena.getClass().getSimpleName());
+        MemorySegment segment = arena.allocate(ValueLayout.JAVA_LONG);
+        segment.set(ValueLayout.JAVA_LONG, 0, 42L);
+
+        try {
+            Cleaner.Cleanable cleanable = registerCleaner(cleaner, () -> {
+                cleanupThreadRef.set(Thread.currentThread());
+                try {
+                    arena.close();
+                } catch (Throwable ex) {
+                    failureRef.set(ex);
+                } finally {
+                    cleanupLatch.countDown();
+                }
+            });
+
+            awaitCleaner(cleanupLatch);
+
+            assertSame(cleanerThreadRef.get(), cleanupThreadRef.get());
+            assertNotNull(failureRef.get());
+            assertEquals(WrongThreadException.class, failureRef.get().getClass());
+            assertTrue(arena.scope().isAlive());
+            assertEquals(42L, segment.get(ValueLayout.JAVA_LONG, 0));
+
+            Reference.reachabilityFence(cleanable);
+        } finally {
+            if (arena.scope().isAlive()) {
+                arena.close();
+            }
+        }
+    }
+
+    static void awaitCleaner(CountDownLatch latch) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        do {
+            System.gc();
+            if (latch.await(10, TimeUnit.MILLISECONDS)) {
+                return;
+            }
+            Thread.onSpinWait();
+        } while (System.nanoTime() < deadline);
+        fail("Cleaner did not run");
+    }
+
+    static Cleaner.Cleanable registerCleaner(Cleaner cleaner, Runnable action) {
+        return cleaner.register(new Object(), action);
     }
 
 }

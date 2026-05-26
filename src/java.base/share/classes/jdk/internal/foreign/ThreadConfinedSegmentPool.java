@@ -30,7 +30,6 @@ import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
 
 // This class is not thread safe and does not need to be as it, by definition, is only
 // operated on using a distict thread. However, the close action can be run by
@@ -45,13 +44,9 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
             Math.min(64, Integer.getInteger(PROPERTY_PATH + "pool-slots", 2));
     private static final long POOL_SLOT_ALIGNMENT =
             SegmentBulkOperations.powerOfPropertyOr(PROPERTY_PATH + "power.pool-slot-alignment", 4);
-    // The slot size cannot be smaller than the alignment due to how the backingSegment
-    // is sliced.
-    private static final long POOL_SLOT_SIZE =
-            Math.max(POOL_SLOT_ALIGNMENT, SegmentBulkOperations.powerOfPropertyOr(PROPERTY_PATH + "power.pool-slot-size", 6));
+    private static final long POOL_SLOT_SIZE = SegmentBulkOperations.powerOfPropertyOr(PROPERTY_PATH + "power.pool-slot-size", 6);
 
     private final ArenaImpl backingArena;
-    private final MemorySegment backingSegment;
     @Stable
     private final SlicingAllocator[] allocators;
     // An optimized bit set in the form of a long
@@ -66,13 +61,6 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
         this.backingArena = backingArena;
         final SlicingAllocator[] allocators = new SlicingAllocator[POOL_SLOTS];
         this.allocators = allocators;
-        final MemorySegment backingSegment = backingArena.allocate(POOL_SLOTS * POOL_SLOT_SIZE, POOL_SLOT_ALIGNMENT);
-        this.backingSegment = backingSegment;
-        // By slicing up a single memory segment, the allocators return segments with a
-        // more likely hi degree of locality compared to allocating them separately.
-        for (int i = 0; i < POOL_SLOTS; i++) {
-            allocators[i] = new SlicingAllocator(backingSegment.asSlice(i * POOL_SLOT_SIZE, POOL_SLOT_SIZE));
-        }
         super();
     }
 
@@ -89,46 +77,55 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
 
     @ForceInline
     Arena acquire(Thread owner) {
-        return new CachedArena(this, owner);
+        return new CachedArena(owner);
     }
 
     @ForceInline
-    private int acquireAllocator() {
+    // Returns the acquired allocator index if successful, otherwise returns 64
+    private int tryAcquireAllocatorIndex() {
         final int allocatorIndex = Long.numberOfTrailingZeros(allocatorSet);
         allocatorSet &= ~(1L << allocatorIndex); // 1 -> 0
         return allocatorIndex;
     }
 
     @ForceInline
-    private void releaseAllocator(int allocatorIndex) {
+    private void releaseAllocatorIndex(int allocatorIndex) {
         allocatorSet |= 1L << allocatorIndex; // 0 -> 1
+    }
+
+    @ForceInline
+    private SlicingAllocator allocator(int allocatorIndex) {
+        SlicingAllocator allocator = allocators[allocatorIndex];
+        // Lazily constuct allocators
+        if (allocator == null) {
+            // We do not have to zero out the backing segment as this is handled
+            // on demand and later by the CachedArena.
+            allocators[allocatorIndex] = allocator = new SlicingAllocator(
+                    backingArena.allocateNoInit(POOL_SLOT_SIZE, POOL_SLOT_ALIGNMENT));
+        }
+        return allocator;
     }
 
     // This method might be called by another thread during thread cleanup.
     @Override
     public void close() {
-        // Cleanup the resource list directly without going via close() as
-        // this method might be invoked by another thread.
-        // Todo: Verify the HB properties here
-        backingArena.session.resourceList.cleanup();
+        ((ConfinedSession) backingArena.session).closeFromThreadCleanup();
     }
 
-    static final class CachedArena extends ArenaImpl {
+    final class CachedArena extends ArenaImpl {
 
-        private final ThreadConfinedSegmentPool outerInstance;
+        @Stable
         private int allocatorIndex;
+        @Stable
         private SlicingAllocator allocator;
 
         @ForceInline
-        CachedArena(ThreadConfinedSegmentPool outerInstance,
-                    Thread owner) {
-            this.outerInstance = outerInstance;
+        CachedArena(Thread owner) {
             super(MemorySessionImpl.createConfined(owner));
         }
 
         @ForceInline
         @Override
-        @SuppressWarnings("restricted")
         public NativeMemorySegmentImpl allocate(long byteSize, long byteAlignment) {
             return allocate0(byteSize, byteAlignment, true);
         }
@@ -147,7 +144,7 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
                     // This also prevents/delays pool allocation if larger chunks are
                     // initially allocated from this arena.
                     byteSize > POOL_SLOT_SIZE
-                            // Did we got an allocator?
+                            // Did we get an allocator?
                             || (allocator = tryAcquireAllocator()) == null
                             // If so, can we accomodate the request with that allocator?
                             || !allocator.canAllocate(byteSize, byteAlignment)) {
@@ -162,18 +159,19 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
                 segment.fill((byte) 0);
             }
             // Reinterpret the slice to use this arena's scope.
-            return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), segment.byteSize(), session);
+            return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), byteSize, session);
         }
 
         @ForceInline
         private SlicingAllocator tryAcquireAllocator() {
             SlicingAllocator allocator = this.allocator;
             if (allocator == null) {
-                final int allocatorIndex = outerInstance.acquireAllocator();
-                if (allocatorIndex < Long.SIZE) {
-                    this.allocatorIndex = allocatorIndex;
-                    this.allocator = allocator = outerInstance.allocators[allocatorIndex];
+                final int allocatorIndex = tryAcquireAllocatorIndex();
+                if (allocatorIndex >= Long.SIZE) {
+                    return null;
                 }
+                this.allocatorIndex = allocatorIndex;
+                this.allocator = allocator = allocator(allocatorIndex);
             }
             return allocator;
         }
@@ -187,7 +185,7 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
             if (allocator != null) {
                 // Reset the allocator allowing future reuse
                 allocator.resetTo(0);
-                outerInstance.releaseAllocator(allocatorIndex);
+                releaseAllocatorIndex(allocatorIndex);
             }
         }
     }

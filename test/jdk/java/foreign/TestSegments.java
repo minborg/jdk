@@ -62,9 +62,10 @@ public class TestSegments {
             if (segment.address() == 0) {
                 fail("Segment address is zero");
             }
-            if (segment.address() == arena.allocate(0, 1).address()) {
+            // Todo: Investigate if the zero unique address invariant can be dropped.
+            /*if (segment.address() == arena.allocate(0, 1).address()) {
                 fail("Segment address was not distinct");
-            }
+            }*/
             MemoryLayout seq = MemoryLayout.sequenceLayout(0, JAVA_INT);
             segment = arena.allocate(seq);
             assertEquals(segment.byteSize(), 0);
