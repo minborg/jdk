@@ -141,28 +141,41 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
 
         @ForceInline
         private NativeMemorySegmentImpl allocate0(long byteSize, long byteAlignment, boolean init) {
-            if (byteSize <= POOL_SLOT_SIZE) {
-                SlicingAllocator allocator = this.allocator;
-                if (allocator == null) {
-                    final int allocatorIndex = outerInstance.acquireAllocator();
-                    if (allocatorIndex < Long.SIZE) {
-                        this.allocatorIndex = allocatorIndex;
-                        this.allocator = allocator = outerInstance.allocators[allocatorIndex];
-                    }
-                }
-                if (allocator != null) {
-                    // We need this check here as `allocator.allocate()` and `segment.fill()` has side effects.
-                    session.checkValidState();
-                    final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl) allocator.allocate(byteSize, byteAlignment);
-                    if (init) {
-                        segment.fill((byte) 0);
-                    }
-                    // Reinterpret the slice to use this arena's scope.
-                    return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), segment.byteSize(), session);
+            final SlicingAllocator allocator;
+            if (
+                    // No use even trying if `byteSize` is larger than the pool size.
+                    // This also prevents/delays pool allocation if larger chunks are
+                    // initially allocated from this arena.
+                    byteSize > POOL_SLOT_SIZE
+                            // Did we got an allocator?
+                            || (allocator = tryAcquireAllocator()) == null
+                            // If so, can we accomodate the request with that allocator?
+                            || !allocator.canAllocate(byteSize, byteAlignment)) {
+                // Fall back to the non-pooled code path
+                return init ? super.allocate(byteSize, byteAlignment) : super.allocateNoInit(byteSize, byteAlignment);
+            }
+
+            // We need this check here as `allocator.allocate()` and `segment.fill()` have side effects.
+            session.checkValidState();
+            final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl) allocator.allocate(byteSize, byteAlignment);
+            if (init) {
+                segment.fill((byte) 0);
+            }
+            // Reinterpret the slice to use this arena's scope.
+            return SegmentFactories.makeNativeSegmentUnchecked(segment.address(), segment.byteSize(), session);
+        }
+
+        @ForceInline
+        private SlicingAllocator tryAcquireAllocator() {
+            SlicingAllocator allocator = this.allocator;
+            if (allocator == null) {
+                final int allocatorIndex = outerInstance.acquireAllocator();
+                if (allocatorIndex < Long.SIZE) {
+                    this.allocatorIndex = allocatorIndex;
+                    this.allocator = allocator = outerInstance.allocators[allocatorIndex];
                 }
             }
-            // Fall back to normal allocation
-            return init ? super.allocate(byteSize, byteAlignment) : super.allocateNoInit(byteSize, byteAlignment);
+            return allocator;
         }
 
         @ForceInline
