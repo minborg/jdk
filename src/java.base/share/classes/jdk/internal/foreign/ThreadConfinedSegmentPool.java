@@ -139,7 +139,7 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
 
         @ForceInline
         private NativeMemorySegmentImpl allocate0(long byteSize, long byteAlignment, boolean init) {
-            // We need these check here as the following methods have side effects:
+            // We need these checks here upfront as the following methods have side effects:
             //  - tryAcquireAllocator()
             //  - `allocator.allocate()`
             //  - `segment.fill()`, and
