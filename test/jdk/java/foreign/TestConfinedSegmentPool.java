@@ -190,24 +190,26 @@ final class TestConfinedSegmentPool {
 
     @Test
     void testClosedCachedSegmentCannotAccessReusedSlot() {
-        MemorySegment firstSegment;
-        long firstAddress;
-        try (Arena firstArena = Arena.ofConfined()) {
-            assertEquals("CachedArena", firstArena.getClass().getSimpleName());
-            firstSegment = firstArena.allocate(ValueLayout.JAVA_LONG);
-            firstAddress = firstSegment.address();
-            firstSegment.set(ValueLayout.JAVA_LONG, 0, 42L);
-        }
+        if (IS_POOL_ACCOMODATES_LONG) {
+            MemorySegment firstSegment;
+            long firstAddress;
+            try (Arena firstArena = Arena.ofConfined()) {
+                assertEquals("CachedArena", firstArena.getClass().getSimpleName());
+                firstSegment = firstArena.allocate(ValueLayout.JAVA_LONG);
+                firstAddress = firstSegment.address();
+                firstSegment.set(ValueLayout.JAVA_LONG, 0, 42L);
+            }
 
-        try (Arena secondArena = Arena.ofConfined()) {
-            assertEquals("CachedArena", secondArena.getClass().getSimpleName());
-            MemorySegment secondSegment = secondArena.allocate(ValueLayout.JAVA_LONG);
-            assertEquals(secondSegment.address(), firstAddress);
-            secondSegment.set(ValueLayout.JAVA_LONG, 0, -1L);
-            assertThrows(IllegalStateException.class,
-                    () -> firstSegment.get(ValueLayout.JAVA_LONG, 0));
-            assertThrows(IllegalStateException.class,
-                    () -> firstSegment.set(ValueLayout.JAVA_LONG, 0, 0L));
+            try (Arena secondArena = Arena.ofConfined()) {
+                assertEquals("CachedArena", secondArena.getClass().getSimpleName());
+                MemorySegment secondSegment = secondArena.allocate(ValueLayout.JAVA_LONG);
+                assertEquals(secondSegment.address(), firstAddress);
+                secondSegment.set(ValueLayout.JAVA_LONG, 0, -1L);
+                assertThrows(IllegalStateException.class,
+                        () -> firstSegment.get(ValueLayout.JAVA_LONG, 0));
+                assertThrows(IllegalStateException.class,
+                        () -> firstSegment.set(ValueLayout.JAVA_LONG, 0, 0L));
+            }
         }
     }
 
@@ -226,7 +228,9 @@ final class TestConfinedSegmentPool {
 
         try (Arena thirdArena = Arena.ofConfined()) {
             MemorySegment thirdSegment = thirdArena.allocate(ValueLayout.JAVA_LONG);
-            assertEquals(thirdSegment.address(), firstAddress);
+            if (IS_POOL_ACCOMODATES_LONG) {
+                assertEquals(thirdSegment.address(), firstAddress);
+            }
             assertEquals(thirdSegment.get(ValueLayout.JAVA_LONG, 0), 0L);
             assertEquals(secondSegment.get(ValueLayout.JAVA_LONG, 0), 42L);
         }

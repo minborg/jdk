@@ -118,6 +118,7 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
         private int allocatorIndex;
         @Stable
         private SlicingAllocator allocator;
+        private boolean allocatorReleased;
 
         @ForceInline
         CachedArena(Thread owner) {
@@ -138,12 +139,22 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
 
         @ForceInline
         private NativeMemorySegmentImpl allocate0(long byteSize, long byteAlignment, boolean init) {
+            // We need these check here as the following methods have side effects:
+            //  - tryAcquireAllocator()
+            //  - `allocator.allocate()`
+            //  - `segment.fill()`, and
+            Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
+            session.checkValidState();
+
             final SlicingAllocator allocator;
             if (
                     // No use even trying if `byteSize` is larger than the pool size.
                     // This also prevents/delays pool allocation if larger chunks are
                     // initially allocated from this arena.
                     byteSize > POOL_SLOT_SIZE
+                            // Preserve distinct addresses for zero-length arenas by
+                            // falling back to the regular allocator
+                            || byteSize == 0
                             // Did we get an allocator?
                             || (allocator = tryAcquireAllocator()) == null
                             // If so, can we accomodate the request with that allocator?
@@ -152,8 +163,6 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
                 return init ? super.allocate(byteSize, byteAlignment) : super.allocateNoInit(byteSize, byteAlignment);
             }
 
-            // We need this check here as `allocator.allocate()` and `segment.fill()` have side effects.
-            session.checkValidState();
             final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl) allocator.allocate(byteSize, byteAlignment);
             if (init) {
                 segment.fill((byte) 0);
@@ -181,11 +190,28 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
         public void close() {
             // The Arena::close method is called first as it checks thread
             // confinement and liveness before cached chunks are made available again.
-            super.close();
+            try {
+                super.close();
+            } finally {
+                // This covers the case if a cleanup action in super.close() throws.
+                // In such cases, the session is not alive and we need to release the
+                // allocator.
+                if (!session.isAlive()) {
+                    releaseAllocator();
+                }
+            }
+        }
+
+        @ForceInline
+        private void releaseAllocator() {
             if (allocator != null) {
-                // Reset the allocator allowing future reuse
-                allocator.resetTo(0);
-                releaseAllocatorIndex(allocatorIndex);
+                // Make this method idempotent
+                if (!allocatorReleased) {
+                    // Reset the allocator allowing future reuse
+                    allocator.resetTo(0);
+                    releaseAllocatorIndex(allocatorIndex);
+                    allocatorReleased = true;
+                }
             }
         }
     }
