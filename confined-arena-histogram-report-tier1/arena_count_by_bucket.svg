@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650">
+<style>text{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;fill:#222}.title{font-size:24px;font-weight:700}.axis{font-size:13px}.label{font-size:11px}.grid{stroke:#ddd;stroke-width:1}.axisline{stroke:#555;stroke-width:1}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text class="title" x="600.0" y="34" text-anchor="middle">Tier1 confined arenas by total allocated bytes</text>
+<line class="grid" x1="92" x2="1164" y1="480.00" y2="480.00"/>
+<text class="axis" x="84" y="484.00" text-anchor="end">1</text>
+<line class="grid" x1="92" x2="1164" y1="427.50" y2="427.50"/>
+<text class="axis" x="84" y="431.50" text-anchor="end">10^1</text>
+<line class="grid" x1="92" x2="1164" y1="375.00" y2="375.00"/>
+<text class="axis" x="84" y="379.00" text-anchor="end">10^2</text>
+<line class="grid" x1="92" x2="1164" y1="322.50" y2="322.50"/>
+<text class="axis" x="84" y="326.50" text-anchor="end">10^3</text>
+<line class="grid" x1="92" x2="1164" y1="270.00" y2="270.00"/>
+<text class="axis" x="84" y="274.00" text-anchor="end">10^4</text>
+<line class="grid" x1="92" x2="1164" y1="217.50" y2="217.50"/>
+<text class="axis" x="84" y="221.50" text-anchor="end">10^5</text>
+<line class="grid" x1="92" x2="1164" y1="165.00" y2="165.00"/>
+<text class="axis" x="84" y="169.00" text-anchor="end">10^6</text>
+<line class="grid" x1="92" x2="1164" y1="112.50" y2="112.50"/>
+<text class="axis" x="84" y="116.50" text-anchor="end">10^7</text>
+<line class="grid" x1="92" x2="1164" y1="60.00" y2="60.00"/>
+<text class="axis" x="84" y="64.00" text-anchor="end">10^8</text>
+<rect x="92.00" y="339.96" width="39.04" height="140.04" fill="#4C78A8"><title>0: 465</title></rect>
+<text class="label" x="111.52" y="494" text-anchor="end" transform="rotate(-55 111.52 494)">0</text>
+<rect x="135.04" y="315.02" width="39.04" height="164.98" fill="#4C78A8"><title>1: 1,388</title></rect>
+<text class="label" x="154.56" y="494" text-anchor="end" transform="rotate(-55 154.56 494)">1</text>
+<rect x="178.08" y="290.91" width="39.04" height="189.09" fill="#4C78A8"><title>2-3: 3,997</title></rect>
+<text class="label" x="197.60" y="494" text-anchor="end" transform="rotate(-55 197.60 494)">2-3</text>
+<rect x="221.12" y="237.35" width="39.04" height="242.65" fill="#4C78A8"><title>4-7: 41,866</title></rect>
+<text class="label" x="240.64" y="494" text-anchor="end" transform="rotate(-55 240.64 494)">4-7</text>
+<rect x="264.16" y="85.64" width="39.04" height="394.36" fill="#4C78A8"><title>8-15: 32,487,238</title></rect>
+<text class="label" x="283.68" y="494" text-anchor="end" transform="rotate(-55 283.68 494)">8-15</text>
+<rect x="307.20" y="95.72" width="39.04" height="384.28" fill="#4C78A8"><title>16-31: 20,874,018</title></rect>
+<text class="label" x="326.72" y="494" text-anchor="end" transform="rotate(-55 326.72 494)">16-31</text>
+<rect x="350.24" y="266.96" width="39.04" height="213.04" fill="#4C78A8"><title>32-63: 11,425</title></rect>
+<text class="label" x="369.76" y="494" text-anchor="end" transform="rotate(-55 369.76 494)">32-63</text>
+<rect x="393.28" y="303.66" width="39.04" height="176.34" fill="#4C78A8"><title>64-127: 2,285</title></rect>
+<text class="label" x="412.80" y="494" text-anchor="end" transform="rotate(-55 412.80 494)">64-127</text>
+<rect x="436.32" y="237.60" width="39.04" height="242.40" fill="#4C78A8"><title>128-255: 41,408</title></rect>
+<text class="label" x="455.84" y="494" text-anchor="end" transform="rotate(-55 455.84 494)">128-255</text>
+<rect x="479.36" y="287.18" width="39.04" height="192.82" fill="#4C78A8"><title>256-511: 4,707</title></rect>
+<text class="label" x="498.88" y="494" text-anchor="end" transform="rotate(-55 498.88 494)">256-511</text>
+<rect x="522.40" y="333.96" width="39.04" height="146.04" fill="#4C78A8"><title>512-1023: 605</title></rect>
+<text class="label" x="541.92" y="494" text-anchor="end" transform="rotate(-55 541.92 494)">512-1023</text>
+<rect x="565.44" y="338.49" width="39.04" height="141.51" fill="#4C78A8"><title>1024-2047: 496</title></rect>
+<text class="label" x="584.96" y="494" text-anchor="end" transform="rotate(-55 584.96 494)">1024-2047</text>
+<rect x="608.48" y="373.25" width="39.04" height="106.75" fill="#4C78A8"><title>2048-4095: 108</title></rect>
+<text class="label" x="628.00" y="494" text-anchor="end" transform="rotate(-55 628.00 494)">2048-4095</text>
+<rect x="651.52" y="419.83" width="39.04" height="60.17" fill="#4C78A8"><title>4096-8191: 14</title></rect>
+<text class="label" x="671.04" y="494" text-anchor="end" transform="rotate(-55 671.04 494)">4096-8191</text>
+<rect x="694.56" y="244.01" width="39.04" height="235.99" fill="#4C78A8"><title>8192-16383: 31,258</title></rect>
+<text class="label" x="714.08" y="494" text-anchor="end" transform="rotate(-55 714.08 494)">8192-16383</text>
+<rect x="737.60" y="409.52" width="39.04" height="70.48" fill="#4C78A8"><title>16384-32767: 22</title></rect>
+<text class="label" x="757.12" y="494" text-anchor="end" transform="rotate(-55 757.12 494)">16384-32767</text>
+<rect x="780.64" y="393.21" width="39.04" height="86.79" fill="#4C78A8"><title>32768-65535: 45</title></rect>
+<text class="label" x="800.16" y="494" text-anchor="end" transform="rotate(-55 800.16 494)">32768-65535</text>
+<rect x="823.68" y="373.25" width="39.04" height="106.75" fill="#4C78A8"><title>65536-131071: 108</title></rect>
+<text class="label" x="843.20" y="494" text-anchor="end" transform="rotate(-55 843.20 494)">65536-131071</text>
+<rect x="866.72" y="371.42" width="39.04" height="108.58" fill="#4C78A8"><title>131072-262143: 117</title></rect>
+<text class="label" x="886.24" y="494" text-anchor="end" transform="rotate(-55 886.24 494)">131072-262143</text>
+<rect x="909.76" y="351.85" width="39.04" height="128.15" fill="#4C78A8"><title>262144-524287: 276</title></rect>
+<text class="label" x="929.28" y="494" text-anchor="end" transform="rotate(-55 929.28 494)">262144-524287</text>
+<rect x="952.80" y="327.50" width="39.04" height="152.50" fill="#4C78A8"><title>524288-1048575: 803</title></rect>
+<text class="label" x="972.32" y="494" text-anchor="end" transform="rotate(-55 972.32 494)">524288-1048575</text>
+<rect x="995.84" y="480.00" width="39.04" height="0.00" fill="#4C78A8"><title>4194304-8388607: 1</title></rect>
+<text class="label" x="1015.36" y="494" text-anchor="end" transform="rotate(-55 1015.36 494)">4194304-8388607</text>
+<rect x="1038.88" y="480.00" width="39.04" height="0.00" fill="#4C78A8"><title>33554432-67108863: 1</title></rect>
+<text class="label" x="1058.40" y="494" text-anchor="end" transform="rotate(-55 1058.40 494)">33554432-67108863</text>
+<rect x="1081.92" y="480.00" width="39.04" height="0.00" fill="#4C78A8"><title>268435456-536870911: 1</title></rect>
+<text class="label" x="1101.44" y="494" text-anchor="end" transform="rotate(-55 1101.44 494)">268435456-536870911</text>
+<rect x="1124.96" y="480.00" width="39.04" height="0.00" fill="#4C78A8"><title>2147483648-4294967295: 1</title></rect>
+<text class="label" x="1144.48" y="494" text-anchor="end" transform="rotate(-55 1144.48 494)">2147483648-4294967295</text>
+<line class="axisline" x1="92" x2="92" y1="60" y2="480"/>
+<line class="axisline" x1="92" x2="1164" y1="480" y2="480"/>
+<text class="axis" x="628.0" y="632" text-anchor="middle">Total allocated bytes per arena, bucket</text>
+<text class="axis" x="24" y="270.0" text-anchor="middle" transform="rotate(-90 24 270.0)">Arena count (log scale)</text>
+</svg>

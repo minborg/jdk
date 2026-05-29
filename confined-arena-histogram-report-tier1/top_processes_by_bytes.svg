@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560">
+<style>text{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;fill:#222}.title{font-size:23px;font-weight:700}.axis{font-size:13px}.label{font-size:12px}.grid{stroke:#ddd;stroke-width:1}.axisline{stroke:#555;stroke-width:1}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text class="title" x="500.0" y="34" text-anchor="middle">Tier1 top processes by confined-arena allocated bytes</text>
+<line class="grid" x1="86" x2="964" y1="468.00" y2="468.00"/>
+<text class="axis" x="78" y="472.00" text-anchor="end">1</text>
+<line class="grid" x1="86" x2="964" y1="427.00" y2="427.00"/>
+<text class="axis" x="78" y="431.00" text-anchor="end">10^1</text>
+<line class="grid" x1="86" x2="964" y1="386.00" y2="386.00"/>
+<text class="axis" x="78" y="390.00" text-anchor="end">10^2</text>
+<line class="grid" x1="86" x2="964" y1="345.00" y2="345.00"/>
+<text class="axis" x="78" y="349.00" text-anchor="end">10^3</text>
+<line class="grid" x1="86" x2="964" y1="304.00" y2="304.00"/>
+<text class="axis" x="78" y="308.00" text-anchor="end">10^4</text>
+<line class="grid" x1="86" x2="964" y1="263.00" y2="263.00"/>
+<text class="axis" x="78" y="267.00" text-anchor="end">10^5</text>
+<line class="grid" x1="86" x2="964" y1="222.00" y2="222.00"/>
+<text class="axis" x="78" y="226.00" text-anchor="end">10^6</text>
+<line class="grid" x1="86" x2="964" y1="181.00" y2="181.00"/>
+<text class="axis" x="78" y="185.00" text-anchor="end">10^7</text>
+<line class="grid" x1="86" x2="964" y1="140.00" y2="140.00"/>
+<text class="axis" x="78" y="144.00" text-anchor="end">10^8</text>
+<line class="grid" x1="86" x2="964" y1="99.00" y2="99.00"/>
+<text class="axis" x="78" y="103.00" text-anchor="end">10^9</text>
+<line class="grid" x1="86" x2="964" y1="58.00" y2="58.00"/>
+<text class="axis" x="78" y="62.00" text-anchor="end">10^10</text>
+<rect x="86.00" y="85.39" width="64.00" height="382.61" fill="#54A24B"><title>pid 33913: 2,147,484,440 bytes</title></rect>
+<text class="label" x="118.00" y="486" text-anchor="middle">33913</text>
+<rect x="160.00" y="113.41" width="64.00" height="354.59" fill="#54A24B"><title>pid 33955: 445,179,856 bytes</title></rect>
+<text class="label" x="192.00" y="486" text-anchor="middle">33955</text>
+<rect x="234.00" y="116.18" width="64.00" height="351.82" fill="#54A24B"><title>pid 40865: 381,010,614 bytes</title></rect>
+<text class="label" x="266.00" y="486" text-anchor="middle">40865</text>
+<rect x="308.00" y="120.04" width="64.00" height="347.96" fill="#54A24B"><title>pid 33930: 306,863,477 bytes</title></rect>
+<text class="label" x="340.00" y="486" text-anchor="middle">33930</text>
+<rect x="382.00" y="124.08" width="64.00" height="343.92" fill="#54A24B"><title>pid 33867: 244,448,775 bytes</title></rect>
+<text class="label" x="414.00" y="486" text-anchor="middle">33867</text>
+<rect x="456.00" y="142.89" width="64.00" height="325.11" fill="#54A24B"><title>pid 33905: 85,000,000 bytes</title></rect>
+<text class="label" x="488.00" y="486" text-anchor="middle">33905</text>
+<rect x="530.00" y="142.89" width="64.00" height="325.11" fill="#54A24B"><title>pid 33926: 85,000,000 bytes</title></rect>
+<text class="label" x="562.00" y="486" text-anchor="middle">33926</text>
+<rect x="604.00" y="142.89" width="64.00" height="325.11" fill="#54A24B"><title>pid 33954: 85,000,000 bytes</title></rect>
+<text class="label" x="636.00" y="486" text-anchor="middle">33954</text>
+<rect x="678.00" y="142.89" width="64.00" height="325.11" fill="#54A24B"><title>pid 33964: 85,000,000 bytes</title></rect>
+<text class="label" x="710.00" y="486" text-anchor="middle">33964</text>
+<rect x="752.00" y="152.62" width="64.00" height="315.38" fill="#54A24B"><title>pid 16631: 49,217,536 bytes</title></rect>
+<text class="label" x="784.00" y="486" text-anchor="middle">16631</text>
+<rect x="826.00" y="152.62" width="64.00" height="315.38" fill="#54A24B"><title>pid 16633: 49,217,536 bytes</title></rect>
+<text class="label" x="858.00" y="486" text-anchor="middle">16633</text>
+<rect x="900.00" y="167.87" width="64.00" height="300.13" fill="#54A24B"><title>pid 23904: 20,905,984 bytes</title></rect>
+<text class="label" x="932.00" y="486" text-anchor="middle">23904</text>
+<line class="axisline" x1="86" x2="86" y1="58" y2="468"/>
+<line class="axisline" x1="86" x2="964" y1="468" y2="468"/>
+<text class="axis" x="525.0" y="540" text-anchor="middle">Process id</text>
+<text class="axis" x="24" y="263.0" text-anchor="middle" transform="rotate(-90 24 263.0)">Total bytes (log scale)</text>
+</svg>

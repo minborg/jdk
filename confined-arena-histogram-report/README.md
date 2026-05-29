@@ -1,7 +1,7 @@
 # Confined Arena Allocation Histogram Summary
 
-Tests: test/jdk/java/foreign
-Source: `/Users/minborg/dev/minborg-jdk/histograms`  
+Tests: test/jdk/java/foreign  
+Source: `/Users/minborg/dev/minborg-jdk/histogriams`  
 Scope: compound result from all histogram blocks in the file.
 
 ## Executive Summary
