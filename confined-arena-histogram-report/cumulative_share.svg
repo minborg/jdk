@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650">
+<style>text{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;fill:#222}.title{font-size:24px;font-weight:700}.axis{font-size:13px}.label{font-size:11px}.grid{stroke:#ddd;stroke-width:1}.axisline{stroke:#555;stroke-width:1}.legend{font-size:14px}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text class="title" x="600.0" y="34" text-anchor="middle">Cumulative share by upper bucket bound</text>
+<line class="grid" x1="80" x2="1158" y1="480.00" y2="480.00"/>
+<text class="axis" x="72" y="484.00" text-anchor="end">0%</text>
+<line class="grid" x1="80" x2="1158" y1="396.00" y2="396.00"/>
+<text class="axis" x="72" y="400.00" text-anchor="end">20%</text>
+<line class="grid" x1="80" x2="1158" y1="312.00" y2="312.00"/>
+<text class="axis" x="72" y="316.00" text-anchor="end">40%</text>
+<line class="grid" x1="80" x2="1158" y1="228.00" y2="228.00"/>
+<text class="axis" x="72" y="232.00" text-anchor="end">60%</text>
+<line class="grid" x1="80" x2="1158" y1="144.00" y2="144.00"/>
+<text class="axis" x="72" y="148.00" text-anchor="end">80%</text>
+<line class="grid" x1="80" x2="1158" y1="60.00" y2="60.00"/>
+<text class="axis" x="72" y="64.00" text-anchor="end">100%</text>
+<polyline points="80.00,480.00 126.87,480.00 173.74,479.99 220.61,479.95 267.48,82.05 314.35,60.04 361.22,60.03 408.09,60.03 454.96,60.01 501.83,60.00 548.70,60.00 595.57,60.00 642.43,60.00 689.30,60.00 736.17,60.00 783.04,60.00 829.91,60.00 876.78,60.00 923.65,60.00 970.52,60.00 1017.39,60.00 1064.26,60.00 1111.13,60.00 1158.00,60.00" fill="none" stroke="#4C78A8" stroke-width="3"/>
+<circle cx="80.00" cy="480.00" r="3.5" fill="#4C78A8"><title>0: 0.000%</title></circle>
+<circle cx="126.87" cy="480.00" r="3.5" fill="#4C78A8"><title>1: 0.000%</title></circle>
+<circle cx="173.74" cy="479.99" r="3.5" fill="#4C78A8"><title>2-3: 0.001%</title></circle>
+<circle cx="220.61" cy="479.95" r="3.5" fill="#4C78A8"><title>4-7: 0.011%</title></circle>
+<circle cx="267.48" cy="82.05" r="3.5" fill="#4C78A8"><title>8-15: 94.751%</title></circle>
+<circle cx="314.35" cy="60.04" r="3.5" fill="#4C78A8"><title>16-31: 99.991%</title></circle>
+<circle cx="361.22" cy="60.03" r="3.5" fill="#4C78A8"><title>32-63: 99.993%</title></circle>
+<circle cx="408.09" cy="60.03" r="3.5" fill="#4C78A8"><title>64-127: 99.994%</title></circle>
+<circle cx="454.96" cy="60.01" r="3.5" fill="#4C78A8"><title>128-255: 99.999%</title></circle>
+<circle cx="501.83" cy="60.00" r="3.5" fill="#4C78A8"><title>256-511: 100.000%</title></circle>
+<circle cx="548.70" cy="60.00" r="3.5" fill="#4C78A8"><title>512-1023: 100.000%</title></circle>
+<circle cx="595.57" cy="60.00" r="3.5" fill="#4C78A8"><title>1024-2047: 100.000%</title></circle>
+<circle cx="642.43" cy="60.00" r="3.5" fill="#4C78A8"><title>2048-4095: 100.000%</title></circle>
+<circle cx="689.30" cy="60.00" r="3.5" fill="#4C78A8"><title>4096-8191: 100.000%</title></circle>
+<circle cx="736.17" cy="60.00" r="3.5" fill="#4C78A8"><title>8192-16383: 100.000%</title></circle>
+<circle cx="783.04" cy="60.00" r="3.5" fill="#4C78A8"><title>16384-32767: 100.000%</title></circle>
+<circle cx="829.91" cy="60.00" r="3.5" fill="#4C78A8"><title>32768-65535: 100.000%</title></circle>
+<circle cx="876.78" cy="60.00" r="3.5" fill="#4C78A8"><title>65536-131071: 100.000%</title></circle>
+<circle cx="923.65" cy="60.00" r="3.5" fill="#4C78A8"><title>131072-262143: 100.000%</title></circle>
+<circle cx="970.52" cy="60.00" r="3.5" fill="#4C78A8"><title>524288-1048575: 100.000%</title></circle>
+<circle cx="1017.39" cy="60.00" r="3.5" fill="#4C78A8"><title>4194304-8388607: 100.000%</title></circle>
+<circle cx="1064.26" cy="60.00" r="3.5" fill="#4C78A8"><title>33554432-67108863: 100.000%</title></circle>
+<circle cx="1111.13" cy="60.00" r="3.5" fill="#4C78A8"><title>268435456-536870911: 100.000%</title></circle>
+<circle cx="1158.00" cy="60.00" r="3.5" fill="#4C78A8"><title>2147483648-4294967295: 100.000%</title></circle>
+<rect x="80" y="32" width="14" height="14" fill="#4C78A8"/>
+<text class="legend" x="100" y="44">Arena count</text>
+<polyline points="80.00,480.00 126.87,480.00 173.74,480.00 220.61,479.99 267.48,267.15 314.35,237.56 361.22,237.53 408.09,237.52 454.96,237.34 501.83,237.24 548.70,237.21 595.57,237.17 642.43,237.15 689.30,237.15 736.17,236.99 783.04,236.99 829.91,236.97 876.78,236.97 923.65,236.96 970.52,215.39 1017.39,215.13 1064.26,213.00 1111.13,196.00 1158.00,60.00" fill="none" stroke="#F58518" stroke-width="3"/>
+<circle cx="80.00" cy="480.00" r="3.5" fill="#F58518"><title>0: 0.000%</title></circle>
+<circle cx="126.87" cy="480.00" r="3.5" fill="#F58518"><title>1: 0.000%</title></circle>
+<circle cx="173.74" cy="480.00" r="3.5" fill="#F58518"><title>2-3: 0.000%</title></circle>
+<circle cx="220.61" cy="479.99" r="3.5" fill="#F58518"><title>4-7: 0.003%</title></circle>
+<circle cx="267.48" cy="267.15" r="3.5" fill="#F58518"><title>8-15: 50.678%</title></circle>
+<circle cx="314.35" cy="237.56" r="3.5" fill="#F58518"><title>16-31: 57.723%</title></circle>
+<circle cx="361.22" cy="237.53" r="3.5" fill="#F58518"><title>32-63: 57.731%</title></circle>
+<circle cx="408.09" cy="237.52" r="3.5" fill="#F58518"><title>64-127: 57.734%</title></circle>
+<circle cx="454.96" cy="237.34" r="3.5" fill="#F58518"><title>128-255: 57.777%</title></circle>
+<circle cx="501.83" cy="237.24" r="3.5" fill="#F58518"><title>256-511: 57.801%</title></circle>
+<circle cx="548.70" cy="237.21" r="3.5" fill="#F58518"><title>512-1023: 57.807%</title></circle>
+<circle cx="595.57" cy="237.17" r="3.5" fill="#F58518"><title>1024-2047: 57.816%</title></circle>
+<circle cx="642.43" cy="237.15" r="3.5" fill="#F58518"><title>2048-4095: 57.821%</title></circle>
+<circle cx="689.30" cy="237.15" r="3.5" fill="#F58518"><title>4096-8191: 57.822%</title></circle>
+<circle cx="736.17" cy="236.99" r="3.5" fill="#F58518"><title>8192-16383: 57.859%</title></circle>
+<circle cx="783.04" cy="236.99" r="3.5" fill="#F58518"><title>16384-32767: 57.860%</title></circle>
+<circle cx="829.91" cy="236.97" r="3.5" fill="#F58518"><title>32768-65535: 57.863%</title></circle>
+<circle cx="876.78" cy="236.97" r="3.5" fill="#F58518"><title>65536-131071: 57.865%</title></circle>
+<circle cx="923.65" cy="236.96" r="3.5" fill="#F58518"><title>131072-262143: 57.867%</title></circle>
+<circle cx="970.52" cy="215.39" r="3.5" fill="#F58518"><title>524288-1048575: 63.002%</title></circle>
+<circle cx="1017.39" cy="215.13" r="3.5" fill="#F58518"><title>4194304-8388607: 63.065%</title></circle>
+<circle cx="1064.26" cy="213.00" r="3.5" fill="#F58518"><title>33554432-67108863: 63.571%</title></circle>
+<circle cx="1111.13" cy="196.00" r="3.5" fill="#F58518"><title>268435456-536870911: 67.619%</title></circle>
+<circle cx="1158.00" cy="60.00" r="3.5" fill="#F58518"><title>2147483648-4294967295: 100.000%</title></circle>
+<rect x="250" y="32" width="14" height="14" fill="#F58518"/>
+<text class="legend" x="270" y="44">Total bytes</text>
+<text class="label" x="80.00" y="494" text-anchor="end" transform="rotate(-55 80.00 494)">0</text>
+<text class="label" x="126.87" y="494" text-anchor="end" transform="rotate(-55 126.87 494)">1</text>
+<text class="label" x="173.74" y="494" text-anchor="end" transform="rotate(-55 173.74 494)">2-3</text>
+<text class="label" x="220.61" y="494" text-anchor="end" transform="rotate(-55 220.61 494)">4-7</text>
+<text class="label" x="267.48" y="494" text-anchor="end" transform="rotate(-55 267.48 494)">8-15</text>
+<text class="label" x="314.35" y="494" text-anchor="end" transform="rotate(-55 314.35 494)">16-31</text>
+<text class="label" x="361.22" y="494" text-anchor="end" transform="rotate(-55 361.22 494)">32-63</text>
+<text class="label" x="408.09" y="494" text-anchor="end" transform="rotate(-55 408.09 494)">64-127</text>
+<text class="label" x="454.96" y="494" text-anchor="end" transform="rotate(-55 454.96 494)">128-255</text>
+<text class="label" x="501.83" y="494" text-anchor="end" transform="rotate(-55 501.83 494)">256-511</text>
+<text class="label" x="548.70" y="494" text-anchor="end" transform="rotate(-55 548.70 494)">512-1023</text>
+<text class="label" x="595.57" y="494" text-anchor="end" transform="rotate(-55 595.57 494)">1024-2047</text>
+<text class="label" x="642.43" y="494" text-anchor="end" transform="rotate(-55 642.43 494)">2048-4095</text>
+<text class="label" x="689.30" y="494" text-anchor="end" transform="rotate(-55 689.30 494)">4096-8191</text>
+<text class="label" x="736.17" y="494" text-anchor="end" transform="rotate(-55 736.17 494)">8192-16383</text>
+<text class="label" x="783.04" y="494" text-anchor="end" transform="rotate(-55 783.04 494)">16384-32767</text>
+<text class="label" x="829.91" y="494" text-anchor="end" transform="rotate(-55 829.91 494)">32768-65535</text>
+<text class="label" x="876.78" y="494" text-anchor="end" transform="rotate(-55 876.78 494)">65536-131071</text>
+<text class="label" x="923.65" y="494" text-anchor="end" transform="rotate(-55 923.65 494)">131072-262143</text>
+<text class="label" x="970.52" y="494" text-anchor="end" transform="rotate(-55 970.52 494)">524288-1048575</text>
+<text class="label" x="1017.39" y="494" text-anchor="end" transform="rotate(-55 1017.39 494)">4194304-8388607</text>
+<text class="label" x="1064.26" y="494" text-anchor="end" transform="rotate(-55 1064.26 494)">33554432-67108863</text>
+<text class="label" x="1111.13" y="494" text-anchor="end" transform="rotate(-55 1111.13 494)">268435456-536870911</text>
+<text class="label" x="1158.00" y="494" text-anchor="end" transform="rotate(-55 1158.00 494)">2147483648-4294967295</text>
+<line class="axisline" x1="80" x2="80" y1="60" y2="480"/>
+<line class="axisline" x1="80" x2="1158" y1="480" y2="480"/>
+<text class="axis" x="619.0" y="632" text-anchor="middle">Upper bucket bound</text>
+<text class="axis" x="24" y="270.0" text-anchor="middle" transform="rotate(-90 24 270.0)">Cumulative share</text>
+</svg>

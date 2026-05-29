@@ -54,6 +54,11 @@ final class TestBufferStack extends NativeTestHelper {
     private static final long SMALL_ALLOC_SIZE = JAVA_LONG.byteSize();
 
     @Test
+    void a() {
+        fail();
+    }
+
+    @Test
     void invariants() {
         var exBS = assertThrows(IllegalArgumentException.class, () -> BufferStack.of(-1, 1));
         assertEquals("Negative byteSize: -1", exBS.getMessage());

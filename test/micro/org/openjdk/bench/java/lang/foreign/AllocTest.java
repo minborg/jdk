@@ -23,6 +23,7 @@
 
 package org.openjdk.bench.java.lang.foreign;
 
+import jdk.internal.foreign.ArenaImpl;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -73,6 +74,9 @@ public class AllocTest extends CLayouts {
             return arena.allocate(size).address();
         }
     }
+
+    @Fork(jvmArgsAppend = {"-Djava.lang.foreign.native.confined.arena.pool-slots=0"})
+    public static class NoPool extends AllocTest { }
 
     private static class CallocArena implements Arena {
 

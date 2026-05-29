@@ -90,7 +90,11 @@ public abstract sealed class MemorySessionImpl
     int acquireCount;
 
     public ArenaImpl asArena() {
-        return new ArenaImpl(this);
+        return asArena(false);
+    }
+
+    ArenaImpl asArena(boolean collectAllocationHistogram) {
+        return new ArenaImpl(this, collectAllocationHistogram);
     }
 
     @ForceInline
@@ -154,7 +158,7 @@ public abstract sealed class MemorySessionImpl
             allocator = ThreadConfinedSegmentPool.of(thread);
             if (allocator == null) {
                 // Unable. Fall back to a non-pooled arena
-                return createConfined(thread).asArena();
+                return createConfined(thread).asArena(true);
             }
             JLA.setConfinedArenaAllocator(thread, allocator);
         }

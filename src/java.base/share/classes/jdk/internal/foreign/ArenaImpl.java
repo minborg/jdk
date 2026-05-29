@@ -27,16 +27,30 @@ package jdk.internal.foreign;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment.Scope;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.concurrent.atomic.LongAdder;
 
 public sealed class ArenaImpl implements Arena
         permits BufferStack.PerThread.Frame, ThreadConfinedSegmentPool.CachedArena {
 
     final MemorySessionImpl session;
     final boolean shouldReserveMemory;
+    private final boolean collectAllocationHistogram;
+    private boolean allocationHistogramRecorded;
 
     ArenaImpl(MemorySessionImpl session) {
+        this(session, false);
+    }
+
+    ArenaImpl(MemorySessionImpl session, boolean collectAllocationHistogram) {
         this.session = session;
         shouldReserveMemory = session instanceof ImplicitSession;
+        this.collectAllocationHistogram = collectAllocationHistogram && ConfinedArenaHistogram.ENABLED;
         super();
     }
 
@@ -51,11 +65,114 @@ public sealed class ArenaImpl implements Arena
     }
 
     public NativeMemorySegmentImpl allocateNoInit(long byteSize, long byteAlignment) {
-        return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, false);
+        NativeMemorySegmentImpl segment = SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, false);
+        ConfinedArenaHistogram.record(byteSize);
+        return segment;
     }
 
     @Override
     public NativeMemorySegmentImpl allocate(long byteSize, long byteAlignment) {
-        return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, true);
+        NativeMemorySegmentImpl segment = SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, true);
+        ConfinedArenaHistogram.record(byteSize);
+        return segment;
+    }
+
+}
+
+final class ConfinedArenaHistogram {
+
+    private static final String PROPERTY = "java.lang.foreign.native.confined.arena.histogram";
+    private static final String OUTPUT = System.getProperty(PROPERTY, "/Users/minborg/dev/minborg-jdk/histograms");
+    static final boolean ENABLED = OUTPUT != null;
+
+    private static final LongAdder[] COUNTS = ENABLED ? newCounters() : null;
+    private static final LongAdder[] BYTES = ENABLED ? newCounters() : null;
+
+    static {
+        if (ENABLED) {
+            Runtime.getRuntime().addShutdownHook(new Thread(
+                    ConfinedArenaHistogram::dump, "ConfinedArenaHistogram"));
+        }
+    }
+
+    private ConfinedArenaHistogram() {
+    }
+
+    static void record(long byteSize) {
+        int bucket = bucket(byteSize);
+        COUNTS[bucket].increment();
+        BYTES[bucket].add(byteSize);
+    }
+
+    private static LongAdder[] newCounters() {
+        LongAdder[] counters = new LongAdder[Long.SIZE];
+        for (int i = 0; i < counters.length; i++) {
+            counters[i] = new LongAdder();
+        }
+        return counters;
+    }
+
+    private static int bucket(long byteSize) {
+        return byteSize <= 0 ? 0 : Long.SIZE - 1 - Long.numberOfLeadingZeros(byteSize) + 1;
+    }
+
+    @SuppressWarnings("try")
+    private static void dump() {
+        String histogram = histogram();
+        if (histogram.isEmpty()) {
+            return;
+        }
+        if (OUTPUT.isEmpty() || OUTPUT.equals("true") || OUTPUT.equals("stderr")) {
+            System.err.print(histogram);
+            return;
+        }
+        try {
+            Path path = Path.of(OUTPUT);
+            Path parent = path.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            try (FileChannel channel = FileChannel.open(path,
+                    StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+                 FileLock lock = channel.lock()) {
+                channel.write(StandardCharsets.UTF_8.encode(histogram));
+                channel.force(true);
+            }
+        } catch (Throwable ex) {
+            System.err.println("Could not write confined arena allocation histogram: " + ex);
+            System.err.print(histogram);
+        }
+    }
+
+    private static String histogram() {
+        StringBuilder sb = new StringBuilder();
+        boolean header = false;
+        for (int i = 0; i < COUNTS.length; i++) {
+            long count = COUNTS[i].sum();
+            if (count == 0) {
+                continue;
+            }
+            if (!header) {
+                sb.append("# confined arena allocation histogram, pid=")
+                        .append(ProcessHandle.current().pid())
+                        .append(System.lineSeparator())
+                        .append("# minBytes,maxBytes,arenaCount,totalBytes")
+                        .append(System.lineSeparator());
+                header = true;
+            }
+            sb.append(bucketMin(i)).append(',')
+                    .append(bucketMax(i)).append(',')
+                    .append(count).append(',')
+                    .append(BYTES[i].sum()).append(System.lineSeparator());
+        }
+        return sb.toString();
+    }
+
+    private static long bucketMin(int bucket) {
+        return bucket == 0 ? 0 : 1L << (bucket - 1);
+    }
+
+    private static long bucketMax(int bucket) {
+        return bucket == 0 ? 0 : bucket == Long.SIZE - 1 ? Long.MAX_VALUE : (1L << bucket) - 1;
     }
 }

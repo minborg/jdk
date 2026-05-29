@@ -41,7 +41,7 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
     // We are using a `long` for keeping track of slot used so, we can only handle
     // a maximum of 64 slots.
     private static final int POOL_SLOTS =
-            Math.min(64, Integer.getInteger(PROPERTY_PATH + "pool-slots", 2));
+            Math.min(64, Integer.getInteger(PROPERTY_PATH + "pool-slots", 0));
     private static final long POOL_SLOT_ALIGNMENT =
             SegmentBulkOperations.powerOfPropertyOr(PROPERTY_PATH + "power.pool-slot-alignment", 4);
     private static final long POOL_SLOT_SIZE = SegmentBulkOperations.powerOfPropertyOr(PROPERTY_PATH + "power.pool-slot-size", 6);
@@ -122,7 +122,7 @@ final class ThreadConfinedSegmentPool implements AutoCloseable {
 
         @ForceInline
         CachedArena(Thread owner) {
-            super(MemorySessionImpl.createConfined(owner));
+            super(MemorySessionImpl.createConfined(owner), true);
         }
 
         @ForceInline
