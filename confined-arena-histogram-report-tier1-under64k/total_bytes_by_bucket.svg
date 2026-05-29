@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650">
+<style>text{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;fill:#222}.title{font-size:24px;font-weight:700}.axis{font-size:13px}.label{font-size:11px}.grid{stroke:#ddd;stroke-width:1}.axisline{stroke:#555;stroke-width:1}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text class="title" x="600.0" y="34" text-anchor="middle">Tier1 retained bytes by confined-arena size bucket</text>
+<line class="grid" x1="92" x2="1164" y1="480.00" y2="480.00"/>
+<text class="axis" x="84" y="484.00" text-anchor="end">10^3</text>
+<line class="grid" x1="92" x2="1164" y1="410.00" y2="410.00"/>
+<text class="axis" x="84" y="414.00" text-anchor="end">10^4</text>
+<line class="grid" x1="92" x2="1164" y1="340.00" y2="340.00"/>
+<text class="axis" x="84" y="344.00" text-anchor="end">10^5</text>
+<line class="grid" x1="92" x2="1164" y1="270.00" y2="270.00"/>
+<text class="axis" x="84" y="274.00" text-anchor="end">10^6</text>
+<line class="grid" x1="92" x2="1164" y1="200.00" y2="200.00"/>
+<text class="axis" x="84" y="204.00" text-anchor="end">10^7</text>
+<line class="grid" x1="92" x2="1164" y1="130.00" y2="130.00"/>
+<text class="axis" x="84" y="134.00" text-anchor="end">10^8</text>
+<line class="grid" x1="92" x2="1164" y1="60.00" y2="60.00"/>
+<text class="axis" x="84" y="64.00" text-anchor="end">10^9</text>
+<rect x="92.00" y="480.00" width="59.29" height="0.00" fill="#F58518"><title>0: 0</title></rect>
+<text class="label" x="121.65" y="494" text-anchor="end" transform="rotate(-55 121.65 494)">0</text>
+<rect x="155.29" y="470.03" width="59.29" height="9.97" fill="#F58518"><title>1: 1,388</title></rect>
+<text class="label" x="184.94" y="494" text-anchor="end" transform="rotate(-55 184.94 494)">1</text>
+<rect x="218.59" y="409.22" width="59.29" height="70.78" fill="#F58518"><title>2-3: 10,261</title></rect>
+<text class="label" x="248.24" y="494" text-anchor="end" transform="rotate(-55 248.24 494)">2-3</text>
+<rect x="281.88" y="322.36" width="59.29" height="157.64" fill="#F58518"><title>4-7: 178,629</title></rect>
+<text class="label" x="311.53" y="494" text-anchor="end" transform="rotate(-55 311.53 494)">4-7</text>
+<rect x="345.18" y="100.96" width="59.29" height="379.04" fill="#F58518"><title>8-15: 259,932,027</title></rect>
+<text class="label" x="374.82" y="494" text-anchor="end" transform="rotate(-55 374.82 494)">8-15</text>
+<rect x="408.47" y="85.64" width="59.29" height="394.36" fill="#F58518"><title>16-31: 430,305,326</title></rect>
+<text class="label" x="438.12" y="494" text-anchor="end" transform="rotate(-55 438.12 494)">16-31</text>
+<rect x="471.76" y="289.02" width="59.29" height="190.98" fill="#F58518"><title>32-63: 534,961</title></rect>
+<text class="label" x="501.41" y="494" text-anchor="end" transform="rotate(-55 501.41 494)">32-63</text>
+<rect x="535.06" y="319.55" width="59.29" height="160.45" fill="#F58518"><title>64-127: 195,968</title></rect>
+<text class="label" x="564.71" y="494" text-anchor="end" transform="rotate(-55 564.71 494)">64-127</text>
+<rect x="598.35" y="212.93" width="59.29" height="267.07" fill="#F58518"><title>128-255: 6,535,585</title></rect>
+<text class="label" x="628.00" y="494" text-anchor="end" transform="rotate(-55 628.00 494)">128-255</text>
+<rect x="661.65" y="255.06" width="59.29" height="224.94" fill="#F58518"><title>256-511: 1,634,600</title></rect>
+<text class="label" x="691.29" y="494" text-anchor="end" transform="rotate(-55 691.29 494)">256-511</text>
+<rect x="724.94" y="296.12" width="59.29" height="183.88" fill="#F58518"><title>512-1023: 423,457</title></rect>
+<text class="label" x="754.59" y="494" text-anchor="end" transform="rotate(-55 754.59 494)">512-1023</text>
+<rect x="788.24" y="286.76" width="59.29" height="193.24" fill="#F58518"><title>1024-2047: 576,171</title></rect>
+<text class="label" x="817.88" y="494" text-anchor="end" transform="rotate(-55 817.88 494)">1024-2047</text>
+<rect x="851.53" y="302.37" width="59.29" height="177.63" fill="#F58518"><title>2048-4095: 344,845</title></rect>
+<text class="label" x="881.18" y="494" text-anchor="end" transform="rotate(-55 881.18 494)">2048-4095</text>
+<rect x="914.82" y="343.79" width="59.29" height="136.21" fill="#F58518"><title>4096-8191: 88,280</title></rect>
+<text class="label" x="944.47" y="494" text-anchor="end" transform="rotate(-55 944.47 494)">4096-8191</text>
+<rect x="978.12" y="101.15" width="59.29" height="378.85" fill="#F58518"><title>8192-16383: 258,282,221</title></rect>
+<text class="label" x="1007.76" y="494" text-anchor="end" transform="rotate(-55 1007.76 494)">8192-16383</text>
+<rect x="1041.41" y="286.64" width="59.29" height="193.36" fill="#F58518"><title>16384-32767: 578,561</title></rect>
+<text class="label" x="1071.06" y="494" text-anchor="end" transform="rotate(-55 1071.06 494)">16384-32767</text>
+<rect x="1104.71" y="248.37" width="59.29" height="231.63" fill="#F58518"><title>32768-65535: 2,037,352</title></rect>
+<text class="label" x="1134.35" y="494" text-anchor="end" transform="rotate(-55 1134.35 494)">32768-65535</text>
+<line class="axisline" x1="92" x2="92" y1="60" y2="480"/>
+<line class="axisline" x1="92" x2="1164" y1="480" y2="480"/>
+<text class="axis" x="628.0" y="632" text-anchor="middle">Total allocated bytes per arena, bucket</text>
+<text class="axis" x="24" y="270.0" text-anchor="middle" transform="rotate(-90 24 270.0)">Total bytes (log scale)</text>
+</svg>

@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650">
+<style>text{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;fill:#222}.title{font-size:24px;font-weight:700}.axis{font-size:13px}.label{font-size:11px}.grid{stroke:#ddd;stroke-width:1}.axisline{stroke:#555;stroke-width:1}.legend{font-size:14px}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text class="title" x="600.0" y="34" text-anchor="middle">Tier1 cumulative share below 64 KiB</text>
+<line class="grid" x1="80" x2="1158" y1="480.00" y2="480.00"/>
+<text class="axis" x="72" y="484.00" text-anchor="end">0%</text>
+<line class="grid" x1="80" x2="1158" y1="396.00" y2="396.00"/>
+<text class="axis" x="72" y="400.00" text-anchor="end">20%</text>
+<line class="grid" x1="80" x2="1158" y1="312.00" y2="312.00"/>
+<text class="axis" x="72" y="316.00" text-anchor="end">40%</text>
+<line class="grid" x1="80" x2="1158" y1="228.00" y2="228.00"/>
+<text class="axis" x="72" y="232.00" text-anchor="end">60%</text>
+<line class="grid" x1="80" x2="1158" y1="144.00" y2="144.00"/>
+<text class="axis" x="72" y="148.00" text-anchor="end">80%</text>
+<line class="grid" x1="80" x2="1158" y1="60.00" y2="60.00"/>
+<text class="axis" x="72" y="64.00" text-anchor="end">100%</text>
+<polyline points="80.00,480.00 147.38,479.99 214.75,479.95 282.12,479.63 349.50,224.59 416.88,60.73 484.25,60.64 551.62,60.62 619.00,60.29 686.38,60.26 753.75,60.25 821.12,60.25 888.50,60.25 955.88,60.25 1023.25,60.00 1090.62,60.00 1158.00,60.00" fill="none" stroke="#4C78A8" stroke-width="3"/>
+<circle cx="80.00" cy="480.00" r="3.5" fill="#4C78A8"><title>0: 0.001%</title></circle>
+<circle cx="147.38" cy="479.99" r="3.5" fill="#4C78A8"><title>1: 0.003%</title></circle>
+<circle cx="214.75" cy="479.95" r="3.5" fill="#4C78A8"><title>2-3: 0.011%</title></circle>
+<circle cx="282.12" cy="479.63" r="3.5" fill="#4C78A8"><title>4-7: 0.089%</title></circle>
+<circle cx="349.50" cy="224.59" r="3.5" fill="#4C78A8"><title>8-15: 60.811%</title></circle>
+<circle cx="416.88" cy="60.73" r="3.5" fill="#4C78A8"><title>16-31: 99.827%</title></circle>
+<circle cx="484.25" cy="60.64" r="3.5" fill="#4C78A8"><title>32-63: 99.849%</title></circle>
+<circle cx="551.62" cy="60.62" r="3.5" fill="#4C78A8"><title>64-127: 99.853%</title></circle>
+<circle cx="619.00" cy="60.29" r="3.5" fill="#4C78A8"><title>128-255: 99.930%</title></circle>
+<circle cx="686.38" cy="60.26" r="3.5" fill="#4C78A8"><title>256-511: 99.939%</title></circle>
+<circle cx="753.75" cy="60.25" r="3.5" fill="#4C78A8"><title>512-1023: 99.940%</title></circle>
+<circle cx="821.12" cy="60.25" r="3.5" fill="#4C78A8"><title>1024-2047: 99.941%</title></circle>
+<circle cx="888.50" cy="60.25" r="3.5" fill="#4C78A8"><title>2048-4095: 99.941%</title></circle>
+<circle cx="955.88" cy="60.25" r="3.5" fill="#4C78A8"><title>4096-8191: 99.941%</title></circle>
+<circle cx="1023.25" cy="60.00" r="3.5" fill="#4C78A8"><title>8192-16383: 100.000%</title></circle>
+<circle cx="1090.62" cy="60.00" r="3.5" fill="#4C78A8"><title>16384-32767: 100.000%</title></circle>
+<circle cx="1158.00" cy="60.00" r="3.5" fill="#4C78A8"><title>32768-65535: 100.000%</title></circle>
+<rect x="80" y="32" width="14" height="14" fill="#4C78A8"/>
+<text class="legend" x="100" y="44">Arena count</text>
+<polyline points="80.00,480.00 147.38,480.00 214.75,479.99 282.12,479.92 349.50,366.39 416.88,178.46 484.25,178.23 551.62,178.14 619.00,175.29 686.38,174.57 753.75,174.39 821.12,174.14 888.50,173.98 955.88,173.95 1023.25,61.14 1090.62,60.89 1158.00,60.00" fill="none" stroke="#F58518" stroke-width="3"/>
+<circle cx="80.00" cy="480.00" r="3.5" fill="#F58518"><title>0: 0.000%</title></circle>
+<circle cx="147.38" cy="480.00" r="3.5" fill="#F58518"><title>1: 0.000%</title></circle>
+<circle cx="214.75" cy="479.99" r="3.5" fill="#F58518"><title>2-3: 0.001%</title></circle>
+<circle cx="282.12" cy="479.92" r="3.5" fill="#F58518"><title>4-7: 0.020%</title></circle>
+<circle cx="349.50" cy="366.39" r="3.5" fill="#F58518"><title>8-15: 27.049%</title></circle>
+<circle cx="416.88" cy="178.46" r="3.5" fill="#F58518"><title>16-31: 71.795%</title></circle>
+<circle cx="484.25" cy="178.23" r="3.5" fill="#F58518"><title>32-63: 71.851%</title></circle>
+<circle cx="551.62" cy="178.14" r="3.5" fill="#F58518"><title>64-127: 71.871%</title></circle>
+<circle cx="619.00" cy="175.29" r="3.5" fill="#F58518"><title>128-255: 72.551%</title></circle>
+<circle cx="686.38" cy="174.57" r="3.5" fill="#F58518"><title>256-511: 72.721%</title></circle>
+<circle cx="753.75" cy="174.39" r="3.5" fill="#F58518"><title>512-1023: 72.765%</title></circle>
+<circle cx="821.12" cy="174.14" r="3.5" fill="#F58518"><title>1024-2047: 72.825%</title></circle>
+<circle cx="888.50" cy="173.98" r="3.5" fill="#F58518"><title>2048-4095: 72.861%</title></circle>
+<circle cx="955.88" cy="173.95" r="3.5" fill="#F58518"><title>4096-8191: 72.870%</title></circle>
+<circle cx="1023.25" cy="61.14" r="3.5" fill="#F58518"><title>8192-16383: 99.728%</title></circle>
+<circle cx="1090.62" cy="60.89" r="3.5" fill="#F58518"><title>16384-32767: 99.788%</title></circle>
+<circle cx="1158.00" cy="60.00" r="3.5" fill="#F58518"><title>32768-65535: 100.000%</title></circle>
+<rect x="250" y="32" width="14" height="14" fill="#F58518"/>
+<text class="legend" x="270" y="44">Total bytes</text>
+<text class="label" x="80.00" y="494" text-anchor="end" transform="rotate(-55 80.00 494)">0</text>
+<text class="label" x="147.38" y="494" text-anchor="end" transform="rotate(-55 147.38 494)">1</text>
+<text class="label" x="214.75" y="494" text-anchor="end" transform="rotate(-55 214.75 494)">2-3</text>
+<text class="label" x="282.12" y="494" text-anchor="end" transform="rotate(-55 282.12 494)">4-7</text>
+<text class="label" x="349.50" y="494" text-anchor="end" transform="rotate(-55 349.50 494)">8-15</text>
+<text class="label" x="416.88" y="494" text-anchor="end" transform="rotate(-55 416.88 494)">16-31</text>
+<text class="label" x="484.25" y="494" text-anchor="end" transform="rotate(-55 484.25 494)">32-63</text>
+<text class="label" x="551.62" y="494" text-anchor="end" transform="rotate(-55 551.62 494)">64-127</text>
+<text class="label" x="619.00" y="494" text-anchor="end" transform="rotate(-55 619.00 494)">128-255</text>
+<text class="label" x="686.38" y="494" text-anchor="end" transform="rotate(-55 686.38 494)">256-511</text>
+<text class="label" x="753.75" y="494" text-anchor="end" transform="rotate(-55 753.75 494)">512-1023</text>
+<text class="label" x="821.12" y="494" text-anchor="end" transform="rotate(-55 821.12 494)">1024-2047</text>
+<text class="label" x="888.50" y="494" text-anchor="end" transform="rotate(-55 888.50 494)">2048-4095</text>
+<text class="label" x="955.88" y="494" text-anchor="end" transform="rotate(-55 955.88 494)">4096-8191</text>
+<text class="label" x="1023.25" y="494" text-anchor="end" transform="rotate(-55 1023.25 494)">8192-16383</text>
+<text class="label" x="1090.62" y="494" text-anchor="end" transform="rotate(-55 1090.62 494)">16384-32767</text>
+<text class="label" x="1158.00" y="494" text-anchor="end" transform="rotate(-55 1158.00 494)">32768-65535</text>
+<line class="axisline" x1="80" x2="80" y1="60" y2="480"/>
+<line class="axisline" x1="80" x2="1158" y1="480" y2="480"/>
+<text class="axis" x="619.0" y="632" text-anchor="middle">Upper bucket bound</text>
+<text class="axis" x="24" y="270.0" text-anchor="middle" transform="rotate(-90 24 270.0)">Cumulative share within retained buckets</text>
+</svg>
