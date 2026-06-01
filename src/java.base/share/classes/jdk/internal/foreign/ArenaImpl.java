@@ -42,6 +42,7 @@ public sealed class ArenaImpl implements Arena
     final boolean shouldReserveMemory;
     private final boolean collectAllocationHistogram;
     private boolean allocationHistogramRecorded;
+    private long sum;
 
     ArenaImpl(MemorySessionImpl session) {
         this(session, false);
@@ -62,18 +63,19 @@ public sealed class ArenaImpl implements Arena
     @Override
     public void close() {
         session.close();
+        ConfinedArenaHistogram.record(sum);
     }
 
     public NativeMemorySegmentImpl allocateNoInit(long byteSize, long byteAlignment) {
         NativeMemorySegmentImpl segment = SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, false);
-        ConfinedArenaHistogram.record(byteSize);
+        sum += byteSize;
         return segment;
     }
 
     @Override
     public NativeMemorySegmentImpl allocate(long byteSize, long byteAlignment) {
         NativeMemorySegmentImpl segment = SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, true);
-        ConfinedArenaHistogram.record(byteSize);
+        sum += byteSize;
         return segment;
     }
 
