@@ -26,12 +26,9 @@
 
 package jdk.internal.foreign;
 
-import jdk.internal.access.JavaLangAccess;
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.GlobalSession.HeapSession;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
-import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 

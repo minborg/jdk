@@ -63,6 +63,7 @@ final class ImplicitSession extends SharedSession {
     }
 
     @Override
+    @ForceInline
     NativeMemorySegmentImpl allocateLowLevel(long byteSize, long byteAlignment, boolean init) {
         return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, this, true, init);
     }

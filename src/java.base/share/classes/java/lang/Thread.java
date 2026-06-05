@@ -368,12 +368,16 @@ public class Thread implements Runnable {
         currentThread().scopedValueBindings = bindings;
     }
 
+    // This must be a power of two
     private static final long POOLED_MEMORY_SIZE = 64;
 
     /**
      * Zero -> no pool allocated yet
      * Positive -> Pool released (available)
      * Negative -> Pool acquired (not available)
+     *
+     * PTRDIFF_MAX (usually 2<sup>63</sup>-1) allows us to use the sign bit
+     * as a flag for acquire state whithout conflicting with malloc() return values.
      */
     private long confinedMemoryPool;
 
@@ -384,31 +388,71 @@ public class Thread implements Runnable {
     /**
      * Returns a pointer to the pooled memory or zero if the pool cannot be acquired.
      */
+    @ForceInline
     long acquirePooledMemory() {
-        long confinedMemoryPool = this.confinedMemoryPool;
-        if (confinedMemoryPool == 0) {
+        final long confinedMemoryPool = this.confinedMemoryPool;
+        if (confinedMemoryPool > 0) {
+            // Mark the pool as acquired
+            this.confinedMemoryPool = -confinedMemoryPool;
+            return confinedMemoryPool;
+        } else if (confinedMemoryPool == 0) {
             // Lazily allocate native memory
+            return allocateAndAquirePooledMemory();
+        }
+        // No pool today ...
+        return 0;
+    }
+
+    // This only happens at most once per thread instance
+    private long allocateAndAquirePooledMemory() {
+        final long confinedMemoryPool;
+        try {
             this.confinedMemoryPool = confinedMemoryPool = ThreadIdentifiers.U.allocateMemory(POOLED_MEMORY_SIZE);
-            // Zero out memory
-            ThreadIdentifiers.U.setMemory(confinedMemoryPool, pooledMemorySize(), (byte) 0);
-        } else if (confinedMemoryPool < 0) {
-            // already acquired
+        } catch (OutOfMemoryError e) {
+            // Failed to allocate a pool
             return 0;
         }
+        // Zero out memory in a non-performance sensitive way
+        ThreadIdentifiers.U.setMemory(confinedMemoryPool, pooledMemorySize(), (byte) 0);
         // Mark the pool as acquired
         this.confinedMemoryPool = -confinedMemoryPool;
         return confinedMemoryPool;
     }
 
+    @ForceInline
     void releasePooledMemory(long size) {
-        long confinedMemoryPool = this.confinedMemoryPool;
-        if (confinedMemoryPool >= 0) {
-            throw new IllegalStateException("cannot release pooled memory: " + confinedMemoryPool);
+        final long confinedMemoryPool = -this.confinedMemoryPool;
+        if (confinedMemoryPool < 0) {
+            throw new IllegalStateException("Cannot release pooled memory: " + confinedMemoryPool);
         }
-        // Zero out memory
-        ThreadIdentifiers.U.setMemory(-confinedMemoryPool, size, (byte) 0);
+
+        final long limit = size & ~(Long.BYTES - 1L);
+        // Zero out memory in a performant way that is faster than `U.setMemory()`
+        long offset = 0;
+        // 0...0X...X000 as `confinedMemoryPool` is always `long` aligned (at least).
+        for (; offset < limit; offset += Long.BYTES) {
+            ThreadIdentifiers.U.putLong(confinedMemoryPool + offset, 0);
+        }
+        int remaining = (int) (size - limit);
+        // 0...0X00
+        if (remaining >= Integer.BYTES) {
+            ThreadIdentifiers.U.putInt(confinedMemoryPool + offset, 0);
+            offset += Integer.BYTES;
+            remaining -= Integer.BYTES;
+        }
+        // 0...00X0
+        if (remaining >= Short.BYTES) {
+            ThreadIdentifiers.U.putShort(confinedMemoryPool + offset, (short) 0);
+            offset += Short.BYTES;
+            remaining -= Short.BYTES;
+        }
+        // 0...000X
+        if (remaining == 1) {
+            ThreadIdentifiers.U.putByte(confinedMemoryPool + offset, (byte) 0);
+        }
+        // We have now fully handled 0...0X...XXXX
         // Mark the pool as released
-        this.confinedMemoryPool = -confinedMemoryPool;
+        this.confinedMemoryPool = confinedMemoryPool;
     }
 
     /**

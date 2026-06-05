@@ -44,7 +44,6 @@ import java.lang.invoke.VarHandle;
  * owner thread will result in an exception. Because of this restriction, checking the liveness bit
  * can be performed in plain mode.
  */
-@AOTSafeClassInitializer
 final class ConfinedSession extends MemorySessionImpl {
 
     private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
@@ -97,8 +96,8 @@ final class ConfinedSession extends MemorySessionImpl {
         }
     }
 
-    @ForceInline
     @Override
+    @ForceInline
     NativeMemorySegmentImpl allocateLowLevel(long byteSize, long byteAlignment, boolean init) {
         if (!VM.isDirectMemoryPageAligned() && byteSize <= POOL_SIZE) {
             Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);

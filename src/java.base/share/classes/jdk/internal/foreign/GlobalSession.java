@@ -63,8 +63,8 @@ non-sealed class GlobalSession extends MemorySessionImpl {
         throw nonCloseable();
     }
 
-    @ForceInline
     @Override
+    @ForceInline
     NativeMemorySegmentImpl allocateLowLevel(long byteSize, long byteAlignment, boolean init) {
         return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, this, false, init);
     }
