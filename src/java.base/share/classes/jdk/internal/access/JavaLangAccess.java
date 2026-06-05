@@ -659,4 +659,20 @@ public interface JavaLangAccess {
      * Finish initialization of the StackTraceElement objects in a stack trace.
      */
     void finishInit(StackTraceElement[] stackTrace);
+
+    /**
+     * Acquires and returns a pointer to the thread-local native memory pool, or returns
+     * zero if the pool cannot be allocated.
+     */
+    long acquirePooledMemory(Thread thread);
+
+    /**
+     * Zeros out and releases the thread-local native memory pool
+     */
+    void releaseAndZeroOutPooledMemory(Thread thread, int size);
+
+    /**
+     * Returns the size of the thread-local native memory pool
+     */
+    int pooledMemorySize();
 }

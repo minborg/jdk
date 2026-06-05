@@ -2351,6 +2351,22 @@ public final class System {
             public void finishInit(StackTraceElement[] stackTrace) {
                 StackTraceElement.finishInit(stackTrace);
             }
+
+            @Override
+            public long acquirePooledMemory(Thread thread) {
+                return thread.acquirePooledMemory();
+            }
+
+            @Override
+            public void releaseAndZeroOutPooledMemory(Thread thread, int size) {
+                thread.releasePooledMemory(size);
+            }
+
+            @Override
+            public int pooledMemorySize() {
+                return Thread.pooledMemorySize();
+            }
+
         });
     }
 }

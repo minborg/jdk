@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,15 @@
 
 package jdk.internal.foreign;
 
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.invoke.MhUtil;
+import jdk.internal.misc.VM;
+import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 import jdk.internal.vm.annotation.ForceInline;
 
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
@@ -37,9 +43,14 @@ import java.lang.invoke.VarHandle;
  * owner thread will result in an exception. Because of this restriction, checking the liveness bit
  * can be performed in plain mode.
  */
+@AOTSafeClassInitializer
 final class ConfinedSession extends MemorySessionImpl {
 
+    private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final int POOL_SIZE = JLA.pooledMemorySize();
+
     private int asyncReleaseCount = 0;
+    private SlicingAllocator poolAllocator;
 
     static final VarHandle ASYNC_RELEASE_COUNT= MhUtil.findVarHandle(MethodHandles.lookup(), "asyncReleaseCount", int.class);
 
@@ -77,8 +88,63 @@ final class ConfinedSession extends MemorySessionImpl {
         int acquire = acquireCount - asyncCount;
         if (acquire == 0) {
             state = CLOSED;
+            cleanupPool();
         } else {
             throw alreadyAcquired(acquire);
+        }
+    }
+
+    @ForceInline
+    @Override
+    NativeMemorySegmentImpl allocateLowLevel(long byteSize, long byteAlignment, boolean init) {
+        if (!VM.isDirectMemoryPageAligned() && byteSize <= POOL_SIZE) {
+            Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
+            checkValidState();
+            SlicingAllocator poolAllocator = this.poolAllocator;
+            if (poolAllocator == null) {
+                final long poolAddress = JLA.acquirePooledMemory(owner);
+                if (poolAddress > 0) {
+                    MemorySegment pool = SegmentFactories.makeNativeSegmentUnchecked(poolAddress, POOL_SIZE, this, false, null);
+                    this.poolAllocator = poolAllocator = (SlicingAllocator) SegmentAllocator.slicingAllocator(pool);
+                }
+            }
+            final boolean zeroLength = byteSize == 0;
+            final long allocationByteSize = Math.max(1, byteSize);
+            if (poolAllocator != null && poolAllocator.canAllocate(allocationByteSize, byteAlignment)) {
+                // We know the backing memory is zeroed out since the initial slab of memory
+                // is cleared and upon each recycle we zero out upon closing the arena.
+                final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl) poolAllocator.trySlice(allocationByteSize, byteAlignment);
+                // Preserve the invariant that zero-sized segments have unique addresses for any
+                // given Arena
+                return zeroLength
+                        ? (NativeMemorySegmentImpl) segment.asSlice(0, 0)
+                        : segment;
+            }
+        }
+        // Fall back to normal allocation
+        return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, this, false, init);
+    }
+/*
+    public boolean canAllocate(long byteSize, long byteAlignment) {
+        long min = segment.address();
+        long start = Utils.alignUp(min + sp, byteAlignment) - min;
+        return start + byteSize <= segment.byteSize();
+    }
+
+    MemorySegment slice(long byteSize, long byteAlignment) {
+        long min = segment.address();
+        long start = Utils.alignUp(min + sp, byteAlignment) - min;
+        MemorySegment slice = segment.asSlice(start, byteSize, byteAlignment);
+        sp = start + byteSize;
+        return slice;
+    }*/
+
+    @ForceInline
+    private void cleanupPool() {
+        final SlicingAllocator poolAllocator = this.poolAllocator;
+        if (poolAllocator != null) {
+            final int offset = (int) poolAllocator.currentOffset();
+            JLA.releaseAndZeroOutPooledMemory(owner, offset);
         }
     }
 

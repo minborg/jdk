@@ -26,9 +26,12 @@
 
 package jdk.internal.foreign;
 
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.GlobalSession.HeapSession;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
+import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
@@ -138,6 +141,7 @@ public abstract sealed class MemorySessionImpl
     protected MemorySessionImpl(Thread owner, ResourceList resourceList) {
         this.owner = owner;
         this.resourceList = resourceList;
+        super();
     }
 
     public static MemorySessionImpl createConfined(Thread thread) {
@@ -311,6 +315,8 @@ public abstract sealed class MemorySessionImpl
             }
         }
     }
+
+    abstract NativeMemorySegmentImpl allocateLowLevel(long byteSize, long byteAlignment, boolean init);
 
     // helper functions to centralize error handling
 

@@ -368,6 +368,49 @@ public class Thread implements Runnable {
         currentThread().scopedValueBindings = bindings;
     }
 
+    private static final int POOLED_MEMORY_SIZE = 64;
+
+    /**
+     * Zero -> no pool allocated yet
+     * Positive -> Pool released (available)
+     * Negative -> Pool acquired (not available)
+     */
+    private long confinedMemoryPool;
+
+    static int pooledMemorySize() {
+        return POOLED_MEMORY_SIZE;
+    }
+
+    /**
+     * Returns a pointer to the pooled memory or zero if the pool cannot be acquired.
+     */
+    long acquirePooledMemory() {
+        long confinedMemoryPool = this.confinedMemoryPool;
+        if (confinedMemoryPool == 0) {
+            // Lazily allocate native memory
+            this.confinedMemoryPool = confinedMemoryPool = ThreadIdentifiers.U.allocateMemory(POOLED_MEMORY_SIZE);
+            // Zero out memory
+            ThreadIdentifiers.U.setMemory(confinedMemoryPool, pooledMemorySize(), (byte) 0);
+        } else if (confinedMemoryPool < 0) {
+            // already acquired
+            return 0;
+        }
+        // Mark the pool as acquired
+        this.confinedMemoryPool = -confinedMemoryPool;
+        return confinedMemoryPool;
+    }
+
+    void releasePooledMemory(int size) {
+        long confinedMemoryPool = this.confinedMemoryPool;
+        if (confinedMemoryPool >= 0) {
+            throw new IllegalStateException("cannot release pooled memory: " + confinedMemoryPool);
+        }
+        // Zero out memory
+        ThreadIdentifiers.U.setMemory(-confinedMemoryPool, size, (byte) 0);
+        // Mark the pool as released
+        this.confinedMemoryPool = -confinedMemoryPool;
+    }
+
     /**
      * Search the stack for the most recent scoped-value bindings.
      */
@@ -1545,6 +1588,11 @@ public class Thread implements Runnable {
      * Null out reference after Thread termination.
      */
     void clearReferences() {
+        final long confinedMemoryPool = this.confinedMemoryPool;
+        if (confinedMemoryPool != 0) {
+            ThreadIdentifiers.U.freeMemory(Math.abs(confinedMemoryPool));
+        }
+        this.confinedMemoryPool = 0;
         threadLocals = null;
         inheritableThreadLocals = null;
         if (uncaughtExceptionHandler != null)
