@@ -669,10 +669,10 @@ public interface JavaLangAccess {
     /**
      * Zeros out and releases the thread-local native memory pool
      */
-    void releaseAndZeroOutPooledMemory(Thread thread, int size);
+    void releaseAndZeroOutPooledMemory(Thread thread, long size);
 
     /**
      * Returns the size of the thread-local native memory pool
      */
-    int pooledMemorySize();
+    long pooledMemorySize();
 }

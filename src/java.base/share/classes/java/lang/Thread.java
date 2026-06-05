@@ -368,7 +368,7 @@ public class Thread implements Runnable {
         currentThread().scopedValueBindings = bindings;
     }
 
-    private static final int POOLED_MEMORY_SIZE = 64;
+    private static final long POOLED_MEMORY_SIZE = 64;
 
     /**
      * Zero -> no pool allocated yet
@@ -377,7 +377,7 @@ public class Thread implements Runnable {
      */
     private long confinedMemoryPool;
 
-    static int pooledMemorySize() {
+    static long pooledMemorySize() {
         return POOLED_MEMORY_SIZE;
     }
 
@@ -400,7 +400,7 @@ public class Thread implements Runnable {
         return confinedMemoryPool;
     }
 
-    void releasePooledMemory(int size) {
+    void releasePooledMemory(long size) {
         long confinedMemoryPool = this.confinedMemoryPool;
         if (confinedMemoryPool >= 0) {
             throw new IllegalStateException("cannot release pooled memory: " + confinedMemoryPool);

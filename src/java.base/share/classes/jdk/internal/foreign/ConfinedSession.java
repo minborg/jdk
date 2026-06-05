@@ -31,6 +31,7 @@ import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.VM;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
 import jdk.internal.vm.annotation.ForceInline;
+import jdk.internal.vm.annotation.Stable;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
@@ -47,10 +48,12 @@ import java.lang.invoke.VarHandle;
 final class ConfinedSession extends MemorySessionImpl {
 
     private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
-    private static final int POOL_SIZE = JLA.pooledMemorySize();
+    private static final long POOL_SIZE = JLA.pooledMemorySize();
 
     private int asyncReleaseCount = 0;
-    private SlicingAllocator poolAllocator;
+    @Stable
+    private long min;
+    private long sp;
 
     static final VarHandle ASYNC_RELEASE_COUNT= MhUtil.findVarHandle(MethodHandles.lookup(), "asyncReleaseCount", int.class);
 
@@ -100,22 +103,19 @@ final class ConfinedSession extends MemorySessionImpl {
         if (!VM.isDirectMemoryPageAligned() && byteSize <= POOL_SIZE) {
             Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
             checkValidState();
-            SlicingAllocator poolAllocator = this.poolAllocator;
-            if (poolAllocator == null) {
-                final long poolAddress = JLA.acquirePooledMemory(owner);
-                if (poolAddress > 0) {
-                    MemorySegment pool = SegmentFactories.makeNativeSegmentUnchecked(poolAddress, POOL_SIZE, this, false, null);
-                    this.poolAllocator = poolAllocator = (SlicingAllocator) SegmentAllocator.slicingAllocator(pool);
+            long min = this.min;
+            if (min == 0) {
+                min = JLA.acquirePooledMemory(owner);
+                if (min > 0) {
+                    this.min = min;
                 }
             }
             final boolean zeroLength = byteSize == 0;
             final long allocationByteSize = Math.max(1, byteSize);
-            if (poolAllocator != null && poolAllocator.canAllocate(allocationByteSize, byteAlignment)) {
-                // We know the backing memory is zeroed out since the initial slab of memory
-                // is cleared and upon each recycle we zero out upon closing the arena.
-                final NativeMemorySegmentImpl segment = (NativeMemorySegmentImpl) poolAllocator.trySlice(allocationByteSize, byteAlignment);
-                // Preserve the invariant that zero-sized segments have unique addresses for any
-                // given Arena
+            NativeMemorySegmentImpl segment;
+            if (min > 0 && (segment = trySlice(min, allocationByteSize, byteAlignment)) != null) {
+                // Preserve the invariant that zero-sized segments have unique addresses
+                // for any given Arena
                 return zeroLength
                         ? (NativeMemorySegmentImpl) segment.asSlice(0, 0)
                         : segment;
@@ -124,27 +124,24 @@ final class ConfinedSession extends MemorySessionImpl {
         // Fall back to normal allocation
         return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, this, false, init);
     }
-/*
-    public boolean canAllocate(long byteSize, long byteAlignment) {
-        long min = segment.address();
-        long start = Utils.alignUp(min + sp, byteAlignment) - min;
-        return start + byteSize <= segment.byteSize();
-    }
 
-    MemorySegment slice(long byteSize, long byteAlignment) {
-        long min = segment.address();
-        long start = Utils.alignUp(min + sp, byteAlignment) - min;
-        MemorySegment slice = segment.asSlice(start, byteSize, byteAlignment);
-        sp = start + byteSize;
-        return slice;
-    }*/
+    @ForceInline
+    private NativeMemorySegmentImpl trySlice(long min, long byteSize, long byteAlignment) {
+        final long start = Utils.alignUp(min + sp, byteAlignment) - min;
+        if (start + byteSize <= POOL_SIZE) {
+            // We know the backing memory is zeroed out since the initial slab of memory
+            // is cleared and upon each recycle we zero out upon closing the arena.
+            final NativeMemorySegmentImpl slice = SegmentFactories.makeNativeSegmentUnchecked(min + start, byteSize, this);
+            sp = start + byteSize;
+            return slice;
+        }
+        return null;
+    }
 
     @ForceInline
     private void cleanupPool() {
-        final SlicingAllocator poolAllocator = this.poolAllocator;
-        if (poolAllocator != null) {
-            final int offset = (int) poolAllocator.currentOffset();
-            JLA.releaseAndZeroOutPooledMemory(owner, offset);
+        if (min > 0) {
+            JLA.releaseAndZeroOutPooledMemory(owner, sp);
         }
     }
 

@@ -2358,12 +2358,12 @@ public final class System {
             }
 
             @Override
-            public void releaseAndZeroOutPooledMemory(Thread thread, int size) {
+            public void releaseAndZeroOutPooledMemory(Thread thread, long size) {
                 thread.releasePooledMemory(size);
             }
 
             @Override
-            public int pooledMemorySize() {
+            public long pooledMemorySize() {
                 return Thread.pooledMemorySize();
             }
 
