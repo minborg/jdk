@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -211,6 +211,8 @@ public abstract sealed class MemorySessionImpl
      * @throws IllegalStateException if this session is already closed or if this is
      * a confined session and this method is called outside the owner thread.
      */
+
+    @ForceInline
     public void checkValidState() {
         try {
             checkValidStateRaw();

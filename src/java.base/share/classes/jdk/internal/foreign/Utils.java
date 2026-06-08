@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,6 +85,7 @@ public final class Utils {
         }
     }
 
+    @ForceInline
     public static long alignUp(long n, long alignment) {
         return (n + alignment - 1) & -alignment;
     }
@@ -235,12 +236,14 @@ public final class Utils {
                 .orElse(1L);
     }
 
+    @ForceInline
     public static void checkAllocationSizeAndAlign(long byteSize, long byteAlignment) {
         // byteSize should be >= 0
         Utils.checkNonNegativeArgument(byteSize, "allocation size");
         checkAlign(byteAlignment);
     }
 
+    @ForceInline
     public static void checkAlign(long byteAlignment) {
         // alignment should be > 0, and power of two
         if (byteAlignment <= 0 ||
@@ -354,6 +357,12 @@ public final class Utils {
             };
         }
 
+    }
+
+    // The returned value is in the interval [0, 2^30]
+    public static int powerOfPropertyOr(String name, int defaultPower) {
+        final int power = Integer.getInteger(name, defaultPower);
+        return 1 << Math.clamp(power, 0, Integer.SIZE - 2);
     }
 
 }

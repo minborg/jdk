@@ -35,6 +35,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.StructureViolationException;
 import java.util.concurrent.locks.LockSupport;
 import jdk.internal.event.ThreadSleepEvent;
+import jdk.internal.foreign.Utils;
 import jdk.internal.misc.TerminatingThreadLocal;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
@@ -368,8 +369,27 @@ public class Thread implements Runnable {
         currentThread().scopedValueBindings = bindings;
     }
 
-    // This must be a power of two
-    private static final long POOLED_MEMORY_SIZE = 64;
+    // Lazily load the POOLED_MEMORY_SIZE to avoid bootstrap issues
+    private static final class PoolConfigHolder {
+
+        // Providing "0" as a value for this property disables confined pooling
+        static final String POOLED_MEMORY_PROPERTY = "java.lang.foreign.native.confined.pool.power.size";
+
+        // This must be a power of two
+        private static final long POOLED_MEMORY_SIZE;
+
+        static {
+            // Cap at 64 bytes in order to use an optimized zero-out scheme
+            final long pooledMemorySize = Math.min(64, Utils.powerOfPropertyOr(POOLED_MEMORY_PROPERTY, 6));
+
+            // POOLED_MEMORY_SIZE == -1 means it is disabled (i.e., it will never be allocated)
+            // We zero out the pool using `long` ops so the minimum size is Long.BYTES (=8) bytes
+            // This means, the actual pool can be of size {disabled, 8, 16, 32 or 64} bytes
+            POOLED_MEMORY_SIZE = pooledMemorySize == 1
+                    ? -1
+                    : Math.max(Long.BYTES, pooledMemorySize);
+        }
+    }
 
     /**
      * Zero -> no pool allocated yet
@@ -382,7 +402,7 @@ public class Thread implements Runnable {
     private long confinedMemoryPool;
 
     static long pooledMemorySize() {
-        return POOLED_MEMORY_SIZE;
+        return PoolConfigHolder.POOLED_MEMORY_SIZE;
     }
 
     /**
@@ -407,7 +427,7 @@ public class Thread implements Runnable {
     private long allocateAndAquirePooledMemory() {
         final long confinedMemoryPool;
         try {
-            this.confinedMemoryPool = confinedMemoryPool = ThreadIdentifiers.U.allocateMemory(POOLED_MEMORY_SIZE);
+            this.confinedMemoryPool = confinedMemoryPool = ThreadIdentifiers.U.allocateMemory(PoolConfigHolder.POOLED_MEMORY_SIZE);
         } catch (OutOfMemoryError e) {
             // Failed to allocate a pool
             return 0;
@@ -419,38 +439,28 @@ public class Thread implements Runnable {
         return confinedMemoryPool;
     }
 
+    @SuppressWarnings("fallthrough")
     @ForceInline
     void releasePooledMemory(long size) {
         final long confinedMemoryPool = -this.confinedMemoryPool;
         if (confinedMemoryPool < 0) {
             throw new IllegalStateException("Cannot release pooled memory: " + confinedMemoryPool);
         }
+        // Clear complete 8-byte buckets in bulk. It is safe to clear beyond `size`
+        // as long as we stay inside the pool which is at least 8 and at most 64-bytes.
+        switch ((int) ((size + Long.BYTES - 1) >>> 3)) {
+            case 8: ThreadIdentifiers.U.putLong(confinedMemoryPool + 0x38, 0);
+            case 7: ThreadIdentifiers.U.putLong(confinedMemoryPool + 0x30, 0);
+            case 6: ThreadIdentifiers.U.putLong(confinedMemoryPool + 0x28, 0);
+            case 5: ThreadIdentifiers.U.putLong(confinedMemoryPool + 0x20, 0);
+            case 4: ThreadIdentifiers.U.putLong(confinedMemoryPool + 0x18, 0);
+            case 3: ThreadIdentifiers.U.putLong(confinedMemoryPool + 0x10, 0);
+            case 2: ThreadIdentifiers.U.putLong(confinedMemoryPool + 0x08, 0);
+            case 1: ThreadIdentifiers.U.putLong(confinedMemoryPool, 0);
+            case 0: break;
+            default: throw new AssertionError(size);
+        }
 
-        final long limit = size & ~(Long.BYTES - 1L);
-        // Zero out memory in a performant way that is faster than `U.setMemory()`
-        long offset = 0;
-        // 0...0X...X000 as `confinedMemoryPool` is always `long` aligned (at least).
-        for (; offset < limit; offset += Long.BYTES) {
-            ThreadIdentifiers.U.putLong(confinedMemoryPool + offset, 0);
-        }
-        int remaining = (int) (size - limit);
-        // 0...0X00
-        if (remaining >= Integer.BYTES) {
-            ThreadIdentifiers.U.putInt(confinedMemoryPool + offset, 0);
-            offset += Integer.BYTES;
-            remaining -= Integer.BYTES;
-        }
-        // 0...00X0
-        if (remaining >= Short.BYTES) {
-            ThreadIdentifiers.U.putShort(confinedMemoryPool + offset, (short) 0);
-            offset += Short.BYTES;
-            remaining -= Short.BYTES;
-        }
-        // 0...000X
-        if (remaining == 1) {
-            ThreadIdentifiers.U.putByte(confinedMemoryPool + offset, (byte) 0);
-        }
-        // We have now fully handled 0...0X...XXXX
         // Mark the pool as released
         this.confinedMemoryPool = confinedMemoryPool;
     }

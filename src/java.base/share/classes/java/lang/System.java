@@ -80,6 +80,7 @@ import jdk.internal.vm.Continuation;
 import jdk.internal.vm.ContinuationScope;
 import jdk.internal.vm.StackableScope;
 import jdk.internal.vm.ThreadContainer;
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.IntrinsicCandidate;
 import jdk.internal.vm.annotation.Stable;
 import sun.reflect.annotation.AnnotationType;
@@ -2353,11 +2354,13 @@ public final class System {
             }
 
             @Override
+            @ForceInline
             public long acquirePooledMemory(Thread thread) {
                 return thread.acquirePooledMemory();
             }
 
             @Override
+            @ForceInline
             public void releaseAndZeroOutPooledMemory(Thread thread, long size) {
                 thread.releasePooledMemory(size);
             }
