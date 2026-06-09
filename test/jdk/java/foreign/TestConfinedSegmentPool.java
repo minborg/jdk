@@ -23,26 +23,33 @@
 
 /*
  * @test
- * @modules java.base/jdk.internal.access
+ * @modules java.base/jdk.internal.access java.base/jdk.internal.foreign
  * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
+ *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
  *                    -Djava.lang.foreign.native.confined.pool.power.size=0
  *                    TestConfinedSegmentPool
  * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
+ *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
  *                    -Djava.lang.foreign.native.confined.pool.power.size=1
  *                    TestConfinedSegmentPool
  * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
+ *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
  *                    -Djava.lang.foreign.native.confined.pool.power.size=2
  *                    TestConfinedSegmentPool
  * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
+ *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
  *                    -Djava.lang.foreign.native.confined.pool.power.size=3
  *                    TestConfinedSegmentPool
  * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
+ *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
  *                    -Djava.lang.foreign.native.confined.pool.power.size=4
  *                    TestConfinedSegmentPool
  * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
+ *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
  *                    -Djava.lang.foreign.native.confined.pool.power.size=5
  *                    TestConfinedSegmentPool
  * @run junit/othervm --add-opens=java.base/java.lang=ALL-UNNAMED
+ *                    --add-opens=java.base/jdk.internal.foreign=ALL-UNNAMED
  *                    -Djava.lang.foreign.native.confined.pool.power.size=6
  *                    TestConfinedSegmentPool
  */
@@ -155,9 +162,6 @@ final class TestConfinedSegmentPool {
                 Arguments.of("virtual", Thread.ofVirtual()));
     }
 
-    static long confinedMemoryPool(Thread thread) throws ReflectiveOperationException {
-        return (long)THREAD_CONFINED_MEMORY_POOL.get(thread);
-    }
 
     @Test
     void cachedSegmentScope() {
@@ -303,6 +307,68 @@ final class TestConfinedSegmentPool {
                 arena.close();
             }
         }
+    }
+
+    @Test
+    void noPoolAllocated() {
+        if (!isPoolEnabled()) {
+            try (Arena arena = Arena.ofConfined()) {
+                arena.allocate(1);
+            }
+            // Make sure we didn't allocate a confined memeory pool via the above
+            // allocation or any other allocation in another test.
+            assertEquals(0L, confinedMemoryPool(Thread.currentThread()));
+        }
+    }
+
+    @Test
+    void fallbackAfterAcuirePool() {
+        if (isPoolEnabled()) {
+            try (Arena arena = Arena.ofConfined()) {
+                assertEquals(0L, confinedSessionSp(arena));
+                // From the pool
+                arena.allocate(1);
+                assertEquals(1L, confinedSessionSp(arena));
+                // Fallback allocation
+                arena.allocate(16, 1024);
+                assertEquals(1L, confinedSessionSp(arena));
+            }
+        }
+    }
+
+    @Test
+    void uniqueZeroAddresses() {
+        if (isPoolEnabled()) {
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment first = arena.allocate(0, 1);
+                MemorySegment second = arena.allocate(0, 1);
+                assertEquals(0, first.byteSize());
+                assertEquals(0, second.byteSize());
+                assertNotEquals(first.address(), second.address());
+            }
+        }
+    }
+
+    static long confinedMemoryPool(Thread thread) {
+        try {
+            return (long) THREAD_CONFINED_MEMORY_POOL.get(thread);
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError(ex);
+        }
+    }
+
+    static long confinedSessionSp(Arena arena) {
+        try {
+            Field sp = arena.scope().getClass().getDeclaredField("sp");
+            sp.setAccessible(true);
+            return sp.getLong(arena.scope());
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    static boolean isPoolEnabled() {
+        return POOLED_MEMORY_SIZE > 0;
     }
 
     static void awaitCleaner(CountDownLatch latch) throws InterruptedException {

@@ -99,7 +99,7 @@ final class ConfinedSession extends MemorySessionImpl {
     @Override
     @ForceInline
     NativeMemorySegmentImpl allocateLowLevel(long byteSize, long byteAlignment, boolean init) {
-        if (!VM.isDirectMemoryPageAligned() && byteSize <= POOL_SIZE) {
+        if (byteSize <= POOL_SIZE) {
             Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
             checkValidState();
             long min = this.min;

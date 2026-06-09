@@ -35,7 +35,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.StructureViolationException;
 import java.util.concurrent.locks.LockSupport;
 import jdk.internal.event.ThreadSleepEvent;
-import jdk.internal.foreign.Utils;
 import jdk.internal.misc.TerminatingThreadLocal;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
@@ -375,19 +374,22 @@ public class Thread implements Runnable {
         // Providing "0" as a value for this property disables confined pooling
         static final String POOLED_MEMORY_PROPERTY = "java.lang.foreign.native.confined.pool.power.size";
 
-        // This must be a power of two
-        private static final long POOLED_MEMORY_SIZE;
+        // The following values can be observed {-1 (disabled), 8, 16, 32 or 64} bytes
+        private static final long POOLED_MEMORY_SIZE = clampedPowerOfPropertyOr(POOLED_MEMORY_PROPERTY, 6);
 
-        static {
-            // Cap at 64 bytes in order to use an optimized zero-out scheme
-            final long pooledMemorySize = Math.min(64, Utils.powerOfPropertyOr(POOLED_MEMORY_PROPERTY, 6));
+        private static int clampedPowerOfPropertyOr(String name, int defaultPower) {
+            if (VM.isDirectMemoryPageAligned()) {
+                // Disable pooling regardless of the system property
+                return -1;
+            }
+            final int power = Integer.getInteger(name, defaultPower);
 
-            // POOLED_MEMORY_SIZE == -1 means it is disabled (i.e., it will never be allocated)
-            // We zero out the pool using `long` ops so the minimum size is Long.BYTES (=8) bytes
-            // This means, the actual pool can be of size {disabled, 8, 16, 32 or 64} bytes
-            POOLED_MEMORY_SIZE = pooledMemorySize == 1
+            return power <= 0
+                    // -1 means it is disabled (i.e., it will never be allocated)
                     ? -1
-                    : Math.max(Long.BYTES, pooledMemorySize);
+                    // Min at 2^3 = Long.BYTES in order to use an optimized zero-out scheme
+                    // Max at 2^6 = 64 bytes in order to use an optimized zero-out scheme
+                    : 1 << Math.clamp(power, 3, 6);
         }
     }
 
@@ -428,6 +430,10 @@ public class Thread implements Runnable {
         final long confinedMemoryPool;
         try {
             this.confinedMemoryPool = confinedMemoryPool = ThreadIdentifiers.U.allocateMemory(PoolConfigHolder.POOLED_MEMORY_SIZE);
+            if (confinedMemoryPool < 0) {
+                throw new InternalError("Allocated memory pool is negative contrary to" +
+                        " the non-negative pointer invariant: 0x" + Long.toHexString(confinedMemoryPool));
+            }
         } catch (OutOfMemoryError e) {
             // Failed to allocate a pool
             return 0;
@@ -443,7 +449,8 @@ public class Thread implements Runnable {
     @ForceInline
     void releasePooledMemory(long size) {
         final long confinedMemoryPool = -this.confinedMemoryPool;
-        if (confinedMemoryPool < 0) {
+        // zero adds an extra safety net for release on a pool that was never allocated.
+        if (confinedMemoryPool <= 0) {
             throw new IllegalStateException("Cannot release pooled memory: " + confinedMemoryPool);
         }
         // Clear complete 8-byte buckets in bulk. It is safe to clear beyond `size`
