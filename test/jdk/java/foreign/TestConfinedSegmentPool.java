@@ -93,7 +93,7 @@ final class TestConfinedSegmentPool {
         }
     }
 
-    static final boolean IS_POOL_ACCOMODATES_TWO_LONGS = POOLED_MEMORY_SIZE >= Long.BYTES * 2; ;
+    static final boolean IS_POOL_ACCOMMODATES_TWO_LONGS = POOLED_MEMORY_SIZE >= Long.BYTES * 2; ;
 
     @ParameterizedTest
     @MethodSource("threadFactories")
@@ -113,7 +113,7 @@ final class TestConfinedSegmentPool {
                     MemorySegment firstSegment = arena.allocate(ValueLayout.JAVA_LONG);
                     MemorySegment secondSegment = arena.allocate(ValueLayout.JAVA_LONG);
                     firstAddress = firstSegment.address();
-                    if (IS_POOL_ACCOMODATES_TWO_LONGS) {
+                    if (IS_POOL_ACCOMMODATES_TWO_LONGS) {
                         assertEquals(secondSegment.address(), firstAddress + ValueLayout.JAVA_LONG.byteSize());
                     }
                     firstSegment.set(ValueLayout.JAVA_LONG, 0, -1L);
@@ -123,7 +123,7 @@ final class TestConfinedSegmentPool {
                 try (Arena arena = Arena.ofConfined()) {
                     MemorySegment firstSegment = arena.allocate(ValueLayout.JAVA_LONG);
                     MemorySegment secondSegment = arena.allocate(ValueLayout.JAVA_LONG);
-                    if (IS_POOL_ACCOMODATES_TWO_LONGS) {
+                    if (IS_POOL_ACCOMMODATES_TWO_LONGS) {
                         assertEquals(firstSegment.address(), firstAddress);
                         assertEquals(secondSegment.address(), firstAddress + ValueLayout.JAVA_LONG.byteSize());
                     }
@@ -188,7 +188,7 @@ final class TestConfinedSegmentPool {
 
     @Test
     void closedCachedSegmentCannotAccessReusedSlot() {
-        if (IS_POOL_ACCOMODATES_TWO_LONGS) {
+        if (IS_POOL_ACCOMMODATES_TWO_LONGS) {
             MemorySegment firstSegment;
             long firstAddress;
             try (Arena firstArena = Arena.ofConfined()) {
@@ -224,7 +224,7 @@ final class TestConfinedSegmentPool {
 
         try (Arena thirdArena = Arena.ofConfined()) {
             MemorySegment thirdSegment = thirdArena.allocate(ValueLayout.JAVA_LONG);
-            if (IS_POOL_ACCOMODATES_TWO_LONGS) {
+            if (IS_POOL_ACCOMMODATES_TWO_LONGS) {
                 assertEquals(thirdSegment.address(), firstAddress);
             }
             assertEquals(thirdSegment.get(ValueLayout.JAVA_LONG, 0), 0L);
@@ -315,14 +315,14 @@ final class TestConfinedSegmentPool {
             try (Arena arena = Arena.ofConfined()) {
                 arena.allocate(1);
             }
-            // Make sure we didn't allocate a confined memeory pool via the above
+            // Make sure we didn't allocate a confined memory pool via the above
             // allocation or any other allocation in another test.
             assertEquals(0L, confinedMemoryPool(Thread.currentThread()));
         }
     }
 
     @Test
-    void fallbackAfterAcuirePool() {
+    void fallbackAfterAcquirePool() {
         if (isPoolEnabled()) {
             try (Arena arena = Arena.ofConfined()) {
                 assertEquals(0L, confinedSessionSp(arena));
@@ -358,10 +358,27 @@ final class TestConfinedSegmentPool {
     }
 
     static long confinedSessionSp(Arena arena) {
+
+        final class Holder {
+
+            private static Field sp;
+
+            static Field getOrSet(Arena arena) {
+                Field sp = Holder.sp;
+                if (sp == null) {
+                    try {
+                        Holder.sp = sp = arena.scope().getClass().getDeclaredField("sp");
+                        sp.setAccessible(true);
+                    }  catch (ReflectiveOperationException ex) {
+                        throw new AssertionError(ex);
+                    }
+                }
+                return sp;
+            }
+        }
+
         try {
-            Field sp = arena.scope().getClass().getDeclaredField("sp");
-            sp.setAccessible(true);
-            return sp.getLong(arena.scope());
+            return Holder.getOrSet(arena).getLong(arena.scope());
         } catch (ReflectiveOperationException e) {
             throw new AssertionError(e);
         }
