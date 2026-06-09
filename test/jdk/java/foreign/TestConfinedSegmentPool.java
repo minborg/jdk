@@ -93,7 +93,7 @@ final class TestConfinedSegmentPool {
         }
     }
 
-    static final boolean IS_POOL_ACCOMMODATES_TWO_LONGS = POOLED_MEMORY_SIZE >= Long.BYTES * 2; ;
+    static final boolean IS_POOL_ACCOMMODATES_TWO_LONGS = POOLED_MEMORY_SIZE >= Long.BYTES * 2;
 
     @ParameterizedTest
     @MethodSource("threadFactories")
