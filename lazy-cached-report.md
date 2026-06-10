@@ -74,7 +74,7 @@ utilities, Guava @LazyInit derived views, JavaFX hash-code caches, JUnit reflect
 selectors, and Spark BestEffortLazyVal, which closely matches the proposed racy-CAS
 semantics.
 
-## Notable Difference Between Lazy Types
+## Notable Differences
 
 The JDK report is scalar-heavy: 95 cached-method candidates and 65 LazyConstant
 candidates, with only 13 lazy collection/table candidates.
