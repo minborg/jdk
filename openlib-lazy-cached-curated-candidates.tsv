@@ -1,0 +1,122 @@
+library	module	class_or_group	line_refs	best_fit	sites	confidence	comment
+Spring Boot	buildpack/spring-boot-buildpack-platform	org.springframework.boot.buildpack.platform.docker.DockerApi	DockerApi.java:83,173	Cached Method	1	high	Volatile ApiVersion memoized after a Docker API call. Duplicate calls are likely benign; exceptions already retry.
+Spring Boot	spring-boot-autoconfigure	AutoConfigurationImportSelector.AutoConfigurationGroup	AutoConfigurationImportSelector.java:447,514	Cached Method	1	high	Lazily loads AutoConfigurationMetadata for an import group; pure classpath metadata read.
+Spring Boot	spring-boot-autoconfigure	AutoConfigurationSorter.AutoConfigurationClass	AutoConfigurationSorter.java:280	Cached Method	1	high	Caches AnnotationMetadata for a class name. CAS duplicate metadata reads are acceptable.
+Spring Boot	spring-boot-autoconfigure	TemplateAvailabilityProviders	TemplateAvailabilityProviders.java:54,59,144	Lazy Collection/Table	2	medium	Two keyed caches: provider resolution by view and bounded template availability cache.
+Spring Boot	spring-boot-buildpack-platform	DockerRegistryConfigAuthentication	DockerRegistryConfigAuthentication.java:46,122	Lazy Collection/Table	1	medium	Static credential helper cache keyed by registry/server URL. Needs credential lifecycle review.
+Spring Boot	spring-boot-buildpack-platform	TotalProgressListener	TotalProgressListener.java:38,65	Lazy Collection/Table	1	high	Layer progress objects are created on demand by layer id.
+Hibernate ORM	hibernate-core	org.hibernate.internal.util.collections.LazyIndexedMap	LazyIndexedMap.java:55	Lazy Collection/Table	1	high	Purpose-built indexed lazy map; representative of keyed table demand.
+Hibernate ORM	hibernate-core	MutationBindTemplate	MutationBindTemplate.java:44	Lazy Collection/Table	1	high	Synchronized static TEMPLATE_CACHE computeIfAbsent for mutation bind templates.
+Hibernate ORM	hibernate-core	CurrentTimestampGeneration	CurrentTimestampGeneration.java:165	Lazy Collection/Table	1	high	Generator delegates are memoized by key with putIfAbsent.
+Hibernate ORM	hibernate-core	LazyAttributesMetadata	LazyAttributesMetadata.java:61	Lazy Collection/Table	1	high	Lazy metadata table for enhanced attributes.
+Hibernate ORM	hibernate-core	CachingDatabaseInformationImpl	CachingDatabaseInformationImpl.java:49,61,73,87	Lazy Collection/Table	4	high	Namespace, table, sequence, and key metadata caches.
+Hibernate ORM	hibernate-core	QueryInterpretationCacheStandardImpl	QueryInterpretationCacheStandardImpl.java:192	Lazy Collection/Table	1	high	Native query parameter interpretation cache.
+Hibernate ORM	hibernate-core	TypeConfiguration	TypeConfiguration.java:658	Lazy Collection/Table	1	medium	Array/tuple type cache keyed by type shape.
+Hibernate ORM	hibernate-core	InternalCache and LegacyInternalCacheImplementation	InternalCache.java:58; LegacyInternalCacheImplementation.java:47	Lazy Collection/Table	2	medium	Cache abstraction and legacy implementation capture repeated compute-if-absent patterns.
+Hibernate ORM	hibernate-core	StatsNamedContainer	StatsNamedContainer.java:60,84	Lazy Collection/Table	1	medium	Named statistics container has custom compute-if-absent behavior.
+Vaadin Flow	flow-server	com.vaadin.flow.internal.BeanUtil.LazyValidationAvailability	BeanUtil.java:384	Lazy Constant	1	high	Initialization-on-demand holder computes bean validation availability once.
+Vaadin Flow	vaadin-spring	SpringLookupInitializer	SpringLookupInitializer.java:64,82	Lazy Collection/Table	2	high	Caches service lookups and cacheability decisions by service type.
+Vaadin Flow	vaadin-spring	VaadinServletContextInitializer.CustomResourceLoader	VaadinServletContextInitializer.java:1023	Lazy Collection/Table	1	medium	Lock-protected resource cache; table semantics fit better than scalar cached methods.
+Vaadin Flow	flow-server	ResourceContentHash	ResourceContentHash.java:43,73	Lazy Collection/Table	1	high	Static ConcurrentHashMap caches resource content hashes by URL.
+Vaadin Flow	flow-server	StateNode	StateNode.java:146,224	Lazy Collection/Table	1	high	Feature instances are cached by FeatureSetKey.
+Vaadin Flow	flow-server	ElementPropertyMap and ElementListenerMap	ElementPropertyMap.java:217; ElementListenerMap.java:350	Lazy Collection/Table	2	medium	Per-node feature maps/listeners are allocated on demand.
+Vaadin Flow	flow-server	StateNode feature maps	StateNode.java:993	Lazy Collection/Table	1	medium	Additional feature keyed cache site.
+JUnit 5	junit-platform-engine	MethodSource	MethodSource.java:199,214	Cached Method	2	high	Lazily resolves Java class and method from names. Duplicate reflective lookups are benign.
+JUnit 5	junit-platform-engine	MethodSelector	MethodSelector.java:212,230,247	Cached Method	3	high	Lazily resolves class, method, and parameter types.
+JUnit 5	junit-vintage-engine	TestSourceProvider	TestSourceProvider.java:44,63	Lazy Collection/Table	2	high	Caches method and test source lookups by key.
+JUnit 5	junit-platform-commons	FallbackStringToObjectConverter	FallbackStringToObjectConverter.java:84,102	Lazy Collection/Table	1	high	Factory executable cache keyed by target type.
+JUnit 5	junit-platform-commons	AnnotationUtils	AnnotationUtils.java:382	Lazy Collection/Table	1	high	Repeatable annotation container cache.
+JUnit 5	junit-platform-commons	ReflectionUtils	ReflectionUtils.java:1447	Lazy Collection/Table	1	high	Interface method lookup cache.
+JUnit 5	junit-jupiter-engine	CachingJupiterConfiguration	CachingJupiterConfiguration.java:84	Lazy Collection/Table	1	medium	Configuration property cache; keyed by property, not scalar.
+JUnit 5	junit-jupiter-params	ResolutionCache and ResolverFacade	ResolutionCache.java:40; ResolverFacade.java:325	Lazy Collection/Table	2	medium	Parameterized-test resolution caches.
+JUnit 5	junit-platform-engine	NamespacedHierarchicalStore	NamespacedHierarchicalStore.java:277,382	Lazy Collection/Table	1	medium	Store API exposes keyed compute-if-absent semantics.
+Apache Hadoop	hadoop-yarn and hadoop-common	YARN/Hadoop metrics singleton group	ClusterMetrics.java:93,112; CapacitySchedulerMetrics.java:56; FederationStateStoreServiceMetrics.java:49; RouterMetrics.java:431; AMRMProxyMetrics.java:83; OpportunisticSchedulerMetrics.java:50; AMRMClientRelayerMetrics.java:77; WebServiceClient.java:42	Lazy Constant	8	medium	Volatile singleton metrics/services. At-most-once matters because constructors register metrics or create threads.
+Apache Hadoop	hadoop-common	DelegationTokenRenewer	DelegationTokenRenewer.java:194,201	Lazy Constant	1	medium	Synchronized lazy singleton. Test reset means production conversion needs reset policy review.
+Apache Hadoop	hadoop-common	RefreshRegistry.RegistryHolder	RefreshRegistry.java:41,47	Lazy Constant	1	high	Classic initialization-on-demand holder singleton.
+Apache Hadoop	hadoop-common	Groups	Groups.java:80,135,142	Lazy Collection/Table	2	medium	Positive and negative group lookup caches with TTL/refresh behavior.
+Apache Hadoop	hadoop-common	SecurityUtil.CacheableHostResolver	SecurityUtil.java:603,607,623	Lazy Collection/Table	1	medium	Host resolution LoadingCache keyed by hostname with expiry.
+Apache Hadoop	hadoop-common	PrometheusMetricsSink	PrometheusMetricsSink.java:80,97	Lazy Collection/Table	2	high	Static normalized-name LoadingCache and per-record metric map computeIfAbsent.
+Apache Hadoop	hadoop-common	CodecPool	CodecPool.java:61,75,81	Lazy Collection/Table	2	medium	Usage-count LoadingCaches by codec class.
+Apache Hadoop	hadoop-yarn-server-nodemanager	ResourceLocalizationService	ResourceLocalizationService.java:508	Lazy Collection/Table	1	medium	FileStatus LoadingCache for localization status lookups.
+Apache Hadoop	hadoop-hdfs-rbf	RouterRpcServer	RouterRpcServer.java:294,481	Lazy Collection/Table	1	medium	Datanode report LoadingCache with router expiry semantics.
+Apache Hadoop	hadoop-hdfs-rbf	MountTableRefresherService	MountTableRefresherService.java:81,120	Lazy Collection/Table	1	medium	RouterClient LoadingCache with bounded lifetime.
+Apache Hadoop	hadoop-common	ViewFileSystem	ViewFileSystem.java:129,143	Lazy Collection/Table	1	high	FileSystem instances are cached by URI/config key.
+Apache Hadoop	hadoop-common	DiskValidatorFactory	DiskValidatorFactory.java:52	Lazy Collection/Table	1	high	Validator instances cached by class with putIfAbsent.
+Apache Hadoop	hadoop-azure	AggregateMetricsManager	AggregateMetricsManager.java:38,124	Lazy Collection/Table	1	medium	Singleton manager plus bucket table keyed by account.
+Apache Kafka	clients	CachedSupplier	CachedSupplier.java:30,37	Cached Method	1	medium	Single-threaded supplier memoizer. A cached method can express retry-on-exception, but would add thread-safe racing semantics.
+Apache Kafka	core	SharePartitionCache	SharePartitionCache.java:92	Lazy Collection/Table	1	high	Thread-safe cache API with group side table and computeIfAbsent.
+Apache Kafka	core	SharePartitionManager	SharePartitionManager.java:763	Lazy Collection/Table	1	high	SharePartition creation is delegated to SharePartitionCache.
+Apache Kafka	storage	BrokerTopicStats	BrokerTopicStats.java:50	Lazy Collection/Table	1	high	BrokerTopicMetrics created per topic on demand.
+Apache Kafka	group-coordinator	StreamsGroup	StreamsGroup.java:749,761	Lazy Collection/Table	1	medium	Topic metadata hash cache passed into computation.
+Apache Kafka	clients producer	RecordAccumulator	RecordAccumulator.java:290,318,948,993	Lazy Collection/Table	4	medium	Topic, partition, drain-index, and node-latency maps are lazily populated.
+Apache Kafka	clients consumer	AbstractFetch and ShareConsumeRequestManager	AbstractFetch.java:469; ShareConsumeRequestManager.java:177,309	Lazy Collection/Table	3	medium	Fetch/session handler maps keyed by node and topic partition.
+Apache Kafka	clients producer	RoundRobinPartitioner	RoundRobinPartitioner.java:67	Lazy Collection/Table	1	high	Per-topic AtomicInteger counters created on demand.
+Apache Kafka	group-coordinator	RangeAssignor	RangeAssignor.java:198	Lazy Collection/Table	1	medium	TopicMetadata table is populated by topic id.
+Apache Kafka	group-coordinator	OffsetMetadataManager	OffsetMetadataManager.java:220,385,1190	Lazy Collection/Table	1	medium	Nested timeline maps are created on demand.
+Apache Log4j	log4j-api	LazyUtil.SafeLazy	LazyUtil.java:96	Lazy Constant	1	medium	Existing utility has lock-protected at-most-once semantics, with reset/set APIs to review.
+Apache Log4j	log4j-api	LazyUtil.PureLazy	LazyUtil.java:143	Cached Method	1	medium	Unsynchronized pure lazy wrapper is close to benign-race cached semantics if duplicate computation is acceptable.
+Apache Log4j	log4j-api	ThreadDumpMessage.FACTORY	ThreadDumpMessage.java:44	Lazy Constant	1	high	Static Lazy factory for thread dump implementation.
+Apache Log4j	log4j-core	Context selector default logger contexts	ClassLoaderContextSelector.java:57; BasicContextSelector.java:32	Lazy Constant	2	medium	Static Lazy logger context factories; check shutdown/reset behavior before conversion.
+Apache Log4j	log4j-1.2-api	Hierarchy	Hierarchy.java:100,111,119	Lazy Collection/Table	2	high	WeakHashMap of logger contexts and per-context logger maps.
+Apache Log4j	log4j-api	MarkerManager	MarkerManager.java:63	Lazy Collection/Table	1	high	Marker registry computeIfAbsent keyed by marker name.
+Apache Log4j	log4j-core	LoggerContext	LoggerContext.java:588	Lazy Collection/Table	1	high	LoggerRegistry lookup/create by logger name.
+Apache Log4j	log4j-api	LoggerRegistry	LoggerRegistry.java:276	Lazy Collection/Table	1	high	Nested registry maps computeIfAbsent.
+Apache Log4j	log4j-core	FormatCache and FastDatePrinter	FormatCache.java:86,209; FastDatePrinter.java:1291	Lazy Collection/Table	2	medium	Date/time formatter caches keyed by pattern/locale/time zone.
+Apache Lucene	analysis-common	TurkishAnalyzer.DefaultSetHolder	TurkishAnalyzer.java:62	Lazy Constant	1	high	Initialization-on-demand holder for default stop words.
+Apache Lucene	analysis-morfologik	UkrainianMorfologikAnalyzer.defaultResources	UkrainianMorfologikAnalyzer.java:68,70	Cached Method	1	medium	Volatile synchronized lazy resource pair lacks inner recheck, so duplicate computation can already happen under a race; exceptions retry.
+Apache Lucene	suggest	CompletionsTermsReader	CompletionsTermsReader.java:64	Cached Method	1	medium	Per-reader suggester loaded on demand from IndexInput. Duplicate load would be expensive but semantically benign if IO source is stable.
+Apache Lucene	queryparser	NLS	NLS.java:82,85	Lazy Collection/Table	1	medium	Message bundle registry uses putIfAbsent by bundle name.
+Apache Lucene	core	MMapDirectory	MMapDirectory.java:401,411	Lazy Collection/Table	1	medium	Shared Arena table keyed by grouping function result with ref-count lifecycle.
+Apache Lucene	queryparser	MultiPhraseQueryNodeBuilder	MultiPhraseQueryNodeBuilder.java:56	Lazy Collection/Table	1	low	Local position-to-term map; lower value but a clean computeIfAbsent shape.
+Apache Spark	common/utils-java	UUIDv7Generator.Holder	UUIDv7Generator.java:41	Lazy Constant	1	high	Holder-class SecureRandom singleton.
+Apache Spark	sql/api	SpatialReferenceSystemCache	SpatialReferenceSystemCache.java:50	Lazy Constant	1	medium	DCL singleton that loads spatial reference resources.
+Apache Spark	core	BestEffortLazyVal	BestEffortLazyVal.java:44,63	Cached Method	1	high	Existing CAS-based best-effort lazy value exactly matches duplicate-compute, one-winner, retry-on-exception semantics.
+Apache Spark	core	TransientBestEffortLazyVal	TransientBestEffortLazyVal.java:50,68	Cached Method	1	high	Transient variant of the CAS best-effort lazy utility.
+Apache Spark	network-common	TransportClientFactory	TransportClientFactory.java:163	Lazy Collection/Table	1	high	Connection pool entries created by remote address.
+Apache Spark	kvstore	LevelDB, RocksDB, InMemoryStore	LevelDB.java:357,383; RocksDB.java:389,415; InMemoryStore.java:156,272	Lazy Collection/Table	6	high	Entity/index metadata caches in key-value stores.
+Apache Spark	unsafe	HeapMemoryAllocator	HeapMemoryAllocator.java:108	Lazy Collection/Table	1	high	Buffer pools are created by allocation size.
+Apache Spark	network-shuffle	RemoteBlockPushResolver and OneForOneBlockFetcher	RemoteBlockPushResolver.java:283,900; OneForOneBlockFetcher.java:172,211	Lazy Collection/Table	3	medium	Shuffle/block fetch maps populated by block or app keys.
+Apache Tomcat	catalina	BufferPool	BufferPool.java:40,50	Lazy Constant	1	high	Volatile DCL singleton buffer pool.
+Apache Tomcat	catalina	TomcatURLStreamHandlerFactory	TomcatURLStreamHandlerFactory.java:36,44	Lazy Constant	1	medium	DCL singleton with registration side effects; requires lifecycle review.
+Apache Tomcat	juli	OneLineFormatter ThreadMXBean	OneLineFormatter.java:42,245	Lazy Constant	1	high	Static ThreadMXBean is initialized lazily under lock.
+Apache Tomcat	catalina	AbstractArchiveResourceSet	AbstractArchiveResourceSet.java:60	Lazy Collection/Table	1	medium	Archive entry map is loaded lazily; table/resource semantics.
+Apache Tomcat	catalina	CsrfPreventionFilter.NonceCache	CsrfPreventionFilter.java:367	Lazy Collection/Table	1	medium	Nonce cache has eviction/security semantics; not a scalar cached method.
+Apache Tomcat	catalina	LockOutRealm	LockOutRealm.java:80	Lazy Collection/Table	1	medium	Failure cache keyed by principal/address.
+Apache Tomcat	catalina	ApplicationHttpRequest	ApplicationHttpRequest.java:126	Lazy Collection/Table	1	low	Request parameters map is populated lazily per request.
+Apache Tomcat	catalina	CGIServlet	CGIServlet.java:644	Lazy Collection/Table	1	low	CGI environment map is assembled lazily.
+Google Guava	guava	Converter.reverse	Converter.java:150	Cached Method	1	high	Reverse converter field is a derived receiver value marked @LazyInit.
+Google Guava	guava	MediaType	MediaType.java:949,951,955	Cached Method	3	high	toString, hashCode, and charset-style derived values are memoized with @LazyInit/sentinels.
+Google Guava	guava	InternetDomainName	InternetDomainName.java:126,137	Cached Method	2	high	Suffix-related derived fields are lazy receiver values.
+Google Guava	guava	ImmutableMap views	ImmutableMap.java:1046,1060,1101,1121	Cached Method	4	high	entrySet, keySet, values, and multimap view are lazy derived views.
+Google Guava	guava	Immutable collection inverse/view group	ImmutableSet.java:313; ImmutableSetMultimap.java:549,604; ImmutableListMultimap.java:461; ImmutableRangeSet.java:406,593; HashBiMap.java:609; RegularImmutableBiMap.java:194; SingletonImmutableBiMap.java:98; JdkBackedImmutableBiMap.java:83	Cached Method	10	high	Immutable view/inverse fields are receiver-derived and duplicate computation is benign.
+Google Guava	guava	BaseEncoding	BaseEncoding.java:885	Cached Method	3	high	upperCase, lowerCase, and ignoreCase encodings are cached derived variants.
+Google Guava	guava	TypeToken	TypeToken.java:110,113	Cached Method	2	high	Invariant and covariant type resolvers are lazy derived state.
+Google Guava	guava	LinearTransformation	LinearTransformation.java:172,207,230,263	Cached Method	3	high	Inverse transformations are lazy, pure derived objects.
+Google Guava	guava	AbstractMultimap	AbstractMultimap.java:114,162,172,182,228	Lazy Collection/Table	5	high	Lazy collection views for entries, keys, values, and asMap.
+Google Guava	guava	AbstractTable and StandardTable	AbstractTable.java:122,185; StandardTable.java:683,813,886	Lazy Collection/Table	5	high	Lazy table view collections/maps.
+Google Guava	guava	ArrayTable and AtomicLongMap	ArrayTable.java:655,747; AtomicLongMap.java:270	Lazy Collection/Table	3	high	Row/column/asMap views are cached on demand.
+Google Guava	guava	AbstractMultiset and Multimaps view group	AbstractMultiset.java:128,162; Multimaps.java:696,700	Lazy Collection/Table	4	medium	Repeated lazy collection-view cache pattern.
+Google Guava	guava	Additional immutable/table view fields	ImmutableMap.java:1101; ImmutableRangeSet.java:593; StandardTable.java:886	Lazy Collection/Table	10	medium	Additional grouped view fields from the same @LazyInit collection-view pattern.
+JavaFX	javafx.graphics	CSS converter Holder classes	BooleanConverter.java:39; ColorConverter.java:39; CursorConverter.java:40; DeriveColorConverter.java:42; DeriveSizeConverter.java:43; DurationConverter.java:42; EffectConverter.java:47; FontConverter.java:49,126,179,233; InsetsConverter.java:47; LadderConverter.java:41; PaintConverter.java:50; SizeConverter.java:41; StopConverter.java:43; StringConverter.java:40; URLConverter.java:49	Lazy Constant	18	high	Initialization-on-demand holder classes for converter singletons.
+JavaFX	javafx.graphics	Geometry hash caches	Point2D.java:83,399; Point3D.java:101,443; Rectangle2D.java:99,226; Insets.java:83,160; Dimension2D.java:82,102; BoundingBox.java:40,191	Cached Method	6	high	Immutable geometry objects cache hashCode using zero sentinel.
+JavaFX	javafx.graphics	Paint/font hash caches	LinearGradient.java:222,444; RadialGradient.java:230,481; ImagePattern.java:351; Stop.java:262,328; Font.java:314,589	Cached Method	5	high	Immutable paint/font values cache hashCode.
+JavaFX	javafx.graphics	CSS/internal hash caches	CompoundSelector.java:240; StyleCacheEntry.java:65; StyleCache.java:179; ParsedValueImpl.java:389; PrismFont.java:111; LogicalFont.java:558; FontStrikeDesc.java:53; PrismFontStrike.java:239	Cached Method	9	medium	Internal CSS/font keys use sentinel hash caches.
+JavaFX	javafx.fxml	BeanAdapter	BeanAdapter.java:138,139	Lazy Collection/Table	1	high	Global method cache by bean class.
+JavaFX	javafx.graphics	StyleManager and CSS converter caches	StyleManager.java:1970; ShapeConverter.java:68,73; EffectConverter.java:239,244; PaintConverter.java:157,211,253,321	Lazy Collection/Table	4	medium	CSS image/shape/effect/paint caches with explicit clearing/lifecycle.
+Jetty	jetty-plus	LifeCycleCallback	LifeCycleCallback.java:36,93	Cached Method	1	medium	Target class is loaded lazily from a class name.
+Jetty	jetty-security	SPNEGOLoginService	SPNEGOLoginService.java:132,145	Cached Method	1	low	Host name is derived lazily during lifecycle start; mutable setters make it a weak candidate.
+Jetty	jetty-util	Attributes.Layer	Attributes.java:649,668	Lazy Collection/Table	1	high	Attribute layer map is allocated on first mutation via updateAndGet.
+Jetty	jetty-quic	TransportParameters	TransportParameters.java:146	Lazy Collection/Table	1	medium	Transport parameter id map uses computeIfAbsent.
+Jetty	jetty-security	DigestAuthenticator	DigestAuthenticator.java:434	Lazy Collection/Table	1	medium	Nonce cache keyed by nonce with security/lifecycle semantics.
+Jetty	jetty-start	StartArgs	StartArgs.java:225,1322	Lazy Collection/Table	2	medium	Environment/source maps are created by key.
+Jetty	jetty-http2	HTTP2Session	HTTP2Session.java:1006,1057	Lazy Collection/Table	2	medium	Stream maps are lifecycle tables, not scalar cached methods.
+Jetty	jetty-util-ajax	AsyncJSON	AsyncJSON.java:81,130	Lazy Collection/Table	1	low	String cache table; mutable utility cache.
+LWJGL	lwjgl core25	Upcalls	Upcalls.java:68,70	Lazy Collection/Table	1	medium	FFM upcall binder cache keyed by callback interface.
+LWJGL	lwjgl core25	FFM	FFM.java:220,221	Lazy Collection/Table	1	medium	Binder field cache keyed by target type.
+LWJGL	lwjgl core25	BCCallDown and BCCallUp	BCCallDown.java:152,216; BCCallUp.java:152	Lazy Collection/Table	2	low	Generated bytecode binder index maps; local-table pattern.
+LWJGL	lwjgl core	MemoryManage	MemoryManage.java:352,397,429	Lazy Collection/Table	1	low	Leak-report aggregation maps are populated on demand.
+Netty	handler	PcapWriteHandler.WildcardAddressHolder	PcapWriteHandler.java:912	Lazy Constant	1	high	Holder class creates wildcard InetAddress constants lazily.
+Netty	common	NetUtilSubstitutions holders	NetUtilSubstitutions.java:60,75,90,108	Lazy Constant	4	medium	Native-image substitution holders for network constants.
+Netty	handler	JdkDelegatingPrivateKeyMethod	JdkDelegatingPrivateKeyMethod.java:118,143	Lazy Collection/Table	1	medium	Provider cache by algorithm/key type, with stale removal.
+Netty	handler	OpenSslCachingKeyMaterialProvider	OpenSslCachingKeyMaterialProvider.java:37,67	Lazy Collection/Table	1	medium	Native key material cache with reference-count lifecycle.
+Netty	common	AttributeKey/ConstantPool family	AttributeKey.java:35	Lazy Collection/Table	1	medium	Named constants are pooled by key; table semantics dominate.

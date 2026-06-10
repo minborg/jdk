@@ -1,0 +1,16 @@
+library	repo	commit	java_files	raw_total	raw_lazy_constant	raw_cached_method	raw_lazy_collection_table	curated_lazy_constant	curated_cached_method	curated_lazy_collection_table	curated_total	non_java_source_note
+Spring Boot	spring-boot	c3bbac6b5115a3ffcc5069e65931d2a0dd37579a	8578	9693	229	7509	1955	0	3	4	7	
+Hibernate ORM	hibernate-orm	be8a28ab58b66d7432125a451231e0bc97978996	17430	22020	860	18897	2263	0	0	13	13	
+Vaadin Flow	vaadin-flow	6908f426ea3056d2612ac5e3f9b6b9b5c5981e7c	3810	4722	116	3916	690	1	0	8	9	
+JUnit 5	junit5	05b4ea07977e156a122d5c4dec10ceb27eb8fcdf	1726	2101	103	1736	262	0	5	9	14	
+Apache Hadoop	hadoop	ea0cb52c9a5c44b34e1e829892e439c14ced0b04	12490	40253	2433	33752	4068	10	0	13	23	
+Apache Kafka	kafka	b7b1c0a83d856766390ee0c05e33b63711eee80e	5955	24074	800	13653	9621	0	1	14	15	282 Scala files present; Java-language candidate scan did not classify Scala code.
+Apache Log4j	logging-log4j2	6beea3feb0e5ec59ed85db14075bb7837b0a968f	2582	4288	357	3328	603	4	1	7	12	
+Apache Lucene	lucene	5aef0cd6fbc58de42e18a7ef6f7e245d0bb8ffaf	5948	12722	535	10939	1248	1	2	3	6	
+Apache Spark	spark	5001ba0b99698ac133bb71b9e43a31665ab45046	1322	2077	68	1733	276	2	2	11	15	6073 Scala files present; Java-language candidate scan did not classify Scala code.
+Apache Tomcat	tomcat	d0ae65e75ec8ebfe143d8fcc6407046e4e2cfb0e	2803	10269	366	8926	977	3	0	5	8	
+Google Guava	guava	3e65944ec9207ca652128969fd1334e9920dde07	3227	10050	229	7123	2698	0	28	27	55	
+JavaFX	jfx	b1eccb6ed0d984ca3e854b6f46163d56bd8f84d1	5633	12742	664	11247	831	18	20	5	43	
+Jetty	jetty.project	9745c7e25d76a7737edbf127c40827386e856c83	6197	20942	316	19294	1332	0	2	8	10	
+LWJGL	lwjgl3	eb2b5680d7cf7ffeaefe55878b3888df005cc949	6790	5396	3433	1920	43	0	0	5	5	
+Netty	netty	6ad888eb6464b4863610a8bd49affbb1093c0f3b	3523	5837	333	5180	324	5	0	3	8	
