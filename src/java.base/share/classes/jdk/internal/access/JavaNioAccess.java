@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,22 +115,22 @@ public interface JavaNioAccess {
     boolean hasSession(Buffer buffer);
 
     /**
-     * Used by {@code jdk.internal.foreign.MappedMemorySegmentImpl}.
+     * Used by {@code jdk.internal.foreign.MemorySegmentSupport}.
      */
     MappedMemoryUtilsProxy mappedMemoryUtils();
 
     /**
-     * Used by {@code jdk.internal.foreign.NativeMemorySegmentImpl}.
+     * Used by {@code jdk.internal.foreign.AbstractMemorySegmentImpl}.
      */
     void reserveMemory(long size, long cap);
 
     /**
-     * Used by {@code jdk.internal.foreign.NativeMemorySegmentImpl}.
+     * Used by {@code jdk.internal.foreign.AbstractMemorySegmentImpl}.
      */
     void unreserveMemory(long size, long cap);
 
     /**
-     * Used by {@code jdk.internal.foreign.NativeMemorySegmentImpl}.
+     * Used by {@code jdk.internal.foreign.AbstractMemorySegmentImpl}.
      */
     int pageSize();
 

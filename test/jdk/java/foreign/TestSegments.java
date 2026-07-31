@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.lang.invoke.VarHandle;
+import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
@@ -300,6 +301,20 @@ public class TestSegments {
 
         );
         return l.stream().map(s -> new Object[] { s }).toArray(Object[][]::new);
+    }
+
+    @Test
+    public void testImplementationIsMonomorphic() {
+        Class<?> implementation = MemorySegment.NULL.getClass();
+        Class<?>[] permittedSubclasses = MemorySegment.class.getPermittedSubclasses();
+        assertEquals(permittedSubclasses.length, 1);
+        assertSame(permittedSubclasses[0], implementation);
+        assertTrue(Modifier.isFinal(implementation.getModifiers()));
+        for (Object[] args : segmentFactories()) {
+            @SuppressWarnings("unchecked")
+            Supplier<MemorySegment> factory = (Supplier<MemorySegment>) args[0];
+            assertSame(factory.get().getClass(), implementation);
+        }
     }
 
     @Test(dataProvider = "segmentFactories")

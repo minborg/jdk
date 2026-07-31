@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,7 @@ public class TestDeadlock {
                     throw new RuntimeException(e);
                 }
 
-                // Access ArenaImpl -> NativeMemorySegmentImpl -> MemorySegment
+                // Access ArenaImpl -> AbstractMemorySegmentImpl -> MemorySegment
                 arena.allocateFrom(ValueLayout.JAVA_INT, 42);
             };
             case "FileChannel" -> () -> {
@@ -68,7 +68,7 @@ public class TestDeadlock {
                         latch.countDown();
                         latch.await();
 
-                        // Access MappedMemorySegmentImpl -> MemorySegment
+                        // Access MemorySegmentSupport.Mapped -> MemorySegment
                         channel.map(FileChannel.MapMode.READ_WRITE, 0, 4, arena);
                     }
                 } catch(InterruptedException | IOException e) {
@@ -87,7 +87,7 @@ public class TestDeadlock {
                 throw new RuntimeException(e);
             }
 
-            // Access MemorySegment -> NativeMemorySegmentImpl
+            // Access MemorySegment -> AbstractMemorySegmentImpl
             MemorySegment.ofAddress(42);
         });
 

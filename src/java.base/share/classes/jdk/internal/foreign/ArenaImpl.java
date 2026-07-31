@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ public final class ArenaImpl implements Arena {
 
     private final MemorySessionImpl session;
     private final boolean shouldReserveMemory;
+    
     ArenaImpl(MemorySessionImpl session) {
         this.session = session;
         shouldReserveMemory = session instanceof ImplicitSession;
@@ -47,12 +48,12 @@ public final class ArenaImpl implements Arena {
         session.close();
     }
 
-    public NativeMemorySegmentImpl allocateNoInit(long byteSize, long byteAlignment) {
+    public AbstractMemorySegmentImpl allocateNoInit(long byteSize, long byteAlignment) {
         return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, false);
     }
 
     @Override
-    public NativeMemorySegmentImpl allocate(long byteSize, long byteAlignment) {
+    public AbstractMemorySegmentImpl allocate(long byteSize, long byteAlignment) {
         return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, true);
     }
 }

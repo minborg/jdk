@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import jdk.internal.util.ArraysSupport;
 import jdk.internal.util.Preconditions;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
+import jdk.internal.vm.annotation.TrustFinalFields;
 import sun.nio.ch.DirectBuffer;
 
 import java.lang.foreign.AddressLayout;
@@ -60,34 +61,41 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * This abstract class provides an immutable implementation for the {@code MemorySegment} interface. This class contains information
+ * This class provides the immutable implementation of the {@code MemorySegment} interface. This class contains information
  * about the segment's spatial and temporal bounds; each memory segment implementation is associated with an owner thread which is set at creation time.
  * Access to certain sensitive operations on the memory segment will fail with {@code IllegalStateException} if the
  * segment is either in an invalid state (e.g. it has already been closed) or if access occurs from a thread other
- * than the owner thread. See {@link MemorySessionImpl} for more details on management of temporal bounds. Subclasses
- * are defined for each memory segment kind, see {@link NativeMemorySegmentImpl}, {@link HeapMemorySegmentImpl} and
- * {@link MappedMemorySegmentImpl}.
+ * than the owner thread. See {@link MemorySessionImpl} for more details on management of temporal bounds. Storage-specific
+ * behavior is provided by a {@link MemorySegmentSupport} instance.
  */
-public abstract sealed class AbstractMemorySegmentImpl
-        implements MemorySegment, SegmentAllocator
-        permits HeapMemorySegmentImpl, NativeMemorySegmentImpl {
+public final /*value*/ class AbstractMemorySegmentImpl
+        implements MemorySegment, SegmentAllocator {
 
     static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
 
     final long length;
     final boolean readOnly;
     final MemorySessionImpl scope;
+    final MemorySegmentSupport support;
 
     @ForceInline
-    AbstractMemorySegmentImpl(long length, boolean readOnly, MemorySessionImpl scope) {
+    AbstractMemorySegmentImpl(MemorySegmentSupport support, long length,
+                              boolean readOnly, MemorySessionImpl scope) {
+        this.support = support;
         this.length = length;
         this.readOnly = readOnly;
         this.scope = scope;
+        super();
     }
 
-    abstract AbstractMemorySegmentImpl dup(long offset, long size, boolean readOnly, MemorySessionImpl scope);
+    @ForceInline
+    AbstractMemorySegmentImpl dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
+        return new AbstractMemorySegmentImpl(support.slice(offset), size, readOnly, scope);
+    }
 
-    abstract ByteBuffer makeByteBuffer();
+    ByteBuffer makeByteBuffer() {
+        return support.makeByteBuffer(this);
+    }
 
     @Override
     public AbstractMemorySegmentImpl asReadOnly() {
@@ -153,7 +161,7 @@ public abstract sealed class AbstractMemorySegmentImpl
                 MemorySessionImpl.toMemorySession(arena), cleanup);
     }
 
-    private NativeMemorySegmentImpl reinterpretInternal(Class<?> callerClass, long newSize, MemorySessionImpl scope, Consumer<MemorySegment> cleanup) {
+    private AbstractMemorySegmentImpl reinterpretInternal(Class<?> callerClass, long newSize, MemorySessionImpl scope, Consumer<MemorySegment> cleanup) {
         Reflection.ensureNativeAccess(callerClass, MemorySegment.class, "reinterpret", false);
         Utils.checkNonNegativeArgument(newSize, "newSize");
         if (!isNative()) throw new UnsupportedOperationException("Not a native segment");
@@ -234,12 +242,12 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @Override
     public boolean isMapped() {
-        return false;
+        return support.isMapped();
     }
 
     @Override
     public boolean isNative() {
-        return false;
+        return support.isNative();
     }
 
     @Override
@@ -280,26 +288,22 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @Override
     public void load() {
-        throw notAMappedSegment();
+        support.load(this);
     }
 
     @Override
     public void unload() {
-        throw notAMappedSegment();
+        support.unload(this);
     }
 
     @Override
     public boolean isLoaded() {
-        throw notAMappedSegment();
+        return support.isLoaded(this);
     }
 
     @Override
     public void force() {
-        throw notAMappedSegment();
-    }
-
-    private static UnsupportedOperationException notAMappedSegment() {
-        throw new UnsupportedOperationException("Not a mapped segment");
+        support.force(this);
     }
 
     @Override
@@ -368,13 +372,34 @@ public abstract sealed class AbstractMemorySegmentImpl
         }
     }
 
-    public abstract long unsafeGetOffset();
+    public long unsafeGetOffset() {
+        return support.unsafeGetOffset();
+    }
 
-    public abstract Object unsafeGetBase();
+    public Object unsafeGetBase() {
+        return support.unsafeGetBase();
+    }
 
     // Helper methods
 
-    public abstract long maxAlignMask();
+    public long maxAlignMask() {
+        return support.maxAlignMask();
+    }
+
+    @Override
+    public long address() {
+        return support.address();
+    }
+
+    @Override
+    public Optional<Object> heapBase() {
+        return support.heapBase(readOnly);
+    }
+
+    @Override
+    public long maxByteAlignment() {
+        return support.maxByteAlignment();
+    }
 
     @ForceInline
     public final boolean isAlignedForElement(long offset, MemoryLayout layout) {
@@ -528,16 +553,8 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @Override
     public String toString() {
-        final String kind;
-        if (this instanceof HeapMemorySegmentImpl) {
-            kind = "heap";
-        } else if (this instanceof MappedMemorySegmentImpl) {
-            kind = "mapped";
-        } else {
-            kind = "native";
-        }
         return "MemorySegment{ kind: " +
-                kind +
+                support.kind() +
                 heapBase().map(hb -> ", heapBase: " + hb).orElse("") +
                 ", address: " + Utils.toHexString(address()) +
                 ", byteSize: " + length +
@@ -593,14 +610,16 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @ForceInline
-    private static NativeMemorySegmentImpl nativeSegment(Buffer b, long offset, long length) {
+    private static AbstractMemorySegmentImpl nativeSegment(Buffer b, long offset, long length) {
         if (!b.isDirect()) {
             throw new IllegalArgumentException("The provided heap buffer is not backed by an array.");
         }
         final UnmapperProxy unmapper = NIO_ACCESS.unmapper(b);
-        return unmapper == null
-                ? new NativeMemorySegmentImpl(offset, length, b.isReadOnly(), bufferScope(b))
-                : new MappedMemorySegmentImpl(offset, unmapper, length, b.isReadOnly(), bufferScope(b));
+        return new AbstractMemorySegmentImpl(
+                unmapper == null
+                        ? MemorySegmentSupport.ofNative(offset)
+                        : MemorySegmentSupport.ofMapped(offset, unmapper),
+                length, b.isReadOnly(), bufferScope(b));
     }
 
     @ForceInline
