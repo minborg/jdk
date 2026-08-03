@@ -27,7 +27,7 @@ package jdk.internal.access;
 
 import jdk.internal.access.foreign.MappedMemoryUtilsProxy;
 import jdk.internal.access.foreign.UnmapperProxy;
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.misc.VM.BufferPool;
 
@@ -88,7 +88,7 @@ public interface JavaNioAccess {
     UnmapperProxy unmapper(Buffer buffer);
 
     /**
-     * Used by {@code jdk.internal.foreign.AbstractMemorySegmentImpl} and byte buffer var handle views.
+     * Used by {@code jdk.internal.foreign.MemorySegmentImpl} and byte buffer var handle views.
      */
     MemorySegment bufferSegment(Buffer buffer);
 
@@ -120,23 +120,23 @@ public interface JavaNioAccess {
     MappedMemoryUtilsProxy mappedMemoryUtils();
 
     /**
-     * Used by {@code jdk.internal.foreign.AbstractMemorySegmentImpl}.
+     * Used by {@code jdk.internal.foreign.MemorySegmentImpl}.
      */
     void reserveMemory(long size, long cap);
 
     /**
-     * Used by {@code jdk.internal.foreign.AbstractMemorySegmentImpl}.
+     * Used by {@code jdk.internal.foreign.MemorySegmentImpl}.
      */
     void unreserveMemory(long size, long cap);
 
     /**
-     * Used by {@code jdk.internal.foreign.AbstractMemorySegmentImpl}.
+     * Used by {@code jdk.internal.foreign.MemorySegmentImpl}.
      */
     int pageSize();
 
     int scaleShifts(Buffer buffer);
 
-    AbstractMemorySegmentImpl heapSegment(Buffer buffer,
+    MemorySegmentImpl heapSegment(Buffer buffer,
                                           Object base,
                                           long offset,
                                           long length,

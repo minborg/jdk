@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.StringSupport;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -106,22 +106,22 @@ public class InternalStrLen {
 
     @Benchmark
     public int chunkedSingle() {
-        return StringSupport.strlenByte((AbstractMemorySegmentImpl) singleByteSegment, 0, singleByteSegment.byteSize());
+        return StringSupport.strlenByte((MemorySegmentImpl) singleByteSegment, 0, singleByteSegment.byteSize());
     }
 
     @Benchmark
     public int chunkedSingleMisaligned() {
-        return StringSupport.strlenByte((AbstractMemorySegmentImpl) singleByteSegmentMisaligned, 0, singleByteSegment.byteSize());
+        return StringSupport.strlenByte((MemorySegmentImpl) singleByteSegmentMisaligned, 0, singleByteSegment.byteSize());
     }
 
     @Benchmark
     public int chunkedDouble() {
-        return StringSupport.strlenShort((AbstractMemorySegmentImpl) doubleByteSegment, 0, doubleByteSegment.byteSize());
+        return StringSupport.strlenShort((MemorySegmentImpl) doubleByteSegment, 0, doubleByteSegment.byteSize());
     }
 
     @Benchmark
     public int changedElementQuad() {
-        return StringSupport.strlenInt((AbstractMemorySegmentImpl) quadByteSegment, 0, quadByteSegment.byteSize());
+        return StringSupport.strlenInt((MemorySegmentImpl) quadByteSegment, 0, quadByteSegment.byteSize());
     }
 
     // These are the legacy methods

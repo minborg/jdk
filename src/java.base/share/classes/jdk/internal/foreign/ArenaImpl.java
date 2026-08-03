@@ -48,12 +48,12 @@ public final class ArenaImpl implements Arena {
         session.close();
     }
 
-    public AbstractMemorySegmentImpl allocateNoInit(long byteSize, long byteAlignment) {
+    public MemorySegmentImpl allocateNoInit(long byteSize, long byteAlignment) {
         return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, false);
     }
 
     @Override
-    public AbstractMemorySegmentImpl allocate(long byteSize, long byteAlignment) {
+    public MemorySegmentImpl allocate(long byteSize, long byteAlignment) {
         return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, session, shouldReserveMemory, true);
     }
 }

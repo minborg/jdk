@@ -38,7 +38,7 @@ JAVA_BASE_VALUE_CLASS_REPLACEMENTS := \
     java/lang/Character.java \
     java/lang/Number.java \
     java/lang/Record.java \
-    jdk/internal/foreign/AbstractMemorySegmentImpl.java \
+    jdk/internal/foreign/MemorySegmentImpl.java \
     java/util/Optional.java \
     java/util/OptionalInt.java \
     java/util/OptionalLong.java \

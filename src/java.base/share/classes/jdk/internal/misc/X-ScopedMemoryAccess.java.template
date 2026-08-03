@@ -37,7 +37,7 @@ import java.util.function.Supplier;
 import jdk.internal.access.foreign.MappedMemoryUtilsProxy;
 import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.vm.annotation.ForceInline;
@@ -327,9 +327,9 @@ public final class ScopedMemoryAccess {
     public static
     <V extends VectorSupport.Vector<E>, E, S extends VectorSupport.VectorSpecies<E>>
     V loadFromMemorySegment(Class<? extends V> vmClass, int laneType, int length,
-                         AbstractMemorySegmentImpl msp, long offset,
+                         MemorySegmentImpl msp, long offset,
                          S s,
-                         VectorSupport.LoadOperation<AbstractMemorySegmentImpl, V, S> defaultImpl) {
+                         VectorSupport.LoadOperation<MemorySegmentImpl, V, S> defaultImpl) {
 
         try {
             return loadFromMemorySegmentScopedInternal(
@@ -349,9 +349,9 @@ public final class ScopedMemoryAccess {
     <V extends VectorSupport.Vector<E>, E, S extends VectorSupport.VectorSpecies<E>>
     V loadFromMemorySegmentScopedInternal(MemorySessionImpl session,
                                           Class<? extends V> vmClass, int laneType, int length,
-                                          AbstractMemorySegmentImpl msp, long offset,
+                                          MemorySegmentImpl msp, long offset,
                                           S s,
-                                          VectorSupport.LoadOperation<AbstractMemorySegmentImpl, V, S> defaultImpl) {
+                                          VectorSupport.LoadOperation<MemorySegmentImpl, V, S> defaultImpl) {
         try {
             session.checkValidStateRaw();
 
@@ -369,8 +369,8 @@ public final class ScopedMemoryAccess {
     <V extends VectorSupport.Vector<E>, E, S extends VectorSupport.VectorSpecies<E>,
      M extends VectorSupport.VectorMask<E>>
     V loadFromMemorySegmentMasked(Class<? extends V> vmClass, Class<M> maskClass, int laneType,
-                                  int length, AbstractMemorySegmentImpl msp, long offset, M m, S s, int offsetInRange,
-                                  VectorSupport.LoadVectorMaskedOperation<AbstractMemorySegmentImpl, V, S, M> defaultImpl) {
+                                  int length, MemorySegmentImpl msp, long offset, M m, S s, int offsetInRange,
+                                  VectorSupport.LoadVectorMaskedOperation<MemorySegmentImpl, V, S, M> defaultImpl) {
 
         try {
             return loadFromMemorySegmentMaskedScopedInternal(
@@ -391,9 +391,9 @@ public final class ScopedMemoryAccess {
      M extends VectorSupport.VectorMask<E>>
     V loadFromMemorySegmentMaskedScopedInternal(MemorySessionImpl session, Class<? extends V> vmClass,
                                                 Class<M> maskClass, int laneType, int length,
-                                                AbstractMemorySegmentImpl msp, long offset, M m,
+                                                MemorySegmentImpl msp, long offset, M m,
                                                 S s, int offsetInRange,
-                                                VectorSupport.LoadVectorMaskedOperation<AbstractMemorySegmentImpl, V, S, M> defaultImpl) {
+                                                VectorSupport.LoadVectorMaskedOperation<MemorySegmentImpl, V, S, M> defaultImpl) {
         try {
             session.checkValidStateRaw();
 
@@ -411,8 +411,8 @@ public final class ScopedMemoryAccess {
     <V extends VectorSupport.Vector<E>, E>
     void storeIntoMemorySegment(Class<? extends V> vmClass, int laneType, int length,
                                 V v,
-                                AbstractMemorySegmentImpl msp, long offset,
-                                VectorSupport.StoreVectorOperation<AbstractMemorySegmentImpl, V> defaultImpl) {
+                                MemorySegmentImpl msp, long offset,
+                                VectorSupport.StoreVectorOperation<MemorySegmentImpl, V> defaultImpl) {
 
         try {
             storeIntoMemorySegmentScopedInternal(
@@ -433,8 +433,8 @@ public final class ScopedMemoryAccess {
     void storeIntoMemorySegmentScopedInternal(MemorySessionImpl session,
                                               Class<? extends V> vmClass, int laneType, int length,
                                               V v,
-                                              AbstractMemorySegmentImpl msp, long offset,
-                                              VectorSupport.StoreVectorOperation<AbstractMemorySegmentImpl, V> defaultImpl) {
+                                              MemorySegmentImpl msp, long offset,
+                                              VectorSupport.StoreVectorOperation<MemorySegmentImpl, V> defaultImpl) {
         try {
             session.checkValidStateRaw();
 
@@ -453,8 +453,8 @@ public final class ScopedMemoryAccess {
     <V extends VectorSupport.Vector<E>, E, M extends VectorSupport.VectorMask<E>>
     void storeIntoMemorySegmentMasked(Class<? extends V> vmClass, Class<M> maskClass,
                                       int laneType, int length, V v, M m,
-                                      AbstractMemorySegmentImpl msp, long offset,
-                                      VectorSupport.StoreVectorMaskedOperation<AbstractMemorySegmentImpl, V, M> defaultImpl) {
+                                      MemorySegmentImpl msp, long offset,
+                                      VectorSupport.StoreVectorMaskedOperation<MemorySegmentImpl, V, M> defaultImpl) {
 
         try {
             storeIntoMemorySegmentMaskedScopedInternal(
@@ -475,8 +475,8 @@ public final class ScopedMemoryAccess {
     void storeIntoMemorySegmentMaskedScopedInternal(MemorySessionImpl session,
                                                     Class<? extends V> vmClass, Class<M> maskClass,
                                                     int laneType, int length, V v, M m,
-                                                    AbstractMemorySegmentImpl msp, long offset,
-                                                    VectorSupport.StoreVectorMaskedOperation<AbstractMemorySegmentImpl, V, M> defaultImpl) {
+                                                    MemorySegmentImpl msp, long offset,
+                                                    VectorSupport.StoreVectorMaskedOperation<MemorySegmentImpl, V, M> defaultImpl) {
         try {
             session.checkValidStateRaw();
 

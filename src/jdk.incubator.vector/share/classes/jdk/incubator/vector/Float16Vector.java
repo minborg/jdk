@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
@@ -3505,7 +3505,7 @@ public abstract sealed class Float16Vector extends AbstractVector<Float16>
         Float16Species vsp = vspecies();
         return ScopedMemoryAccess.loadFromMemorySegment(
                 vsp.vectorType(), LANE_TYPE_ORDINAL, vsp.laneCount(),
-                (AbstractMemorySegmentImpl) ms, offset, vsp,
+                (MemorySegmentImpl) ms, offset, vsp,
                 (msp, off, s) -> {
                     return s.ldLongOp((MemorySegment) msp, off, Float16Vector::memorySegmentGet);
                 });
@@ -3521,7 +3521,7 @@ public abstract sealed class Float16Vector extends AbstractVector<Float16>
         m.check(vsp);
         return ScopedMemoryAccess.loadFromMemorySegmentMasked(
                 vsp.vectorType(), maskClass, LANE_TYPE_ORDINAL, vsp.laneCount(),
-                (AbstractMemorySegmentImpl) ms, offset, m, vsp, offsetInRange,
+                (MemorySegmentImpl) ms, offset, m, vsp, offsetInRange,
                 (msp, off, s, vm) -> {
                     return s.ldLongOp((MemorySegment) msp, off, vm, Float16Vector::memorySegmentGet);
                 });
@@ -3572,7 +3572,7 @@ public abstract sealed class Float16Vector extends AbstractVector<Float16>
         ScopedMemoryAccess.storeIntoMemorySegment(
                 vsp.vectorType(), LANE_TYPE_ORDINAL, vsp.laneCount(),
                 this,
-                (AbstractMemorySegmentImpl) ms, offset,
+                (MemorySegmentImpl) ms, offset,
                 (msp, off, v) -> {
                     v.stLongOp((MemorySegment) msp, off, Float16Vector::memorySegmentSet);
                 });
@@ -3589,7 +3589,7 @@ public abstract sealed class Float16Vector extends AbstractVector<Float16>
         ScopedMemoryAccess.storeIntoMemorySegmentMasked(
                 vsp.vectorType(), maskClass, LANE_TYPE_ORDINAL, vsp.laneCount(),
                 this, m,
-                (AbstractMemorySegmentImpl) ms, offset,
+                (MemorySegmentImpl) ms, offset,
                 (msp, off, v, vm) -> {
                     v.stLongOp((MemorySegment) msp, off, vm, Float16Vector::memorySegmentSet);
                 });

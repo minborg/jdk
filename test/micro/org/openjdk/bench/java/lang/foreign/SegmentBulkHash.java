@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
 
 package org.openjdk.bench.java.lang.foreign;
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.SegmentBulkOperations;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -89,7 +89,7 @@ public class SegmentBulkHash {
         @Param({"ALIGNED", "UNALIGNED"})
         String alignment;
 
-        AbstractMemorySegmentImpl segment;
+        MemorySegmentImpl segment;
 
         @Setup
         public void setup() {
@@ -112,7 +112,7 @@ public class SegmentBulkHash {
                 case UNALIGNED -> s.asSlice(1, size);
             };
 
-            segment = (AbstractMemorySegmentImpl) s;
+            segment = (MemorySegmentImpl) s;
         }
 
         @Benchmark

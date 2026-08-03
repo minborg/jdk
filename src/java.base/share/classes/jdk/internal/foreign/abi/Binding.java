@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package jdk.internal.foreign.abi;
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.Utils;
 import jdk.internal.foreign.abi.BindingInterpreter.LoadFunc;
 import jdk.internal.foreign.abi.BindingInterpreter.StoreFunc;
@@ -687,7 +687,7 @@ public sealed interface Binding {
     /**
      * SEGMENT_BASE()
      *   Pops a MemorySegment from the stack, retrieves the heap base object from it, or null if there is none
-     *   (See: AbstractMemorySegmentImpl::unsafeGetBase), and pushes the result onto the operand stack.
+     *   (See: MemorySegmentImpl::unsafeGetBase), and pushes the result onto the operand stack.
      */
     record SegmentBase() implements Binding {
         static final SegmentBase INSTANCE = new SegmentBase();
@@ -702,14 +702,14 @@ public sealed interface Binding {
         @Override
         public void interpret(Deque<Object> stack, StoreFunc storeFunc,
                               LoadFunc loadFunc, SegmentAllocator allocator) {
-            stack.push(((AbstractMemorySegmentImpl)stack.pop()).unsafeGetBase());
+            stack.push(((MemorySegmentImpl)stack.pop()).unsafeGetBase());
         }
     }
 
     /**
      * SEGMENT_OFFSET([allowHeap])
      *   Pops a MemorySegment from the stack, retrieves the offset from it,
-     *   (See: AbstractMemorySegmentImpl::unsafeGetOffset), and pushes the result onto the operand stack.
+     *   (See: MemorySegmentImpl::unsafeGetOffset), and pushes the result onto the operand stack.
      *   Note that for heap segments, the offset is a virtual address into the heap base object.
      *   If [allowHeap] is 'false' an exception will be thrown for heap segments (See SharedUtils::checkNative).
      */
@@ -731,7 +731,7 @@ public sealed interface Binding {
             if (!allowHeap) {
                 SharedUtils.checkNative(operand);
             }
-            stack.push(((AbstractMemorySegmentImpl)operand).unsafeGetOffset());
+            stack.push(((MemorySegmentImpl)operand).unsafeGetOffset());
         }
     }
 

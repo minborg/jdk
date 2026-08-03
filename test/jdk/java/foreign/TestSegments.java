@@ -25,6 +25,7 @@
  * @test
  * @requires vm.bits == 64
  * @modules java.base/sun.nio.ch
+ *          java.base/jdk.internal.foreign:open
  * @run testng/othervm -Xmx4G -XX:MaxDirectMemorySize=1M --enable-native-access=ALL-UNNAMED TestSegments
  */
 
@@ -34,6 +35,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.lang.invoke.VarHandle;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
@@ -304,16 +306,39 @@ public class TestSegments {
     }
 
     @Test
-    public void testImplementationIsMonomorphic() {
+    public void testImplementationIsMonomorphic() throws ReflectiveOperationException {
         Class<?> implementation = MemorySegment.NULL.getClass();
         Class<?>[] permittedSubclasses = MemorySegment.class.getPermittedSubclasses();
         assertEquals(permittedSubclasses.length, 1);
         assertSame(permittedSubclasses[0], implementation);
+        assertEquals(implementation.getName(), "jdk.internal.foreign.MemorySegmentImpl");
         assertTrue(Modifier.isFinal(implementation.getModifiers()));
+
+        Field supportField = implementation.getDeclaredField("support");
+        supportField.setAccessible(true);
+        assertSupportHierarchyIsStateless(supportField.getType());
         for (Object[] args : segmentFactories()) {
             @SuppressWarnings("unchecked")
             Supplier<MemorySegment> factory = (Supplier<MemorySegment>) args[0];
-            assertSame(factory.get().getClass(), implementation);
+            MemorySegment segment = factory.get();
+            assertSame(segment.getClass(), implementation);
+
+            Object support = supportField.get(segment);
+            assertSame(supportField.get(factory.get()), support);
+            assertSame(supportField.get(segment.asSlice(0)), support);
+        }
+    }
+
+    private static void assertSupportHierarchyIsStateless(Class<?> supportClass) {
+        for (Field field : supportClass.getDeclaredFields()) {
+            assertTrue(Modifier.isStatic(field.getModifiers()),
+                    "Unexpected support instance field: " + field);
+        }
+        Class<?>[] permittedSubclasses = supportClass.getPermittedSubclasses();
+        if (permittedSubclasses != null) {
+            for (Class<?> permittedSubclass : permittedSubclasses) {
+                assertSupportHierarchyIsStateless(permittedSubclass);
+            }
         }
     }
 

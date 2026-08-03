@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.util.Objects;
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
 
@@ -81,14 +81,14 @@ final class SegmentVarHandle extends VarHandle {
     // Common implementation methods for the VarForms
 
     @ForceInline
-    static long offset(AbstractMemorySegmentImpl bb, long base, long offset) {
+    static long offset(MemorySegmentImpl bb, long base, long offset) {
         long segment_base = bb.unsafeGetOffset();
         return segment_base + base + offset;
     }
 
     @ForceInline
-    AbstractMemorySegmentImpl checkSegment(Object obb, long base, boolean ro) {
-        AbstractMemorySegmentImpl oo = (AbstractMemorySegmentImpl) Objects.requireNonNull(obb);
+    MemorySegmentImpl checkSegment(Object obb, long base, boolean ro) {
+        MemorySegmentImpl oo = (MemorySegmentImpl) Objects.requireNonNull(obb);
         oo.checkEnclosingLayout(base, this.enclosing, ro);
         return oo;
     }

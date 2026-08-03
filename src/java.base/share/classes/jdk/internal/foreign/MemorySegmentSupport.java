@@ -25,10 +25,8 @@
 
 package jdk.internal.foreign;
 
-import jdk.internal.access.foreign.UnmapperProxy;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.misc.Unsafe;
-import jdk.internal.vm.annotation.TrustFinalFields;
 
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
@@ -38,31 +36,40 @@ import java.util.Optional;
 /**
  * Describes the storage-specific behavior of a memory segment.
  *
- * <p>The {@link AbstractMemorySegmentImpl} class is the only implementation of
- * {@code MemorySegment}. Differences between native, mapped and heap storage
- * are represented by implementations of this support class instead of by
- * subclasses of the memory segment implementation.</p>
+ * <p>The {@link MemorySegmentImpl} class is the only implementation of
+ * {@code MemorySegment}. All per-segment state is stored in that class;
+ * instances of this class are stateless, shared strategies.</p>
  */
 abstract sealed class MemorySegmentSupport
         permits MemorySegmentSupport.Heap, MemorySegmentSupport.Native {
 
-    abstract MemorySegmentSupport slice(long offset);
+    private static final MemorySegmentSupport NATIVE = new Native();
+    private static final MemorySegmentSupport MAPPED = new Mapped();
+    private static final MemorySegmentSupport OF_BYTE = new OfByte();
+    private static final MemorySegmentSupport OF_CHAR = new OfChar();
+    private static final MemorySegmentSupport OF_SHORT = new OfShort();
+    private static final MemorySegmentSupport OF_INT = new OfInt();
+    private static final MemorySegmentSupport OF_LONG = new OfLong();
+    private static final MemorySegmentSupport OF_FLOAT = new OfFloat();
+    private static final MemorySegmentSupport OF_DOUBLE = new OfDouble();
 
-    abstract long address();
+    long normalizeOffset(long offset) {
+        return offset;
+    }
 
-    abstract long unsafeGetOffset();
+    abstract long address(MemorySegmentImpl segment);
 
-    abstract Object unsafeGetBase();
+    abstract Object unsafeGetBase(MemorySegmentImpl segment);
 
-    abstract long maxAlignMask();
+    abstract long maxAlignMask(MemorySegmentImpl segment);
 
-    abstract long maxByteAlignment();
+    abstract long maxByteAlignment(MemorySegmentImpl segment);
 
-    abstract ByteBuffer makeByteBuffer(AbstractMemorySegmentImpl segment);
+    abstract ByteBuffer makeByteBuffer(MemorySegmentImpl segment);
 
     abstract String kind();
 
-    Optional<Object> heapBase(boolean readOnly) {
+    Optional<Object> heapBase(MemorySegmentImpl segment) {
         return Optional.empty();
     }
 
@@ -74,19 +81,19 @@ abstract sealed class MemorySegmentSupport
         return false;
     }
 
-    void load(AbstractMemorySegmentImpl segment) {
+    void load(MemorySegmentImpl segment) {
         throw notAMappedSegment();
     }
 
-    void unload(AbstractMemorySegmentImpl segment) {
+    void unload(MemorySegmentImpl segment) {
         throw notAMappedSegment();
     }
 
-    boolean isLoaded(AbstractMemorySegmentImpl segment) {
+    boolean isLoaded(MemorySegmentImpl segment) {
         throw notAMappedSegment();
     }
 
-    void force(AbstractMemorySegmentImpl segment) {
+    void force(MemorySegmentImpl segment) {
         throw notAMappedSegment();
     }
 
@@ -94,88 +101,81 @@ abstract sealed class MemorySegmentSupport
         return new UnsupportedOperationException("Not a mapped segment");
     }
 
-    static Native ofNative(long address) {
-        return new Native(address);
+    static MemorySegmentSupport nativeSupport() {
+        return NATIVE;
     }
 
-    static Mapped ofMapped(long address, UnmapperProxy unmapper) {
-        return new Mapped(address, unmapper);
+    static MemorySegmentSupport mappedSupport() {
+        return MAPPED;
     }
 
-    static OfByte ofByte(long offset, Object base) {
-        return new OfByte(offset, base);
+    static MemorySegmentSupport ofByteSupport() {
+        return OF_BYTE;
     }
 
-    static OfChar ofChar(long offset, Object base) {
-        return new OfChar(offset, base);
+    static MemorySegmentSupport ofCharSupport() {
+        return OF_CHAR;
     }
 
-    static OfShort ofShort(long offset, Object base) {
-        return new OfShort(offset, base);
+    static MemorySegmentSupport ofShortSupport() {
+        return OF_SHORT;
     }
 
-    static OfInt ofInt(long offset, Object base) {
-        return new OfInt(offset, base);
+    static MemorySegmentSupport ofIntSupport() {
+        return OF_INT;
     }
 
-    static OfLong ofLong(long offset, Object base) {
-        return new OfLong(offset, base);
+    static MemorySegmentSupport ofLongSupport() {
+        return OF_LONG;
     }
 
-    static OfFloat ofFloat(long offset, Object base) {
-        return new OfFloat(offset, base);
+    static MemorySegmentSupport ofFloatSupport() {
+        return OF_FLOAT;
     }
 
-    static OfDouble ofDouble(long offset, Object base) {
-        return new OfDouble(offset, base);
+    static MemorySegmentSupport ofDoubleSupport() {
+        return OF_DOUBLE;
     }
 
     static sealed class Native extends MemorySegmentSupport permits Mapped {
-        final long min;
+        private Native() {
+        }
 
-        Native(long min) {
-            this.min = Unsafe.ADDRESS_SIZE == 4
+        @Override
+        long normalizeOffset(long offset) {
+            return Unsafe.ADDRESS_SIZE == 4
                     // On 32-bit systems, normalize the upper unused 32-bits to zero
-                    ? min & 0x0000_0000_FFFF_FFFFL
+                    ? offset & 0x0000_0000_FFFF_FFFFL
                     // On 64-bit systems, all the bits are used
-                    : min;
-            super();
+                    : offset;
         }
 
         @Override
-        MemorySegmentSupport slice(long offset) {
-            return new Native(min + offset);
+        long address(MemorySegmentImpl segment) {
+            return segment.offset;
         }
 
         @Override
-        long address() {
-            return min;
-        }
-
-        @Override
-        long unsafeGetOffset() {
-            return min;
-        }
-
-        @Override
-        Object unsafeGetBase() {
+        Object unsafeGetBase(MemorySegmentImpl segment) {
             return null;
         }
 
         @Override
-        long maxAlignMask() {
+        long maxAlignMask(MemorySegmentImpl segment) {
             return 0;
         }
 
         @Override
-        long maxByteAlignment() {
-            return min == 0 ? 1L << 62 : Long.lowestOneBit(min);
+        long maxByteAlignment(MemorySegmentImpl segment) {
+            return segment.offset == 0
+                    ? 1L << 62
+                    : Long.lowestOneBit(segment.offset);
         }
 
         @Override
-        ByteBuffer makeByteBuffer(AbstractMemorySegmentImpl segment) {
-            return AbstractMemorySegmentImpl.NIO_ACCESS.newDirectByteBuffer(
-                    min, (int) segment.length, null, segment);
+        ByteBuffer makeByteBuffer(MemorySegmentImpl segment) {
+            return MemorySegmentImpl.NIO_ACCESS.newDirectByteBuffer(
+                    segment.offset, (int) segment.length, null, segment);
         }
 
         @Override
@@ -193,22 +193,13 @@ abstract sealed class MemorySegmentSupport
         private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS =
                 ScopedMemoryAccess.getScopedMemoryAccess();
 
-        private final UnmapperProxy unmapper;
-
-        Mapped(long min, UnmapperProxy unmapper) {
-            this.unmapper = unmapper;
-            super(min);
+        private Mapped() {
         }
 
         @Override
-        MemorySegmentSupport slice(long offset) {
-            return new Mapped(min + offset, unmapper);
-        }
-
-        @Override
-        ByteBuffer makeByteBuffer(AbstractMemorySegmentImpl segment) {
-            return AbstractMemorySegmentImpl.NIO_ACCESS.newMappedByteBuffer(
-                    unmapper, min, (int) segment.length, null, segment);
+        ByteBuffer makeByteBuffer(MemorySegmentImpl segment) {
+            return MemorySegmentImpl.NIO_ACCESS.newMappedByteBuffer(
+                    segment.unmapper, segment.offset, (int) segment.length, null, segment);
         }
 
         @Override
@@ -222,37 +213,38 @@ abstract sealed class MemorySegmentSupport
         }
 
         @Override
-        void load(AbstractMemorySegmentImpl segment) {
-            if (unmapper != null) {
+        void load(MemorySegmentImpl segment) {
+            if (segment.unmapper != null) {
                 SCOPED_MEMORY_ACCESS.load(segment.sessionImpl(),
-                        AbstractMemorySegmentImpl.NIO_ACCESS.mappedMemoryUtils(),
-                        min, unmapper.isSync(), segment.length);
+                        MemorySegmentImpl.NIO_ACCESS.mappedMemoryUtils(),
+                        segment.offset, segment.unmapper.isSync(), segment.length);
             }
         }
 
         @Override
-        void unload(AbstractMemorySegmentImpl segment) {
-            if (unmapper != null) {
+        void unload(MemorySegmentImpl segment) {
+            if (segment.unmapper != null) {
                 SCOPED_MEMORY_ACCESS.unload(segment.sessionImpl(),
-                        AbstractMemorySegmentImpl.NIO_ACCESS.mappedMemoryUtils(),
-                        min, unmapper.isSync(), segment.length);
+                        MemorySegmentImpl.NIO_ACCESS.mappedMemoryUtils(),
+                        segment.offset, segment.unmapper.isSync(), segment.length);
             }
         }
 
         @Override
-        boolean isLoaded(AbstractMemorySegmentImpl segment) {
-            return unmapper == null ||
+        boolean isLoaded(MemorySegmentImpl segment) {
+            return segment.unmapper == null ||
                     SCOPED_MEMORY_ACCESS.isLoaded(segment.sessionImpl(),
-                            AbstractMemorySegmentImpl.NIO_ACCESS.mappedMemoryUtils(),
-                            min, unmapper.isSync(), segment.length);
+                            MemorySegmentImpl.NIO_ACCESS.mappedMemoryUtils(),
+                            segment.offset, segment.unmapper.isSync(), segment.length);
         }
 
         @Override
-        void force(AbstractMemorySegmentImpl segment) {
-            if (unmapper != null) {
+        void force(MemorySegmentImpl segment) {
+            if (segment.unmapper != null) {
                 SCOPED_MEMORY_ACCESS.force(segment.sessionImpl(),
-                        AbstractMemorySegmentImpl.NIO_ACCESS.mappedMemoryUtils(),
-                        unmapper.fileDescriptor(), min, unmapper.isSync(), 0, segment.length);
+                        MemorySegmentImpl.NIO_ACCESS.mappedMemoryUtils(),
+                        segment.unmapper.fileDescriptor(), segment.offset,
+                        segment.unmapper.isSync(), 0, segment.length);
             }
         }
     }
@@ -266,48 +258,39 @@ abstract sealed class MemorySegmentSupport
         static final long MAX_ALIGN_INT_ARRAY = ValueLayout.JAVA_INT.byteAlignment();
         static final long MAX_ALIGN_LONG_ARRAY = ValueLayout.JAVA_LONG.byteAlignment();
 
-        final long offset;
-        final Object base;
-
-        Heap(long offset, Object base) {
-            this.offset = offset;
-            this.base = base;
-            super();
+        private Heap() {
         }
 
         abstract long arrayBaseOffset();
 
         @Override
-        long address() {
-            return offset - arrayBaseOffset();
+        long address(MemorySegmentImpl segment) {
+            return segment.offset - arrayBaseOffset();
         }
 
         @Override
-        long unsafeGetOffset() {
-            return offset;
+        Optional<Object> heapBase(MemorySegmentImpl segment) {
+            return segment.readOnly
+                    ? Optional.empty()
+                    : Optional.of(segment.base);
         }
 
         @Override
-        Optional<Object> heapBase(boolean readOnly) {
-            return readOnly ? Optional.empty() : Optional.of(base);
-        }
-
-        @Override
-        long maxByteAlignment() {
-            long address = address();
+        long maxByteAlignment(MemorySegmentImpl segment) {
+            long address = address(segment);
             return address == 0
-                    ? maxAlignMask()
-                    : Math.min(maxAlignMask(), Long.lowestOneBit(address));
+                    ? maxAlignMask(segment)
+                    : Math.min(maxAlignMask(segment), Long.lowestOneBit(address));
         }
 
         @Override
-        ByteBuffer makeByteBuffer(AbstractMemorySegmentImpl segment) {
-            if (!(base instanceof byte[] bytes)) {
+        ByteBuffer makeByteBuffer(MemorySegmentImpl segment) {
+            if (!(segment.base instanceof byte[] bytes)) {
                 throw new UnsupportedOperationException(
                         "Not an address to a heap-allocated byte array");
             }
-            return AbstractMemorySegmentImpl.NIO_ACCESS.newHeapByteBuffer(bytes,
-                    (int) (offset - Utils.BaseAndScale.BYTE.base()),
+            return MemorySegmentImpl.NIO_ACCESS.newHeapByteBuffer(bytes,
+                    (int) (segment.offset - Utils.BaseAndScale.BYTE.base()),
                     (int) segment.length, null);
         }
 
@@ -318,22 +301,16 @@ abstract sealed class MemorySegmentSupport
     }
 
     static final class OfByte extends Heap {
-        OfByte(long offset, Object base) {
-            super(offset, base);
+        private OfByte() {
         }
 
         @Override
-        MemorySegmentSupport slice(long delta) {
-            return new OfByte(offset + delta, base);
+        byte[] unsafeGetBase(MemorySegmentImpl segment) {
+            return (byte[]) Objects.requireNonNull(segment.base);
         }
 
         @Override
-        byte[] unsafeGetBase() {
-            return (byte[]) Objects.requireNonNull(base);
-        }
-
-        @Override
-        long maxAlignMask() {
+        long maxAlignMask(MemorySegmentImpl segment) {
             return MAX_ALIGN_BYTE_ARRAY;
         }
 
@@ -344,22 +321,16 @@ abstract sealed class MemorySegmentSupport
     }
 
     static final class OfChar extends Heap {
-        OfChar(long offset, Object base) {
-            super(offset, base);
+        private OfChar() {
         }
 
         @Override
-        MemorySegmentSupport slice(long delta) {
-            return new OfChar(offset + delta, base);
+        char[] unsafeGetBase(MemorySegmentImpl segment) {
+            return (char[]) Objects.requireNonNull(segment.base);
         }
 
         @Override
-        char[] unsafeGetBase() {
-            return (char[]) Objects.requireNonNull(base);
-        }
-
-        @Override
-        long maxAlignMask() {
+        long maxAlignMask(MemorySegmentImpl segment) {
             return MAX_ALIGN_SHORT_ARRAY;
         }
 
@@ -370,22 +341,16 @@ abstract sealed class MemorySegmentSupport
     }
 
     static final class OfShort extends Heap {
-        OfShort(long offset, Object base) {
-            super(offset, base);
+        private OfShort() {
         }
 
         @Override
-        MemorySegmentSupport slice(long delta) {
-            return new OfShort(offset + delta, base);
+        short[] unsafeGetBase(MemorySegmentImpl segment) {
+            return (short[]) Objects.requireNonNull(segment.base);
         }
 
         @Override
-        short[] unsafeGetBase() {
-            return (short[]) Objects.requireNonNull(base);
-        }
-
-        @Override
-        long maxAlignMask() {
+        long maxAlignMask(MemorySegmentImpl segment) {
             return MAX_ALIGN_SHORT_ARRAY;
         }
 
@@ -396,22 +361,16 @@ abstract sealed class MemorySegmentSupport
     }
 
     static final class OfInt extends Heap {
-        OfInt(long offset, Object base) {
-            super(offset, base);
+        private OfInt() {
         }
 
         @Override
-        MemorySegmentSupport slice(long delta) {
-            return new OfInt(offset + delta, base);
+        int[] unsafeGetBase(MemorySegmentImpl segment) {
+            return (int[]) Objects.requireNonNull(segment.base);
         }
 
         @Override
-        int[] unsafeGetBase() {
-            return (int[]) Objects.requireNonNull(base);
-        }
-
-        @Override
-        long maxAlignMask() {
+        long maxAlignMask(MemorySegmentImpl segment) {
             return MAX_ALIGN_INT_ARRAY;
         }
 
@@ -422,22 +381,16 @@ abstract sealed class MemorySegmentSupport
     }
 
     static final class OfLong extends Heap {
-        OfLong(long offset, Object base) {
-            super(offset, base);
+        private OfLong() {
         }
 
         @Override
-        MemorySegmentSupport slice(long delta) {
-            return new OfLong(offset + delta, base);
+        long[] unsafeGetBase(MemorySegmentImpl segment) {
+            return (long[]) Objects.requireNonNull(segment.base);
         }
 
         @Override
-        long[] unsafeGetBase() {
-            return (long[]) Objects.requireNonNull(base);
-        }
-
-        @Override
-        long maxAlignMask() {
+        long maxAlignMask(MemorySegmentImpl segment) {
             return MAX_ALIGN_LONG_ARRAY;
         }
 
@@ -448,22 +401,16 @@ abstract sealed class MemorySegmentSupport
     }
 
     static final class OfFloat extends Heap {
-        OfFloat(long offset, Object base) {
-            super(offset, base);
+        private OfFloat() {
         }
 
         @Override
-        MemorySegmentSupport slice(long delta) {
-            return new OfFloat(offset + delta, base);
+        float[] unsafeGetBase(MemorySegmentImpl segment) {
+            return (float[]) Objects.requireNonNull(segment.base);
         }
 
         @Override
-        float[] unsafeGetBase() {
-            return (float[]) Objects.requireNonNull(base);
-        }
-
-        @Override
-        long maxAlignMask() {
+        long maxAlignMask(MemorySegmentImpl segment) {
             return MAX_ALIGN_INT_ARRAY;
         }
 
@@ -474,22 +421,16 @@ abstract sealed class MemorySegmentSupport
     }
 
     static final class OfDouble extends Heap {
-        OfDouble(long offset, Object base) {
-            super(offset, base);
+        private OfDouble() {
         }
 
         @Override
-        MemorySegmentSupport slice(long delta) {
-            return new OfDouble(offset + delta, base);
+        double[] unsafeGetBase(MemorySegmentImpl segment) {
+            return (double[]) Objects.requireNonNull(segment.base);
         }
 
         @Override
-        double[] unsafeGetBase() {
-            return (double[]) Objects.requireNonNull(base);
-        }
-
-        @Override
-        long maxAlignMask() {
+        long maxAlignMask(MemorySegmentImpl segment) {
             return MAX_ALIGN_LONG_ARRAY;
         }
 

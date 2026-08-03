@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -57,13 +57,13 @@ public class SegmentOfBuffer {
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = "-XX:CompileCommand=inline,jdk.internal.foreign.AbstractMemorySegmentImpl::ofBuffer,false")
+    @Fork(value = 3, jvmArgs = "-XX:CompileCommand=inline,jdk.internal.foreign.MemorySegmentImpl::ofBuffer,false")
     public long ofBufferInlineFalse() {
         return MemorySegment.ofBuffer(buffer).address();
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = "-XX:CompileCommand=inline,jdk.internal.foreign.AbstractMemorySegmentImpl::ofBuffer,true")
+    @Fork(value = 3, jvmArgs = "-XX:CompileCommand=inline,jdk.internal.foreign.MemorySegmentImpl::ofBuffer,true")
     public long ofBufferInlineTrue() {
         return MemorySegment.ofBuffer(buffer).address();
     }

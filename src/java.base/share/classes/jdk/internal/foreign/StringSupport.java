@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ public final class StringSupport {
     private StringSupport() {}
 
     @ForceInline
-    public static String read(AbstractMemorySegmentImpl segment, long offset, Charset charset) {
+    public static String read(MemorySegmentImpl segment, long offset, Charset charset) {
         return switch (CharsetKind.of(charset)) {
             case SINGLE_BYTE -> readByte(segment, offset, charset);
             case DOUBLE_BYTE -> readShort(segment, offset, charset);
@@ -62,12 +62,12 @@ public final class StringSupport {
     }
 
     @ForceInline
-    public static String read(AbstractMemorySegmentImpl segment, long offset, Charset charset, long length) {
+    public static String read(MemorySegmentImpl segment, long offset, Charset charset, long length) {
         return readBytes(segment, offset, charset, length);
     }
 
     @ForceInline
-    public static String readBytes(AbstractMemorySegmentImpl segment, long offset, Charset charset, long length) {
+    public static String readBytes(MemorySegmentImpl segment, long offset, Charset charset, long length) {
         if (length > Integer.MAX_VALUE) {
             throw new IllegalArgumentException("Required length exceeds implementation limit");
         }
@@ -83,7 +83,7 @@ public final class StringSupport {
     }
 
     @ForceInline
-    public static void write(AbstractMemorySegmentImpl segment, long offset, Charset charset, String string) {
+    public static void write(MemorySegmentImpl segment, long offset, Charset charset, String string) {
         switch (CharsetKind.of(charset)) {
             case SINGLE_BYTE -> writeByte(segment, offset, charset, string);
             case DOUBLE_BYTE -> writeShort(segment, offset, charset, string);
@@ -92,37 +92,37 @@ public final class StringSupport {
     }
 
     @ForceInline
-    private static String readByte(AbstractMemorySegmentImpl segment, long offset, Charset charset) {
+    private static String readByte(MemorySegmentImpl segment, long offset, Charset charset) {
         final int len = strlenByte(segment, offset, segment.byteSize());
         return readBytes(segment, offset, charset, len);
     }
 
     @ForceInline
-    private static void writeByte(AbstractMemorySegmentImpl segment, long offset, Charset charset, String string) {
+    private static void writeByte(MemorySegmentImpl segment, long offset, Charset charset, String string) {
         int bytes = copyBytes(string, segment, charset, offset);
         segment.set(JAVA_BYTE, offset + bytes, (byte)0);
     }
 
     @ForceInline
-    private static String readShort(AbstractMemorySegmentImpl segment, long offset, Charset charset) {
+    private static String readShort(MemorySegmentImpl segment, long offset, Charset charset) {
         int len = strlenShort(segment, offset, segment.byteSize());
         return readBytes(segment, offset, charset, len);
     }
 
     @ForceInline
-    private static void writeShort(AbstractMemorySegmentImpl segment, long offset, Charset charset, String string) {
+    private static void writeShort(MemorySegmentImpl segment, long offset, Charset charset, String string) {
         int bytes = copyBytes(string, segment, charset, offset);
         segment.set(JAVA_SHORT_UNALIGNED, offset + bytes, (short)0);
     }
 
     @ForceInline
-    private static String readInt(AbstractMemorySegmentImpl segment, long offset, Charset charset) {
+    private static String readInt(MemorySegmentImpl segment, long offset, Charset charset) {
         int len = strlenInt(segment, offset, segment.byteSize());
         return readBytes(segment, offset, charset, len);
     }
 
     @ForceInline
-    private static void writeInt(AbstractMemorySegmentImpl segment, long offset, Charset charset, String string) {
+    private static void writeInt(MemorySegmentImpl segment, long offset, Charset charset, String string) {
         int bytes = copyBytes(string, segment, charset, offset);
         segment.set(JAVA_INT_UNALIGNED, offset + bytes, 0);
     }
@@ -144,7 +144,7 @@ public final class StringSupport {
      *                                  within a length that can be accepted by a String
      */
     @ForceInline
-    public static int strlenByte(final AbstractMemorySegmentImpl segment,
+    public static int strlenByte(final MemorySegmentImpl segment,
                                  final long fromOffset,
                                  final long toOffset) {
         final long length = toOffset - fromOffset;
@@ -178,7 +178,7 @@ public final class StringSupport {
     }
 
     @ForceInline
-    public static int strlenShort(final AbstractMemorySegmentImpl segment,
+    public static int strlenShort(final MemorySegmentImpl segment,
                                   final long fromOffset,
                                   final long toOffset) {
         final long length = toOffset - fromOffset;
@@ -214,7 +214,7 @@ public final class StringSupport {
     }
 
     @ForceInline
-    public static int strlenInt(final AbstractMemorySegmentImpl segment,
+    public static int strlenInt(final MemorySegmentImpl segment,
                                 final long fromOffset,
                                 final long toOffset) {
         final long length = toOffset - fromOffset;
@@ -286,7 +286,7 @@ public final class StringSupport {
 
 
     private static int requireWithinStringSize(long size,
-                                               AbstractMemorySegmentImpl segment,
+                                               MemorySegmentImpl segment,
                                                long fromOffset,
                                                long toOffset) {
         if (size > ArraysSupport.SOFT_MAX_ARRAY_LENGTH) {
@@ -295,19 +295,19 @@ public final class StringSupport {
         return (int) size;
     }
 
-    private static IllegalArgumentException stringTooLarge(AbstractMemorySegmentImpl segment,
+    private static IllegalArgumentException stringTooLarge(MemorySegmentImpl segment,
                                                            long fromOffset,
                                                            long toOffset) {
         return new IllegalArgumentException("String too large: " + exceptionInfo(segment, fromOffset, toOffset));
     }
 
-    private static IndexOutOfBoundsException nullNotFound(AbstractMemorySegmentImpl segment,
+    private static IndexOutOfBoundsException nullNotFound(MemorySegmentImpl segment,
                                                           long fromOffset,
                                                           long toOffset) {
         return new IndexOutOfBoundsException("No null terminator found: " + exceptionInfo(segment, fromOffset, toOffset));
     }
 
-    private static String exceptionInfo(AbstractMemorySegmentImpl segment,
+    private static String exceptionInfo(MemorySegmentImpl segment,
                                         long fromOffset,
                                         long toOffset) {
         return segment + " using region [" + fromOffset + ", " + toOffset + ")";

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.foreign.MappedMemoryUtilsProxy;
 import jdk.internal.access.foreign.UnmapperProxy;
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.misc.Unsafe;
@@ -789,7 +789,7 @@ public abstract sealed class Buffer
      */
     abstract int scaleShifts();
 
-    abstract AbstractMemorySegmentImpl heapSegment(Object base,
+    abstract MemorySegmentImpl heapSegment(Object base,
                                                    long offset,
                                                    long length,
                                                    boolean readOnly,
@@ -806,7 +806,7 @@ public abstract sealed class Buffer
     @ForceInline
     final MemorySessionImpl session() {
         if (segment != null) {
-            return ((AbstractMemorySegmentImpl)segment).sessionImpl();
+            return ((MemorySegmentImpl)segment).sessionImpl();
         } else {
             return null;
         }
@@ -936,7 +936,7 @@ public abstract sealed class Buffer
 
                 @ForceInline
                 @Override
-                public AbstractMemorySegmentImpl heapSegment(Buffer buffer,
+                public MemorySegmentImpl heapSegment(Buffer buffer,
                                                              Object base,
                                                              long offset,
                                                              long length,

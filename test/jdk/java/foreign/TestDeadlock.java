@@ -55,7 +55,7 @@ public class TestDeadlock {
                     throw new RuntimeException(e);
                 }
 
-                // Access ArenaImpl -> AbstractMemorySegmentImpl -> MemorySegment
+                // Access ArenaImpl -> MemorySegmentImpl -> MemorySegment
                 arena.allocateFrom(ValueLayout.JAVA_INT, 42);
             };
             case "FileChannel" -> () -> {
@@ -87,7 +87,7 @@ public class TestDeadlock {
                 throw new RuntimeException(e);
             }
 
-            // Access MemorySegment -> AbstractMemorySegmentImpl
+            // Access MemorySegment -> MemorySegmentImpl
             MemorySegment.ofAddress(42);
         });
 

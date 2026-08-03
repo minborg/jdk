@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package jdk.internal.foreign.abi;
 
 import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.SharedSecrets;
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.invoke.MhUtil;
 
@@ -170,7 +170,7 @@ public class DowncallLinker {
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
                 if (callingSequence.functionDesc().argumentLayouts().get(i) instanceof AddressLayout) {
-                    MemorySessionImpl sessionImpl = ((AbstractMemorySegmentImpl) arg).sessionImpl();
+                    MemorySessionImpl sessionImpl = ((MemorySegmentImpl) arg).sessionImpl();
                     if (!(callingSequence.needsReturnBuffer() && i == 0)) { // don't acquire unboxArena's scope
                         sessionImpl.acquire0();
                         // add this scope _after_ we acquire, so we only release scopes we actually acquired

@@ -51,146 +51,146 @@ public class SegmentFactories {
     // associated with MemorySegment::ofAddress.
 
     @ForceInline
-    public static AbstractMemorySegmentImpl makeNativeSegmentUnchecked(long min, long byteSize,
-                                                                       MemorySessionImpl sessionImpl,
-                                                                       boolean readOnly, Runnable action) {
+    public static MemorySegmentImpl makeNativeSegmentUnchecked(long min, long byteSize,
+                                                               MemorySessionImpl sessionImpl,
+                                                               boolean readOnly, Runnable action) {
         ensureInitialized();
         if (action == null) {
             sessionImpl.checkValidState();
         } else {
             sessionImpl.addCloseAction(action);
         }
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofNative(min),
-                byteSize, readOnly, sessionImpl);
+        return new MemorySegmentImpl(MemorySegmentSupport.nativeSupport(),
+                min, null, null, byteSize, readOnly, sessionImpl);
     }
 
     @ForceInline
-    public static AbstractMemorySegmentImpl makeNativeSegmentUnchecked(long min, long byteSize, MemorySessionImpl sessionImpl) {
+    public static MemorySegmentImpl makeNativeSegmentUnchecked(long min, long byteSize, MemorySessionImpl sessionImpl) {
         ensureInitialized();
         sessionImpl.checkValidState();
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofNative(min),
-                byteSize, false, sessionImpl);
+        return new MemorySegmentImpl(MemorySegmentSupport.nativeSupport(),
+                min, null, null, byteSize, false, sessionImpl);
     }
 
     @ForceInline
-    public static AbstractMemorySegmentImpl makeNativeSegmentUnchecked(long min, long byteSize) {
+    public static MemorySegmentImpl makeNativeSegmentUnchecked(long min, long byteSize) {
         ensureInitialized();
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofNative(min),
-                byteSize, false, MemorySessionImpl.GLOBAL_SESSION);
+        return new MemorySegmentImpl(MemorySegmentSupport.nativeSupport(),
+                min, null, null, byteSize, false, MemorySessionImpl.GLOBAL_SESSION);
     }
 
-    public static AbstractMemorySegmentImpl fromArray(byte[] arr) {
+    public static MemorySegmentImpl fromArray(byte[] arr) {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.BYTE.scale();
-        return new AbstractMemorySegmentImpl(
-                MemorySegmentSupport.ofByte(Utils.BaseAndScale.BYTE.base(), arr),
-                byteSize, false, MemorySessionImpl.createHeap(arr));
+        return new MemorySegmentImpl(
+                MemorySegmentSupport.ofByteSupport(), Utils.BaseAndScale.BYTE.base(),
+                arr, null, byteSize, false, MemorySessionImpl.createHeap(arr));
     }
 
-    public static AbstractMemorySegmentImpl fromArray(short[] arr) {
+    public static MemorySegmentImpl fromArray(short[] arr) {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.SHORT.scale();
-        return new AbstractMemorySegmentImpl(
-                MemorySegmentSupport.ofShort(Utils.BaseAndScale.SHORT.base(), arr),
-                byteSize, false, MemorySessionImpl.createHeap(arr));
+        return new MemorySegmentImpl(
+                MemorySegmentSupport.ofShortSupport(), Utils.BaseAndScale.SHORT.base(),
+                arr, null, byteSize, false, MemorySessionImpl.createHeap(arr));
     }
 
-    public static AbstractMemorySegmentImpl fromArray(int[] arr) {
+    public static MemorySegmentImpl fromArray(int[] arr) {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.INT.scale();
-        return new AbstractMemorySegmentImpl(
-                MemorySegmentSupport.ofInt(Utils.BaseAndScale.INT.base(), arr),
-                byteSize, false, MemorySessionImpl.createHeap(arr));
+        return new MemorySegmentImpl(
+                MemorySegmentSupport.ofIntSupport(), Utils.BaseAndScale.INT.base(),
+                arr, null, byteSize, false, MemorySessionImpl.createHeap(arr));
     }
 
-    public static AbstractMemorySegmentImpl fromArray(char[] arr) {
+    public static MemorySegmentImpl fromArray(char[] arr) {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.CHAR.scale();
-        return new AbstractMemorySegmentImpl(
-                MemorySegmentSupport.ofChar(Utils.BaseAndScale.CHAR.base(), arr),
-                byteSize, false, MemorySessionImpl.createHeap(arr));
+        return new MemorySegmentImpl(
+                MemorySegmentSupport.ofCharSupport(), Utils.BaseAndScale.CHAR.base(),
+                arr, null, byteSize, false, MemorySessionImpl.createHeap(arr));
     }
 
-    public static AbstractMemorySegmentImpl fromArray(float[] arr) {
+    public static MemorySegmentImpl fromArray(float[] arr) {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.FLOAT.scale();
-        return new AbstractMemorySegmentImpl(
-                MemorySegmentSupport.ofFloat(Utils.BaseAndScale.FLOAT.base(), arr),
-                byteSize, false, MemorySessionImpl.createHeap(arr));
+        return new MemorySegmentImpl(
+                MemorySegmentSupport.ofFloatSupport(), Utils.BaseAndScale.FLOAT.base(),
+                arr, null, byteSize, false, MemorySessionImpl.createHeap(arr));
     }
 
-    public static AbstractMemorySegmentImpl fromArray(double[] arr) {
+    public static MemorySegmentImpl fromArray(double[] arr) {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.DOUBLE.scale();
-        return new AbstractMemorySegmentImpl(
-                MemorySegmentSupport.ofDouble(Utils.BaseAndScale.DOUBLE.base(), arr),
-                byteSize, false, MemorySessionImpl.createHeap(arr));
+        return new MemorySegmentImpl(
+                MemorySegmentSupport.ofDoubleSupport(), Utils.BaseAndScale.DOUBLE.base(),
+                arr, null, byteSize, false, MemorySessionImpl.createHeap(arr));
     }
 
-    public static AbstractMemorySegmentImpl fromArray(long[] arr) {
+    public static MemorySegmentImpl fromArray(long[] arr) {
         ensureInitialized();
         Objects.requireNonNull(arr);
         long byteSize = (long)arr.length * Utils.BaseAndScale.LONG.scale();
-        return new AbstractMemorySegmentImpl(
-                MemorySegmentSupport.ofLong(Utils.BaseAndScale.LONG.base(), arr),
-                byteSize, false, MemorySessionImpl.createHeap(arr));
+        return new MemorySegmentImpl(
+                MemorySegmentSupport.ofLongSupport(), Utils.BaseAndScale.LONG.base(),
+                arr, null, byteSize, false, MemorySessionImpl.createHeap(arr));
     }
 
     // Buffer conversion factories
 
-    public static AbstractMemorySegmentImpl arrayOfByteSegment(Object base, long offset, long length,
-                                                               boolean readOnly, MemorySessionImpl bufferScope) {
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofByte(offset, base),
-                length, readOnly, bufferScope);
+    public static MemorySegmentImpl arrayOfByteSegment(Object base, long offset, long length,
+                                                       boolean readOnly, MemorySessionImpl bufferScope) {
+        return new MemorySegmentImpl(MemorySegmentSupport.ofByteSupport(),
+                offset, base, null, length, readOnly, bufferScope);
     }
 
-    public static AbstractMemorySegmentImpl arrayOfShortSegment(Object base, long offset, long length,
-                                                                boolean readOnly, MemorySessionImpl bufferScope) {
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofShort(offset, base),
-                length, readOnly, bufferScope);
+    public static MemorySegmentImpl arrayOfShortSegment(Object base, long offset, long length,
+                                                        boolean readOnly, MemorySessionImpl bufferScope) {
+        return new MemorySegmentImpl(MemorySegmentSupport.ofShortSupport(),
+                offset, base, null, length, readOnly, bufferScope);
     }
 
-    public static AbstractMemorySegmentImpl arrayOfCharSegment(Object base, long offset, long length,
-                                                               boolean readOnly, MemorySessionImpl bufferScope) {
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofChar(offset, base),
-                length, readOnly, bufferScope);
+    public static MemorySegmentImpl arrayOfCharSegment(Object base, long offset, long length,
+                                                       boolean readOnly, MemorySessionImpl bufferScope) {
+        return new MemorySegmentImpl(MemorySegmentSupport.ofCharSupport(),
+                offset, base, null, length, readOnly, bufferScope);
     }
 
-    public static AbstractMemorySegmentImpl arrayOfIntSegment(Object base, long offset, long length,
-                                                              boolean readOnly, MemorySessionImpl bufferScope) {
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofInt(offset, base),
-                length, readOnly, bufferScope);
+    public static MemorySegmentImpl arrayOfIntSegment(Object base, long offset, long length,
+                                                      boolean readOnly, MemorySessionImpl bufferScope) {
+        return new MemorySegmentImpl(MemorySegmentSupport.ofIntSupport(),
+                offset, base, null, length, readOnly, bufferScope);
     }
 
-    public static AbstractMemorySegmentImpl arrayOfFloatSegment(Object base, long offset, long length,
-                                                                boolean readOnly, MemorySessionImpl bufferScope) {
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofFloat(offset, base),
-                length, readOnly, bufferScope);
+    public static MemorySegmentImpl arrayOfFloatSegment(Object base, long offset, long length,
+                                                        boolean readOnly, MemorySessionImpl bufferScope) {
+        return new MemorySegmentImpl(MemorySegmentSupport.ofFloatSupport(),
+                offset, base, null, length, readOnly, bufferScope);
     }
 
-    public static AbstractMemorySegmentImpl arrayOfLongSegment(Object base, long offset, long length,
-                                                               boolean readOnly, MemorySessionImpl bufferScope) {
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofLong(offset, base),
-                length, readOnly, bufferScope);
+    public static MemorySegmentImpl arrayOfLongSegment(Object base, long offset, long length,
+                                                       boolean readOnly, MemorySessionImpl bufferScope) {
+        return new MemorySegmentImpl(MemorySegmentSupport.ofLongSupport(),
+                offset, base, null, length, readOnly, bufferScope);
     }
 
-    public static AbstractMemorySegmentImpl arrayOfDoubleSegment(Object base, long offset, long length,
-                                                                 boolean readOnly, MemorySessionImpl bufferScope) {
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofDouble(offset, base),
-                length, readOnly, bufferScope);
+    public static MemorySegmentImpl arrayOfDoubleSegment(Object base, long offset, long length,
+                                                         boolean readOnly, MemorySessionImpl bufferScope) {
+        return new MemorySegmentImpl(MemorySegmentSupport.ofDoubleSupport(),
+                offset, base, null, length, readOnly, bufferScope);
     }
 
-    public static AbstractMemorySegmentImpl allocateNativeSegment(long byteSize, long byteAlignment, MemorySessionImpl sessionImpl,
-                                                                  boolean shouldReserve, boolean init) {
+    public static MemorySegmentImpl allocateNativeSegment(long byteSize, long byteAlignment, MemorySessionImpl sessionImpl,
+                                                          boolean shouldReserve, boolean init) {
         long address = SegmentFactories.allocateNativeInternal(byteSize, byteAlignment, sessionImpl, shouldReserve, init);
-        return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofNative(address),
-                byteSize, false, sessionImpl);
+        return new MemorySegmentImpl(MemorySegmentSupport.nativeSupport(),
+                address, null, null, byteSize, false, sessionImpl);
     }
 
     private static long allocateNativeInternal(long byteSize, long byteAlignment, MemorySessionImpl sessionImpl,
@@ -199,7 +199,7 @@ public class SegmentFactories {
         Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
         sessionImpl.checkValidState();
         if (VM.isDirectMemoryPageAligned()) {
-            byteAlignment = Math.max(byteAlignment, AbstractMemorySegmentImpl.NIO_ACCESS.pageSize());
+            byteAlignment = Math.max(byteAlignment, MemorySegmentImpl.NIO_ACCESS.pageSize());
         }
         // Always allocate at least some memory so that zero-length segments have distinct
         // non-zero addresses.
@@ -218,7 +218,7 @@ public class SegmentFactories {
         if (byteAlignment > MAX_MALLOC_ALIGN) {
             allocationSize = alignedSize + byteAlignment - MAX_MALLOC_ALIGN;
             if (shouldReserve) {
-                AbstractMemorySegmentImpl.NIO_ACCESS.reserveMemory(allocationSize, byteSize);
+                MemorySegmentImpl.NIO_ACCESS.reserveMemory(allocationSize, byteSize);
             }
 
             allocationBase = allocateMemoryWrapper(allocationSize);
@@ -228,7 +228,7 @@ public class SegmentFactories {
             // return a pointer aligned to that alignment, for cases where byteAlignment > alignedSize
             allocationSize = Math.max(alignedSize, byteAlignment);
             if (shouldReserve) {
-                AbstractMemorySegmentImpl.NIO_ACCESS.reserveMemory(allocationSize, byteSize);
+                MemorySegmentImpl.NIO_ACCESS.reserveMemory(allocationSize, byteSize);
             }
 
             allocationBase = allocateMemoryWrapper(allocationSize);
@@ -244,7 +244,7 @@ public class SegmentFactories {
             public void cleanup() {
                 UNSAFE.freeMemory(allocationBase);
                 if (shouldReserve) {
-                    AbstractMemorySegmentImpl.NIO_ACCESS.unreserveMemory(allocationSize, cleanupByteSize);
+                    MemorySegmentImpl.NIO_ACCESS.unreserveMemory(allocationSize, cleanupByteSize);
                 }
             }
         });
@@ -265,12 +265,12 @@ public class SegmentFactories {
         }
     }
 
-    public static AbstractMemorySegmentImpl mapSegment(long size, UnmapperProxy unmapper, boolean readOnly, MemorySessionImpl sessionImpl) {
+    public static MemorySegmentImpl mapSegment(long size, UnmapperProxy unmapper, boolean readOnly, MemorySessionImpl sessionImpl) {
         ensureInitialized();
         if (unmapper != null) {
-            AbstractMemorySegmentImpl segment = new AbstractMemorySegmentImpl(
-                    MemorySegmentSupport.ofMapped(unmapper.address(), unmapper),
-                    size, readOnly, sessionImpl);
+            MemorySegmentImpl segment = new MemorySegmentImpl(
+                    MemorySegmentSupport.mappedSupport(), unmapper.address(), null,
+                    unmapper, size, readOnly, sessionImpl);
             MemorySessionImpl.ResourceList.ResourceCleanup resource =
                     new MemorySessionImpl.ResourceList.ResourceCleanup() {
                         @Override
@@ -281,16 +281,16 @@ public class SegmentFactories {
             sessionImpl.addOrCleanupIfFail(resource);
             return segment;
         } else {
-            return new AbstractMemorySegmentImpl(MemorySegmentSupport.ofMapped(0, null),
-                    0, readOnly, sessionImpl);
+            return new MemorySegmentImpl(MemorySegmentSupport.mappedSupport(),
+                    0, null, null, 0, readOnly, sessionImpl);
         }
     }
 
     // The method below needs to be called before the implementation of MemorySegment
     // is instantiated. This is to make sure that we cannot have an initialization deadlock
-    // where one thread attempts to initialize e.g. MemorySegment (and then AbstractMemorySegmentImpl, via
+    // where one thread attempts to initialize e.g. MemorySegment (and then MemorySegmentImpl, via
     // the MemorySegment.NULL field) while another thread is attempting to initialize
-    // AbstractMemorySegmentImpl (and then MemorySegment, the super-interface).
+    // MemorySegmentImpl (and then MemorySegment, the super-interface).
     @ForceInline
     private static void ensureInitialized() {
         MemorySegment segment = MemorySegment.NULL;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 
 package java.lang.foreign;
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.SegmentBulkOperations;
 import jdk.internal.foreign.SegmentFactories;
@@ -512,7 +512,7 @@ import java.util.stream.Stream;
  *
  * @since 22
  */
-public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
+public sealed interface MemorySegment permits MemorySegmentImpl {
 
     /**
      * {@return the address of this memory segment}
@@ -1452,7 +1452,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *         {@link CharBuffer#wrap(char[], int, int)} are not backed by an array.
      */
     static MemorySegment ofBuffer(Buffer buffer) {
-        return AbstractMemorySegmentImpl.ofBuffer(buffer);
+        return MemorySegmentImpl.ofBuffer(buffer);
     }
 
     /**
@@ -1625,8 +1625,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     static void copy(MemorySegment srcSegment, long srcOffset,
                      MemorySegment dstSegment, long dstOffset, long bytes) {
 
-        SegmentBulkOperations.copy((AbstractMemorySegmentImpl) srcSegment, srcOffset,
-                (AbstractMemorySegmentImpl) dstSegment, dstOffset,
+        SegmentBulkOperations.copy((MemorySegmentImpl) srcSegment, srcOffset,
+                (MemorySegmentImpl) dstSegment, dstOffset,
                 bytes);
     }
 
@@ -1693,7 +1693,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
         Objects.requireNonNull(srcElementLayout);
         Objects.requireNonNull(dstSegment);
         Objects.requireNonNull(dstElementLayout);
-        AbstractMemorySegmentImpl.copy(srcSegment, srcElementLayout, srcOffset,
+        MemorySegmentImpl.copy(srcSegment, srcElementLayout, srcOffset,
                 dstSegment, dstElementLayout, dstOffset,
                 elementCount);
     }
@@ -2586,7 +2586,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
         Objects.requireNonNull(dstArray);
         Objects.requireNonNull(srcLayout);
 
-        AbstractMemorySegmentImpl.copy(srcSegment, srcLayout, srcOffset,
+        MemorySegmentImpl.copy(srcSegment, srcLayout, srcOffset,
                 dstArray, dstIndex,
                 elementCount);
     }
@@ -2637,7 +2637,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
         Objects.requireNonNull(dstSegment);
         Objects.requireNonNull(dstLayout);
 
-        AbstractMemorySegmentImpl.copy(srcArray, srcIndex,
+        MemorySegmentImpl.copy(srcArray, srcIndex,
                 dstSegment, dstLayout, dstOffset,
                 elementCount);
     }
@@ -2684,7 +2684,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
         Objects.requireNonNull(dst);
         Objects.checkFromIndexSize(srcIndex, numChars, src.length());
 
-        return AbstractMemorySegmentImpl.copy(src, dstEncoding, srcIndex, dst, dstOffset, numChars);
+        return MemorySegmentImpl.copy(src, dstEncoding, srcIndex, dst, dstOffset, numChars);
     }
 
     /**
@@ -2735,8 +2735,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     static long mismatch(MemorySegment srcSegment, long srcFromOffset, long srcToOffset,
                          MemorySegment dstSegment, long dstFromOffset, long dstToOffset) {
         return SegmentBulkOperations.mismatch(
-                (AbstractMemorySegmentImpl)Objects.requireNonNull(srcSegment), srcFromOffset, srcToOffset,
-                (AbstractMemorySegmentImpl)Objects.requireNonNull(dstSegment), dstFromOffset, dstToOffset);
+                (MemorySegmentImpl)Objects.requireNonNull(srcSegment), srcFromOffset, srcToOffset,
+                (MemorySegmentImpl)Objects.requireNonNull(dstSegment), dstFromOffset, dstToOffset);
     }
 
     /**

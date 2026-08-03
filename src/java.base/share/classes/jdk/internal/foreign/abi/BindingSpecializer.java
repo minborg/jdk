@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 
 package jdk.internal.foreign.abi;
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.Utils;
 import jdk.internal.foreign.abi.Binding.Allocate;
@@ -94,7 +94,7 @@ public class BindingSpecializer {
     private static final ClassDesc CD_MemorySegment = referenceClassDesc(MemorySegment.class);
     private static final ClassDesc CD_MemorySegment_Scope = referenceClassDesc(MemorySegment.Scope.class);
     private static final ClassDesc CD_SharedUtils = referenceClassDesc(SharedUtils.class);
-    private static final ClassDesc CD_AbstractMemorySegmentImpl = referenceClassDesc(AbstractMemorySegmentImpl.class);
+    private static final ClassDesc CD_MemorySegmentImpl = referenceClassDesc(MemorySegmentImpl.class);
     private static final ClassDesc CD_MemorySessionImpl = referenceClassDesc(MemorySessionImpl.class);
     private static final ClassDesc CD_Utils = referenceClassDesc(Utils.class);
     private static final ClassDesc CD_SegmentAllocator = referenceClassDesc(SegmentAllocator.class);
@@ -506,8 +506,8 @@ public class BindingSpecializer {
     }
 
     private void emitAcquireScope() {
-        cb.checkcast(CD_AbstractMemorySegmentImpl)
-          .invokevirtual(CD_AbstractMemorySegmentImpl, "sessionImpl", MTD_SESSION_IMPL);
+        cb.checkcast(CD_MemorySegmentImpl)
+          .invokevirtual(CD_MemorySegmentImpl, "sessionImpl", MTD_SESSION_IMPL);
         Label skipAcquire = cb.newLabel();
         Label end = cb.newLabel();
 
@@ -799,8 +799,8 @@ public class BindingSpecializer {
 
     private void emitSegmentBase() {
         popType(MemorySegment.class);
-        cb.checkcast(CD_AbstractMemorySegmentImpl)
-          .invokevirtual(CD_AbstractMemorySegmentImpl, "unsafeGetBase", MTD_UNSAFE_GET_BASE);
+        cb.checkcast(CD_MemorySegmentImpl)
+          .invokevirtual(CD_MemorySegmentImpl, "unsafeGetBase", MTD_UNSAFE_GET_BASE);
         pushType(Object.class);
     }
 
@@ -811,8 +811,8 @@ public class BindingSpecializer {
             cb.dup()
               .invokestatic(CD_SharedUtils, "checkNative", MTD_CHECK_NATIVE);
         }
-        cb.checkcast(CD_AbstractMemorySegmentImpl)
-          .invokevirtual(CD_AbstractMemorySegmentImpl, "unsafeGetOffset", MTD_UNSAFE_GET_OFFSET);
+        cb.checkcast(CD_MemorySegmentImpl)
+          .invokevirtual(CD_MemorySegmentImpl, "unsafeGetOffset", MTD_UNSAFE_GET_OFFSET);
 
         pushType(long.class);
     }

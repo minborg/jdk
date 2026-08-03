@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 
 package jdk.internal.foreign.abi.fallback;
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.CapturableState;
@@ -151,7 +151,7 @@ public final class FallbackLinker extends AbstractLinker {
             Object[] heapBases = invData.allowsHeapAccess() ? new Object[args.length] : null;
 
             MemorySegment target = (MemorySegment) args[argStart++];
-            MemorySessionImpl targetImpl = ((AbstractMemorySegmentImpl) target).sessionImpl();
+            MemorySessionImpl targetImpl = ((MemorySegmentImpl) target).sessionImpl();
             targetImpl.acquire0();
             acquiredSessions.add(targetImpl);
 
@@ -164,7 +164,7 @@ public final class FallbackLinker extends AbstractLinker {
                 } else {
                     captureStateHeapBase = capturedState.heapBase().orElse(null);
                 }
-                MemorySessionImpl capturedStateImpl = ((AbstractMemorySegmentImpl) capturedState).sessionImpl();
+                MemorySessionImpl capturedStateImpl = ((MemorySegmentImpl) capturedState).sessionImpl();
                 capturedStateImpl.acquire0();
                 acquiredSessions.add(capturedStateImpl);
             }
@@ -176,7 +176,7 @@ public final class FallbackLinker extends AbstractLinker {
                 MemoryLayout layout = argLayouts.get(i);
 
                 if (layout instanceof AddressLayout) {
-                    AbstractMemorySegmentImpl ms = (AbstractMemorySegmentImpl) arg;
+                    MemorySegmentImpl ms = (MemorySegmentImpl) arg;
                     MemorySessionImpl sessionImpl = ms.sessionImpl();
                     sessionImpl.acquire0();
                     acquiredSessions.add(sessionImpl);

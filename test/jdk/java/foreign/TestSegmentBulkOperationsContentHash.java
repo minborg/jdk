@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@
  * @run junit TestSegmentBulkOperationsContentHash
  */
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.SegmentBulkOperations;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -133,7 +133,7 @@ final class TestSegmentBulkOperationsContentHash {
     }
 
     private static int hash(MemorySegment segment, long fromOffset, long toOffset) {
-        return SegmentBulkOperations.contentHash((AbstractMemorySegmentImpl) segment, fromOffset, toOffset);
+        return SegmentBulkOperations.contentHash((MemorySegmentImpl) segment, fromOffset, toOffset);
     }
 
     private static final int MAX_SIZE = 1 << 10;

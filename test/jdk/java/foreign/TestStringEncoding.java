@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySegmentImpl;
 import jdk.internal.foreign.StringSupport;
 import org.testng.annotations.*;
 
@@ -515,14 +515,14 @@ public class TestStringEncoding {
                     }
                     segment.setAtIndex(JAVA_BYTE, len, (byte) 0);
                     for (int j = 0; j < len; j++) {
-                        int actual = StringSupport.strlenByte((AbstractMemorySegmentImpl) segment, j, segment.byteSize());
+                        int actual = StringSupport.strlenByte((MemorySegmentImpl) segment, j, segment.byteSize());
                         assertEquals(actual, len - j);
                     }
                     // Test end offset
                     for (int j = 0; j < len - 1; j++) {
                         final long toOffset = j;
                         expectThrows(IndexOutOfBoundsException.class, () ->
-                                StringSupport.strlenByte((AbstractMemorySegmentImpl) segment, 0, toOffset));
+                                StringSupport.strlenByte((MemorySegmentImpl) segment, 0, toOffset));
                     }
                 }
             }
@@ -545,7 +545,7 @@ public class TestStringEncoding {
                     }
                     segment.setAtIndex(JAVA_SHORT, len, (short) 0);
                     for (int j = 0; j < len; j++) {
-                        int actual = StringSupport.strlenShort((AbstractMemorySegmentImpl) segment, j * Short.BYTES, segment.byteSize());
+                        int actual = StringSupport.strlenShort((MemorySegmentImpl) segment, j * Short.BYTES, segment.byteSize());
                         assertEquals(actual, (len - j) * Short.BYTES);
                     }
                 }
@@ -569,7 +569,7 @@ public class TestStringEncoding {
                     }
                     segment.setAtIndex(JAVA_INT, len, 0);
                     for (int j = 0; j < len; j++) {
-                        int actual = StringSupport.strlenInt((AbstractMemorySegmentImpl) segment, j * Integer.BYTES, segment.byteSize());
+                        int actual = StringSupport.strlenInt((MemorySegmentImpl) segment, j * Integer.BYTES, segment.byteSize());
                         assertEquals(actual, (len - j) * Integer.BYTES);
                     }
                 }

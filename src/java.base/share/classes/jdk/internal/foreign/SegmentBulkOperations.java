@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,7 @@ public final class SegmentBulkOperations {
     private static final int NATIVE_THRESHOLD_COPY = powerOfPropertyOr("copy", 6);
 
     @ForceInline
-    public static MemorySegment fill(AbstractMemorySegmentImpl dst, byte value) {
+    public static MemorySegment fill(MemorySegmentImpl dst, byte value) {
         dst.checkReadOnly(false);
         if (dst.length == 0) {
             // Implicit state check
@@ -103,8 +103,8 @@ public final class SegmentBulkOperations {
     }
 
     @ForceInline
-    public static void copy(AbstractMemorySegmentImpl src, long srcOffset,
-                            AbstractMemorySegmentImpl dst, long dstOffset,
+    public static void copy(MemorySegmentImpl src, long srcOffset,
+                            MemorySegmentImpl dst, long dstOffset,
                             long size) {
 
         Utils.checkNonNegativeIndex(size, "size");
@@ -192,7 +192,7 @@ public final class SegmentBulkOperations {
      * @throws IndexOutOfBoundsException if {@code toOffset - fromOffset} is {@code < 0}
      */
     @ForceInline
-    public static int contentHash(AbstractMemorySegmentImpl segment, long fromOffset, long toOffset) {
+    public static int contentHash(MemorySegmentImpl segment, long fromOffset, long toOffset) {
         final long length = toOffset - fromOffset;
         segment.checkSliceBounds(fromOffset, length);
         if (length == 0) {
@@ -246,8 +246,8 @@ public final class SegmentBulkOperations {
     }
 
     @ForceInline
-    public static long mismatch(AbstractMemorySegmentImpl src, long srcFromOffset, long srcToOffset,
-                                AbstractMemorySegmentImpl dst, long dstFromOffset, long dstToOffset) {
+    public static long mismatch(MemorySegmentImpl src, long srcFromOffset, long srcToOffset,
+                                MemorySegmentImpl dst, long dstFromOffset, long dstToOffset) {
         final long srcBytes = srcToOffset - srcFromOffset;
         final long dstBytes = dstToOffset - dstFromOffset;
         src.checkAccess(srcFromOffset, srcBytes, true);
@@ -282,8 +282,8 @@ public final class SegmentBulkOperations {
 
     // Mismatch is handled in chunks of 64 (unroll of eight 8s), 8, 4, 2, and 1 byte(s).
     @ForceInline
-    private static long mismatch(AbstractMemorySegmentImpl src, long srcFromOffset,
-                                 AbstractMemorySegmentImpl dst, long dstFromOffset,
+    private static long mismatch(MemorySegmentImpl src, long srcFromOffset,
+                                 MemorySegmentImpl dst, long dstFromOffset,
                                  long start, int length, boolean srcAndDstBytesDiffer) {
         int offset = 0;
         final int limit = length & (NATIVE_THRESHOLD_MISMATCH - 8);
