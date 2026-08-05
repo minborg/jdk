@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,8 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
-import static java.lang.foreign.ValueLayout.JAVA_INT;
+import static java.lang.foreign.ValueLayout.*;
 import static org.testng.Assert.*;
 
 public class TestSegments {
@@ -223,6 +222,46 @@ public class TestSegments {
                     "which is outside the valid range 0 <= offset+length < byteSize (=10)"));
         } catch (Exception ex) {
             fail("Unexpected exception type thrown: " + ex);
+        }
+    }
+
+    @Test(dataProvider = "getAtIndexAccessors")
+    public void testSegmentAccessWrapAround(String name, IndexedVariant testCase) {
+        try (Arena arena = Arena.ofConfined()) {
+            // Enough aligned storage for wrapped offsets 0, 2, 4 and 8.
+            MemorySegment segment = arena.allocate(16, 8);
+
+            long zeroWrap = 1L << (Long.SIZE - testCase.shifts());
+            long positiveWrap = 1L << (Long.SIZE - 2);
+            long negativeWrap = Long.MIN_VALUE;
+
+            long[] invalidIndices;
+            if (testCase.shifts() == 0) {
+                invalidIndices = new long[]{
+                        positiveWrap,
+                        positiveWrap + 1,
+                        negativeWrap,
+                        negativeWrap + 1
+                };
+            } else {
+                invalidIndices = new long[]{
+                        zeroWrap,
+                        positiveWrap,
+                        positiveWrap + 1,
+                        negativeWrap,
+                        negativeWrap + 1
+                };
+            }
+
+            for (long index : invalidIndices) {
+                assertOutOfBounds(name, index, () -> testCase.indexedGetter().get(segment, index));
+                assertOutOfBounds(name, index, () -> testCase.indexedSetter().set(segment, index));
+            }
+
+            // Make sure the backing segment was not updated
+            assertTrue(segment.elements(JAVA_BYTE)
+                    .allMatch(s -> s.get(JAVA_BYTE, 0) == (byte) 0));
+
         }
     }
 
@@ -538,4 +577,90 @@ public class TestSegments {
                 { (IntFunction<MemorySegment>) size -> MemorySegment.ofArray(new double[size]), 8 }
         };
     }
+
+    private static void assertOutOfBounds(String name, long index, Runnable action) {
+        try {
+            action.run();
+        } catch (IndexOutOfBoundsException expected) {
+            return;
+        } catch (Throwable unexpected) {
+            throw new AssertionError(
+                    "Unexpected exception for " + name + ", index=" + index,
+                    unexpected);
+        }
+        throw new AssertionError(
+                "Expected IndexOutOfBoundsException for " + name + ", index=" + index);
+    }
+
+    @FunctionalInterface
+    private interface IndexedGetter {
+        Object get(MemorySegment segment, long index);
+    }
+
+    @FunctionalInterface
+    private interface IndexedSetter {
+        void set(MemorySegment segment, long index);
+    }
+
+    private record IndexedVariant<T>(ValueLayout layout,
+                                     int shifts,
+                                     IndexedGetter indexedGetter,
+                                     IndexedSetter indexedSetter) {
+
+        public IndexedVariant(ValueLayout layout, IndexedGetter indexedGetter, IndexedSetter indexedSetter) {
+            this(layout, shifts(layout), indexedGetter, indexedSetter);
+        }
+
+        @Override
+        public String toString() {
+            return layout.carrier().toString();
+        }
+
+        static int shifts(ValueLayout layout) {
+            return switch ((int)layout.byteSize()) {
+                case 1 -> 0;
+                case 2 -> 1;
+                case 4 -> 2;
+                case 8 -> 3;
+                default -> throw new IllegalArgumentException();
+            };
+        }
+    }
+
+    @DataProvider
+    public Object[][] getAtIndexAccessors() {
+        return new Object[][] {
+                {"JAVA_BYTE", new IndexedVariant(JAVA_BYTE,
+                        (s, i) -> s.getAtIndex(ValueLayout.JAVA_BYTE, i),
+                        (s, i) -> s.setAtIndex(ValueLayout.JAVA_BYTE, i, Byte.MAX_VALUE)),
+                },
+                {"JAVA_BOOLEAN", new IndexedVariant(JAVA_BOOLEAN,
+                        (s, i) -> s.getAtIndex(ValueLayout.JAVA_BOOLEAN, i),
+                        (s, i) -> s.setAtIndex(ValueLayout.JAVA_BOOLEAN, i, false))},
+                {"JAVA_SHORT", new IndexedVariant(JAVA_SHORT,
+                        (s, i) -> s.getAtIndex(ValueLayout.JAVA_SHORT, i),
+                        (s, i) -> s.setAtIndex(ValueLayout.JAVA_SHORT, i, Short.MAX_VALUE))},
+                {"JAVA_CHAR", new IndexedVariant(JAVA_CHAR,
+                        (s, i) -> s.getAtIndex(ValueLayout.JAVA_CHAR, i),
+                        (s, i) -> s.setAtIndex(ValueLayout.JAVA_CHAR, i, Character.MAX_VALUE))},
+                {"JAVA_INT", new IndexedVariant(JAVA_INT,
+                        (s, i) -> s.getAtIndex(ValueLayout.JAVA_INT, i),
+                        (s, i) -> s.setAtIndex(ValueLayout.JAVA_INT, i, Integer.MAX_VALUE))},
+                {"JAVA_FLOAT", new IndexedVariant(JAVA_FLOAT,
+                        (s, i) -> s.getAtIndex(ValueLayout.JAVA_FLOAT, i),
+                        (s, i) -> s.setAtIndex(ValueLayout.JAVA_FLOAT, i, Float.MAX_VALUE))},
+                {"JAVA_LONG", new IndexedVariant(JAVA_LONG,
+                        (s, i) -> s.getAtIndex(ValueLayout.JAVA_LONG, i),
+                        (s, i) -> s.setAtIndex(ValueLayout.JAVA_LONG, i, Long.MAX_VALUE))},
+                {"JAVA_DOUBLE", new IndexedVariant(JAVA_DOUBLE,
+                        (s, i) -> s.getAtIndex(ValueLayout.JAVA_DOUBLE, i),
+                        (s, i) -> s.setAtIndex(ValueLayout.JAVA_DOUBLE, i, Double.MAX_VALUE))},
+                {"ADDRESS", new IndexedVariant(ADDRESS,
+                        (s, i) -> s.getAtIndex(ValueLayout.ADDRESS, i),
+                        (s, i) -> s.setAtIndex(ValueLayout.ADDRESS, i, MemorySegment.NULL)
+                )}
+        };
+    }
+
+
 }

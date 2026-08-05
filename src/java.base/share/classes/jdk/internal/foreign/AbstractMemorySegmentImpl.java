@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,16 +48,16 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Spliterator;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import static java.lang.foreign.ValueLayout.*;
 
 /**
  * This abstract class provides an immutable implementation for the {@code MemorySegment} interface. This class contains information
@@ -73,6 +73,15 @@ public abstract sealed class AbstractMemorySegmentImpl
         permits HeapMemorySegmentImpl, NativeMemorySegmentImpl {
 
     static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
+
+    // Index masks for speedy index checks including capturing negative indices.
+    private static final long INDEX_MASK_1_BYTE = indexMask(JAVA_BYTE);
+    private static final long INDEX_MASK_2_BYTES = indexMask(JAVA_SHORT);
+    private static final long INDEX_MASK_4_BYTES = indexMask(JAVA_INT);
+    private static final long INDEX_MASK_8_BYTES = indexMask(JAVA_LONG);
+    private static final long INDEX_MASK_ADDRESS = indexMask(ADDRESS);
+    private static final long SHIFTS_ADDRESS = ADDRESS.byteSize() == 8 ? 3 : 2;
+    private static final String LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE = "Layout alignment greater than its size";
 
     final long length;
     final boolean readOnly;
@@ -834,128 +843,146 @@ public abstract sealed class AbstractMemorySegmentImpl
     @ForceInline
     @Override
     public byte getAtIndex(ValueLayout.OfByte layout, long index) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (byte) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_1_BYTE, index);
+        return (byte) layout.varHandle().get((MemorySegment)this, index);
     }
 
     @ForceInline
     @Override
     public boolean getAtIndex(ValueLayout.OfBoolean layout, long index) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (boolean) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_1_BYTE, index);
+        return (boolean) layout.varHandle().get((MemorySegment)this, index);
     }
 
     @ForceInline
     @Override
     public char getAtIndex(ValueLayout.OfChar layout, long index) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (char) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_2_BYTES, index);
+        return (char) layout.varHandle().get((MemorySegment)this, index << 1);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfChar layout, long index, char value) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_2_BYTES, index);
+        layout.varHandle().set((MemorySegment)this, index << 1, value);
     }
 
     @ForceInline
     @Override
     public short getAtIndex(ValueLayout.OfShort layout, long index) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (short) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_2_BYTES, index);
+        return (short) layout.varHandle().get((MemorySegment)this, index << 1);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfByte layout, long index, byte value) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_1_BYTE, index);
+        layout.varHandle().set((MemorySegment)this, index, value);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfBoolean layout, long index, boolean value) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_1_BYTE, index);
+        layout.varHandle().set((MemorySegment)this, index, value);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfShort layout, long index, short value) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_2_BYTES, index);
+        layout.varHandle().set((MemorySegment)this, index << 1, value);
     }
 
     @ForceInline
     @Override
     public int getAtIndex(ValueLayout.OfInt layout, long index) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (int) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_4_BYTES, index);
+        return (int) layout.varHandle().get((MemorySegment)this, index << 2);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfInt layout, long index, int value) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_4_BYTES, index);
+        layout.varHandle().set((MemorySegment)this, index << 2, value);
     }
 
     @ForceInline
     @Override
     public float getAtIndex(ValueLayout.OfFloat layout, long index) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (float) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_4_BYTES, index);
+        return (float) layout.varHandle().get((MemorySegment)this, index << 2);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfFloat layout, long index, float value) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_4_BYTES, index);
+        layout.varHandle().set((MemorySegment)this, index << 2, value);
     }
 
     @ForceInline
     @Override
     public long getAtIndex(ValueLayout.OfLong layout, long index) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (long) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_8_BYTES, index);
+        return (long) layout.varHandle().get((MemorySegment)this, index << 3);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfLong layout, long index, long value) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_8_BYTES, index);
+        layout.varHandle().set((MemorySegment)this, index << 3, value);
     }
 
     @ForceInline
     @Override
     public double getAtIndex(ValueLayout.OfDouble layout, long index) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (double) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_8_BYTES, index);
+        return (double) layout.varHandle().get((MemorySegment)this, index << 3);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(ValueLayout.OfDouble layout, long index, double value) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_8_BYTES, index);
+        layout.varHandle().set((MemorySegment)this, index << 3, value);
     }
 
     @ForceInline
     @Override
     public MemorySegment getAtIndex(AddressLayout layout, long index) {
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        return (MemorySegment) layout.varHandle().get((MemorySegment)this, index * layout.byteSize());
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_ADDRESS, index);
+        return (MemorySegment) layout.varHandle().get((MemorySegment)this, index << SHIFTS_ADDRESS);
     }
 
     @ForceInline
     @Override
     public void setAtIndex(AddressLayout layout, long index, MemorySegment value) {
         Objects.requireNonNull(value);
-        Utils.checkElementAlignment(layout, "Layout alignment greater than its size");
-        layout.varHandle().set((MemorySegment)this, index * layout.byteSize(), value);
+        Utils.checkElementAlignment(layout, LAYOUT_ALIGNMENT_GREATER_THAN_ITS_SIZE);
+        checkIndex(layout, INDEX_MASK_ADDRESS, index);
+        layout.varHandle().set((MemorySegment)this, index << SHIFTS_ADDRESS, value);
     }
 
     @ForceInline
@@ -985,4 +1012,17 @@ public abstract sealed class AbstractMemorySegmentImpl
         Objects.requireNonNull(str);
         StringSupport.write(this, offset, charset, str);
     }
+
+    @ForceInline
+    private static void checkIndex(ValueLayout layout, long mask, long index) {
+        if ((index & mask) != 0) {
+            throw new IndexOutOfBoundsException("Index out of bounds for " + layout + ": " + index);
+        }
+    }
+
+    private static long indexMask(ValueLayout layout) {
+        int shift = Long.numberOfTrailingZeros(layout.byteSize());
+        return Long.MIN_VALUE >> shift;
+    }
+
 }
