@@ -26,8 +26,6 @@ package org.openjdk.bench.java.lang.foreign;
 import org.openjdk.jmh.annotations.*;
 
 import java.lang.foreign.*;
-import java.lang.foreign.MemorySegment.Scope;
-import java.lang.invoke.MethodHandle;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -40,16 +38,27 @@ public class NestedArenasAllocTest {
 
     @Benchmark
     public long alloc_confined_nested() {
-        return allocateNested();
+        return allocateConfinedNested();
     }
 
     @Benchmark
     @Fork(value = 3, jvmArgsAppend = {"-Djava.lang.foreign.native.confined.pool.power.size=0"})
     public long alloc_confined_nested_no_pool() {
-        return allocateNested();
+        return allocateConfinedNested();
     }
 
-    private static long allocateNested() {
+    @Benchmark
+    public long alloc_auto_nested() {
+        return allocateAutoNested();
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgsAppend = {"-Djava.lang.foreign.native.shared.pool.power.size=0"})
+    public long alloc_auto_nested_no_pool() {
+        return allocateAutoNested();
+    }
+
+    private static long allocateConfinedNested() {
         // Four nested and cached arenas and one overflow
         try (Arena a0 = Arena.ofConfined();
              Arena a1 = Arena.ofConfined();
@@ -62,6 +71,21 @@ public class NestedArenasAllocTest {
                     + allocateFour(a3)
                     + allocateFour(a4);
         }
+    }
+
+    private static long allocateAutoNested() {
+        // Five arenas
+        Arena a0 = Arena.ofAuto();
+        Arena a1 = Arena.ofAuto();
+        Arena a2 = Arena.ofAuto();
+        Arena a3 = Arena.ofAuto();
+        Arena a4 = Arena.ofAuto();
+        return allocateFour(a0)
+                + allocateFour(a1)
+                + allocateFour(a2)
+                + allocateFour(a3)
+                + allocateFour(a4);
+
     }
 
     private static long allocateFour(Arena arena) {

@@ -148,7 +148,13 @@ public sealed class ArenaImpl implements Arena {
      */
     static final class OfConcurrent extends ArenaImpl {
 
-        private static final long POOL_SIZE = ConfinedSegmentPool.pooledMemorySize();
+
+        // Internal tuning knob; no behavioral or compatibility guarantees are given.
+        // Setting the pool-size power to 0 disables confined pooling.
+        private static final String POOLED_MEMORY_PROPERTY = "java.lang.foreign.native.shared.pool.power.size";
+
+        // -1 disables pooling; otherwise the pool size is a power of two
+        private static final long POOL_SIZE = ConfinedSegmentPool.clampedPowerOfPropertyOr(POOLED_MEMORY_PROPERTY, 6);
 
         private volatile ConcurrentPool pool;
 

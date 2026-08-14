@@ -276,7 +276,7 @@ public final class ConfinedSegmentPool {
         }
     }
 
-    private static int clampedPowerOfPropertyOr(String name, int defaultPower) {
+    static int clampedPowerOfPropertyOr(String name, int defaultPower) {
         if (VM.isDirectMemoryPageAligned()) {
             return -1;
         }
