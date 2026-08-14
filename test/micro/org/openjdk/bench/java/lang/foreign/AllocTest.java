@@ -69,6 +69,43 @@ public class AllocTest extends CLayouts {
     }
 
     @Benchmark
+    public long alloc_shared() {
+        try (Arena arena = Arena.ofShared()) {
+            return arena.allocate(size).address();
+        }
+    }
+
+    @Fork(jvmArgsAppend = {"-Djava.lang.foreign.native.confined.pool.power.size=0"})
+    @Benchmark
+    public long alloc_shared_no_pool() {
+        try (Arena arena = Arena.ofShared()) {
+            return arena.allocate(size).address();
+        }
+    }
+
+    @Benchmark
+    public long alloc_auto() {
+        return Arena.ofAuto().allocate(size).address();
+    }
+
+    @Fork(jvmArgsAppend = {"-Djava.lang.foreign.native.confined.pool.power.size=0"})
+    @Benchmark
+    public long alloc_auto_no_pool() {
+        return Arena.ofAuto().allocate(size).address();
+    }
+
+    @Benchmark
+    public long alloc_global() {
+        return Arena.global().allocate(size).address();
+    }
+
+    @Fork(jvmArgsAppend = {"-Djava.lang.foreign.native.confined.pool.power.size=0"})
+    @Benchmark
+    public long alloc_global_no_pool() {
+        return Arena.global().allocate(size).address();
+    }
+
+    @Benchmark
     public long alloc_calloc_arena() {
         try (CallocArena arena = new CallocArena()) {
             return arena.allocate(size).address();
