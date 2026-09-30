@@ -23,16 +23,14 @@
 
 /*
  * @test
- * @summary Recover an instance or static field VarHandle from an ordinary getter lambda
- * @modules java.base/java.lang.invoke:open
+ * @summary Recover field and array element VarHandles from ordinary getter lambdas
+ * @modules java.base/jdk.internal.invoke
  * @run junit FindVarHandleTest
  * @run junit/othervm -Xint FindVarHandleTest
  */
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.lang.invoke.LazyUpdaters;
-import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.VarHandle;
@@ -43,12 +41,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.DoubleSupplier;
 import java.util.function.Function;
+import java.util.function.IntBinaryOperator;
 import java.util.function.IntSupplier;
+import java.util.function.IntUnaryOperator;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
+
+import jdk.internal.invoke.LazyUpdaterSupport;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -62,23 +64,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class FindVarHandleTest {
     private static final Lookup LOOKUP = MethodHandles.lookup();
-    private static final MethodHandle FIND_VAR_HANDLE;
-
-    static {
-        try {
-            var method = LazyUpdaters.class.getDeclaredMethod("findVarHandle", Lookup.class, Object.class);
-            method.setAccessible(true);
-            FIND_VAR_HANDLE = LOOKUP.unreflect(method);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-    }
 
     private static int selectorInvocations;
     private static boolean staticHolderInitialized;
 
-    private static VarHandle findVarHandle(Lookup lookup, Object selector) throws Throwable {
-        return (VarHandle) FIND_VAR_HANDLE.invokeExact(lookup, selector);
+    private static VarHandle findVarHandle(Lookup lookup, Object selector)
+            throws IllegalAccessException {
+        return LazyUpdaterSupport.findVarHandle(lookup, selector);
     }
 
     interface BooleanField { boolean get(Holder p); }
@@ -95,6 +87,20 @@ public class FindVarHandleTest {
         @Override
         String apply(Holder p);
     }
+    interface IntArrayElement { int get(int[] array, int index); }
+    interface StringArrayElement { String get(String[] array, int index); }
+    interface GenericArrayElement<A, R> { R get(A array, int index); }
+    interface BooleanArrayElement { boolean get(boolean[] array, int index); }
+    interface ByteArrayElement { byte get(byte[] array, int index); }
+    interface ShortArrayElement { short get(short[] array, int index); }
+    interface CharArrayElement { char get(char[] array, int index); }
+    interface LongArrayElement { long get(long[] array, int index); }
+    interface FloatArrayElement { float get(float[] array, int index); }
+    interface DoubleArrayElement { double get(double[] array, int index); }
+    interface IntArray2DElement { int get(int[][] array, int row, int column); }
+    interface StringArray2DElement { String get(String[][] array, int row, int column); }
+    interface OwnerArrayElement { int get(ArrayOwner owner, int index); }
+    interface OwnerArray2DElement { int get(ArrayOwner owner, int row, int column); }
 
     static class Parent {
         int inherited;
@@ -119,6 +125,16 @@ public class FindVarHandleTest {
         double radius() {
             return radius;
         }
+    }
+
+    static class ArrayOwner {
+        private final int[] row = new int[3];
+        private final int[][] matrix = { new int[3], new int[3] };
+    }
+
+    static class StaticArrayHolder {
+        private static final int[] row = new int[3];
+        private static final int[][] matrix = { new int[3], new int[3] };
     }
 
     static class StaticHolder {
@@ -220,6 +236,151 @@ public class FindVarHandleTest {
         checkStaticField((Supplier<int[]>) () -> StaticHolder.array, int[].class, null, new int[] { 1, 2 });
     }
 
+    @Test
+    public void testDirectArrayElements() throws Throwable {
+        VarHandle ints = findVarHandle(LOOKUP,
+                (IntArrayElement) (array, index) -> array[index]);
+        assertSame(int.class, ints.varType());
+        assertEquals(List.of(int[].class, int.class), ints.coordinateTypes());
+        int[] numbers = { 7, 0, 0 };
+        assertEquals(7, (int) ints.get(numbers, 0));
+        ints.set(numbers, 1, 12);
+        assertEquals(12, numbers[1]);
+        assertEquals(0, (int) ints.compareAndExchangeRelease(numbers, 2, 0, 19));
+        assertEquals(19, numbers[2]);
+        assertEquals(7, numbers[0]);
+
+        GenericArrayElement<int[], Integer> boxed = (array, index) -> array[index];
+        VarHandle erased = findVarHandle(LOOKUP, boxed);
+        assertSame(int.class, erased.varType());
+        assertEquals(List.of(int[].class, int.class), erased.coordinateTypes());
+        assertEquals(12, (int) erased.get(numbers, 1));
+
+        VarHandle references = findVarHandle(LOOKUP,
+                (StringArrayElement) (array, index) -> array[index]);
+        assertSame(String.class, references.varType());
+        assertEquals(List.of(String[].class, int.class), references.coordinateTypes());
+        String[] words = { "first", null };
+        assertEquals("first", (String) references.get(words, 0));
+        references.set(words, 1, "second");
+        assertEquals("second", words[1]);
+    }
+
+    @Test
+    public void testPrimitiveArrayLoadOpcodes() throws Throwable {
+        checkPrimitiveArray((BooleanArrayElement) (array, index) -> array[index],
+                boolean.class, new boolean[] { false, true }, true);
+        checkPrimitiveArray((ByteArrayElement) (array, index) -> array[index],
+                byte.class, new byte[] { 0, 12 }, (byte) 12);
+        checkPrimitiveArray((ShortArrayElement) (array, index) -> array[index],
+                short.class, new short[] { 0, 123 }, (short) 123);
+        checkPrimitiveArray((CharArrayElement) (array, index) -> array[index],
+                char.class, new char[] { '\0', 'x' }, 'x');
+        checkPrimitiveArray((LongArrayElement) (array, index) -> array[index],
+                long.class, new long[] { 0, 123456789L }, 123456789L);
+        checkPrimitiveArray((FloatArrayElement) (array, index) -> array[index],
+                float.class, new float[] { 0, 1.25f }, 1.25f);
+        checkPrimitiveArray((DoubleArrayElement) (array, index) -> array[index],
+                double.class, new double[] { 0, 2.5 }, 2.5);
+    }
+
+    private static void checkPrimitiveArray(Object selector, Class<?> type,
+                                            Object array, Object expected) throws Throwable {
+        VarHandle handle = findVarHandle(LOOKUP, selector);
+        assertSame(type, handle.varType());
+        assertEquals(List.of(array.getClass(), int.class), handle.coordinateTypes());
+        assertEquals(expected, (Object) handle.get(array, 1));
+    }
+
+    @Test
+    public void testTwoDimensionalArrayElements() throws Throwable {
+        VarHandle ints = findVarHandle(LOOKUP,
+                (IntArray2DElement) (array, row, column) -> array[row][column]);
+        assertSame(int.class, ints.varType());
+        assertEquals(List.of(int[][].class, int.class, int.class), ints.coordinateTypes());
+        int[][] numbers = { { 7, 0, 0 }, { 0, 0, 0 } };
+        assertEquals(7, (int) ints.get(numbers, 0, 0));
+        ints.set(numbers, 1, 2, 12);
+        assertEquals(12, numbers[1][2]);
+        assertEquals(0, (int) ints.compareAndExchangeRelease(numbers, 0, 2, 0, 19));
+        assertEquals(19, numbers[0][2]);
+        assertEquals(0, numbers[1][0]);
+
+        VarHandle references = findVarHandle(LOOKUP,
+                (StringArray2DElement) (array, row, column) -> array[row][column]);
+        assertSame(String.class, references.varType());
+        assertEquals(List.of(String[][].class, int.class, int.class), references.coordinateTypes());
+        String[][] words = { { null, "first" }, { null, null } };
+        assertEquals("first", (String) references.get(words, 0, 1));
+        references.set(words, 1, 1, "second");
+        assertEquals("second", words[1][1]);
+    }
+
+    @Test
+    public void testSwappedArrayIndices() throws Throwable {
+        VarHandle handle = findVarHandle(LOOKUP,
+                (IntArray2DElement) (array, i0, i1) -> array[i1][i0]);
+        assertSame(int.class, handle.varType());
+        assertEquals(List.of(int[][].class, int.class, int.class), handle.coordinateTypes());
+        int[][] numbers = { { 0, 0, 7 }, { 0, 0, 0 } };
+        assertEquals(7, (int) handle.get(numbers, 2, 0));
+        handle.set(numbers, 2, 1, 12);
+        assertEquals(12, numbers[1][2]);
+        assertEquals(0, (int) handle.compareAndExchangeRelease(numbers, 1, 0, 0, 19));
+        assertEquals(19, numbers[0][1]);
+        assertEquals(7, numbers[0][2]);
+        assertEquals(0, numbers[1][1]);
+    }
+
+    @Test
+    public void testStaticArrayElements() throws Throwable {
+        VarHandle row = findVarHandle(LOOKUP,
+                (IntUnaryOperator) index -> StaticArrayHolder.row[index]);
+        assertSame(int.class, row.varType());
+        assertEquals(List.of(int.class), row.coordinateTypes());
+        row.set(1, 12);
+        assertEquals(12, (int) row.get(1));
+        assertEquals(0, (int) row.compareAndExchangeRelease(2, 0, 19));
+        assertEquals(19, StaticArrayHolder.row[2]);
+
+        VarHandle matrix = findVarHandle(LOOKUP,
+                (IntBinaryOperator) (i, j) -> StaticArrayHolder.matrix[i][j]);
+        assertSame(int.class, matrix.varType());
+        assertEquals(List.of(int.class, int.class), matrix.coordinateTypes());
+        matrix.set(1, 2, 23);
+        assertEquals(23, (int) matrix.get(1, 2));
+        assertEquals(23, StaticArrayHolder.matrix[1][2]);
+
+        VarHandle swapped = findVarHandle(LOOKUP,
+                (IntBinaryOperator) (i, j) -> StaticArrayHolder.matrix[j][i]);
+        assertEquals(List.of(int.class, int.class), swapped.coordinateTypes());
+        assertEquals(23, (int) swapped.get(2, 1));
+        swapped.set(1, 0, 17);
+        assertEquals(17, StaticArrayHolder.matrix[0][1]);
+    }
+
+    @Test
+    public void testArrayElementsThroughFinalOwnerFields() throws Throwable {
+        VarHandle row = findVarHandle(LOOKUP,
+                (OwnerArrayElement) (owner, index) -> owner.row[index]);
+        assertSame(int.class, row.varType());
+        assertEquals(List.of(ArrayOwner.class, int.class), row.coordinateTypes());
+        ArrayOwner owner = new ArrayOwner();
+        row.set(owner, 1, 12);
+        assertEquals(12, owner.row[1]);
+        assertEquals(0, (int) row.compareAndExchangeRelease(owner, 2, 0, 19));
+        assertEquals(19, owner.row[2]);
+
+        VarHandle matrix = findVarHandle(LOOKUP,
+                (OwnerArray2DElement) (value, i0, i1) -> value.matrix[i0][i1]);
+        assertSame(int.class, matrix.varType());
+        assertEquals(List.of(ArrayOwner.class, int.class, int.class), matrix.coordinateTypes());
+        matrix.set(owner, 1, 2, 23);
+        assertEquals(23, (int) matrix.get(owner, 1, 2));
+        assertEquals(23, owner.matrix[1][2]);
+        assertEquals(0, owner.matrix[0][2]);
+    }
+
     private static void checkField(Object selector, Class<?> fieldType,
                                    Object initial, Object replacement) throws Throwable {
         assertFalse(selector instanceof java.io.Serializable,
@@ -300,6 +461,14 @@ public class FindVarHandleTest {
                 () -> findVarHandle(MethodHandles.publicLookup(), staticSelector));
         assertThrows(IllegalAccessException.class,
                 () -> findVarHandle(LOOKUP.dropLookupMode(Lookup.PRIVATE), staticSelector));
+
+        OwnerArrayElement arraySelector = (owner, index) -> owner.row[index];
+        assertThrows(IllegalAccessException.class,
+                () -> findVarHandle(MethodHandles.publicLookup(), arraySelector));
+
+        IntUnaryOperator staticArraySelector = index -> StaticArrayHolder.row[index];
+        assertThrows(IllegalAccessException.class,
+                () -> findVarHandle(MethodHandles.publicLookup(), staticArraySelector));
     }
 
     @Test
@@ -338,6 +507,8 @@ public class FindVarHandleTest {
             selectorInvocations++;
             return p.radius;
         });
+        reject((IntArray2DElement) (array, i0, i1) -> array[i0][i0]);
+        reject((IntBinaryOperator) (i0, i1) -> StaticArrayHolder.matrix[i0][i0]);
         reject(new ToDoubleFunction<Holder>() {
             @Override
             public double applyAsDouble(Holder p) {

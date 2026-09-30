@@ -399,11 +399,11 @@ public class MOAT {
             testMapMutatorsAlwaysThrow(map);
         }
 
-        // Lazy factories and their views obey the ordinary collection contracts
+        // LazyCaches factories and their views obey the ordinary collection contracts
         // in both initialization modes.
-        for (Lazy.Mode mode : Lazy.Mode.values()) {
+        for (LazyCaches.Mode mode : LazyCaches.Mode.values()) {
             for (int size : new int[] { 0, 1, 3 }) {
-                List<Integer> lazyList = Lazy.ofList(mode, size, i -> i + 1);
+                List<Integer> lazyList = LazyCaches.ofList(mode, size, i -> i + 1);
                 for (List<Integer> list : List.of(lazyList, lazyList.reversed(),
                         lazyList.subList(0, size), lazyList.reversed().subList(0, size))) {
                     testCollection(list);
@@ -416,8 +416,8 @@ public class MOAT {
                     }
                 }
                 Set<Integer> keys = Set.copyOf(List.of(1, 2, 3).subList(0, size));
-                for (Set<Integer> set : List.of(Lazy.ofSet(mode, keys, _ -> true),
-                        Lazy.ofSet(mode, keys, i -> i % 2 == 0))) {
+                for (Set<Integer> set : List.of(LazyCaches.ofSet(mode, keys, _ -> true),
+                        LazyCaches.ofSet(mode, keys, i -> i % 2 == 0))) {
                     testCollection(set);
                     testImmutableSet(set, 99);
                     testCollMutatorsAlwaysThrow(set);
@@ -426,7 +426,7 @@ public class MOAT {
                         testEmptyCollMutatorsAlwaysThrow(set);
                     }
                 }
-                Map<Integer,Integer> map = Lazy.ofMap(mode, keys, k -> k + 100);
+                Map<Integer,Integer> map = LazyCaches.ofMap(mode, keys, k -> k + 100);
                 testMap(map);
                 testImmutableMap(map);
                 testMapMutatorsAlwaysThrow(map);

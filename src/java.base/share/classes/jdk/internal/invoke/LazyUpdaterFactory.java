@@ -23,12 +23,14 @@
  * questions.
  */
 
-package java.lang.invoke;
+package jdk.internal.invoke;
 
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.TypeKind;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -37,14 +39,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 
+import jdk.internal.access.SharedSecrets;
+
 import static java.lang.classfile.ClassFile.*;
 import static java.lang.constant.ConstantDescs.*;
-import static java.lang.invoke.MethodHandles.Lookup.IMPL_LOOKUP;
 import static jdk.internal.constant.ConstantUtils.methodTypeDesc;
 import static jdk.internal.constant.ConstantUtils.referenceClassDesc;
 
 /**
- * Adapts an updater method handle to its functional interface. Field access
+ * Adapts an updater method handle to its functional interface. Storage access
  * must have been authorized before an adapter is created. The trusted lookup
  * used here only defines an implementation in the interface's nest; it is
  * never used to resolve a field or obtain an updater target.
@@ -188,9 +191,9 @@ final class LazyUpdaterFactory {
             }
         });
         try {
-            var lookup = IMPL_LOOKUP.in(type).defineHiddenClass(bytes, true, MethodHandles.Lookup.ClassOption.NESTMATE);
-            return lookup.findConstructor(lookup.lookupClass(), CONSTRUCTOR_TYPE)
-                         .asType(CONSTRUCTOR_TYPE.changeReturnType(Object.class));
+            return SharedSecrets.getJavaLangInvokeAccess()
+                    .defineHiddenClassConstructor(type, bytes, CONSTRUCTOR_TYPE)
+                    .asType(CONSTRUCTOR_TYPE.changeReturnType(Object.class));
         } catch (ReflectiveOperationException e) {
             throw new InternalError(e);
         }

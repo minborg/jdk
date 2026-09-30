@@ -21,6 +21,18 @@
  * questions.
  */
 
-module lazy.lookup.owner {
-    exports lookupowner;
+/*
+ * @test
+ * @summary An updater mode cannot be passed to LazyCaches factories
+ * @enablePreview
+ * @compile/fail LazyModeTypeMismatch.java
+ */
+
+import java.lang.invoke.LazyUpdaters;
+import java.util.LazyCaches;
+
+class LazyModeTypeMismatch {
+    void test() {
+        LazyCaches.ofScalar(LazyUpdaters.Mode.PUBLISH_ONCE, Object::new);
+    }
 }

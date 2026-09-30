@@ -23,8 +23,11 @@
  * questions.
  */
 
-package java.util;
+package jdk.internal.util;
 
+import java.util.LazyCaches;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -33,15 +36,25 @@ import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 /** Implementations of suppliers and functions that own their lazy storage. */
-final class LazySupport {
+public final class LazySupport {
     private LazySupport() { }
+
+    public static <T> Supplier<T> ofSupplier(LazyCaches.Mode mode,
+                                             Supplier<? extends T> function) {
+        return new LazySupplier<>(mode, function);
+    }
+
+    public static <C, T> Function<C, T> ofContext(LazyCaches.Mode mode,
+                                                   Function<? super C, ? extends T> function) {
+        return new LazyFunction<>(mode, function);
+    }
 
     private abstract static class LazyValue<C, F, T> {
         private static final Unsafe U = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET =
                 U.objectFieldOffset(LazyValue.class, "value");
 
-        private final Lazy.Mode mode;
+        private final LazyCaches.Mode mode;
 
         // Installed once and accessed with acquire/release semantics. Reads may
         // be folded provided the installed value's publication is preserved.
@@ -56,7 +69,7 @@ final class LazySupport {
         private boolean failureIsError;
         private Thread computingThread;
 
-        LazyValue(Lazy.Mode mode, F function) {
+        LazyValue(LazyCaches.Mode mode, F function) {
             this.mode = mode;
             this.function = function;
         }
@@ -69,7 +82,7 @@ final class LazySupport {
             if (result != null) {
                 return result;
             }
-            return mode == Lazy.Mode.COMPUTE_ONCE
+            return mode == LazyCaches.Mode.COMPUTE_ONCE
                     ? getExactlyOnce(context) : getRacing(context);
         }
 
@@ -85,7 +98,7 @@ final class LazySupport {
                 return result;
             }
             if (failureIsError) {
-                throw new Lazy.InitializationError(
+                throw new LazyCaches.InitializationError(
                         "Lazy initialization previously failed with "
                                 + (failure != null ? failure : "an Error"));
             }
@@ -146,10 +159,10 @@ final class LazySupport {
         }
     }
 
-    static final class LazySupplier<T>
+    private static final class LazySupplier<T>
             extends LazyValue<Void, Supplier<? extends T>, T>
             implements Supplier<T> {
-        LazySupplier(Lazy.Mode mode, Supplier<? extends T> function) {
+        LazySupplier(LazyCaches.Mode mode, Supplier<? extends T> function) {
             super(mode, function);
         }
 
@@ -164,10 +177,10 @@ final class LazySupport {
         }
     }
 
-    static final class LazyFunction<C, T>
+    private static final class LazyFunction<C, T>
             extends LazyValue<C, Function<? super C, ? extends T>, T>
             implements Function<C, T> {
-        LazyFunction(Lazy.Mode mode, Function<? super C, ? extends T> function) {
+        LazyFunction(LazyCaches.Mode mode, Function<? super C, ? extends T> function) {
             super(mode, function);
         }
 

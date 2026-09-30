@@ -23,27 +23,21 @@
 
 /*
  * @test
- * @summary The field owner and value type constrain the returned function and computation
+ * @summary A LazyCaches mode cannot be passed to a LazyUpdaters factory
  * @enablePreview
- * @compile/fail/ref=LazyFieldTypeMismatch.out -XDrawDiagnostics LazyFieldTypeMismatch.java
+ * @compile/fail OfLocationModeTypeMismatch.java
  */
 
+import java.lang.invoke.LazyUpdaters;
 import java.lang.invoke.MethodHandles;
-import java.util.Lazy;
-import java.util.function.Function;
+import java.util.LazyCaches;
+import java.util.function.IntSupplier;
 
-class LazyFieldTypeMismatch {
-    static class Holder {
-        Object objectValue;
-        String stringValue;
+class OfLocationModeTypeMismatch {
+    private static int value;
+
+    void test() {
+        LazyUpdaters.ofLocation(LazyCaches.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+                IntSupplier.class, () -> value, () -> 42);
     }
-
-    Function<Holder, String> incompatibleTarget =
-            Lazy.ofField(MethodHandles.lookup(), Holder.class, "objectValue", Object.class, holder -> "value");
-
-    Function<Holder, String> incompatibleComputation =
-            Lazy.ofField(MethodHandles.lookup(), Holder.class, "stringValue", String.class, holder -> new Object());
-
-    Function<String, Object> incompatibleReceiver =
-            Lazy.ofField(MethodHandles.lookup(), Holder.class, "objectValue", Object.class, holder -> new Object());
 }

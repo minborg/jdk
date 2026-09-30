@@ -1,6 +1,0 @@
-LazyFieldTypeMismatch.java:42:25: compiler.err.prob.found.req: (compiler.misc.incompatible.eq.bounds: T, java.lang.String,java.lang.Object)
-LazyFieldTypeMismatch.java:45:25: compiler.err.prob.found.req: (compiler.misc.incompatible.bounds: T, (compiler.misc.eq.bounds: java.lang.String), (compiler.misc.lower.bounds: java.lang.Object))
-LazyFieldTypeMismatch.java:48:25: compiler.err.prob.found.req: (compiler.misc.incompatible.bounds: C, (compiler.misc.eq.bounds: java.lang.String), (compiler.misc.upper.bounds: LazyFieldTypeMismatch.Holder,java.lang.Object))
-- compiler.note.preview.filename: LazyFieldTypeMismatch.java, DEFAULT
-- compiler.note.preview.recompile
-3 errors

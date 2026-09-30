@@ -28,8 +28,8 @@
  * @run junit LazyCanonicalKeysTest
  */
 
-import java.util.Lazy;
-import java.util.Lazy.Mode;
+import java.util.LazyCaches;
+import java.util.LazyCaches.Mode;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import static java.util.Lazy.Mode.PUBLISH_ONCE;
+import static java.util.LazyCaches.Mode.PUBLISH_ONCE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LazyCanonicalKeysTest {
@@ -76,7 +76,7 @@ class LazyCanonicalKeysTest {
         DetailedKey first = new DetailedKey(1, "first retained value");
         DetailedKey second = new DetailedKey(2, "second retained value");
         AtomicInteger calls = new AtomicInteger();
-        Map<DetailedKey, String> lazy = Lazy.ofMap(mode, Set.of(first, second), key -> {
+        Map<DetailedKey, String> lazy = LazyCaches.ofMap(mode, Set.of(first, second), key -> {
             assertSame(key.id == first.id ? first : second, key);
             calls.incrementAndGet();
             return key.metadata;
@@ -102,7 +102,7 @@ class LazyCanonicalKeysTest {
         DetailedKey included = new DetailedKey(1, "include");
         DetailedKey excluded = new DetailedKey(2, "exclude");
         AtomicInteger calls = new AtomicInteger();
-        Set<DetailedKey> lazy = Lazy.ofSet(mode, Set.of(included, excluded), candidate -> {
+        Set<DetailedKey> lazy = LazyCaches.ofSet(mode, Set.of(included, excluded), candidate -> {
             assertSame(candidate.id == included.id ? included : excluded, candidate);
             calls.incrementAndGet();
             return candidate.metadata.equals("include");
@@ -131,7 +131,7 @@ class LazyCanonicalKeysTest {
         assertEquals(retained, query);
         assertEquals(query, retained);
         AtomicInteger calls = new AtomicInteger();
-        Map<DetailedKey, String> lazy = Lazy.ofMap(mode, Set.of(retained), key -> {
+        Map<DetailedKey, String> lazy = LazyCaches.ofMap(mode, Set.of(retained), key -> {
             assertSame(retained, key);
             calls.incrementAndGet();
             return key.metadata;
@@ -151,7 +151,7 @@ class LazyCanonicalKeysTest {
         assertEquals(retained, query);
         assertEquals(query, retained);
         AtomicInteger calls = new AtomicInteger();
-        Set<DetailedKey> lazy = Lazy.ofSet(mode, Set.of(retained), candidate -> {
+        Set<DetailedKey> lazy = LazyCaches.ofSet(mode, Set.of(retained), candidate -> {
             assertSame(retained, candidate);
             calls.incrementAndGet();
             return candidate.metadata.equals("include");
@@ -168,7 +168,7 @@ class LazyCanonicalKeysTest {
         DetailedKey retained = new DetailedKey(1, "retained metadata");
         AtomicInteger calls = new AtomicInteger();
         IllegalArgumentException failure = new IllegalArgumentException("first computation");
-        Map<DetailedKey, String> lazy = Lazy.ofMap(PUBLISH_ONCE, Set.of(retained), key -> {
+        Map<DetailedKey, String> lazy = LazyCaches.ofMap(PUBLISH_ONCE, Set.of(retained), key -> {
             assertSame(retained, key);
             if (calls.incrementAndGet() == 1) {
                 throw failure;

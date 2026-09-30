@@ -33,6 +33,7 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.ByteOrder;
 import java.util.List;
 import java.util.Map;
@@ -134,6 +135,26 @@ public interface JavaLangInvokeAccess {
      * the trusted lookup
      */
     MethodHandle unreflectField(Field field, boolean isSetter) throws IllegalAccessException;
+
+    /**
+     * Produces a method handle unreflecting from a {@code Method} with
+     * the trusted lookup.
+     */
+    MethodHandle unreflectMethod(Method method) throws IllegalAccessException;
+
+    /**
+     * Returns the bytecodes of a loaded method for inspecting a field-access
+     * lambda without invoking it.
+     */
+    byte[] methodBytecodes(Method method);
+
+    /**
+     * Defines a hidden class in the given host's nest and returns a
+     * handle to its constructor.
+     */
+    MethodHandle defineHiddenClassConstructor(Class<?> host, byte[] bytes,
+                                              MethodType constructorType)
+            throws ReflectiveOperationException;
 
     /**
      * Produces a method handle of a virtual method with the trusted lookup.

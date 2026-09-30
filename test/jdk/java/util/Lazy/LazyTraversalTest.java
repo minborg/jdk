@@ -34,8 +34,8 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Lazy;
-import java.util.Lazy.Mode;
+import java.util.LazyCaches;
+import java.util.LazyCaches.Mode;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -48,7 +48,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import static java.util.Lazy.Mode.COMPUTE_ONCE;
+import static java.util.LazyCaches.Mode.COMPUTE_ONCE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LazyTraversalTest {
@@ -59,17 +59,17 @@ class LazyTraversalTest {
 
         Collection<?> create(Mode mode, IntFunction<Integer> computation) {
             return switch (this) {
-                case LIST -> Lazy.ofList(mode, 3, computation);
-                case SUBLIST -> Lazy.ofList(mode, 5,
+                case LIST -> LazyCaches.ofList(mode, 3, computation);
+                case SUBLIST -> LazyCaches.ofList(mode, 5,
                         index -> computation.apply(index - 1)).subList(1, 4);
-                case REVERSED -> Lazy.ofList(mode, 3,
+                case REVERSED -> LazyCaches.ofList(mode, 3,
                         index -> computation.apply(2 - index)).reversed();
-                case MAP_VALUES -> Lazy.ofMap(mode, Set.of(0, 1, 2), computation::apply).values();
-                case ENUM_MAP_VALUES -> Lazy.ofMap(mode, EnumSet.allOf(Key.class),
+                case MAP_VALUES -> LazyCaches.ofMap(mode, Set.of(0, 1, 2), computation::apply).values();
+                case ENUM_MAP_VALUES -> LazyCaches.ofMap(mode, EnumSet.allOf(Key.class),
                         key -> computation.apply(key.ordinal())).values();
-                case SET -> Lazy.ofSet(mode, Set.of(0, 1, 2),
+                case SET -> LazyCaches.ofSet(mode, Set.of(0, 1, 2),
                         key -> computation.apply(key) >= 0);
-                case ENUM_SET -> Lazy.ofSet(mode, EnumSet.allOf(Key.class),
+                case ENUM_SET -> LazyCaches.ofSet(mode, EnumSet.allOf(Key.class),
                         key -> computation.apply(key.ordinal()) >= 0);
             };
         }

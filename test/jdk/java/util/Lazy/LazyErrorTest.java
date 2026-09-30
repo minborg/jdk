@@ -31,9 +31,9 @@
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.Lazy;
-import java.util.Lazy.InitializationError;
-import java.util.Lazy.Mode;
+import java.util.LazyCaches;
+import java.util.LazyCaches.InitializationError;
+import java.util.LazyCaches.Mode;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -52,8 +52,8 @@ import jdk.test.lib.Utils;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import static java.util.Lazy.Mode.COMPUTE_ONCE;
-import static java.util.Lazy.Mode.PUBLISH_ONCE;
+import static java.util.LazyCaches.Mode.COMPUTE_ONCE;
+import static java.util.LazyCaches.Mode.PUBLISH_ONCE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LazyErrorTest {
@@ -74,39 +74,39 @@ class LazyErrorTest {
             return switch (this) {
                 case SUPPLIER -> {
                     assertEquals(1, size);
-                    Supplier<Boolean> lazy = Lazy.of(mode, () -> computation.apply(0));
+                    Supplier<Boolean> lazy = LazyCaches.ofScalar(mode, () -> computation.apply(0));
                     yield _ -> lazy.get();
                 }
                 case CONTEXT_FUNCTION -> {
                     assertEquals(1, size);
                     Object context = new Object();
                     Function<Object, Boolean> lazy =
-                            Lazy.ofContext(mode, _ -> computation.apply(0));
+                            LazyCaches.ofScalar(mode, _ -> computation.apply(0));
                     yield _ -> lazy.apply(context);
                 }
                 case LIST -> {
-                    List<Boolean> lazy = Lazy.ofList(mode, size, computation);
+                    List<Boolean> lazy = LazyCaches.ofList(mode, size, computation);
                     yield lazy::get;
                 }
                 case MAP -> {
                     Set<Integer> keys = size == 1 ? Set.of(0) : Set.of(0, 1);
-                    Map<Integer, Boolean> lazy = Lazy.ofMap(mode, keys, computation::apply);
+                    Map<Integer, Boolean> lazy = LazyCaches.ofMap(mode, keys, computation::apply);
                     yield lazy::get;
                 }
                 case ENUM_MAP -> {
                     Set<Key> keys = EnumSet.range(Key.FIRST, Key.values()[size - 1]);
                     Map<Key, Boolean> lazy =
-                            Lazy.ofMap(mode, keys, key -> computation.apply(key.ordinal()));
+                            LazyCaches.ofMap(mode, keys, key -> computation.apply(key.ordinal()));
                     yield index -> lazy.get(Key.values()[index]);
                 }
                 case SET -> {
                     Set<Integer> candidates = size == 1 ? Set.of(0) : Set.of(0, 1);
-                    Set<Integer> lazy = Lazy.ofSet(mode, candidates, computation::apply);
+                    Set<Integer> lazy = LazyCaches.ofSet(mode, candidates, computation::apply);
                     yield lazy::contains;
                 }
                 case ENUM_SET -> {
                     Set<Key> candidates = EnumSet.range(Key.FIRST, Key.values()[size - 1]);
-                    Set<Key> lazy = Lazy.ofSet(mode, candidates,
+                    Set<Key> lazy = LazyCaches.ofSet(mode, candidates,
                             key -> computation.apply(key.ordinal()));
                     yield index -> lazy.contains(Key.values()[index]);
                 }

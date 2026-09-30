@@ -27,15 +27,11 @@ package java.util;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.lang.foreign.*;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.VarHandle;
 import java.util.function.*;
 
 import jdk.internal.javac.PreviewFeature;
-
-import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
+import jdk.internal.util.LazySupport;
 
 // Todo: Close semantics ... AutoClosable
 
@@ -44,64 +40,35 @@ import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
  * <p>
  * A lazy value is computed when it is first needed and retained for subsequent
  * access. These factories capture a <em>computing function</em> for deferred
- * computation and provide storage for its result
- * (except for {@linkplain #ofField(Lookup, Class, String, Class, Function)}). The access
- * operation invokes the computing function if necessary and returns the retained value.
+ * computation and provide storage for its result. The access operation invokes
+ * the computing function if necessary and returns the retained value.
  * A retained value is never replaced.
  * <p>
  * The factories provide several ways to access lazy values:
  * <ul>
- * <li>{@link #of(Supplier)} and {@link #of(Mode, Supplier)} return a
+ * <li>{@link #ofScalar(Supplier)} and {@link #ofScalar(Mode, Supplier)} return a
  *     {@linkplain Supplier} that holds a single value.</li>
- * <li>{@link #ofContext(Mode, Function)} returns a {@link Function} that holds
+ * <li>{@link #ofScalar(Mode, Function)} returns a {@link Function} that holds
  *     a single value and accepts a context when accessed. This permits a computing
  *     function to use instance state without capturing the instance.</li>
  * <li>{@link #ofList(Mode, int, IntFunction)},
  *     {@link #ofMap(Mode, Set, Function)}, and {@link #ofSet(Mode, Set, Predicate)}
  *     return unmodifiable collections whose elements, mapped values, or memberships
  *     are computed independently.</li>
- * <li>{@link #ofField(Lookup, Class, String, Class, Function)} returns a {@link Function}
- *     that uses <em>an existing field</em> in the supplied context as storage. Each
- *     receiver has its own lazy value.</li>
  * </ul>
+ * <p>
+ * A method reference applicable to both {@link #ofScalar(Mode, Supplier)} and
+ * {@link #ofScalar(Mode, Function)} can make overload selection ambiguous.
+ * A lambda with the intended parameter count or a cast to the intended
+ * functional interface selects the desired overload.
  *
  * <p>
  * For example, a service can be created on its first use:
  * {@snippet lang = java:
- * private static final Supplier<Service> SERVICE = Lazy.of(Service::new);
+ * private static final Supplier<Service> SERVICE = LazyCaches.ofScalar(Service::new);
  *
  * static Service service() {
  *     return SERVICE.get();
- * }
- * }
- * Here is another example that shows the use of lazily <em>derived properties</em> stored
- * in the class itself:
- *  {@snippet lang = java:
- * final class Point {
- *     private final int x;
- *     private final int y;
- *     // Lazily computed
- *     private Float radius;
- *     private Float phi;
- *
- *     private static final Function<Point, Float> RADIUS =
- *             Lazy.ofField(MethodHandles.lookup(), Point.class, "radius", Float.class,
- *                     p -> (float) Math.hypot(p.x, p.y));
- *
- *     private static final Function<Point, Float> PHI =
- *             Lazy.ofField(MethodHandles.lookup(), Point.class, "phi", Float.class,
- *                     p -> (float) Math.atan2(p.y, p.x));
- *
- *     Point(int x, int y) {
- *         this.x = x;
- *         this.y = y;
- *     }
- *
- *     public int x() { return x; }
- *     public int y() { return y; }
- *
- *     public float radius() { return RADIUS.apply(this); }
- *     public float phi() { return PHI.apply(this); }
  * }
  * }
  *
@@ -121,7 +88,7 @@ import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
  * competing threads wait for that invocation to finish. If it succeeds, its
  * result is retained. If it fails, the failure is permanent and no further
  * invocation is attempted. A value that is never accessed need not be computed.
- * The {@link #of(Supplier)} factory uses this mode by default.
+ * The {@link #ofScalar(Supplier)} factory uses this mode by default.
  * <p>
  * {@link Mode#PUBLISH_ONCE} is intended for <em>memoization</em>,
  * where computing a value more than once is acceptable. Competing threads may
@@ -133,8 +100,6 @@ import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
  * Failures are not retained, so later accesses may retry computation. Computing
  * functions used with this mode should tolerate concurrent and repeated
  * invocation and should avoid side effects that require at-most-once execution.
- * The {@link #ofField(Lookup, Class, String, Class, Function)} factory uses this mode
- * by default.
  *
  * <h2 id="failures">Computation failures</h2>
  * In {@code COMPUTE_ONCE} mode, a computation failure is permanent:
@@ -352,17 +317,14 @@ import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
  * from a {@code static final} field to a lazy supplier, or a chain of
  * <em>trusted fields</em> (such as {@code static final} fields,
  * {@linkplain Record record} fields, or final instance fields in hidden classes)
- * leading to a lazy storage location. For a function returned by
- * {@linkplain #ofField(Lookup, Class, String, Class, Function)}, the storage location also
- * depends on the receiver supplied to {@code apply}. A constant reference to that
- * function alone does not identify a particular receiver's storage location.
+ * leading to a lazy storage location.
  * <p>
  * Lazily initializing an array reference does not make its elements lazy or
  * immutable. Use {@link #ofList(Mode, int, IntFunction) ofList} when elements
  * should be computed independently.
  *
  * <h2 id="function-composition">Function composition</h2>
- * Functions returned by {@code ofContext} and {@code ofField} support the
+ * Functions returned by {@code ofScalar(Mode, Function)} support the
  * standard {@link Function#compose(Function) compose} and
  * {@link Function#andThen(Function) andThen} operations. The additional functions
  * execute on each application of the composed function: a {@code before}
@@ -376,8 +338,8 @@ import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
  * to their applicable initialization and failure rules.
  *
  * <h2 id="computing-function-retention">Computing-function retention</h2>
- * Storage provided by {@linkplain #of(Supplier) of},
- * {@linkplain #ofContext(Mode, Function) ofContext},
+ * Storage provided by {@linkplain #ofScalar(Supplier) ofScalar},
+ * {@linkplain #ofScalar(Mode, Function) ofScalar},
  * {@link #ofList(Mode, int, IntFunction) ofList},
  * {@linkplain #ofMap(Mode, java.util.Set, Function) ofMap}, and
  * {@linkplain #ofSet(Mode, java.util.Set, Predicate) ofSet} strongly retains its
@@ -392,9 +354,7 @@ import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
  * Releasing the invocation reference does not guarantee that the computing
  * function becomes unreachable or is garbage collected. Computed values,
  * retained keys or candidates, other objects, and computations already in
- * progress may still reference it. Functions returned by {@code ofField}
- * retain their computing function for their entire lifetime, since new receivers
- * may be supplied at any time.
+ * progress may still reference it.
  *
  * <h2 id="nullability">Nullability</h2>
  * Providing a {@code null} argument to any of the factories in this class causes
@@ -417,14 +377,14 @@ import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
  * @since 29
  */
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
-public final class Lazy {
+public final class LazyCaches {
 
-    private Lazy() { }
+    private LazyCaches() { }
 
     /**
      * The policy for coordinating computation and handling computation failures.
      *
-     * @see Lazy##initialization-modes Initialization modes
+     * @see LazyCaches##initialization-modes Initialization modes
      * @since 29
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
@@ -458,7 +418,7 @@ public final class Lazy {
      * the earlier failure; it does not indicate that the original error
      * condition has recurred.
      *
-     * @see Lazy##failures Computation failures
+     * @see LazyCaches##failures Computation failures
      * @since 29
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
@@ -481,14 +441,14 @@ public final class Lazy {
      * {@return a new supplier that lazily computes a single value in
      *          {@link Mode#COMPUTE_ONCE} mode}
      *
-     * @implSpec This method is equivalent to {@code of(Mode.COMPUTE_ONCE, computingFunction)}.
+     * @implSpec This method is equivalent to {@code ofScalar(Mode.COMPUTE_ONCE, computingFunction)}.
      *
      * @param computingFunction the function that computes the non-null value
      * @param <T> the type of the supplied value
-     * @see #of(Mode, Supplier)
+     * @see #ofScalar(Mode, Supplier)
      */
-    public static <T> Supplier<T> of(Supplier<? extends T> computingFunction) {
-        return of(Mode.COMPUTE_ONCE, computingFunction);
+    public static <T> Supplier<T> ofScalar(Supplier<? extends T> computingFunction) {
+        return ofScalar(Mode.COMPUTE_ONCE, computingFunction);
     }
 
     /**
@@ -496,13 +456,13 @@ public final class Lazy {
      * <p>
      * Its {@link Supplier#get() get} method returns the retained value, invoking
      * {@code computingFunction} if necessary, as described in
-     * {@linkplain Lazy##initialization-modes Initialization modes} and
-     * {@linkplain Lazy##failures Computation failures}.
+     * {@linkplain LazyCaches##initialization-modes Initialization modes} and
+     * {@linkplain LazyCaches##failures Computation failures}.
      * <p>
      * The supplier has its own initially empty storage, even when the supplied
      * computing function is itself a lazy supplier. Retention of the computing
      * function is described in
-     * {@linkplain Lazy##computing-function-retention Computing-function retention}.
+     * {@linkplain LazyCaches##computing-function-retention Computing-function retention}.
      * Calls to {@code equals}, {@code hashCode}, and
      * {@code toString} on the returned supplier do not trigger computation.
      *
@@ -510,11 +470,11 @@ public final class Lazy {
      * @param computingFunction the function that computes the non-null value
      * @param <T> the type of the supplied value
      */
-    public static <T> Supplier<T> of(Mode mode,
-                                     Supplier<? extends T> computingFunction) {
+    public static <T> Supplier<T> ofScalar(Mode mode,
+                                           Supplier<? extends T> computingFunction) {
         Objects.requireNonNull(mode);
         Objects.requireNonNull(computingFunction);
-        return new LazySupport.LazySupplier<>(mode, computingFunction);
+        return LazySupport.ofSupplier(mode, computingFunction);
     }
 
     /**
@@ -532,7 +492,7 @@ public final class Lazy {
      * In {@code PUBLISH_ONCE} mode
      * competing computations may use different contexts, but only one result
      * is installed. Failure behavior is described in
-     * {@linkplain Lazy##failures Computation failures}.
+     * {@linkplain LazyCaches##failures Computation failures}.
      * <p>
      * For example, each {@code Document} below has its own cache, while the
      * computing function need not capture the document:
@@ -542,18 +502,19 @@ public final class Lazy {
      *
      *     // A lazily derived property
      *     private final Function<Document, Integer> wordCount =
-     *         Lazy.ofContext(Mode.PUBLISH_ONCE, Document::computeWordCount);
+     *         LazyCaches.ofScalar(LazyCaches.Mode.PUBLISH_ONCE,
+     *                 Document::computeWordCount);
      *
      *     Document(String text) { this.text = text; }
      *
-      *     int wordCount() { return wordCount.apply(this); }
+     *     int wordCount() { return wordCount.apply(this); }
      *
-     *      private int computeWordCount() { return text.split("\\s+").length; }
+     *     private int computeWordCount() { return text.split("\\s+").length; }
      * }
      *}
      * <p>
      * Retention of the computing function is described in
-     * {@linkplain Lazy##computing-function-retention Computing-function retention}.
+     * {@linkplain LazyCaches##computing-function-retention Computing-function retention}.
      * The returned function does not
      * retain the context except through the computing function or its result.
      * Its {@code equals}, {@code hashCode}, and {@code toString} methods do not
@@ -568,407 +529,19 @@ public final class Lazy {
      *          Objects with otherwise equal application data may therefore
      *          compare unequal. Overriding {@code equals} and {@code hashCode}
      *          can define logical equality independently of the cache, but cannot
-     *          change {@code ==}. The {@link #ofField(Lookup, Class, String, Class, Function)
-     *          ofField} factory cannot directly use value-class instance fields
-     *          because those fields are implicitly final.
+     *          change {@code ==}.
      *
      * @param mode the initialization mode
      * @param computingFunction the function that computes the non-null value
      * @param <C> the type of the context
      * @param <T> the type of the supplied value
-     * @see Lazy##function-composition Function composition
+     * @see LazyCaches##function-composition Function composition
      */
-    public static <C, T> Function<C, T> ofContext(Mode mode,
-                                                  Function<? super C, ? extends T> computingFunction) {
+    public static <C, T> Function<C, T> ofScalar(Mode mode,
+                                                 Function<? super C, ? extends T> computingFunction) {
         Objects.requireNonNull(mode);
         Objects.requireNonNull(computingFunction);
-        return new LazySupport.LazyFunction<>(mode, computingFunction);
-    }
-
-    /**
-     * {@return a function that uses the named instance field of each context as
-     *          storage for a lazy value, in {@link Mode#PUBLISH_ONCE} mode}
-     * <p>
-     * The field must be declared by {@code owner}, accessible for reading and
-     * writing using {@code lookup}, non-static,
-     * non-final, and of a reference type that permits {@code null}. It must
-     * support acquire reads and atomic compare-and-exchange updates. Inherited
-     * fields are not searched. To use an inherited field, specify its declaring
-     * superclass as {@code owner}; the receiver type {@code C} may be a subclass
-     * of {@code owner}, and the computing function may be specialized to that
-     * subclass. The field need not be declared {@code volatile}.
-     * Reads through the returned function have acquire memory effects, and
-     * successful installation has release memory effects, regardless of the
-     * field's declaration.
-     * <p>
-     * Access is checked when this factory is invoked, using the access
-     * permissions of the supplied {@link Lookup}, independently of the class
-     * invoking this method. This method does not suppress access checks or
-     * increase the lookup's permissions. The {@linkplain Lookup#lookupClass()
-     * lookup class} need not be {@code owner}. A lookup can be passed through
-     * helper methods without changing its access permissions. For example,
-     * {@link MethodHandles#lookup()} provides access to private fields of the
-     * class obtaining the lookup and its nestmates;
-     * {@link MethodHandles#privateLookupIn(Class, Lookup)} can provide access
-     * to private fields of another class, subject to that method's requirements.
-     * <p>
-     * The field's runtime type must be exactly {@code valueType}; a supertype
-     * or subtype is not accepted. This is checked when the factory is invoked.
-     * The check uses the erased type of the field. The caller must ensure that
-     * computed and preinitialized values also satisfy any generic type
-     * constraints of the field's declaration, which this method does not check.
-     * <p>
-     * The returned function's {@link Function#apply(Object) apply(context)}
-     * reads the field in {@code context}. Each receiver has its own lazy value.
-     * A non-null value is returned without computation. If the
-     * field is {@code null}, it invokes {@code computingFunction.apply(context)}
-     * and atomically installs the non-null result if the field is still
-     * {@code null}, returning the installed value. A non-null result must be an
-     * instance of {@code valueType}, or a {@code ClassCastException} is
-     * thrown and the result is not installed. Computation failures are handled
-     * as described for {@code PUBLISH_ONCE} in {@linkplain Lazy##failures Computation failures}.
-     * <p>
-     * The context must be an instance of {@code owner}. For a protected field
-     * accessed using a lookup whose lookup class is a subclass of {@code owner}
-     * in a different package, it must also be an instance of that lookup class.
-     * An incompatible context causes
-     * {@code ClassCastException}. A null context causes {@code NullPointerException}.
-     * These checks apply even when the field is already initialized.
-     * <p>
-     * Multiple functions returned by this method may use the same field as
-     * storage. For each receiver, these functions share a single retained value,
-     * even if they were created with different lookups or computing functions.
-     * Their computations compete to install that value as described for
-     * {@link Mode#PUBLISH_ONCE}. Every access that completes normally returns
-     * the retained value, which may have been produced by another function's
-     * computation. Each function remains subject to the receiver restrictions
-     * imposed by its lookup.
-     * <p>
-     * When different computing functions share a field, callers should be
-     * prepared to use a result produced by any of them. The computing functions
-     * need not produce equal results, and there is no guarantee that any
-     * particular computing function will be invoked.
-     * <p>
-     * The field must be reserved for this lazy storage. It may be initialized
-     * to a non-null value before the receiver is safely published to other threads,
-     * in which case that value is retained without invoking the computing
-     * function. The caller is responsible for safely publishing such a receiver
-     * and its preinitialized value. Otherwise the field must initially be
-     * {@code null}. After the receiver is made available, writes must take place only
-     * through functions returned by this method for that field. Directly
-     * replacing or clearing the field violates the single-value guarantee.
-     * <p>
-     * For example, the following cache allocates storage only as part of the
-     * receiver, rather than allocating a lazy function for each receiver:
-     * {@snippet lang = java:
-     * class Document {
-     *     private String summary;
-     *
-     *     private static final Function<Document, String> SUMMARY =
-     *         Lazy.ofField(MethodHandles.lookup(),
-     *                      Document.class, "summary", String.class,
-     *                      Document::computeSummary);
-     *
-     *     String summary() { return SUMMARY.apply(this); }
-     *
-     *     private String computeSummary() { return "The quick fox ..."; }
-     * }
-     *}
-     * <p>
-     * For a parameterized field, a class literal represents only its erased
-     * type. A localized unchecked cast can adapt that class token while
-     * preserving the accessor's generic type:
-     * {@snippet lang = java:
-     * class Catalog {
-     *     private List<String> names;
-     *
-     *     @SuppressWarnings("unchecked")
-     *     private static final Class<List<String>> NAMES_TYPE =
-     *         (Class<List<String>>) (Class<?>) List.class;
-     *
-     *     private static final Function<Catalog, List<String>> NAMES =
-     *         Lazy.ofField(MethodHandles.lookup(), Catalog.class, "names", NAMES_TYPE,
-     *                      catalog -> List.of("alpha", "beta"));
-     *
-     *     List<String> names() { return NAMES.apply(this); }
-     * }
-     *}
-     * This cast does not validate element types. Computed and preinitialized
-     * values must satisfy the field's {@code List<String>} declaration.
-     * <p>
-     * The returned function retains the computing function for its lifetime, since
-     * new receivers may be supplied at any time. It does not retain receivers
-     * except through the computing function. Its {@code equals},
-     * {@code hashCode}, and {@code toString} methods do not trigger computation.
-     *
-     * @param lookup the lookup used to check access to the field
-     * @param owner the class declaring the field
-     * @param fieldName the name of the field
-     * @param valueType the class representing the field's runtime type
-     * @param computingFunction the function that computes a non-null field value
-     * @param <C> the type of the receiver
-     * @param <T> the type of the field's value
-     * @throws IllegalArgumentException if the field does not exist, is not
-     *         accessible using {@code lookup}, its runtime type is not {@code valueType},
-     *         or it does not meet the requirements above
-     * @see Lazy##function-composition Function composition
-     */
-    public static <C, T> Function<C, T> ofField(
-                           Lookup lookup,
-                           Class<? super C> owner,
-                           String fieldName,
-                           Class<T> valueType,
-                           Function<? super C, ? extends T> computingFunction) {
-        return LazyFieldFunction.of(lookup, owner,
-                fieldName, valueType, computingFunction);
-    }
-
-    /**
-     * {@return a lazy field handler}
-     *
-     * @param type a functional interface describing the lazy logic
-     * @param name the name of the field
-     * @param <T> handler type
-     */
-    public static <T> T ofField(Class<T> type, String name) {
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(name);
-        return null;
-    }
-
-    static class Point {
-        private static final LazyRadius LAZY_RADIUS = ofField(LazyRadius.class, "radius");
-
-        final double x, y;
-        double radius;
-
-        public Point(double x, double y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        public double x() {
-            return x;
-        }
-
-        public double y() {
-            return y;
-        }
-
-        public double radius(Point p) {
-            return LAZY_RADIUS.getOrComputeRadius(this);
-        }
-
-    }
-
-    @FunctionalInterface
-    interface LazyRadius {
-
-        // The one and only abstract method. It has:
-        // * the returns type equal to the field type
-        // * the parameter type equal to the receiver type
-        // * an arbitrary name (I decided against using the method name == field name)
-        double getOrComputeRadius(Point point);
-
-        // There should be exactly one default method.
-        // It must have exactly the same signature as the abstract method.
-        private double computeRadius(Point point) {
-            return (float) Math.hypot(point.x, point.y);
-        }
-
-    }
-
-    static class Polygon {
-        final Point[] points;
-
-        public Polygon(int size) {
-            this.points = new Point[size];
-        }
-
-        // Only provide read capability in the base class
-        Point point(int index) {
-            return points[index];
-        }
-    }
-
-    static class UnitCircle extends Polygon {
-
-        private static final LazyUnitCircle LAZY_UNIT_CIRCLE = ofField(LazyUnitCircle.class, "points");
-
-        public UnitCircle(int size) {
-            super(size);
-        }
-
-        @Override
-        Point point(int index) {
-            return LAZY_UNIT_CIRCLE.point(this, index);
-        }
-
-    }
-
-
-    @FunctionalInterface
-    interface LazyUnitCircle {
-
-        // Any arity can be expressed
-        Point point(Polygon polygon, int index);
-
-        // A unit circle
-        private Point computePointOnUnitCircle(Polygon polygon, int index) {
-            final double phi = 2 * Math.PI * index / polygon.points.length;
-            return new Point(Math.cos(phi), Math.sin(phi));
-        }
-
-    }
-
-
-    /**
-     * A
-     * @param type t
-     * @param layout l
-     * @param elements e
-     * @return s
-     * @param <T> t
-     */
-    public static <T> T ofSegment(Class<T> type, MemoryLayout layout, MemoryLayout.PathElement... elements) {
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(layout);
-        return null;
-    }
-
-    /**
-     * A
-     * @param type t
-     * @param computingFunction c
-     * @param layout l
-     * @param elements e
-     * @return s
-     * @param <T> t
-     */
-    public static <T> T ofSegment(Class<T> type, T computingFunction, MemoryLayout layout, MemoryLayout.PathElement... elements) {
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(layout);
-        return null;
-    }
-
-    @FunctionalInterface
-    interface ToIntFunctionMemorySegment extends ToIntFunction<MemorySegment> {}
-
-
-    // Use with `ofSegment(LazySingleIntSegment.class, JAVA_INT);
-    @FunctionalInterface
-    interface LazySingleIntSegment {
-        // Must return the leaf layout.carrier()
-        int getOrCompute(MemorySegment segment);
-
-        private int compute(MemorySegment segment) {
-            return 42;
-        }
-    }
-
-    // Use with `ofSegment(LazySingleIntSegment.class,
-    //                     MemoryLayout.sequenceLayout(8, JAVA_INT),
-    //                     MemoryLayout.PathElement.sequenceElement());
-    @FunctionalInterface
-    interface LazyIntSequenceSegment {
-        // The provided path element added an extra long coordinate
-        int getOrCompute(MemorySegment segment, MemoryLayout layout, long index);
-
-        private int compute(MemorySegment segment, MemoryLayout layout, long index) {
-            return (int) index; // 0, 1, 2, ...
-        }
-    }
-
-    private static final SequenceLayout POINTS = MemoryLayout.sequenceLayout(8,
-            MemoryLayout.structLayout(
-                    JAVA_DOUBLE.withName("x"),
-                    JAVA_DOUBLE.withName("y")
-            )
-    );
-
-    @FunctionalInterface
-    static interface CoordinateAtIndex{
-        double coordinate(MemorySegment segment, long index);
-    }
-
-    static class SegmentLine {
-        // 0, 1, 2, ...
-        private static final CoordinateAtIndex LAZY_X =
-                ofSegment(CoordinateAtIndex.class, (segment, index) -> index,
-                        POINTS, MemoryLayout.PathElement.sequenceElement(), MemoryLayout.PathElement.groupElement("x"));
-
-        // 0, 2, 4, ...
-        private static final CoordinateAtIndex LAZY_Y =
-                ofSegment(CoordinateAtIndex.class, (segment, index) -> index * 2,
-                POINTS, MemoryLayout.PathElement.sequenceElement(), MemoryLayout.PathElement.groupElement("y"));
-
-        private final MemorySegment segment;
-
-        public SegmentLine(Arena arena) {
-            this.segment = arena.allocate(POINTS);
-        }
-
-        Point at(long index) {
-            return new Point(
-                    LAZY_X.coordinate(segment, index),
-                    LAZY_Y.coordinate(segment, index)
-            );
-        }
-    }
-
-    /**
-     * A
-     * @param type t
-     * @param name m
-     * @param computingFunction c
-     * @return r
-     * @param <T> t
-     */
-    public static <T> T ofField(Class<T> type, String name, T computingFunction) {
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(name);
-        Objects.requireNonNull(computingFunction);
-        return null;
-    }
-
-    /**
-     * A
-     * @param lookup l
-     * @param type t
-     * @param name n
-     * @param computingFunction c
-     * @return s
-     * @param <T> t
-     */
-    public static <T> T ofField(MethodHandles.Lookup lookup,
-                                Class<T> type,
-                                String name,
-                                T computingFunction) {
-        Objects.requireNonNull(lookup);
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(name);
-        Objects.requireNonNull(computingFunction);
-        return null;
-    }
-
-    /**
-     * A
-     * @param lookup l
-     * @param type t
-     * @param fieldAccessor f
-     * @param computingFunction c
-     * @return s
-     * @param <T> t
-     */
-    public static <T> T ofField(Lookup lookup,
-                                Class<T> type,
-                                T fieldAccessor,
-                                T computingFunction) {
-        Objects.requireNonNull(lookup);
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(fieldAccessor);
-        Objects.requireNonNull(computingFunction);
-        return null;
+        return LazySupport.ofContext(mode, computingFunction);
     }
 
     /**
@@ -978,7 +551,7 @@ public final class Lazy {
      * Each index has its own initially empty storage. Accessing an element
      * invokes {@code computingFunction.apply(index)} if necessary, with failure
      * and concurrency behavior as described for the given
-     * {@linkplain Lazy##initialization-modes initialization mode}. A failed
+     * {@linkplain LazyCaches##initialization-modes initialization mode}. A failed
      * computation for one index does not prevent access to other indices.
      * A successful access always returns the value retained for that index.
      * <p>
@@ -1004,14 +577,16 @@ public final class Lazy {
      * @param computingFunction the function that computes non-null elements
      * @param <T> the type of the elements
      * @throws IllegalArgumentException if {@code size} is negative
-     * @see Lazy##collection-properties Collection properties
-     * @see Lazy##traversal-failures Computation failures during traversal
-     * @see Lazy##streams Streams and spliterators
-     * @see Lazy##computing-function-retention Computing-function retention
+     * @see LazyCaches##collection-properties Collection properties
+     * @see LazyCaches##traversal-failures Computation failures during traversal
+     * @see LazyCaches##streams Streams and spliterators
+     * @see LazyCaches##computing-function-retention Computing-function retention
      */
     public static <T> List<T> ofList(Mode mode, int size,
                                      IntFunction<? extends T> computingFunction) {
-        return LazyCollections.ofLazyList(mode, size, computingFunction);
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(computingFunction);
+        return jdk.internal.util.LazyCollections.ofLazyList(mode, size, computingFunction);
     }
 
     /**
@@ -1035,7 +610,7 @@ public final class Lazy {
      * Each key has an associated, initially empty value storage. Accessing a mapped
      * value invokes {@code computingFunction.apply(key)} if necessary, with
      * failure and concurrency behavior as described for the given
-     * {@linkplain Lazy##initialization-modes initialization mode}. The argument
+     * {@linkplain LazyCaches##initialization-modes initialization mode}. The argument
      * to the computing function is always the corresponding key retained from
      * {@code keys}, including when an access supplies a distinct but equal key.
      * A failed computation for one key does not prevent access to
@@ -1091,7 +666,8 @@ public final class Lazy {
      *
      * var stored = new Customer(7, "Alice");
      * var lookup = new Customer(7, "Bob");
-     * var names = Lazy.ofMap(Mode.COMPUTE_ONCE, Set.of(stored), Customer::name);
+     * var names = LazyCaches.ofMap(LazyCaches.Mode.COMPUTE_ONCE,
+     *         Set.of(stored), Customer::name);
      *
      * System.out.println(names.get(lookup)); // Alice: computes from stored
      * System.out.println(names.get(stored)); // Alice: returns the retained value
@@ -1104,16 +680,19 @@ public final class Lazy {
      * @param <V> the type of the mapped values
      * @throws NullPointerException if any argument is {@code null}, or
      *         {@code keys} contains a {@code null} element
-     * @see Lazy##collection-properties Collection properties
-     * @see Lazy##traversal-failures Computation failures during traversal
-     * @see Lazy##streams Streams and spliterators
-     * @see Lazy##computing-function-retention Computing-function retention
+     * @see LazyCaches##collection-properties Collection properties
+     * @see LazyCaches##traversal-failures Computation failures during traversal
+     * @see LazyCaches##streams Streams and spliterators
+     * @see LazyCaches##computing-function-retention Computing-function retention
      */
     public static <K, V> Map<K, V> ofMap(
             Mode mode,
             Set<? extends K> keys,
             Function<? super K, ? extends V> computingFunction) {
-        return LazyCollections.ofLazyMap(mode, keys, computingFunction);
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(computingFunction);
+        Objects.requireNonNull(keys);
+        return jdk.internal.util.LazyCollections.ofLazyMap(mode, keys, computingFunction);
     }
 
     /**
@@ -1138,7 +717,7 @@ public final class Lazy {
      * Each candidate has its own initially uncomputed membership status.
      * Determining membership invokes {@code computingFunction.test(candidate)}
      * if necessary, with failure and concurrency behavior as described for the
-     * given {@linkplain Lazy##initialization-modes initialization mode}. A
+     * given {@linkplain LazyCaches##initialization-modes initialization mode}. A
      * retained {@code true} result includes the candidate in the returned set;
      * a retained {@code false} result excludes it. Both results are retained,
      * so an established membership status never changes. In
@@ -1146,7 +725,7 @@ public final class Lazy {
      * results, but all successful accesses use the one retained result for
      * that candidate. A failed computation for one candidate does not prevent
      * determining membership for other candidates. Failure behavior is
-     * described in {@linkplain Lazy##failures Computation failures}.
+     * described in {@linkplain LazyCaches##failures Computation failures}.
      * <p>
      * A {@code contains} call computes only the matching retained candidate's
      * membership, if necessary. The argument to the computing function is
@@ -1180,10 +759,10 @@ public final class Lazy {
      * @param <E> the type of the elements
      * @throws NullPointerException if any argument is {@code null}, or
      *         {@code elementCandidates} contains a {@code null} element
-     * @see Lazy##collection-properties Collection properties
-     * @see Lazy##traversal-failures Computation failures during traversal
-     * @see Lazy##streams Streams and spliterators
-     * @see Lazy##computing-function-retention Computing-function retention
+     * @see LazyCaches##collection-properties Collection properties
+     * @see LazyCaches##traversal-failures Computation failures during traversal
+     * @see LazyCaches##streams Streams and spliterators
+     * @see LazyCaches##computing-function-retention Computing-function retention
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
     public static <E> Set<E> ofSet(
@@ -1193,6 +772,6 @@ public final class Lazy {
         Objects.requireNonNull(mode);
         Objects.requireNonNull(elementCandidates);
         Objects.requireNonNull(computingFunction);
-        return LazyCollections.ofLazySet(mode, elementCandidates, computingFunction);
+        return jdk.internal.util.LazyCollections.ofLazySet(mode, elementCandidates, computingFunction);
     }
 }

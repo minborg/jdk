@@ -24,7 +24,7 @@
 /* @test
  * @summary Basic tests for lazy list methods
  * @enablePreview
- * @modules java.base/java.util:+open
+ * @modules java.base/java.util:+open java.base/jdk.internal.util:+open
  * @run junit LazyListTest
  */
 

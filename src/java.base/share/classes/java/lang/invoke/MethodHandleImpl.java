@@ -48,6 +48,7 @@ import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1613,6 +1614,25 @@ abstract class MethodHandleImpl {
             @Override
             public MethodHandle unreflectField(Field field, boolean isSetter) throws IllegalAccessException {
                 return isSetter ? IMPL_LOOKUP.unreflectSetter(field) : IMPL_LOOKUP.unreflectGetter(field);
+            }
+
+            @Override
+            public MethodHandle unreflectMethod(Method method) throws IllegalAccessException {
+                return IMPL_LOOKUP.unreflect(method);
+            }
+
+            @Override
+            public byte[] methodBytecodes(Method method) {
+                return MethodHandleNatives.methodBytecodes(new MemberName(method));
+            }
+
+            @Override
+            public MethodHandle defineHiddenClassConstructor(Class<?> host, byte[] bytes,
+                                                             MethodType constructorType)
+                    throws ReflectiveOperationException {
+                Lookup lookup = IMPL_LOOKUP.in(host)
+                        .defineHiddenClass(bytes, true, Lookup.ClassOption.NESTMATE);
+                return lookup.findConstructor(lookup.lookupClass(), constructorType);
             }
 
             @Override

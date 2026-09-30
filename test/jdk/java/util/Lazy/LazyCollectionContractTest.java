@@ -33,8 +33,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.Lazy;
-import java.util.Lazy.Mode;
+import java.util.LazyCaches;
+import java.util.LazyCaches.Mode;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -52,7 +52,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import static java.util.Lazy.Mode.COMPUTE_ONCE;
+import static java.util.LazyCaches.Mode.COMPUTE_ONCE;
 import static java.util.Spliterator.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -68,11 +68,11 @@ class LazyCollectionContractTest {
 
         Collection<?> create(Mode mode, IntFunction<Integer> computation) {
             return switch (this) {
-                case LIST -> Lazy.ofList(mode, 4, computation);
-                case SUBLIST -> Lazy.ofList(mode, 4, computation).subList(1, 3);
-                case REVERSED -> Lazy.ofList(mode, 4, computation).reversed();
+                case LIST -> LazyCaches.ofList(mode, 4, computation);
+                case SUBLIST -> LazyCaches.ofList(mode, 4, computation).subList(1, 3);
+                case REVERSED -> LazyCaches.ofList(mode, 4, computation).reversed();
                 case MAP_KEYS, MAP_VALUES, MAP_ENTRIES -> {
-                    var map = Lazy.ofMap(mode, KEYS, computation::apply);
+                    var map = LazyCaches.ofMap(mode, KEYS, computation::apply);
                     yield switch (this) {
                         case MAP_KEYS -> map.keySet();
                         case MAP_VALUES -> map.values();
@@ -80,7 +80,7 @@ class LazyCollectionContractTest {
                     };
                 }
                 case ENUM_MAP_KEYS, ENUM_MAP_VALUES, ENUM_MAP_ENTRIES -> {
-                    var map = Lazy.ofMap(mode, EnumSet.allOf(Key.class),
+                    var map = LazyCaches.ofMap(mode, EnumSet.allOf(Key.class),
                             key -> computation.apply(key.ordinal()));
                     yield switch (this) {
                         case ENUM_MAP_KEYS -> map.keySet();
@@ -88,8 +88,8 @@ class LazyCollectionContractTest {
                         default -> map.entrySet();
                     };
                 }
-                case SET -> Lazy.ofSet(mode, KEYS, key -> computation.apply(key) != 1);
-                case ENUM_SET -> Lazy.ofSet(mode, EnumSet.allOf(Key.class),
+                case SET -> LazyCaches.ofSet(mode, KEYS, key -> computation.apply(key) != 1);
+                case ENUM_SET -> LazyCaches.ofSet(mode, EnumSet.allOf(Key.class),
                         key -> computation.apply(key.ordinal()) != 1);
             };
         }
@@ -129,7 +129,7 @@ class LazyCollectionContractTest {
     @EnumSource(Mode.class)
     void rejectedListMutationsDoNotComputeOrInvokeCallbacks(Mode mode) {
         AtomicInteger calls = new AtomicInteger();
-        List<Integer> list = Lazy.ofList(mode, 3, i -> {
+        List<Integer> list = LazyCaches.ofList(mode, 3, i -> {
             calls.incrementAndGet();
             return i;
         });
@@ -172,7 +172,7 @@ class LazyCollectionContractTest {
         for (boolean empty : List.of(false, true)) {
             AtomicInteger calls = new AtomicInteger();
             Set<Integer> keys = empty ? Set.of() : KEYS;
-            Map<Integer, Integer> map = Lazy.ofMap(mode, keys, key -> {
+            Map<Integer, Integer> map = LazyCaches.ofMap(mode, keys, key -> {
                 calls.incrementAndGet();
                 return key;
             });
@@ -203,7 +203,7 @@ class LazyCollectionContractTest {
                 assertThrows(UnsupportedOperationException.class, iterator::remove);
             }
 
-            Set<Integer> set = Lazy.ofSet(mode, keys, key -> {
+            Set<Integer> set = LazyCaches.ofSet(mode, keys, key -> {
                 calls.incrementAndGet();
                 return true;
             });
@@ -340,8 +340,8 @@ class LazyCollectionContractTest {
             calls.incrementAndGet();
             return new Object();
         };
-        var firstList = Lazy.ofList(mode, 1, listComputation);
-        var secondList = Lazy.ofList(mode, 1, listComputation);
+        var firstList = LazyCaches.ofList(mode, 1, listComputation);
+        var secondList = LazyCaches.ofList(mode, 1, listComputation);
         assertNotSame(firstList.getFirst(), secondList.getFirst());
         assertEquals(2, calls.get());
 
@@ -350,8 +350,8 @@ class LazyCollectionContractTest {
                 calls.incrementAndGet();
                 return new Object();
             };
-            var first = Lazy.ofMap(mode, keys, computation);
-            var second = Lazy.ofMap(mode, keys, computation);
+            var first = LazyCaches.ofMap(mode, keys, computation);
+            var second = LazyCaches.ofMap(mode, keys, computation);
             Object key = keys.iterator().next();
             int before = calls.get();
             assertNotSame(first.get(key), second.get(key));
@@ -361,8 +361,8 @@ class LazyCollectionContractTest {
         for (Set<?> candidates : List.of(Set.of("key"), EnumSet.of(Key.A))) {
             AtomicInteger predicateCalls = new AtomicInteger();
             java.util.function.Predicate<Object> predicate = _ -> predicateCalls.incrementAndGet() == 2;
-            var first = Lazy.ofSet(mode, candidates, predicate);
-            var second = Lazy.ofSet(mode, candidates, predicate);
+            var first = LazyCaches.ofSet(mode, candidates, predicate);
+            var second = LazyCaches.ofSet(mode, candidates, predicate);
             Object candidate = candidates.iterator().next();
             assertFalse(first.contains(candidate));
             assertTrue(second.contains(candidate));
@@ -381,8 +381,8 @@ class LazyCollectionContractTest {
             }
             return index;
         };
-        var first = Lazy.ofList(mode, 1, computation);
-        var second = Lazy.ofList(mode, 1, computation);
+        var first = LazyCaches.ofList(mode, 1, computation);
+        var second = LazyCaches.ofList(mode, 1, computation);
         Class<? extends RuntimeException> failureType = mode == COMPUTE_ONCE
                 ? NoSuchElementException.class : IllegalStateException.class;
         assertThrows(failureType, first::getFirst);
@@ -397,7 +397,7 @@ class LazyCollectionContractTest {
             for (RuntimeException failure : List.of(new NullPointerException("computation"),
                                                    new ClassCastException("computation"))) {
                 Set<?> keys = key instanceof Key enumKey ? EnumSet.of(enumKey) : Set.of(key);
-                Map<?, Integer> map = Lazy.ofMap(mode, keys, _ -> { throw failure; });
+                Map<?, Integer> map = LazyCaches.ofMap(mode, keys, _ -> { throw failure; });
                 Map<?, Integer> other = Map.of(key, 42);
                 if (mode == COMPUTE_ONCE) {
                     assertSame(failure, assertThrows(NoSuchElementException.class,
@@ -415,7 +415,7 @@ class LazyCollectionContractTest {
         Map<Integer, Integer> other = new TreeMap<>(Map.of(1, 42));
         for (Object key : List.of("key", Key.A)) {
             Set<?> keys = key instanceof Key enumKey ? EnumSet.of(enumKey) : Set.of(key);
-            Map<?, Integer> map = Lazy.ofMap(mode, keys, _ -> 42);
+            Map<?, Integer> map = LazyCaches.ofMap(mode, keys, _ -> 42);
             assertFalse(map.entrySet().equals(other.entrySet()));
             assertFalse(map.equals(other));
             assertFalse(other.equals(map));
@@ -429,11 +429,11 @@ class LazyCollectionContractTest {
                                                new ClassCastException("other map"))) {
             AtomicInteger ownCalls = new AtomicInteger();
             AtomicInteger otherCalls = new AtomicInteger();
-            Map<String, Integer> map = Lazy.ofMap(mode, Set.of("key"), _ -> {
+            Map<String, Integer> map = LazyCaches.ofMap(mode, Set.of("key"), _ -> {
                 ownCalls.incrementAndGet();
                 return 42;
             });
-            Map<String, Integer> other = Lazy.ofMap(mode, Set.of("key"), _ -> {
+            Map<String, Integer> other = LazyCaches.ofMap(mode, Set.of("key"), _ -> {
                 otherCalls.incrementAndGet();
                 throw failure;
             });
@@ -460,12 +460,12 @@ class LazyCollectionContractTest {
         input.add(1);
         input.add(null);
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofMap(mode, input, _ -> fail("map computation during construction")));
+                () -> LazyCaches.ofMap(mode, input, _ -> fail("map computation during construction")));
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofSet(mode, input, _ -> fail("set computation during construction")));
-        assertThrows(NullPointerException.class, () -> Lazy.ofSet(mode, null, _ -> true));
-        assertThrows(NullPointerException.class, () -> Lazy.ofSet(mode, Set.of(), null));
-        assertThrows(NullPointerException.class, () -> Lazy.ofSet(null, Set.of(), _ -> true));
+                () -> LazyCaches.ofSet(mode, input, _ -> fail("set computation during construction")));
+        assertThrows(NullPointerException.class, () -> LazyCaches.ofSet(mode, null, _ -> true));
+        assertThrows(NullPointerException.class, () -> LazyCaches.ofSet(mode, Set.of(), null));
+        assertThrows(NullPointerException.class, () -> LazyCaches.ofSet(null, Set.of(), _ -> true));
     }
 
     enum EntrySource { ITERATOR, SPLITERATOR, STREAM, ARRAY }
@@ -521,8 +521,8 @@ class LazyCollectionContractTest {
     private static Map.Entry<?, Object> detachedFromTraversal(EntrySource source, Mode mode,
                                                             boolean enumKeys, Supplier<Object> computation) {
         Map<?, Object> map = enumKeys
-                ? Lazy.ofMap(mode, EnumSet.of(Key.A), _ -> computation.get())
-                : Lazy.ofMap(mode, Set.of("key"), _ -> computation.get());
+                ? LazyCaches.ofMap(mode, EnumSet.of(Key.A), _ -> computation.get())
+                : LazyCaches.ofMap(mode, Set.of("key"), _ -> computation.get());
         return switch (source) {
             case ITERATOR -> {
                 var iterator = map.entrySet().iterator();

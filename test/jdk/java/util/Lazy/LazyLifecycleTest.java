@@ -32,8 +32,8 @@
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Lazy;
-import java.util.Lazy.Mode;
+import java.util.LazyCaches;
+import java.util.LazyCaches.Mode;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -54,8 +54,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import static java.util.Lazy.Mode.COMPUTE_ONCE;
-import static java.util.Lazy.Mode.PUBLISH_ONCE;
+import static java.util.LazyCaches.Mode.COMPUTE_ONCE;
+import static java.util.LazyCaches.Mode.PUBLISH_ONCE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LazyLifecycleTest {
@@ -68,17 +68,17 @@ class LazyLifecycleTest {
             return switch (this) {
                 case SUPPLIER -> {
                     assertEquals(1, size);
-                    var lazy = Lazy.of(mode, () -> compute.apply(0));
+                    var lazy = LazyCaches.ofScalar(mode, () -> compute.apply(0));
                     yield _ -> lazy.get();
                 }
                 case CONTEXT -> {
                     assertEquals(1, size);
-                    Function<Integer, Boolean> lazy = Lazy.ofContext(mode, compute::apply);
+                    Function<Integer, Boolean> lazy = LazyCaches.ofScalar(mode, compute::apply);
                     yield lazy::apply;
                 }
-                case LIST -> Lazy.ofList(mode, size, compute)::get;
-                case MAP -> Lazy.ofMap(mode, keys(size), compute::apply)::get;
-                case SET -> Lazy.ofSet(mode, keys(size), compute::apply)::contains;
+                case LIST -> LazyCaches.ofList(mode, size, compute)::get;
+                case MAP -> LazyCaches.ofMap(mode, keys(size), compute::apply)::get;
+                case SET -> LazyCaches.ofSet(mode, keys(size), compute::apply)::contains;
             };
         }
 
@@ -173,7 +173,7 @@ class LazyLifecycleTest {
                     } else if (result == 1) {
                         assertThrows(NoSuchElementException.class, () -> lazy.apply(0));
                     } else {
-                        assertThrows(Lazy.InitializationError.class, () -> lazy.apply(0));
+                        assertThrows(LazyCaches.InitializationError.class, () -> lazy.apply(0));
                     }
                     return Thread.currentThread().isInterrupted();
                 });
@@ -251,7 +251,7 @@ class LazyLifecycleTest {
         List<Set<Integer>> sets = new ArrayList<>();
         for (int round = 0; round < rounds; round++) {
             int[] writes = written[round];
-            sets.add(Lazy.ofSet(mode, Set.of(0, 1, 2, 3), candidate -> {
+            sets.add(LazyCaches.ofSet(mode, Set.of(0, 1, 2, 3), candidate -> {
                 writes[candidate] = candidate + 1;
                 return (candidate & 1) == 0;
             }));
@@ -283,7 +283,7 @@ class LazyLifecycleTest {
     @EnumSource(Mode.class)
     void compositionRunsExtraFunctionsOnEveryAccess(Mode mode) {
         AtomicInteger calls = new AtomicInteger();
-        Function<String, String> lazy = Lazy.ofContext(mode, value -> {
+        Function<String, String> lazy = LazyCaches.ofScalar(mode, value -> {
             calls.incrementAndGet();
             return value;
         });
@@ -396,12 +396,12 @@ class LazyLifecycleTest {
         var computation = new Computation(0);
         Object view;
         if (kind < 2) {
-            var list = Lazy.ofList(mode, 2, computation);
+            var list = LazyCaches.ofList(mode, 2, computation);
             var subList = kind == 0 ? list.subList(0, 1) : list.reversed().subList(0, 1);
             assertTrue(subList.get(0));
             view = subList;
         } else {
-            var map = Lazy.ofMap(mode, Set.of(0, 1), computation::apply);
+            var map = LazyCaches.ofMap(mode, Set.of(0, 1), computation::apply);
             var entry = map.entrySet().iterator().next();
             assertTrue(entry.getValue());
             view = kind == 2 ? entry : map.keySet();
@@ -428,7 +428,7 @@ class LazyLifecycleTest {
     private static FailedRetention failedRetention(boolean error) {
         Throwable failure = error ? new LinkageError("computation")
                 : new IllegalArgumentException("computation");
-        Supplier<Boolean> lazy = Lazy.of(() -> {
+        Supplier<Boolean> lazy = LazyCaches.ofScalar(() -> {
             if (failure instanceof Error original) {
                 throw original;
             }
@@ -447,7 +447,7 @@ class LazyLifecycleTest {
                 assertTrue(ForceGC.waitFor(() -> fixture.reference.refersTo(null),
                         Utils.adjustTimeout(4_000L)));
                 Class<? extends Throwable> failure = error
-                        ? Lazy.InitializationError.class : NoSuchElementException.class;
+                        ? LazyCaches.InitializationError.class : NoSuchElementException.class;
                 assertNull(assertThrows(failure, fixture.lazy::get).getCause());
             } finally {
                 Reference.reachabilityFence(fixture.lazy);
@@ -464,7 +464,7 @@ class LazyLifecycleTest {
     @ParameterizedTest
     @EnumSource(Mode.class)
     void contextIsNotRetainedAfterComputation(Mode mode) {
-        Function<Object, Boolean> lazy = Lazy.ofContext(mode, _ -> true);
+        Function<Object, Boolean> lazy = LazyCaches.ofScalar(mode, _ -> true);
         var reference = applyWithTemporaryContext(lazy);
         try {
             assertTrue(ForceGC.waitFor(() -> reference.refersTo(null), Utils.adjustTimeout(4_000L)));

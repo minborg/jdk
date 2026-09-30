@@ -461,8 +461,7 @@ class ImmutableCollections {
 
         SubList(AbstractImmutableList<E> root, int offset, int size) {
             assert root instanceof List12
-                    || root instanceof ListN
-                    || root instanceof LazyCollections.LazyList;
+                    || root instanceof ListN;
             this.root = root;
             this.offset = offset;
             this.size = size;

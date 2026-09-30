@@ -22,7 +22,7 @@
  */
 
 /* @test
- * @summary Tests for the supplier, function, and collection factories in java.util.Lazy
+ * @summary Tests for the supplier, function, and collection factories in java.util.LazyCaches
  * @enablePreview
  * @library /test/lib
  * @run junit LazyTest
@@ -34,8 +34,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.Lazy;
-import java.util.Lazy.Mode;
+import java.util.LazyCaches;
+import java.util.LazyCaches.Mode;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -60,8 +60,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import static java.util.Lazy.Mode.COMPUTE_ONCE;
-import static java.util.Lazy.Mode.PUBLISH_ONCE;
+import static java.util.LazyCaches.Mode.COMPUTE_ONCE;
+import static java.util.LazyCaches.Mode.PUBLISH_ONCE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LazyTest {
@@ -74,20 +74,20 @@ class LazyTest {
 
         <T> Supplier<T> create(Mode mode, Supplier<T> computation) {
             return switch (this) {
-                case SUPPLIER -> Lazy.of(mode, computation);
+                case SUPPLIER -> LazyCaches.ofScalar(mode, computation);
                 case CONTEXT_FUNCTION -> {
                     Object context = new Object();
                     Function<Object, T> lazy =
-                            Lazy.ofContext(mode, _ -> computation.get());
+                            LazyCaches.ofScalar(mode, _ -> computation.get());
                     yield () -> lazy.apply(context);
                 }
                 case LIST -> {
-                    List<T> lazy = Lazy.ofList(mode, 1, _ -> computation.get());
+                    List<T> lazy = LazyCaches.ofList(mode, 1, _ -> computation.get());
                     yield () -> lazy.get(0);
                 }
                 case MAP -> {
                     Map<String, T> lazy =
-                            Lazy.ofMap(mode, Set.of("key"), _ -> computation.get());
+                            LazyCaches.ofMap(mode, Set.of("key"), _ -> computation.get());
                     yield () -> lazy.get("key");
                 }
             };
@@ -103,7 +103,7 @@ class LazyTest {
     void defaultModeIsExactlyOnce() {
         AtomicInteger calls = new AtomicInteger();
         IllegalArgumentException failure = new IllegalArgumentException("computation");
-        Supplier<Object> lazy = Lazy.of(() -> {
+        Supplier<Object> lazy = LazyCaches.ofScalar(() -> {
             calls.incrementAndGet();
             throw failure;
         });
@@ -328,8 +328,8 @@ class LazyTest {
             calls.incrementAndGet();
             return context;
         };
-        Function<String, Object> first = Lazy.ofContext(mode, computation);
-        Function<String, Object> second = Lazy.ofContext(mode, computation);
+        Function<String, Object> first = LazyCaches.ofScalar(mode, computation);
+        Function<String, Object> second = LazyCaches.ofScalar(mode, computation);
         assertEquals(0, calls.get());
         assertThrows(NullPointerException.class, () -> first.apply(null));
         assertEquals(0, calls.get());
@@ -345,7 +345,7 @@ class LazyTest {
 
     @Test
     void failedRacyContextComputationCanUseAnotherContext() {
-        Function<String, String> lazy = Lazy.ofContext(PUBLISH_ONCE, context -> {
+        Function<String, String> lazy = LazyCaches.ofScalar(PUBLISH_ONCE, context -> {
             if (context.isEmpty()) {
                 throw new IllegalArgumentException("empty context");
             }
@@ -360,7 +360,7 @@ class LazyTest {
     @EnumSource(Mode.class)
     void listViewsShareLazyElements(Mode mode) {
         AtomicIntegerArray calls = new AtomicIntegerArray(4);
-        List<Object> lazy = Lazy.ofList(mode, 4, index -> {
+        List<Object> lazy = LazyCaches.ofList(mode, 4, index -> {
             calls.incrementAndGet(index);
             return new Object();
         });
@@ -393,7 +393,7 @@ class LazyTest {
         AtomicInteger calls = new AtomicInteger();
         String canonicalKey = new String("first");
         Set<String> keys = new HashSet<>(Set.of(canonicalKey, "second"));
-        Map<String, Object> lazy = Lazy.ofMap(mode, keys, key -> {
+        Map<String, Object> lazy = LazyCaches.ofMap(mode, keys, key -> {
             calls.incrementAndGet();
             return key;
         });
@@ -427,7 +427,7 @@ class LazyTest {
     @ParameterizedTest
     @EnumSource(Mode.class)
     void collectionsAreUnmodifiable(Mode mode) {
-        List<Integer> list = Lazy.ofList(mode, 3, index -> index);
+        List<Integer> list = LazyCaches.ofList(mode, 3, index -> index);
         for (List<Integer> view : List.of(list, list.subList(0, 2), list.reversed())) {
             assertThrows(UnsupportedOperationException.class, () -> view.add(42));
             assertThrows(UnsupportedOperationException.class, () -> view.set(0, 42));
@@ -441,7 +441,7 @@ class LazyTest {
             assertThrows(UnsupportedOperationException.class, () -> iterator.set(42));
             assertThrows(UnsupportedOperationException.class, () -> iterator.add(42));
         }
-        Map<String, Integer> map = Lazy.ofMap(mode, Set.of("first", "second"), String::length);
+        Map<String, Integer> map = LazyCaches.ofMap(mode, Set.of("first", "second"), String::length);
         assertThrows(UnsupportedOperationException.class, () -> map.put("third", 3));
         assertThrows(UnsupportedOperationException.class, () -> map.remove("first"));
         assertThrows(UnsupportedOperationException.class, () -> map.compute("first", (_, _) -> 3));
@@ -460,7 +460,7 @@ class LazyTest {
     void emptyCollectionsAndNullQueries(Mode mode) {
         for (int size : new int[] { 0, 1 }) {
             AtomicInteger calls = new AtomicInteger();
-            List<Integer> list = Lazy.ofList(mode, size, index -> {
+            List<Integer> list = LazyCaches.ofList(mode, size, index -> {
                 calls.incrementAndGet();
                 return index;
             });
@@ -470,7 +470,7 @@ class LazyTest {
             assertThrows(NullPointerException.class, () -> list.contains(null));
             assertThrows(NullPointerException.class, () -> list.indexOf(null));
             assertThrows(NullPointerException.class, () -> list.lastIndexOf(null));
-            Map<Integer, Integer> map = Lazy.ofMap(mode,
+            Map<Integer, Integer> map = LazyCaches.ofMap(mode,
                     size == 0 ? Set.of() : Set.of(0), key -> {
                         calls.incrementAndGet();
                         return key;
@@ -490,7 +490,7 @@ class LazyTest {
     @EnumSource(Mode.class)
     void enumKeysHonorInitializationMode(Mode mode) {
         AtomicInteger calls = new AtomicInteger();
-        Map<Mode, String> map = Lazy.ofMap(mode, EnumSet.allOf(Mode.class), key -> {
+        Map<Mode, String> map = LazyCaches.ofMap(mode, EnumSet.allOf(Mode.class), key -> {
             if (key == COMPUTE_ONCE && calls.incrementAndGet() == 1) {
                 throw new IllegalArgumentException("first computation");
             }
@@ -512,7 +512,7 @@ class LazyTest {
     @ParameterizedTest
     @EnumSource(Mode.class)
     void mapHashCodeTracksMutableValues(Mode mode) {
-        Map<String, List<Integer>> lazy = Lazy.ofMap(mode, Set.of("key"),
+        Map<String, List<Integer>> lazy = LazyCaches.ofMap(mode, Set.of("key"),
                 _ -> new ArrayList<>(List.of(1)));
         List<Integer> value = lazy.get("key");
         Map<String, List<Integer>> eager = Map.of("key", value);
@@ -535,7 +535,7 @@ class LazyTest {
     @EnumSource(Mode.class)
     void collectionFailuresArePerElement(Mode mode) {
         AtomicIntegerArray listCalls = new AtomicIntegerArray(2);
-        List<Integer> list = Lazy.ofList(mode, 2, index -> {
+        List<Integer> list = LazyCaches.ofList(mode, 2, index -> {
             if (listCalls.incrementAndGet(index) == 1 && index == 0) {
                 throw new IllegalArgumentException("first element");
             }
@@ -555,7 +555,7 @@ class LazyTest {
         }
 
         AtomicIntegerArray mapCalls = new AtomicIntegerArray(2);
-        Map<Integer, Integer> map = Lazy.ofMap(mode, Set.of(0, 1), key -> {
+        Map<Integer, Integer> map = LazyCaches.ofMap(mode, Set.of(0, 1), key -> {
             if (mapCalls.incrementAndGet(key) == 1 && key == 0) {
                 throw new IllegalArgumentException("first value");
             }
@@ -575,27 +575,27 @@ class LazyTest {
 
     @Test
     void factoryArguments() {
-        assertThrows(NullPointerException.class, () -> Lazy.of((Supplier<Object>) null));
-        assertThrows(NullPointerException.class, () -> Lazy.of(null, Object::new));
+        assertThrows(NullPointerException.class, () -> LazyCaches.ofScalar((Supplier<Object>) null));
+        assertThrows(NullPointerException.class, () -> LazyCaches.ofScalar(null, Object::new));
         assertThrows(NullPointerException.class, () ->
-                Lazy.ofContext(null, (Function<Object, Object>) Function.identity()));
+                LazyCaches.ofScalar(null, (Function<Object, Object>) Function.identity()));
         for (Mode mode : Mode.values()) {
-            assertThrows(NullPointerException.class, () -> Lazy.of(mode, (Supplier<Object>) null));
+            assertThrows(NullPointerException.class, () -> LazyCaches.ofScalar(mode, (Supplier<Object>) null));
             assertThrows(NullPointerException.class, () ->
-                    Lazy.ofContext(mode, (Function<Object, Object>) null));
-            assertThrows(IllegalArgumentException.class, () -> Lazy.ofList(mode, -1, i -> i));
-            assertThrows(NullPointerException.class, () -> Lazy.ofList(mode, 0, null));
-            assertThrows(NullPointerException.class, () -> Lazy.ofMap(mode, null, Function.identity()));
-            assertThrows(NullPointerException.class, () -> Lazy.ofMap(mode, Set.of(), null));
+                    LazyCaches.ofScalar(mode, (Function<Object, Object>) null));
+            assertThrows(IllegalArgumentException.class, () -> LazyCaches.ofList(mode, -1, i -> i));
+            assertThrows(NullPointerException.class, () -> LazyCaches.ofList(mode, 0, null));
+            assertThrows(NullPointerException.class, () -> LazyCaches.ofMap(mode, null, Function.identity()));
+            assertThrows(NullPointerException.class, () -> LazyCaches.ofMap(mode, Set.of(), null));
             Set<Object> nullKeys = new HashSet<>();
             nullKeys.add(null);
             assertThrows(NullPointerException.class, () ->
-                    Lazy.ofMap(mode, nullKeys, Function.identity()));
-            assertTrue(Lazy.ofList(mode, 0, _ -> fail("empty list computed an element")).isEmpty());
-            assertTrue(Lazy.ofMap(mode, Set.of(), _ -> fail("empty map computed a value")).isEmpty());
+                    LazyCaches.ofMap(mode, nullKeys, Function.identity()));
+            assertTrue(LazyCaches.ofList(mode, 0, _ -> fail("empty list computed an element")).isEmpty());
+            assertTrue(LazyCaches.ofMap(mode, Set.of(), _ -> fail("empty map computed a value")).isEmpty());
         }
-        assertThrows(NullPointerException.class, () -> Lazy.ofList(null, 0, i -> i));
-        assertThrows(NullPointerException.class, () -> Lazy.ofMap(null, Set.of(), Function.identity()));
+        assertThrows(NullPointerException.class, () -> LazyCaches.ofList(null, 0, i -> i));
+        assertThrows(NullPointerException.class, () -> LazyCaches.ofMap(null, Set.of(), Function.identity()));
     }
 
     @ParameterizedTest
