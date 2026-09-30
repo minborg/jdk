@@ -55,13 +55,212 @@ final class LazyCollections {
     // Unsafe allows LazyCollection classes to be used early in the boot sequence
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
+    /** List operations whose inherited implementations lose lazy failures. */
+    private abstract static class AbstractLazyList<E>
+            extends ImmutableCollections.AbstractImmutableList<E> {
+
+        boolean legacy() { return false; }
+
+        @Override
+        public Iterator<E> iterator() {
+            return legacy() ? super.iterator() : new LazyListIterator<>(this, 0);
+        }
+
+        @Override
+        public ListIterator<E> listIterator(int index) {
+            if (legacy()) {
+                return super.listIterator(index);
+            }
+            if (index < 0 || index > size()) {
+                throw outOfBounds(index);
+            }
+            return new LazyListIterator<>(this, index);
+        }
+
+        @Override
+        public List<E> subList(int fromIndex, int toIndex) {
+            if (legacy()) {
+                return super.subList(fromIndex, toIndex);
+            }
+            subListRangeCheck(fromIndex, toIndex, size());
+            return new LazyListView<>(this, fromIndex, toIndex - fromIndex, 1);
+        }
+
+        @Override
+        public List<E> reversed() {
+            return legacy() ? super.reversed()
+                    : new LazyListView<>(this, size() - 1, size(), -1);
+        }
+
+        @Override
+        public Spliterator<E> spliterator() {
+            return legacy() ? super.spliterator()
+                    : new IndexedSpliterator<>(this::get, 0, size(), Spliterator.ORDERED);
+        }
+
+        @Override
+        public int indexOf(Object value) {
+            Objects.requireNonNull(value);
+            for (int i = 0; i < size(); i++) {
+                if (value.equals(get(i))) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        @Override
+        public int lastIndexOf(Object value) {
+            Objects.requireNonNull(value);
+            for (int i = size() - 1; i >= 0; i--) {
+                if (value.equals(get(i))) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+    }
+
+    /** A flattened view keeps both random access and the original lazy storage. */
+    private static final class LazyListView<E> extends AbstractLazyList<E> {
+        private final AbstractLazyList<E> root;
+        private final int offset;
+        private final int size;
+        private final int direction;
+
+        LazyListView(AbstractLazyList<E> list, int offset, int size, int direction) {
+            if (list instanceof LazyListView<E> view) {
+                this.root = view.root;
+                this.offset = view.offset + view.direction * offset;
+                this.direction = view.direction * direction;
+            } else {
+                this.root = list;
+                this.offset = offset;
+                this.direction = direction;
+            }
+            this.size = size;
+        }
+
+        @Override public int size() { return size; }
+
+        @Override
+        public E get(int index) {
+            return root.get(offset + direction * Objects.checkIndex(index, size));
+        }
+    }
+
+    /** Bounds are checked separately so computation exceptions are not translated. */
+    private static final class LazyListIterator<E> implements ListIterator<E> {
+        private final List<E> list;
+        private int cursor;
+
+        LazyListIterator(List<E> list, int cursor) {
+            this.list = list;
+            this.cursor = cursor;
+        }
+
+        @Override public boolean hasNext() { return cursor < list.size(); }
+        @Override public boolean hasPrevious() { return cursor > 0; }
+        @Override public int nextIndex() { return cursor; }
+        @Override public int previousIndex() { return cursor - 1; }
+        @Override public void remove() { throw ImmutableCollections.uoe(); }
+        @Override public void set(E value) { throw ImmutableCollections.uoe(); }
+        @Override public void add(E value) { throw ImmutableCollections.uoe(); }
+
+        @Override
+        public E next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            E value = list.get(cursor);
+            cursor++;
+            return value;
+        }
+
+        @Override
+        public E previous() {
+            if (!hasPrevious()) {
+                throw new NoSuchElementException();
+            }
+            E value = list.get(cursor - 1);
+            cursor--;
+            return value;
+        }
+    }
+
+    private static final class IndexedIterator<E> implements Iterator<E> {
+        private final IntFunction<? extends E> access;
+        private final int fence;
+        private int index;
+
+        IndexedIterator(IntFunction<? extends E> access, int fence) {
+            this.access = access;
+            this.fence = fence;
+        }
+
+        @Override public boolean hasNext() { return index < fence; }
+
+        @Override
+        public E next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            E value = access.apply(index);
+            index++;
+            return value;
+        }
+    }
+
+    /** Splitting and metadata never access lazy values. */
+    private static final class IndexedSpliterator<E> implements Spliterator<E> {
+        private final IntFunction<? extends E> access;
+        private final int fence;
+        private final int characteristics;
+        private int index;
+
+        IndexedSpliterator(IntFunction<? extends E> access, int index,
+                           int fence, int characteristics) {
+            this.access = access;
+            this.index = index;
+            this.fence = fence;
+            this.characteristics = characteristics | NONNULL | IMMUTABLE | SIZED | SUBSIZED;
+        }
+
+        @Override public long estimateSize() { return fence - index; }
+        @Override public int characteristics() { return characteristics; }
+
+        @Override
+        public boolean tryAdvance(Consumer<? super E> action) {
+            Objects.requireNonNull(action);
+            if (index >= fence) {
+                return false;
+            }
+            E value = access.apply(index);
+            index++;
+            action.accept(value);
+            return true;
+        }
+
+        @Override
+        public Spliterator<E> trySplit() {
+            int midpoint = (index + fence) >>> 1;
+            if (index >= midpoint) {
+                return null;
+            }
+            var prefix = new IndexedSpliterator<E>(access, index, midpoint, characteristics);
+            index = midpoint;
+            return prefix;
+        }
+    }
+
     @jdk.internal.vm.annotation.TrustFinalFields
     @jdk.internal.ValueBased
     static final class LazyList<E>
-            extends ImmutableCollections.AbstractImmutableList<E> {
+            extends AbstractLazyList<E> {
 
         @Stable
         private final E[] elements;
+        private final Lazy.Mode mode;
         // Keeping track of `size` separately reduces bytecode size compared to
         // using `elements.length`.
         private final int size;
@@ -69,28 +268,36 @@ final class LazyCollections {
         private final Mutexes mutexes;
         private final Throwables throwables;
 
-        private LazyList(int size, IntFunction<? extends E> computingFunction) {
+        private LazyList(Lazy.Mode mode, int size,
+                         IntFunction<? extends E> computingFunction) {
             this.elements = newGenericArray(size);
+            this.mode = mode;
             this.size = size;
             this.functionHolder = new FunctionHolder<>(computingFunction, size);
-            this.mutexes = new Mutexes(size);
-            this.throwables = new Throwables(size);
+            this.mutexes = mode == Lazy.Mode.PUBLISH_ONCE ? null : new Mutexes(size);
+            this.throwables = mode == Lazy.Mode.PUBLISH_ONCE ? null
+                    : new Throwables(size, mode == Lazy.Mode.COMPUTE_ONCE);
             super();
         }
 
         @Override public boolean  isEmpty() { return size == 0; }
         @Override public int      size() { return size; }
         @Override public Object[] toArray() { return copyInto(new Object[size]); }
+        @Override boolean legacy() { return mode == null; }
 
         @ForceInline
         @Override
         public E get(int i) {
-            final E e = contentsAcquire(offsetFor(Objects.checkIndex(i, size)));
+            final E e = contents(offsetFor(Objects.checkIndex(i, size)));
             return (e != null) ? e : getSlowPath(i);
         }
 
         private E getSlowPath(int i) {
-            return orElseComputeSlowPath(elements, i, mutexes, throwables, i, functionHolder);
+            if (mode == Lazy.Mode.PUBLISH_ONCE) {
+                return orElseComputeRacy(elements, i, i, functionHolder, true);
+            }
+            return orElseComputeSlowPath(elements,
+                    i, mutexes, throwables, i, functionHolder, mode != null, true);
         }
 
         @Override
@@ -140,7 +347,7 @@ final class LazyCollections {
 
         @SuppressWarnings("unchecked")
         @ForceInline
-        private E contentsAcquire(long offset) {
+        private E contents(long offset) {
             return (E) UNSAFE.getReferenceAcquire(elements, offset);
         }
 
@@ -156,7 +363,8 @@ final class LazyCollections {
         private final Integer min;
         private final IntPredicate member;
 
-        public LazyEnumMap(Set<K> set,
+        public LazyEnumMap(Lazy.Mode mode,
+                           Set<K> set,
                            Class<K> enumType,
                            int min,
                            int backingSize,
@@ -165,7 +373,7 @@ final class LazyCollections {
             this.enumType = enumType;
             this.min = min;
             this.member = member;
-            super(set, set.size(), backingSize, computingFunction);
+            super(mode, set, set.size(), backingSize, computingFunction);
         }
 
         @Override
@@ -195,6 +403,12 @@ final class LazyCollections {
             return key.ordinal() - min;
         }
 
+        @Override
+        K canonicalKey(K key, int index) {
+            // Enum equality is identity, so a matching lookup key is retained.
+            return key;
+        }
+
     }
 
     @jdk.internal.vm.annotation.TrustFinalFields
@@ -204,16 +418,22 @@ final class LazyCollections {
         // Use an unmodifiable map with known entries that are @Stable. Lookups through this map can be folded because
         // it is created using Map.ofEntries. This allows us to avoid creating a separate hashing function.
         private final Map<K, Integer> indexMapper;
+        @Stable
+        private final K[] keysByIndex;
 
-        public LazyMap(Set<K> keys, Function<? super K, ? extends V> computingFunction) {
+        public LazyMap(Lazy.Mode mode, Set<K> keys,
+                       Function<? super K, ? extends V> computingFunction) {
             @SuppressWarnings("unchecked")
             final Entry<K, Integer>[] entries = (Entry<K, Integer>[]) new Entry<?, ?>[keys.size()];
+            final K[] keysByIndex = newGenericArray(keys.size());
             int i = 0;
             for (K k : keys) {
+                keysByIndex[i] = k;
                 entries[i] = Map.entry(k, i++);
             }
             this.indexMapper = Map.ofEntries(entries);
-            super(keys, i, i, computingFunction);
+            this.keysByIndex = keysByIndex;
+            super(mode, keys, i, i, computingFunction);
         }
 
         @ForceInline
@@ -237,6 +457,11 @@ final class LazyCollections {
         int indexFor(K key) {
             return indexMapper.get(key);
         }
+
+        @Override
+        K canonicalKey(K key, int index) {
+            return keysByIndex[index];
+        }
     }
 
     @jdk.internal.vm.annotation.TrustFinalFields
@@ -251,6 +476,9 @@ final class LazyCollections {
         // This field shadows AbstractMap.values which is of another type
         @Stable
         private final V[] values;
+        private final Lazy.Mode mode;
+        @Stable
+        private final K[] iterationKeys;
         // This field shadows AbstractMap.keySet which is not trusted
         private final Set<K> keySet;
 
@@ -259,29 +487,75 @@ final class LazyCollections {
         @Stable
         private long hash;
 
-        private AbstractLazyMap(Set<K> keySet,
+        private AbstractLazyMap(Lazy.Mode mode,
+                                Set<K> keySet,
                                 int size,
                                 int backingSize,
                                 Function<? super K, ? extends V> computingFunction) {
             this.size = size;
             this.functionHolder = new FunctionHolder<>(computingFunction, size);
             this.values = newGenericArray(backingSize);
-            this.mutexes = new Mutexes(backingSize);
-            this.throwables = new Throwables(backingSize);
-            this.keySet = keySet;
+            this.mode = mode;
+            this.iterationKeys = mode == null ? null : keySet.toArray(newGenericArray(size));
+            this.mutexes = mode == Lazy.Mode.PUBLISH_ONCE ? null : new Mutexes(backingSize);
+            this.throwables = mode == Lazy.Mode.PUBLISH_ONCE ? null
+                    : new Throwables(backingSize, mode == Lazy.Mode.COMPUTE_ONCE);
             super();
+            this.keySet = mode == null ? keySet : new LazyMapKeySet<>(this);
             this.entrySet = LazyMapEntrySet.of(this);
         }
 
         // Abstract methods
         @Override public abstract boolean containsKey(Object o);
         abstract int indexFor(K key);
+        abstract K canonicalKey(K key, int index);
 
         // Public methods
         @Override public final int              size() { return size; }
         @Override public final boolean          isEmpty() { return size == 0; }
         @Override public final Set<Entry<K, V>> entrySet() { return entrySet; }
         @Override public Set<K>                 keySet() { return keySet; }
+
+        private K keyAt(int index) {
+            return iterationKeys[index];
+        }
+
+        private V valueAt(int index) {
+            K key = keyAt(index);
+            return orElseCompute(key, indexFor(key));
+        }
+
+        private Entry<K, V> entryAt(int index) {
+            return new LazyEntry<>(keyAt(index), this);
+        }
+
+        @Override
+        public final boolean equals(Object other) {
+            if (mode == null) {
+                return super.equals(other);
+            }
+            if (other == this) {
+                return true;
+            }
+            if (!(other instanceof Map<?, ?> map) || map.size() != size) {
+                return false;
+            }
+            for (Entry<?, ?> entry : map.entrySet()) {
+                // AbstractMap.equals catches NPE and CCE around this entire
+                // operation, which would hide PUBLISH_ONCE computation failures.
+                // Look up the other map's keys here rather than passing our
+                // keys to a map that might restrict their type (e.g. TreeMap).
+                Object key = entry.getKey();
+                if (key == null) {
+                    return false;
+                }
+                V value = get(key);
+                if (value == null || !value.equals(entry.getValue())) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
         @Override
         public final boolean containsValue(Object value) {
@@ -296,6 +570,11 @@ final class LazyCollections {
 
         @Override
         public final int hashCode() {
+            if (mode != null) {
+                // A retained value may itself be mutable. New Lazy factories
+                // must reflect its current hash code on every invocation.
+                return hashCode0();
+            }
             // Racy computation
             long h = hash;
             if (h == 0) {
@@ -336,7 +615,47 @@ final class LazyCollections {
             if (v != null) {
                 return v;
             }
-            return orElseComputeSlowPath(values, index, mutexes, throwables, key, functionHolder);
+            // Computation uses the retained key, even when an equal but
+            // distinct lookup object triggered this access. Keep this lookup
+            // off the fast path for already initialized values.
+            final K retainedKey = canonicalKey(key, index);
+            if (mode == Lazy.Mode.PUBLISH_ONCE) {
+                return orElseComputeRacy(values, index, retainedKey, functionHolder, false);
+            }
+            return orElseComputeSlowPath(values,
+                    index, mutexes, throwables, retainedKey, functionHolder, mode != null, false);
+        }
+
+        /** Unlike a detached key snapshot, this view retains all lazy storage. */
+        private static final class LazyMapKeySet<K, V>
+                extends ImmutableCollections.AbstractImmutableSet<K> {
+            private final AbstractLazyMap<K, V> map;
+
+            LazyMapKeySet(AbstractLazyMap<K, V> map) {
+                this.map = map;
+            }
+
+            @Override public int size() { return map.size; }
+            @Override public boolean contains(Object key) { return map.containsKey(key); }
+
+            @Override
+            public Iterator<K> iterator() {
+                return new IndexedIterator<>(map::keyAt, map.size);
+            }
+
+            @Override
+            public Spliterator<K> spliterator() {
+                return new IndexedSpliterator<>(map::keyAt, 0, map.size, Spliterator.DISTINCT);
+            }
+
+            @Override
+            public int hashCode() {
+                int hash = 0;
+                for (K key : map.iterationKeys) {
+                    hash += key.hashCode();
+                }
+                return hash;
+            }
         }
 
         @jdk.internal.vm.annotation.TrustFinalFields
@@ -352,9 +671,19 @@ final class LazyCollections {
                 super();
             }
 
-            @Override public Iterator<Entry<K, V>> iterator() { return LazyMapIterator.of(map); }
+            @Override
+            public Iterator<Entry<K, V>> iterator() {
+                return map.mode == null ? LazyMapIterator.of(map)
+                        : new IndexedIterator<>(map::entryAt, map.size);
+            }
             @Override public int                   size() { return map.size(); }
             @Override public int                   hashCode() { return map.hashCode(); }
+
+            @Override
+            public Spliterator<Entry<K, V>> spliterator() {
+                return map.mode == null ? super.spliterator()
+                        : new IndexedSpliterator<>(map::entryAt, 0, map.size, Spliterator.DISTINCT);
+            }
 
             // For @ValueBased
             private static <K, V> LazyMapEntrySet<K, V> of(AbstractLazyMap<K, V> outer) {
@@ -441,10 +770,20 @@ final class LazyCollections {
                 super();
             }
 
-            @Override public Iterator<V> iterator() { return map.new ValueIterator(); }
+            @Override
+            public Iterator<V> iterator() {
+                return map.mode == null ? map.new ValueIterator()
+                        : new IndexedIterator<>(map::valueAt, map.size);
+            }
             @Override public int         size() { return map.size(); }
             @Override public boolean     isEmpty() { return map.isEmpty(); }
             @Override public boolean     contains(Object v) { return map.containsValue(v); }
+
+            @Override
+            public Spliterator<V> spliterator() {
+                return map.mode == null ? super.spliterator()
+                        : new IndexedSpliterator<>(map::valueAt, 0, map.size, 0);
+            }
 
             // For @ValueBased
             private static <K, V> LazyMapValues<K, V> of(AbstractLazyMap<K, V> outer) {
@@ -460,7 +799,11 @@ final class LazyCollections {
             extends ImmutableCollections.AbstractImmutableSet<E>
             implements Set<E> {
 
+        private static final long SIZE_OFFSET = UNSAFE.objectFieldOffset(LazySet.class, "size");
+        private static final long HASH_OFFSET = UNSAFE.objectFieldOffset(LazySet.class, "hash");
+
         private final Map<E, Boolean> map;
+        private final AbstractLazyMap<E, Boolean> lazyMap;
 
         // -1 is used as a sentinel value for zero so we can get
         // stable access for all `size` values. `size` is always non-negative.
@@ -471,10 +814,14 @@ final class LazyCollections {
         @Stable
         private long hash;
 
-        public LazySet(Set<? extends E> elementCandidates,
+        public LazySet(Lazy.Mode mode,
+                       Set<? extends E> elementCandidates,
                        Predicate<? super E> computingFunction) {
-            this.map = Map.ofLazy(elementCandidates, computingFunction::test);
+            this.map = mode == null
+                    ? Map.ofLazy(elementCandidates, computingFunction::test)
+                    : ofLazyMap(mode, elementCandidates, computingFunction::test);
             super();
+            this.lazyMap = mode == null ? null : (AbstractLazyMap<E, Boolean>) map;
         }
 
         @Override
@@ -485,11 +832,18 @@ final class LazyCollections {
         @Override
         public int hashCode() {
             // Racy computation
-            long h = hash;
+            long h = lazyMap == null ? hash : UNSAFE.getLongAcquire(this, HASH_OFFSET);
             if (h == 0) {
                 // Set a bit in the upper 32-bit region of the `long` to
                 // cater for the case the lower 32-bit hash is zero.
-                hash = h = expandToLong(hashCode0());
+                h = expandToLong(hashCode0());
+                if (lazyMap == null) {
+                    hash = h;
+                } else {
+                    // A cached aggregate must publish the membership accesses
+                    // that the next reader can consequently avoid.
+                    UNSAFE.putLongRelease(this, HASH_OFFSET, h);
+                }
             }
             return reduceToInt(h);
         }
@@ -506,18 +860,28 @@ final class LazyCollections {
 
         @Override
         public Iterator<E> iterator() {
-            return new LazySetIterator<>(map.entrySet().iterator());
+            return new LazySetIterator<>(map.entrySet().iterator(), lazyMap != null);
+        }
+
+        @Override
+        public Spliterator<E> spliterator() {
+            return lazyMap == null ? super.spliterator()
+                    : new LazySetSpliterator<>(lazyMap, 0, lazyMap.size());
         }
 
         @jdk.internal.vm.annotation.TrustFinalFields
         static final class LazySetIterator<E> implements Iterator<E> {
 
             private final Iterator<Map.Entry<E, Boolean>> iterator;
+            private final boolean retainFailure;
 
             E current;
+            private Map.Entry<E, Boolean> pending;
 
-            public LazySetIterator(Iterator<Map.Entry<E, Boolean>> iterator) {
+            public LazySetIterator(Iterator<Map.Entry<E, Boolean>> iterator,
+                                   boolean retainFailure) {
                 this.iterator = iterator;
+                this.retainFailure = retainFailure;
                 super();
             }
 
@@ -526,12 +890,17 @@ final class LazyCollections {
                 if (current != null) {
                     return true;
                 }
-                while (iterator.hasNext()) {
-                    Map.Entry<E, Boolean> e = iterator.next();
+                while (pending != null || iterator.hasNext()) {
+                    Map.Entry<E, Boolean> e = pending != null ? pending : iterator.next();
+                    if (retainFailure) {
+                        pending = e;
+                    }
                     if (e.getValue()) {
                         current = e.getKey();
+                        pending = null;
                         return true;
                     }
+                    pending = null;
                 }
                 return false;
             }
@@ -555,16 +924,62 @@ final class LazyCollections {
 
         }
 
+        /** Candidate ranges can be partitioned without determining membership. */
+        private static final class LazySetSpliterator<E> implements Spliterator<E> {
+            private final AbstractLazyMap<E, Boolean> map;
+            private final int fence;
+            private int index;
+
+            LazySetSpliterator(AbstractLazyMap<E, Boolean> map, int index, int fence) {
+                this.map = map;
+                this.index = index;
+                this.fence = fence;
+            }
+
+            @Override public long estimateSize() { return fence - index; }
+            @Override public int characteristics() { return DISTINCT | NONNULL | IMMUTABLE; }
+
+            @Override
+            public boolean tryAdvance(Consumer<? super E> action) {
+                Objects.requireNonNull(action);
+                while (index < fence) {
+                    if (map.valueAt(index)) {
+                        E element = map.keyAt(index);
+                        index++;
+                        action.accept(element);
+                        return true;
+                    }
+                    index++;
+                }
+                return false;
+            }
+
+            @Override
+            public Spliterator<E> trySplit() {
+                int midpoint = (index + fence) >>> 1;
+                if (index >= midpoint) {
+                    return null;
+                }
+                var prefix = new LazySetSpliterator<>(map, index, midpoint);
+                index = midpoint;
+                return prefix;
+            }
+        }
+
         @Override
         public int size() {
             // Racy computation
-            int s = size;
+            int s = lazyMap == null ? size : UNSAFE.getIntAcquire(this, SIZE_OFFSET);
             if (s == 0) {
                 s = size0();
                 if (s == 0) {
                     s = -1;
                 }
-                size = s;
+                if (lazyMap == null) {
+                    size = s;
+                } else {
+                    UNSAFE.putIntRelease(this, SIZE_OFFSET, s);
+                }
             }
             return s == -1 ? 0 : s;
         }
@@ -627,21 +1042,26 @@ final class LazyCollections {
 
     }
 
-    /** Holds the throwable class names produced by the computing function.
+    /** Holds the throwable class names and categories produced by the computing function.
      * <p>
      * Class names are used instead of Class objects to avoid pinning class loaders after
      * a failed computation.
      * <p>
-     * This class is not thread safe across indices. However, it will always be accessed
-     * under the same monitor for a given index.
+     * Each slot is written at most once under its initialization monitor. Readers
+     * either acquire that monitor or observe publication through a terminal mutex
+     * marker or the cleared mutex-array reference.
      */
     private static final class Throwables {
 
         @Stable
         final String[] throwables;
+        // Only the new COMPUTE_ONCE mode distinguishes failures from Errors.
+        // Preallocate this array so recording an Error needs no new holder.
+        final boolean[] errors;
 
-        Throwables(int size) {
+        Throwables(int size, boolean distinguishErrors) {
             this.throwables = new String[size];
+            this.errors = distinguishErrors ? new boolean[size] : null;
             super();
         }
 
@@ -649,7 +1069,22 @@ final class LazyCollections {
             return Optional.ofNullable(throwables[index]);
         }
 
+        boolean isError(int index) {
+            return errors != null && errors[index];
+        }
+
         void set(int index, Throwable throwable) {
+            if (errors != null && throwable instanceof Error) {
+                // Establish terminal failure before obtaining diagnostic data,
+                // which can itself fail, for example when memory is exhausted.
+                errors[index] = true;
+                try {
+                    throwables[index] = throwable.getClass().getName();
+                } catch (Throwable ignored) {
+                    // Later accesses report the failure without a class name.
+                }
+                return;
+            }
             throwables[index] = throwable.getClass().getName().intern();
         }
     }
@@ -671,7 +1106,9 @@ final class LazyCollections {
                                        final Mutexes mutexes,
                                        final Throwables throwables,
                                        final Object input,
-                                       final FunctionHolder<?> functionHolder) {
+                                       final FunctionHolder<?> functionHolder,
+                                       final boolean acquireAccess,
+                                       final boolean indexed) {
         final long offset = offsetFor(index);
         final Object mutex = mutexes.acquireMutex(offset);
         if (mutex == null) {
@@ -687,22 +1124,22 @@ final class LazyCollections {
         }
         preventReentry(mutex, input);
         synchronized (mutex) {
-            final T t = array[index];  // Plain semantics suffice here
+            final T t = acquireAccess
+                    ? (T) UNSAFE.getReferenceAcquire(array, offset)
+                    : array[index]; // Plain semantics suffice for legacy factories.
             if (t == null) {
                 throwIfPreviousException(index, throwables, input);
                 try {
-                    final T newValue = switch (functionHolder.function()) {
-                        case IntFunction<?> iFun -> (T) iFun.apply((int) input);
-                        case Function<?, ?> fun  -> ((Function<Object, T>) fun).apply(input);
-                        default                  -> throw cannotReachHere(functionHolder, input);
-                    };
-                    Objects.requireNonNull(newValue);
+                    final T newValue = compute(functionHolder.function(), input, indexed);
 
                     // The mutex is not reentrant so we know newValue should be returned
                     set(array, index, mutex, newValue);
                     return newValue;
                 } catch (Throwable x) {
                     throwables.set(index, x);
+                    if (x instanceof Error error && throwables.isError(index)) {
+                        throw error;
+                    }
                     // Wrap the initial throwable without pinning its class loader.
                     throw noSuchElementException(x.getClass().getName(), input, x);
                 } finally {
@@ -718,8 +1155,48 @@ final class LazyCollections {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private static <T> T orElseComputeRacy(T[] array, int index, Object input,
+                                         FunctionHolder<?> functionHolder, boolean indexed) {
+        // Snapshot the function before checking the value. The function may be
+        // released once another thread has installed the last missing value.
+        final Object function = functionHolder.function();
+        final long offset = offsetFor(index);
+        final T value = (T) UNSAFE.getReferenceAcquire(array, offset);
+        if (value != null) {
+            return value;
+        }
+        // Reading a cleared volatile function makes the winning publication
+        // visible to the subsequent acquire array read above.
+        assert function != null;
+        final T candidate = compute(function, input, indexed);
+        final T witness = (T) UNSAFE.compareAndExchangeReferenceRelease(array, offset, null, candidate);
+        if (witness != null) {
+            // The witness of a release exchange has only plain read semantics.
+            // Acquire the winning publication before returning its value.
+            return (T) UNSAFE.getReferenceAcquire(array, offset);
+        }
+        // Only the successful publisher accounts for this slot. Failures and
+        // losing computations must not release a still-needed function.
+        functionHolder.countDown();
+        return candidate;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T compute(Object function, Object input, boolean indexed) {
+        final T value = indexed
+                ? ((IntFunction<T>) function).apply((int) input)
+                : ((Function<Object, T>) function).apply(input);
+        return Objects.requireNonNull(value);
+    }
+
     private static void throwIfPreviousException(int index, Throwables throwables, Object input) {
         final var throwable = throwables.get(index);
+        if (throwables.isError(index)) {
+            throw new Lazy.InitializationError(throwable.isPresent()
+                    ? failureMessage(throwable.get(), input)
+                    : "Lazy initialization previously failed with an Error");
+        }
         if (throwable.isPresent()) {
             throw noSuchElementException(throwable.get(), input, null);
         }
@@ -728,10 +1205,13 @@ final class LazyCollections {
     private static NoSuchElementException noSuchElementException(String throwableName,
                                                          Object input,
                                                          Throwable cause) {
+        return new NoSuchElementException(failureMessage(throwableName, input), cause);
+    }
+
+    private static String failureMessage(String throwableName, Object input) {
         final String isolatedToString = LazyConstantImpl.isolateToString(input);
-        var message = "Unable to access the lazy collection because " + throwableName +
+        return "Unable to access the lazy collection because " + throwableName +
                 " was thrown at initial computation for input '" + isolatedToString + "'";
-        return new NoSuchElementException(message, cause);
     }
 
     private static InternalError cannotReachHere(FunctionHolder<?> functionHolder, Object input) {
@@ -746,17 +1226,17 @@ final class LazyCollections {
 
     private static <T> void set(T[] array, int index, Object mutex, T newValue) {
         assert Thread.holdsLock(mutex) : index + "didn't hold " + mutex;
-        // We know we hold the monitor here so plain semantic is enough
-        // This is an extra safety net to emulate a CAS op.
+        // The monitor makes a plain check sufficient. Publish with release
+        // semantics for readers that do not acquire the monitor.
         if (array[index] == null) {
-            UNSAFE.putReferenceRelease(array, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * (long) index, newValue);
+            UNSAFE.putReferenceRelease(array, offsetFor(index), newValue);
         }
     }
 
     /**
-     * This class is thread safe. Any thread can create and use an instance of this class at
-     * any time. The `function` field is only accessed if `counter` is positive so the setting
-     * of function to `null` is safe.
+     * Holds a function until every slot has completed initialization. A racing
+     * caller snapshots the function before rechecking its slot. If the function
+     * has been cleared, that recheck observes the completed initialization.
      *
      * @param <U> the underlying function type
      */
@@ -765,9 +1245,9 @@ final class LazyCollections {
 
         private static final long COUNTER_OFFSET = UNSAFE.objectFieldOffset(FunctionHolder.class, "counter");
 
-        // This field can only transition at most once from being set to a
-        // non-null reference to being `null`. Once `null`, it is never read.
-        private U function;
+        // This field can transition at most once from a non-null reference to
+        // null. Volatile access makes clearing visible to racing callers.
+        private volatile U function;
         // Used reflectively via Unsafe
         private int counter;
 
@@ -804,23 +1284,57 @@ final class LazyCollections {
     // Factories
 
     static <E> List<E> ofLazyList(int size,
-                                         IntFunction<? extends E> computingFunction) {
-        return new LazyList<>(size, computingFunction);
+                                 IntFunction<? extends E> computingFunction) {
+        return new LazyList<>(null, size, computingFunction);
+    }
+
+    static <E> List<E> ofLazyList(Lazy.Mode mode, int size,
+                                  IntFunction<? extends E> computingFunction) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(computingFunction);
+        if (size < 0) {
+            throw new IllegalArgumentException("Negative size: " + size);
+        }
+        return new LazyList<>(mode, size, computingFunction);
     }
 
     static <K, V> Map<K, V> ofLazyMap(Set<K> keys,
-                                             Function<? super K, ? extends V> computingFunction) {
-        return new LazyMap<>(keys, computingFunction);
+                                     Function<? super K, ? extends V> computingFunction) {
+        return new LazyMap<>(null, keys, computingFunction);
+    }
+
+    static <K, V> Map<K, V> ofLazyMap(Lazy.Mode mode, Set<? extends K> keys,
+                                      Function<? super K, ? extends V> computingFunction) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(computingFunction);
+        final Set<K> keyCopies = Set.copyOf(keys);
+        return keys instanceof EnumSet<?> && !keyCopies.isEmpty()
+                ? ofLazyMapWithEnumKeys(mode, keyCopies, computingFunction)
+                : new LazyMap<>(mode, keyCopies, computingFunction);
     }
 
     static <E> Set<E> ofLazySet(Set<? extends E> elementCandidates,
                                        Predicate<? super E> computingFunction) {
-        return new LazySet<>(elementCandidates, computingFunction);
+        return new LazySet<>(null, elementCandidates, computingFunction);
+    }
+
+    static <E> Set<E> ofLazySet(Lazy.Mode mode,
+                               Set<? extends E> elementCandidates,
+                               Predicate<? super E> computingFunction) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(computingFunction);
+        return new LazySet<>(mode, elementCandidates, computingFunction);
+    }
+
+    static <K, E extends Enum<E>, V> Map<K, V> ofLazyMapWithEnumKeys(Set<K> keys,
+                                                                     Function<? super K, ? extends V> computingFunction) {
+        return ofLazyMapWithEnumKeys(null, keys, computingFunction);
     }
 
     @SuppressWarnings("unchecked")
-    static <K, E extends Enum<E>, V> Map<K, V> ofLazyMapWithEnumKeys(Set<K> keys,
-                                                                     Function<? super K, ? extends V> computingFunction) {
+    private static <K, E extends Enum<E>, V> Map<K, V> ofLazyMapWithEnumKeys(Lazy.Mode mode,
+                                                                             Set<K> keys,
+                                                                             Function<? super K, ? extends V> computingFunction) {
         // The input set is not empty
         final Class<E> enumType = ((E) keys.iterator().next()).getDeclaringClass();
         final BitSet bitSet = new BitSet(enumType.getEnumConstants().length);
@@ -834,7 +1348,8 @@ final class LazyCollections {
         }
         final int backingSize = max - min + 1;
         final IntPredicate member = ImmutableBitSetPredicate.of(bitSet);
-        return (Map<K, V>) new LazyEnumMap<>((Set<E>) keys, enumType, min, backingSize, member, (Function<E, V>) computingFunction);
+        return (Map<K, V>) new LazyEnumMap<>(mode, (Set<E>) keys, enumType,
+                min, backingSize, member, (Function<E, V>) computingFunction);
     }
 
 }

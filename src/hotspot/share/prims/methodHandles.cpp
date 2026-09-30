@@ -30,6 +30,7 @@
 #include "code/codeCache.hpp"
 #include "code/dependencyContext.hpp"
 #include "compiler/compileBroker.hpp"
+#include "interpreter/bytecodeStream.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/linkResolver.hpp"
 #include "interpreter/oopMapCache.hpp"
@@ -40,6 +41,8 @@
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
+#include "oops/constantPool.inline.hpp"
+#include "oops/instanceKlass.inline.hpp"
 #include "oops/klass.inline.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.inline.hpp"
@@ -58,6 +61,7 @@
 #include "runtime/stubRoutines.hpp"
 #include "runtime/timerTrace.hpp"
 #include "sanitizers/leak.hpp"
+#include "utilities/bytes.hpp"
 #include "utilities/exceptions.hpp"
 
 
@@ -1224,6 +1228,93 @@ JVM_ENTRY(jobject, MHN_getMemberVMInfo(JNIEnv *env, jobject igcls, jobject mname
 }
 JVM_END
 
+JVM_ENTRY(jbyteArray, MHN_methodBytecodes(JNIEnv *env, jobject igcls, jobject mname_jh)) {
+  if (mname_jh == nullptr) return nullptr;
+  Handle mname(THREAD, JNIHandles::resolve_non_null(mname_jh));
+  if ((java_lang_invoke_MemberName::flags(mname()) & IS_METHOD) == 0) return nullptr;
+  methodHandle method(THREAD, java_lang_invoke_MemberName::vmtarget(mname()));
+  if (method.is_null() || method->is_native() || method->is_abstract() ||
+      method->is_synchronized() || method->has_exception_handler()) {
+    return nullptr;
+  }
+
+  // Linking completes bytecode rewriting before the method is inspected.
+  method->method_holder()->link_class(CHECK_NULL);
+  if (method->code_size() == 0) return nullptr;
+  typeArrayOop result = oopFactory::new_byteArray(method->code_size(), CHECK_NULL);
+  unsigned char* start = reinterpret_cast<unsigned char*>(result->byte_at_addr(0));
+  unsigned char* p = start;
+  bool is_rewritten = method->method_holder()->is_rewritten();
+
+  // As in JvmtiClassFileReconstituter::copy_bytecodes, undo interpreter
+  // quickening, breakpoints, native byte ordering, and constant-pool cache
+  // indices. This helper is also available in builds without JVMTI.
+  BytecodeStream bs(method);
+  Bytecodes::Code code;
+  while ((code = bs.next()) >= 0) {
+    assert(Bytecodes::is_java_code(code), "expected class-file bytecode");
+    address bcp = bs.bcp();
+    int len = bs.instruction_size();
+    assert(len > 0, "instruction must not be empty");
+    *p = static_cast<unsigned char>(bs.is_wide() ? Bytecodes::_wide : code);
+    if (len > 1) {
+      memcpy(p + 1, bcp + 1, len - 1);
+    }
+
+    if (is_rewritten && len > 1) {
+      bool is_wide = false;
+      switch (code) {
+        case Bytecodes::_getstatic:
+        case Bytecodes::_putstatic:
+        case Bytecodes::_getfield:
+        case Bytecodes::_putfield: {
+          int field_index = Bytes::get_native_u2(bcp + 1);
+          u2 pool_index = method->constants()->resolved_field_entry_at(field_index)->constant_pool_index();
+          Bytes::put_Java_u2(p + 1, pool_index);
+          break;
+        }
+        case Bytecodes::_invokevirtual:
+        case Bytecodes::_invokespecial:
+        case Bytecodes::_invokestatic:
+        case Bytecodes::_invokedynamic:
+        case Bytecodes::_invokeinterface: {
+          int pool_index;
+          if (code == Bytecodes::_invokedynamic) {
+            int indy_index = Bytes::get_native_u4(bcp + 1);
+            pool_index = method->constants()->resolved_indy_entry_at(indy_index)->constant_pool_index();
+            p[3] = p[4] = 0;
+          } else {
+            int method_index = Bytes::get_native_u2(bcp + 1);
+            pool_index = method->constants()->resolved_method_entry_at(method_index)->constant_pool_index();
+          }
+          Bytes::put_Java_u2(p + 1, static_cast<u2>(pool_index));
+          break;
+        }
+        case Bytecodes::_ldc_w:
+          is_wide = true; // fall through
+        case Bytecodes::_ldc: {
+          if (bs.raw_code() == Bytecodes::_fast_aldc || bs.raw_code() == Bytecodes::_fast_aldc_w) {
+            int cache_index = is_wide ? Bytes::get_native_u2(bcp + 1) : bcp[1];
+            int pool_index = method->constants()->object_to_cp_index(cache_index);
+            if (is_wide) {
+              Bytes::put_Java_u2(p + 1, static_cast<u2>(pool_index));
+            } else {
+              p[1] = static_cast<u1>(pool_index);
+            }
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    }
+    p += len;
+  }
+  if (p - start != method->code_size()) return nullptr;
+  return reinterpret_cast<jbyteArray>(JNIHandles::make_local(THREAD, result));
+}
+JVM_END
+
 JVM_ENTRY(void, MHN_setCallSiteTargetNormal(JNIEnv* env, jobject igcls, jobject call_site_jh, jobject target_jh)) {
   Handle call_site(THREAD, JNIHandles::resolve_non_null(call_site_jh));
   Handle target   (THREAD, JNIHandles::resolve_non_null(target_jh));
@@ -1350,6 +1441,7 @@ static JNINativeMethod MHN_methods[] = {
   {CC "init",                      CC "(" MEM "" OBJ ")V",                   FN_PTR(MHN_init_Mem)},
   {CC "expand",                    CC "(" MEM ")V",                          FN_PTR(MHN_expand_Mem)},
   {CC "resolve",                   CC "(" MEM "" CLS "IZ)" MEM,              FN_PTR(MHN_resolve_Mem)},
+  {CC "methodBytecodes",           CC "(" MEM ")[B",                         FN_PTR(MHN_methodBytecodes)},
   //  static native int getNamedCon(int which, Object[] name)
   {CC "getNamedCon",               CC "(I[" OBJ ")I",                        FN_PTR(MHN_getNamedCon)},
   {CC "objectFieldOffset",         CC "(" MEM ")J",                          FN_PTR(MHN_objectFieldOffset)},
