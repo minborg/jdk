@@ -33,21 +33,25 @@ import org.junit.jupiter.api.Test;
 import java.lang.invoke.LazyUpdaters;
 import java.lang.invoke.MethodHandles;
 import java.util.function.IntSupplier;
-import java.util.function.ToDoubleFunction;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class LazyDemo {
 
     static class Point {
-        // Runtime reifiable types
-        private interface ToDoubleFunctionPoint extends ToDoubleFunction<Point> {}
+        private interface ToDoubleFunctionPoint {
+            double applyAsDouble(Point point);
+        }
 
         private static final ToDoubleFunctionPoint LAZY_RADIUS =
-                LazyUpdaters.ofLocation(MethodHandles.lookup(), ToDoubleFunctionPoint.class, p -> p.radius, p -> Math.hypot(p.x, p.y));
+                LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+                        ToDoubleFunctionPoint.class, "radius",
+                        p -> Math.hypot(p.x, p.y));
 
         private static final ToDoubleFunctionPoint LAZY_PHI =
-                LazyUpdaters.ofLocation(MethodHandles.lookup(), ToDoubleFunctionPoint.class, p -> p.phi, p -> Math.atan2(p.y, p.x));
+                LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+                        ToDoubleFunctionPoint.class, "phi",
+                        p -> Math.atan2(p.y, p.x));
 
         final double x, y;
 
@@ -67,10 +71,6 @@ public class LazyDemo {
             return LAZY_PHI.applyAsDouble(p);
         }
 
-        ToDoubleFunctionPoint radiusExtractor() {
-            return p -> p.radius;
-        }
-
     }
 
     static class MeaningOfLife {
@@ -78,13 +78,23 @@ public class LazyDemo {
         private MeaningOfLife() { throw new RuntimeException(); }
 
         private static final IntSupplier LAZY_MEANING_OF_LIFE =
-                LazyUpdaters.ofLocation(MethodHandles.lookup(), IntSupplier.class, () -> MeaningOfLife.meaningOfLife, () -> 42);
+                LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+                        IntSupplier.class,
+                        MeaningOfLife.class.getName() + ".meaningOfLife",
+                        () -> 42);
         private static int meaningOfLife;
 
         public static int get() {
             return LAZY_MEANING_OF_LIFE.getAsInt();
         }
 
+    }
+
+    @Test
+    void pointProperties() {
+        Point point = new Point(3, 4);
+        assertEquals(5.0, point.radius(point));
+        assertEquals(Math.atan2(4, 3), point.phi(point));
     }
 
     @Test

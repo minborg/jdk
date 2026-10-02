@@ -1622,11 +1622,6 @@ abstract class MethodHandleImpl {
             }
 
             @Override
-            public byte[] methodBytecodes(Method method) {
-                return MethodHandleNatives.methodBytecodes(new MemberName(method));
-            }
-
-            @Override
             public MethodHandle defineHiddenClassConstructor(Class<?> host, byte[] bytes,
                                                              MethodType constructorType)
                     throws ReflectiveOperationException {

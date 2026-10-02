@@ -25,8 +25,12 @@
 
 package jdk.internal.invoke;
 
-import java.lang.classfile.Opcode;
+import java.lang.invoke.LazyUpdaters.IntFieldAccessor;
+import java.lang.invoke.LazyUpdaters.LongFieldAccessor;
 import java.lang.invoke.LazyUpdaters.Mode;
+import java.lang.invoke.LazyUpdaters.ReferenceArrayAccessor;
+import java.lang.invoke.LazyUpdaters.ReferenceFieldAccessor;
+import java.lang.invoke.LazyUpdaters.StaticReferenceFieldAccessor;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -34,20 +38,27 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 
 import jdk.internal.access.SharedSecrets;
-import jdk.internal.reflect.ConstantPool;
 import jdk.internal.value.ValueClass;
 import sun.invoke.util.Wrapper;
-
-import static java.lang.classfile.Opcode.*;
+import sun.reflect.generics.reflectiveObjects.GenericArrayTypeImpl;
+import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 /**
  * Implementation of lazy storage selection and updater creation.
@@ -58,437 +69,810 @@ public final class LazyUpdaterSupport {
     public static <T> T ofLocation(Mode mode,
                                    MethodHandles.Lookup lookup,
                                    Class<T> type,
-                                   T locationAccessor,
+                                   String fieldSelector,
                                    T computingFunction) {
         Objects.requireNonNull(mode);
         Objects.requireNonNull(lookup);
         Objects.requireNonNull(type);
-        Objects.requireNonNull(locationAccessor);
+        Objects.requireNonNull(fieldSelector);
         Objects.requireNonNull(computingFunction);
-        Method method = LazyUpdaterFactory.functionalMethod(type);
-        if (!type.isInstance(locationAccessor) || !type.isInstance(computingFunction)) {
-            throw new IllegalArgumentException("Functions must implement " + type.getTypeName());
+        Method method = accessorMethod(type);
+        requireConcreteCoordinates(type, method, 0, null);
+        if (!type.isInstance(computingFunction)) {
+            throw new IllegalArgumentException("Function must implement " + type.getTypeName());
         }
         try {
             lookup.accessClass(type);
-            StorageAccess access = crackAccess(lookup, locationAccessor);
-            VarHandle storage = access instanceof ArrayAccess array
-                    ? array.elementHandle() : access.handle();
-            if (!storage.isAccessModeSupported(readMode(mode))
-                    || !storage.isAccessModeSupported(writeMode(mode))) {
-                throw new IllegalArgumentException("Lazy storage does not support the requested mode");
-            }
-            if (access instanceof FieldAccess fieldAccess
-                    && (Modifier.isFinal(fieldAccess.field().getModifiers())
-                        || ValueClass.isNullRestrictedField(fieldAccess.field()))) {
-                throw new IllegalArgumentException("Not a mutable lazy storage field: " + fieldAccess.field());
-            }
-            boolean hasReceiver = access.receiverType() != null;
-            int expectedParameters = access instanceof ArrayAccess array
-                    ? array.rank() + (hasReceiver ? 1 : 0) : hasReceiver ? 1 : 0;
-            if (method.getParameterCount() != expectedParameters
-                    || method.getReturnType() == void.class
-                    || (hasReceiver && (method.getParameterTypes()[0].isPrimitive()
-                        || !method.getParameterTypes()[0].isAssignableFrom(access.receiverType())))) {
-                throw new IllegalArgumentException("Functional method does not match the storage accessor");
-            }
-            if (access instanceof ArrayAccess array) {
-                for (int i = hasReceiver ? 1 : 0; i < expectedParameters; i++) {
-                    if (method.getParameterTypes()[i] != int.class) {
-                        throw new IllegalArgumentException("Array coordinates must be int parameters");
-                    }
-                }
-            }
-            Class<?> valueType = storage.varType();
-            Class<?> boxedType = valueType.isPrimitive()
-                    ? Wrapper.forPrimitiveType(valueType).wrapperType() : valueType;
-            if (method.getReturnType() != valueType
-                    && !method.getReturnType().isAssignableFrom(boxedType)) {
-                throw new IllegalArgumentException("Functional result does not match the storage type");
-            }
-            if (access instanceof FieldAccess fieldAccess && hasReceiver) {
-                Class<?> coordinate = storage.coordinateTypes().getFirst();
-                if (!coordinate.isAssignableFrom(access.receiverType())
-                        && !access.receiverType().isAssignableFrom(coordinate)) {
-                    throw new IllegalArgumentException("Lookup receiver restriction does not match the accessor");
-                }
-            }
-
-            MethodHandle target;
-            if (access instanceof ArrayAccess array) {
-                ArrayUpdater updater = new ArrayUpdater(mode, array, method, computingFunction);
-                MethodType readType = array.rank() == 1
-                        ? ArrayUpdater.READ1_TYPE : ArrayUpdater.READ2_TYPE;
-                target = MethodHandles.lookup().findVirtual(ArrayUpdater.class,
-                        array.rank() == 1 ? "get1" : "get2", readType).bindTo(updater);
-            } else {
-                FieldUpdater updater = new FieldUpdater(mode, (FieldAccess) access, method, computingFunction);
-                target = MethodHandles.lookup().findVirtual(FieldUpdater.class, "get",
-                        FieldUpdater.READ_TYPE).bindTo(updater);
-            }
-            if (!hasReceiver) {
-                target = MethodHandles.insertArguments(target, 0, (Object) null);
-            }
-            target = target.asType(MethodType.methodType(method.getReturnType(), method.getParameterTypes()));
-            return LazyUpdaterFactory.create(type, method, target);
+            StorageAccess access = selectField(lookup, method.getParameterTypes(), fieldSelector);
+            return createUpdater(mode, type, method, method, access,
+                    computingFunction, false);
         } catch (ReflectiveOperationException e) {
             throw new IllegalArgumentException("Cannot access the lazy location or functional interface", e);
         }
     }
 
-    /**
-     * Returns a var handle for the field or array element read by a direct,
-     * non-capturing accessor lambda. A static field accessor has no arguments;
-     * an instance field accessor has one reference argument; and an array
-     * element accessor has one or two {@code int} indices, optionally preceded
-     * by a reference argument. A zero-argument accessor of a static array field
-     * selects the field itself, rather than one of its elements.
-     *
-     * <p>The accessor is inspected without being invoked. The caller's lookup
-     * must authorize access to the selected field or array type; possession of
-     * the accessor does not grant access. The returned handle retains the
-     * selected storage's access modes, so a final field is read-only.
-     *
-     * @param lookup the lookup used to authorize access
-     * @param fieldAccessor the direct field or array-element accessor lambda
-     * @return a var handle for the selected storage
-     * @throws NullPointerException if either argument is {@code null}
-     * @throws IllegalArgumentException if the accessor has an unsupported shape
-     * @throws IllegalAccessException if the lookup cannot access the storage
-     */
-    public static VarHandle findVarHandle(MethodHandles.Lookup lookup,
-                                          Object fieldAccessor)
-            throws IllegalAccessException {
-        return crackAccess(lookup, fieldAccessor).handle();
+    public static <T> T ofLocation(Mode mode,
+                                   MethodHandles.Lookup lookup,
+                                   Class<T> type,
+                                   String fieldSelector) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(lookup);
+        Objects.requireNonNull(type);
+        Objects.requireNonNull(fieldSelector);
+        Method accessor = accessorMethod(type);
+        Class<?> specializedOwner = specializedFieldOwner(type);
+        ReferenceValueType specializedValue = specializedReferenceFieldValue(type);
+        requireConcreteCoordinates(type, accessor, 1, specializedOwner);
+        Method computer = computerMethod(type, accessor);
+        try {
+            lookup.accessClass(type);
+            lookup.accessClass(accessor.getParameterTypes()[0]);
+            if (specializedOwner != null) {
+                lookup.accessClass(specializedOwner);
+            }
+            StorageAccess access = selectField(lookup,
+                    accessorCoordinates(accessor), fieldSelector,
+                    specializedOwner);
+            validateReferenceFieldValue(access, specializedValue);
+            return createUpdater(mode, type, accessor, computer, access,
+                    null, true);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Cannot access the lazy location or functional interface", e);
+        }
+    }
+
+    public static <T> T ofArray(Mode mode,
+                                Class<T> type,
+                                T computingFunction) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(type);
+        Objects.requireNonNull(computingFunction);
+        Method method = accessorMethod(type);
+        requireConcreteCoordinates(type, method, 0, null);
+        if (!type.isInstance(computingFunction)) {
+            throw new IllegalArgumentException("Function must implement " + type.getTypeName());
+        }
+        try {
+            StorageAccess access = selectArray(method.getParameterTypes());
+            return createUpdater(mode, type, method, method, access,
+                    computingFunction, false);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Cannot create the lazy array updater", e);
+        }
+    }
+
+    public static <T> T ofArray(Mode mode, Class<T> type) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(type);
+        Method accessor = accessorMethod(type);
+        Class<?> specializedArrayType = specializedReferenceArrayType(type);
+        requireConcreteCoordinates(type, accessor, 1, specializedArrayType);
+        Method computer = computerMethod(type, accessor);
+        try {
+            StorageAccess access = selectArray(accessorCoordinates(accessor),
+                    specializedArrayType);
+            return createUpdater(mode, type, accessor, computer, access,
+                    null, true);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Cannot create the lazy array updater", e);
+        }
+    }
+
+    private static Method accessorMethod(Class<?> type) {
+        Method method = LazyUpdaterFactory.functionalMethod(type);
+        if (type.getTypeParameters().length != 0) {
+            throw erasedTypeVariables(type, "declares a type variable whose "
+                    + "argument is erased from the supplied Class token");
+        }
+        if (hasRawGenericSuperinterface(type, new HashSet<>())) {
+            throw erasedTypeVariables(type, "inherits a raw generic interface "
+                    + "with a type variable erased in its functional method");
+        }
+        if (method.getTypeParameters().length != 0) {
+            throw erasedTypeVariables(type, "declares a method type variable "
+                    + "erased in its functional-method descriptor");
+        }
+        return method;
+    }
+
+    private static boolean hasRawGenericSuperinterface(Class<?> type,
+                                                        Set<Class<?>> visited) {
+        if (!visited.add(type)) {
+            return false;
+        }
+        for (Type parent : type.getGenericInterfaces()) {
+            Class<?> parentClass;
+            if (parent instanceof ParameterizedType parameterized) {
+                parentClass = (Class<?>) parameterized.getRawType();
+            } else {
+                parentClass = (Class<?>) parent;
+                if (parentClass.getTypeParameters().length != 0) {
+                    return true;
+                }
+            }
+            if (hasRawGenericSuperinterface(parentClass, visited)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static IllegalArgumentException erasedTypeVariables(Class<?> type,
+                                                                String problem) {
+        String remedy;
+        if (IntFieldAccessor.class.isAssignableFrom(type)) {
+            remedy = "Declare a concrete subinterface, for example "
+                    + "interface HolderAccessor extends IntFieldAccessor<Holder> {}, "
+                    + "and pass HolderAccessor.class.";
+        } else if (LongFieldAccessor.class.isAssignableFrom(type)) {
+            remedy = "Declare a concrete subinterface, for example "
+                    + "interface HolderAccessor extends LongFieldAccessor<Holder> {}, "
+                    + "and pass HolderAccessor.class.";
+        } else if (ReferenceArrayAccessor.class.isAssignableFrom(type)) {
+            remedy = "Declare a concrete subinterface, for example "
+                    + "interface Names extends ReferenceArrayAccessor<String> {}, "
+                    + "and pass Names.class.";
+        } else if (StaticReferenceFieldAccessor.class.isAssignableFrom(type)) {
+            remedy = "Declare a concrete subinterface, for example "
+                    + "interface NameAccessor extends StaticReferenceFieldAccessor<String> {}, "
+                    + "and pass NameAccessor.class.";
+        } else if (ReferenceFieldAccessor.class.isAssignableFrom(type)) {
+            remedy = "Declare a concrete subinterface, for example "
+                    + "interface NameAccessor extends ReferenceFieldAccessor<Holder, String> {}, "
+                    + "and pass NameAccessor.class.";
+        } else {
+            remedy = "Declare a non-generic interface with its own functional "
+                    + "method using concrete parameter and return types, and "
+                    + "pass that interface's .class token.";
+        }
+        return new IllegalArgumentException("Functional interface "
+                + type.getTypeName() + " " + problem + ". " + remedy);
+    }
+
+    private static void requireConcreteCoordinates(Class<?> type, Method method,
+                                                   int firstCoordinate,
+                                                   Class<?> specializedCoordinate) {
+        Type[] genericTypes = method.getGenericParameterTypes();
+        for (int i = firstCoordinate; i < genericTypes.length; i++) {
+            if (specializedCoordinate != null && i == firstCoordinate) {
+                continue;
+            }
+            if (genericTypes[i] instanceof TypeVariable<?>
+                    || genericTypes[i] instanceof GenericArrayType) {
+                throw new IllegalArgumentException("Functional interface "
+                        + type.getTypeName() + " has a storage coordinate "
+                        + "whose type variable is erased in the functional "
+                        + "method. Declare a non-generic interface with its "
+                        + "own method using concrete parameter types, and "
+                        + "pass that interface's .class token.");
+            }
+        }
+    }
+
+    private static Method computerMethod(Class<?> type, Method accessor) {
+        if (accessor.getParameterCount() == 0) {
+            throw new IllegalArgumentException("A use-site updater requires a computing-function parameter");
+        }
+        Type callbackType = accessor.getGenericParameterTypes()[0];
+        if (callbackType instanceof TypeVariable<?>
+                || callbackType instanceof GenericArrayType) {
+            throw new IllegalArgumentException("Functional interface "
+                    + type.getTypeName() + " inherits a computing-function "
+                    + "parameter whose type variable is erased in the "
+                    + "functional method. Declare a non-generic interface "
+                    + "with its own method using concrete parameter and "
+                    + "return types.");
+        }
+        if (callbackType instanceof Class<?> raw
+                && (raw.getTypeParameters().length != 0
+                    || hasRawGenericSuperinterface(raw, new HashSet<>()))) {
+            throw new IllegalArgumentException("Computing-function interface "
+                    + raw.getTypeName() + " contains a type variable erased "
+                    + "in the accessor method. Use a parameterized callback "
+                    + "type or declare a non-generic interface with concrete "
+                    + "parameter and return types.");
+        }
+        Method computer = LazyUpdaterFactory.functionalMethod(accessor.getParameterTypes()[0]);
+        if (computer.getTypeParameters().length != 0) {
+            throw new IllegalArgumentException("Computing-function interface "
+                    + computer.getDeclaringClass().getTypeName()
+                    + " has a method type variable erased in the accessor. "
+                    + "Declare a non-generic callback interface with concrete "
+                    + "parameter and return types.");
+        }
+        Class<?>[] coordinates = accessorCoordinates(accessor);
+        Class<?>[] accepted = computer.getParameterTypes();
+        if (accepted.length != coordinates.length) {
+            throw new IllegalArgumentException("Computing function coordinates do not match the updater");
+        }
+        for (int i = 0; i < coordinates.length; i++) {
+            if (!accepted[i].isAssignableFrom(coordinates[i])) {
+                throw new IllegalArgumentException(
+                        "Computing function coordinate " + i + " does not accept the updater coordinate");
+            }
+        }
+        return computer;
+    }
+
+    private static Class<?>[] accessorCoordinates(Method accessor) {
+        return Arrays.copyOfRange(accessor.getParameterTypes(), 1,
+                accessor.getParameterCount());
+    }
+
+    private static Class<?> specializedFieldOwner(Class<?> type) {
+        Class<?> base;
+        if (IntFieldAccessor.class.isAssignableFrom(type)) {
+            base = IntFieldAccessor.class;
+        } else if (LongFieldAccessor.class.isAssignableFrom(type)) {
+            base = LongFieldAccessor.class;
+        } else if (ReferenceFieldAccessor.class.isAssignableFrom(type)) {
+            base = ReferenceFieldAccessor.class;
+        } else {
+            return null;
+        }
+        Type argument = typeArgument(type, base, 0, new HashMap<>());
+        Class<?> owner = argument instanceof Class<?> c ? c
+                : argument instanceof ParameterizedType p
+                        && p.getRawType() instanceof Class<?> c ? c : null;
+        if (owner == null || owner.isPrimitive() || owner.isArray()) {
+            throw new IllegalArgumentException(
+                    "A field accessor requires a concrete receiver class: "
+                            + type.getTypeName());
+        }
+        return owner;
+    }
+
+    private record ReferenceValueType(Class<?> erasedType, Type genericType) { }
+
+    private static ReferenceValueType specializedReferenceFieldValue(Class<?> type) {
+        Class<?> base;
+        int argumentIndex;
+        if (StaticReferenceFieldAccessor.class.isAssignableFrom(type)) {
+            base = StaticReferenceFieldAccessor.class;
+            argumentIndex = 0;
+        } else if (ReferenceFieldAccessor.class.isAssignableFrom(type)) {
+            base = ReferenceFieldAccessor.class;
+            argumentIndex = 1;
+        } else {
+            return null;
+        }
+        Type genericValue = typeArgument(type, base, argumentIndex,
+                new HashMap<>());
+        Class<?> value = rawReferenceType(genericValue);
+        if (value == null || hasUnresolvedTypeVariables(genericValue)) {
+            throw new IllegalArgumentException("A reference field accessor requires a "
+                    + "concrete reference value type: " + type.getTypeName());
+        }
+        return new ReferenceValueType(value, genericValue);
+    }
+
+    private static void validateReferenceFieldValue(StorageAccess access,
+                                                    ReferenceValueType valueType) {
+        if (valueType == null) {
+            return;
+        }
+        Class<?> storageType = access.valueHandle().varType();
+        if (!(access instanceof FieldAccess) || storageType.isPrimitive()
+                || !valueType.erasedType().isAssignableFrom(storageType)) {
+            throw new IllegalArgumentException("Reference field accessor value type "
+                    + valueType.genericType().getTypeName()
+                    + " cannot represent lazy storage type "
+                    + storageType.getTypeName());
+        }
+        Type genericType = valueType.genericType();
+        if (!(genericType instanceof Class<?>)
+                && !genericType.equals(((FieldAccess) access).field().getGenericType())) {
+            throw new IllegalArgumentException("Reference field accessor value type "
+                    + genericType.getTypeName()
+                    + " does not match the field's declared generic type "
+                    + ((FieldAccess) access).field().getGenericType().getTypeName());
+        }
+    }
+
+    private static Class<?> specializedReferenceArrayType(Class<?> type) {
+        if (!ReferenceArrayAccessor.class.isAssignableFrom(type)) {
+            return null;
+        }
+        Class<?> elementType = specializedReferenceType(type,
+                ReferenceArrayAccessor.class, 0);
+        if (elementType == null) {
+            throw new IllegalArgumentException("A reference array accessor requires a "
+                    + "concrete reference element type: " + type.getTypeName());
+        }
+        return elementType.arrayType();
+    }
+
+    private static Class<?> specializedReferenceType(Class<?> type,
+                                                      Class<?> base,
+                                                      int argumentIndex) {
+        Type argument = typeArgument(type, base, argumentIndex, new HashMap<>());
+        return hasUnresolvedTypeVariables(argument) ? null
+                : rawReferenceType(argument);
+    }
+
+    private static Class<?> rawReferenceType(Type type) {
+        Class<?> result = type instanceof Class<?> c ? c
+                : type instanceof ParameterizedType p
+                        && p.getRawType() instanceof Class<?> c ? c : null;
+        if (result == null && type instanceof GenericArrayType array) {
+            Class<?> component = rawReferenceType(array.getGenericComponentType());
+            result = component == null ? null : component.arrayType();
+        }
+        return result != null && !result.isPrimitive() ? result : null;
+    }
+
+    private static boolean hasUnresolvedTypeVariables(Type type) {
+        if (type instanceof TypeVariable<?>) {
+            return true;
+        }
+        if (type instanceof ParameterizedType parameterized) {
+            for (Type argument : parameterized.getActualTypeArguments()) {
+                if (hasUnresolvedTypeVariables(argument)) {
+                    return true;
+                }
+            }
+            return parameterized.getOwnerType() != null
+                    && hasUnresolvedTypeVariables(parameterized.getOwnerType());
+        }
+        if (type instanceof GenericArrayType array) {
+            return hasUnresolvedTypeVariables(array.getGenericComponentType());
+        }
+        if (type instanceof WildcardType wildcard) {
+            for (Type bound : wildcard.getUpperBounds()) {
+                if (hasUnresolvedTypeVariables(bound)) {
+                    return true;
+                }
+            }
+            for (Type bound : wildcard.getLowerBounds()) {
+                if (hasUnresolvedTypeVariables(bound)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static Type typeArgument(Type type, Class<?> target, int argumentIndex,
+                                     Map<TypeVariable<?>, Type> substitutions) {
+        Class<?> raw;
+        Map<TypeVariable<?>, Type> resolved = new HashMap<>(substitutions);
+        if (type instanceof ParameterizedType parameterized) {
+            raw = (Class<?>) parameterized.getRawType();
+            TypeVariable<?>[] variables = raw.getTypeParameters();
+            Type[] arguments = parameterized.getActualTypeArguments();
+            for (int i = 0; i < variables.length; i++) {
+                resolved.put(variables[i], substitute(arguments[i], substitutions));
+            }
+        } else if (type instanceof Class<?> c) {
+            raw = c;
+        } else {
+            return null;
+        }
+        if (raw == target) {
+            return substitute(raw.getTypeParameters()[argumentIndex], resolved);
+        }
+        for (Type parent : raw.getGenericInterfaces()) {
+            Class<?> parentRaw = parent instanceof ParameterizedType p
+                    ? (Class<?>) p.getRawType() : (Class<?>) parent;
+            if (target.isAssignableFrom(parentRaw)) {
+                Type result = typeArgument(parent, target, argumentIndex, resolved);
+                if (result != null) {
+                    return result;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Type substitute(Type type,
+                                    Map<TypeVariable<?>, Type> substitutions) {
+        Set<Type> seen = new HashSet<>();
+        while (type instanceof TypeVariable<?> variable
+                && substitutions.containsKey(variable)
+                && seen.add(type)) {
+            type = substitutions.get(variable);
+        }
+        if (type instanceof ParameterizedType parameterized) {
+            Type[] arguments = parameterized.getActualTypeArguments();
+            boolean changed = false;
+            for (int i = 0; i < arguments.length; i++) {
+                Type resolved = substitute(arguments[i], substitutions);
+                changed |= resolved != arguments[i];
+                arguments[i] = resolved;
+            }
+            Type owner = parameterized.getOwnerType();
+            Type resolvedOwner = owner == null ? null : substitute(owner, substitutions);
+            if (changed || resolvedOwner != owner) {
+                return ParameterizedTypeImpl.make((Class<?>) parameterized.getRawType(),
+                        arguments, resolvedOwner);
+            }
+        } else if (type instanceof GenericArrayType array) {
+            Type component = array.getGenericComponentType();
+            Type resolved = substitute(component, substitutions);
+            if (resolved != component) {
+                return resolved instanceof Class<?> c ? c.arrayType()
+                        : GenericArrayTypeImpl.make(resolved);
+            }
+        } else if (type instanceof WildcardType wildcard) {
+            Type[] upper = wildcard.getUpperBounds();
+            Type[] lower = wildcard.getLowerBounds();
+            boolean changed = false;
+            for (int i = 0; i < upper.length; i++) {
+                Type resolved = substitute(upper[i], substitutions);
+                changed |= resolved != upper[i];
+                upper[i] = resolved;
+            }
+            for (int i = 0; i < lower.length; i++) {
+                Type resolved = substitute(lower[i], substitutions);
+                changed |= resolved != lower[i];
+                lower[i] = resolved;
+            }
+            if (changed) {
+                return new ResolvedWildcardType(upper, lower);
+            }
+        }
+        return type;
+    }
+
+    private static final class ResolvedWildcardType implements WildcardType {
+        private final Type[] upper;
+        private final Type[] lower;
+
+        ResolvedWildcardType(Type[] upper, Type[] lower) {
+            this.upper = upper.clone();
+            this.lower = lower.clone();
+        }
+
+        @Override
+        public Type[] getUpperBounds() {
+            return upper.clone();
+        }
+
+        @Override
+        public Type[] getLowerBounds() {
+            return lower.clone();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof WildcardType wildcard
+                    && Arrays.equals(upper, wildcard.getUpperBounds())
+                    && Arrays.equals(lower, wildcard.getLowerBounds());
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(upper) ^ Arrays.hashCode(lower);
+        }
+
+        @Override
+        public String toString() {
+            if (lower.length > 0) {
+                return "? super " + boundsToString(lower);
+            }
+            if (upper.length == 1 && upper[0] == Object.class) {
+                return "?";
+            }
+            return "? extends " + boundsToString(upper);
+        }
+
+        private static String boundsToString(Type[] bounds) {
+            StringJoiner names = new StringJoiner(" & ");
+            for (Type bound : bounds) {
+                names.add(bound.getTypeName());
+            }
+            return names.toString();
+        }
     }
 
     private sealed interface StorageAccess permits FieldAccess, ArrayAccess {
-        VarHandle handle();
+        VarHandle valueHandle();
         Class<?> receiverType();
     }
 
-    private record FieldAccess(VarHandle handle, Field field, Class<?> receiverType)
-            implements StorageAccess { }
+    private record FieldAccess(VarHandle valueHandle, Field field,
+                               Class<?> receiverType) implements StorageAccess { }
 
-    private record ArrayAccess(VarHandle handle, VarHandle elementHandle,
-                               MethodHandle arrayGetter, Class<?> receiverType,
-                               Class<?> arrayType, int[] indexOrder)
-            implements StorageAccess {
-        int rank() {
-            return indexOrder.length;
-        }
+    private record ArrayAccess(VarHandle valueHandle, MethodHandle arrayGetter,
+                               Class<?> receiverType, Class<?> arrayType,
+                               int rank) implements StorageAccess { }
+
+    private static StorageAccess selectField(MethodHandles.Lookup lookup,
+                                             Class<?>[] coordinates,
+                                             String fieldSelector)
+            throws ReflectiveOperationException {
+        return selectField(lookup, coordinates, fieldSelector, null);
     }
 
-    private static StorageAccess crackAccess(MethodHandles.Lookup lookup,
-                                             Object fieldAccessor)
-            throws IllegalAccessException {
-        Objects.requireNonNull(lookup);
-        Objects.requireNonNull(fieldAccessor);
-        Class<?> lambdaClass = fieldAccessor.getClass();
-        if (!lambdaClass.isHidden() || !lambdaClass.isSynthetic()) {
-            throw unsupportedAccessor("expected a hidden lambda class");
-        }
-        for (Field field : lambdaClass.getDeclaredFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) {
-                throw unsupportedAccessor("captured arguments");
+    private static StorageAccess selectField(MethodHandles.Lookup lookup,
+                                             Class<?>[] coordinates,
+                                             String fieldSelector,
+                                             Class<?> ownerOverride)
+            throws ReflectiveOperationException {
+        int separator = fieldSelector.lastIndexOf('.');
+        boolean isStatic = separator >= 0;
+        Class<?> owner;
+        Class<?> receiverType;
+        String fieldName;
+        if (isStatic) {
+            if (ownerOverride != null) {
+                throw new IllegalArgumentException(
+                        "An instance field accessor requires a simple field name");
             }
-        }
-
-        Method functionalMethod = null;
-        for (Method method : lambdaClass.getDeclaredMethods()) {
-            if (Modifier.isPublic(method.getModifiers())
-                    && !Modifier.isStatic(method.getModifiers())
-                    && !method.isBridge()) {
-                int parameterCount = method.getParameterCount();
-                boolean hasReceiver = parameterCount > 0
-                        && !method.getParameterTypes()[0].isPrimitive();
-                if (functionalMethod != null
-                        || parameterCount > (hasReceiver ? 3 : 2)
-                        || method.getReturnType() == void.class) {
-                    throw unsupportedAccessor("expected an optional receiver, up to two int indices, and a result");
-                }
-                for (int i = hasReceiver ? 1 : 0; i < parameterCount; i++) {
-                    if (method.getParameterTypes()[i] != int.class) {
-                        throw unsupportedAccessor("array indices must be int parameters");
-                    }
-                }
-                functionalMethod = method;
+            if (separator == 0 || separator == fieldSelector.length() - 1) {
+                throw new IllegalArgumentException("Expected a binary owner name followed by a field name");
             }
-        }
-        if (functionalMethod == null) {
-            throw unsupportedAccessor("no functional method");
-        }
-
-        int parameterCount = functionalMethod.getParameterCount();
-        boolean hasReceiver = parameterCount > 0
-                && !functionalMethod.getParameterTypes()[0].isPrimitive();
-        boolean isStaticField = parameterCount == 0;
-        AccessorCode forwarding = new AccessorCode(functionalMethod);
-        Class<?> receiverType = null;
-        if (hasReceiver) {
-            forwarding.expect(ALOAD_1);
-            receiverType = functionalMethod.getParameterTypes()[0];
-            if (forwarding.at(CHECKCAST)) {
-                receiverType = forwarding.pool.getClassAt(forwarding.member(CHECKCAST));
-            }
-        }
-        for (int i = hasReceiver ? 1 : 0; i < parameterCount; i++) {
-            forwarding.expectIntLoad(i + 1);
-        }
-        Method implementation = forwarding.method(INVOKESTATIC);
-        if (!Modifier.isStatic(implementation.getModifiers())
-                || !implementation.isSynthetic()
-                || implementation.getParameterCount() != parameterCount
-                || (hasReceiver && (implementation.getParameterTypes()[0].isPrimitive()
-                || !implementation.getParameterTypes()[0].isAssignableFrom(receiverType)))) {
-            throw unsupportedAccessor("expected a static lambda implementation");
-        }
-        for (int i = hasReceiver ? 1 : 0; i < parameterCount; i++) {
-            if (implementation.getParameterTypes()[i] != int.class) {
-                throw unsupportedAccessor("expected int indices in the lambda implementation");
-            }
-        }
-        forwarding.finishReturn(implementation.getReturnType(), functionalMethod.getReturnType());
-
-        AccessorCode getter = new AccessorCode(implementation);
-        if (hasReceiver) {
-            getter.expect(ALOAD_0);
-        }
-        if (parameterCount > (hasReceiver ? 1 : 0)) {
-            return crackArrayAccess(lookup, getter, implementation,
-                    parameterCount - (hasReceiver ? 1 : 0), hasReceiver);
-        }
-        int fieldIndex = getter.member(isStaticField ? GETSTATIC : GETFIELD);
-        Field field = getter.pool.getFieldAt(fieldIndex);
-        Class<?> owner = getter.pool.getClassAt(getter.pool.getClassRefIndexAt(fieldIndex));
-        if (Modifier.isStatic(field.getModifiers()) != isStaticField
-                || (!isStaticField && !owner.isAssignableFrom(implementation.getParameterTypes()[0]))) {
-            throw unsupportedAccessor("field does not match the accessor shape");
-        }
-        getter.finishReturn(field.getType(), implementation.getReturnType());
-        try {
-            VarHandle handle = isStaticField
-                    ? lookup.findStaticVarHandle(owner, field.getName(), field.getType())
-                    : lookup.findVarHandle(owner, field.getName(), field.getType());
-            return new FieldAccess(handle, field,
-                    isStaticField ? null : implementation.getParameterTypes()[0]);
-        } catch (NoSuchFieldException e) {
-            throw new IllegalArgumentException("Cannot resolve the selected field", e);
-        }
-    }
-
-    private static ArrayAccess crackArrayAccess(MethodHandles.Lookup lookup,
-                                                AccessorCode getter,
-                                                Method implementation,
-                                                int rank,
-                                                boolean hasReceiver) throws IllegalAccessException {
-        Class<?> receiverType = hasReceiver ? implementation.getParameterTypes()[0] : null;
-        Class<?> arrayType = receiverType;
-        MethodHandle arrayGetter;
-        MethodHandle fieldGetter = null;
-        if (!hasReceiver || getter.at(GETFIELD)) {
-            int fieldIndex = getter.member(hasReceiver ? GETFIELD : GETSTATIC);
-            Field field = getter.pool.getFieldAt(fieldIndex);
-            Class<?> owner = getter.pool.getClassAt(getter.pool.getClassRefIndexAt(fieldIndex));
-            if (Modifier.isStatic(field.getModifiers()) == hasReceiver
-                    || (hasReceiver && !owner.isAssignableFrom(receiverType))) {
-                throw unsupportedAccessor("array field does not match the receiver");
-            }
-            arrayType = field.getType();
-            try {
-                VarHandle fieldHandle = hasReceiver
-                        ? lookup.findVarHandle(owner, field.getName(), arrayType)
-                        : lookup.findStaticVarHandle(owner, field.getName(), arrayType);
-                if (hasReceiver) {
-                    Class<?> coordinate = fieldHandle.coordinateTypes().getFirst();
-                    if (!coordinate.isAssignableFrom(receiverType)
-                            && !receiverType.isAssignableFrom(coordinate)) {
-                        throw unsupportedAccessor("lookup receiver restriction does not match the accessor");
-                    }
-                }
-                fieldGetter = fieldHandle.toMethodHandle(VarHandle.AccessMode.GET);
-            } catch (NoSuchFieldException e) {
-                throw new IllegalArgumentException("Cannot resolve the selected array field", e);
-            }
-            arrayGetter = hasReceiver
-                    ? fieldGetter.asType(MethodType.methodType(arrayType, receiverType))
-                    : MethodHandles.dropArguments(fieldGetter, 0, Object.class);
+            // Lookup.findClass uses the lookup class's loader and enforces
+            // class accessibility. A name alone never bypasses loader identity.
+            owner = lookup.findClass(fieldSelector.substring(0, separator));
+            receiverType = null;
+            fieldName = fieldSelector.substring(separator + 1);
         } else {
-            arrayGetter = MethodHandles.identity(arrayType);
+            if (fieldSelector.isEmpty() || coordinates.length == 0
+                    || coordinates[0].isPrimitive()) {
+                throw new IllegalArgumentException("An instance field requires a reference receiver");
+            }
+            receiverType = coordinates[0];
+            owner = ownerOverride == null ? receiverType : ownerOverride;
+            if (!receiverType.isAssignableFrom(owner)) {
+                throw new IllegalArgumentException(
+                        "The accessor receiver does not accept the field owner");
+            }
+            fieldName = fieldSelector;
         }
-        if (!arrayType.isArray()
-                || (rank == 2 && !arrayType.getComponentType().isArray())) {
-            throw unsupportedAccessor("accessor must supply an array of the selected rank");
-        }
-        lookup.accessClass(arrayType);
-        arrayGetter = arrayGetter.asType(MethodType.methodType(Object.class, Object.class));
 
-        int[] indexOrder = new int[rank];
-        int firstIndexLocal = hasReceiver ? 1 : 0;
-        Class<?> elementArrayType = arrayType;
-        for (int i = 0; i < rank; i++) {
-            int index = getter.intLoad(firstIndexLocal, rank) - firstIndexLocal;
-            for (int j = 0; j < i; j++) {
-                if (indexOrder[j] == index) {
-                    throw unsupportedAccessor("each array index must be used exactly once");
+        Field field = findField(owner, fieldName);
+        if (Modifier.isStatic(field.getModifiers()) != isStatic) {
+            throw new IllegalArgumentException("Field kind does not match the updater shape: " + field);
+        }
+        // Preserve access through the supplied owner. An inherited public
+        // field may be accessible through a public subclass even when its
+        // declaring superclass is not accessible to the lookup.
+        VarHandle fieldHandle = isStatic
+                ? lookup.findStaticVarHandle(owner, fieldName, field.getType())
+                : lookup.findVarHandle(owner, fieldName, field.getType());
+        int rank = coordinates.length - (isStatic ? 0 : 1);
+        if (rank == 0) {
+            return new FieldAccess(fieldHandle, field, receiverType);
+        }
+        if (receiverType != null) {
+            Class<?> coordinate = fieldHandle.coordinateTypes().getFirst();
+            if (!coordinate.isAssignableFrom(receiverType)
+                    && !receiverType.isAssignableFrom(coordinate)) {
+                throw new IllegalArgumentException(
+                        "Lookup receiver restriction does not match the updater");
+            }
+        }
+        // The field supplies an array reference; the selected storage is an
+        // element, so the field itself may be final.
+        lookup.accessClass(field.getType());
+        return arrayAccess(fieldHandle.toMethodHandle(VarHandle.AccessMode.GET),
+                receiverType, field.getType(), rank);
+    }
+
+    private static Field findField(Class<?> owner, String name)
+            throws NoSuchFieldException {
+        Field declared = declaredField(owner, name);
+        if (declared != null) {
+            return declared;
+        }
+
+        Field inheritedClassField = null;
+        for (Class<?> current = owner.getSuperclass(); current != null;
+             current = current.getSuperclass()) {
+            inheritedClassField = declaredField(current, name);
+            if (inheritedClassField != null) {
+                break;
+            }
+        }
+
+        Set<Field> interfaceFields = new HashSet<>();
+        Set<Class<?>> visited = new HashSet<>();
+        for (Class<?> current = owner; current != null;
+             current = current.getSuperclass()) {
+            for (Class<?> iface : current.getInterfaces()) {
+                collectInterfaceFields(iface, name, visited, interfaceFields);
+            }
+        }
+        if (inheritedClassField != null && interfaceFields.isEmpty()) {
+            return inheritedClassField;
+        }
+        if (inheritedClassField == null && interfaceFields.size() == 1) {
+            return interfaceFields.iterator().next();
+        }
+        if (inheritedClassField != null || !interfaceFields.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Ambiguous inherited lazy field: " + owner.getTypeName() + "." + name);
+        }
+        throw new NoSuchFieldException(owner.getTypeName() + "." + name);
+    }
+
+    private static Field declaredField(Class<?> owner, String name) {
+        Field selected = null;
+        for (Field field : owner.getDeclaredFields()) {
+            if (field.getName().equals(name)) {
+                if (selected != null) {
+                    throw new IllegalArgumentException(
+                            "Ambiguous declared lazy field: " + owner.getTypeName() + "." + name);
+                }
+                selected = field;
+            }
+        }
+        return selected;
+    }
+
+    private static void collectInterfaceFields(Class<?> iface, String name,
+                                               Set<Class<?>> visited,
+                                               Set<Field> fields) {
+        if (!visited.add(iface)) {
+            return;
+        }
+        Field declared = declaredField(iface, name);
+        if (declared != null) {
+            fields.add(declared);
+            return;
+        }
+        for (Class<?> parent : iface.getInterfaces()) {
+            collectInterfaceFields(parent, name, visited, fields);
+        }
+    }
+
+    private static StorageAccess selectArray(Class<?>[] coordinates) {
+        return selectArray(coordinates, null);
+    }
+
+    private static StorageAccess selectArray(Class<?>[] coordinates,
+                                             Class<?> specializedArrayType) {
+        if (coordinates.length < 2 || !coordinates[0].isArray()) {
+            throw new IllegalArgumentException(
+                    "An array updater requires an array receiver and at least one int index");
+        }
+        Class<?> receiverType = coordinates[0];
+        Class<?> arrayType = specializedArrayType == null
+                ? receiverType : specializedArrayType;
+        if (!receiverType.isAssignableFrom(arrayType)) {
+            throw new IllegalArgumentException("Specialized array type does not match the "
+                    + "functional method's array coordinate");
+        }
+        return arrayAccess(MethodHandles.identity(arrayType), receiverType,
+                arrayType, coordinates.length - 1);
+    }
+
+    private static ArrayAccess arrayAccess(MethodHandle getter,
+                                           Class<?> receiverType,
+                                           Class<?> arrayType,
+                                           int rank) {
+        if (rank < 1) {
+            throw new IllegalArgumentException("An array updater requires at least one index");
+        }
+        Class<?> leafArrayType = arrayType;
+        for (int i = 1; i < rank; i++) {
+            if (leafArrayType == null || !leafArrayType.isArray()) {
+                throw new IllegalArgumentException("Array rank is smaller than the number of indices");
+            }
+            leafArrayType = leafArrayType.getComponentType();
+        }
+        if (leafArrayType == null || !leafArrayType.isArray()) {
+            throw new IllegalArgumentException("Array rank is smaller than the number of indices");
+        }
+        MethodHandle arrayGetter = receiverType == null
+                ? MethodHandles.dropArguments(getter, 0, Object.class)
+                : getter.asType(MethodType.methodType(arrayType, receiverType));
+        return new ArrayAccess(MethodHandles.arrayElementVarHandle(leafArrayType),
+                arrayGetter.asType(MethodType.methodType(Object.class, Object.class)),
+                receiverType, arrayType, rank);
+    }
+
+    private static <T> T createUpdater(Mode mode,
+                                       Class<T> type,
+                                       Method method,
+                                       Method computerMethod,
+                                       StorageAccess access,
+                                       Object boundComputer,
+                                       boolean useSite)
+            throws ReflectiveOperationException {
+        VarHandle storage = access.valueHandle();
+        if (!storage.isAccessModeSupported(readMode(mode))
+                || !storage.isAccessModeSupported(writeMode(mode))) {
+            throw new IllegalArgumentException("Lazy storage does not support the requested mode");
+        }
+        if (access instanceof FieldAccess fieldAccess
+                && (Modifier.isFinal(fieldAccess.field().getModifiers())
+                    || ValueClass.isNullRestrictedField(fieldAccess.field()))) {
+            throw new IllegalArgumentException("Not a mutable lazy storage field: " + fieldAccess.field());
+        }
+        boolean hasReceiver = access.receiverType() != null;
+        Class<?>[] coordinates = useSite
+                ? accessorCoordinates(method) : method.getParameterTypes();
+        int expectedParameters = access instanceof ArrayAccess array
+                ? array.rank() + (hasReceiver ? 1 : 0) : hasReceiver ? 1 : 0;
+        if (coordinates.length != expectedParameters
+                || method.getReturnType() == void.class
+                || computerMethod.getReturnType() == void.class
+                || (hasReceiver && coordinates[0] != access.receiverType())) {
+            throw new IllegalArgumentException("Functional method does not match the selected storage");
+        }
+        if (access instanceof ArrayAccess) {
+            for (int i = hasReceiver ? 1 : 0; i < expectedParameters; i++) {
+                if (coordinates[i] != int.class) {
+                    throw new IllegalArgumentException("Array coordinates must be int parameters");
                 }
             }
-            indexOrder[i] = index;
-            Class<?> component = elementArrayType.getComponentType();
-            getter.expect(arrayLoadOpcode(component));
-            if (i + 1 < rank) {
-                elementArrayType = component;
+        }
+        Class<?> valueType = storage.varType();
+        Class<?> boxedType = valueType.isPrimitive()
+                ? Wrapper.forPrimitiveType(valueType).wrapperType() : valueType;
+        Class<?> resultType = method.getReturnType();
+        Class<?> computerResultType = computerMethod.getReturnType();
+        if ((resultType != valueType
+                && !resultType.isAssignableFrom(boxedType))
+                || !compatibleComputerResult(computerResultType, valueType, boxedType)) {
+            throw new IllegalArgumentException("Functional result does not match the storage type");
+        }
+        if (access instanceof FieldAccess && hasReceiver) {
+            Class<?> coordinate = storage.coordinateTypes().getFirst();
+            if (!coordinate.isAssignableFrom(access.receiverType())
+                    && !access.receiverType().isAssignableFrom(coordinate)) {
+                throw new IllegalArgumentException("Lookup receiver restriction does not match the updater");
             }
         }
-        Class<?> valueType = elementArrayType.getComponentType();
-        getter.finishReturn(valueType, implementation.getReturnType());
 
-        VarHandle elementHandle = MethodHandles.arrayElementVarHandle(elementArrayType);
-        VarHandle handle = elementHandle;
-        if (rank == 2) {
-            handle = MethodHandles.collectCoordinates(handle, 0,
-                    MethodHandles.arrayElementGetter(arrayType));
-        }
-        if (fieldGetter != null) {
-            handle = MethodHandles.collectCoordinates(handle, 0, fieldGetter);
-        }
-        if (rank == 2 && indexOrder[0] == 1) {
-            List<Class<?>> coordinates = handle.coordinateTypes();
-            handle = hasReceiver
-                    ? MethodHandles.permuteCoordinates(handle, coordinates, 0, 2, 1)
-                    : MethodHandles.permuteCoordinates(handle, coordinates, 1, 0);
-        }
-        return new ArrayAccess(handle, elementHandle, arrayGetter, receiverType,
-                arrayType, indexOrder);
-    }
-
-    private static Opcode arrayLoadOpcode(Class<?> component) {
-        if (!component.isPrimitive()) {
-            return AALOAD;
-        }
-        if (component == boolean.class || component == byte.class) {
-            return BALOAD;
-        }
-        if (component == short.class) {
-            return SALOAD;
-        }
-        if (component == char.class) {
-            return CALOAD;
-        }
-        if (component == int.class) {
-            return IALOAD;
-        }
-        if (component == long.class) {
-            return LALOAD;
-        }
-        if (component == float.class) {
-            return FALOAD;
-        }
-        return DALOAD;
-    }
-
-    private static IllegalArgumentException unsupportedAccessor(String reason) {
-        return new IllegalArgumentException("Unsupported storage-access lambda: " + reason);
-    }
-
-    // Parse only the recognized straight-line sequences. In particular, a
-    // constant-pool reference alone is not evidence that the lambda uses it.
-    private static final class AccessorCode {
-        final byte[] code;
-        final ConstantPool pool;
-        int position;
-
-        AccessorCode(Method method) {
-            code = SharedSecrets.getJavaLangInvokeAccess().methodBytecodes(method);
-            if (code == null) {
-                throw unsupportedAccessor("method has no supported straight-line body");
-            }
-            pool = SharedSecrets.getJavaLangAccess().getConstantPool(method.getDeclaringClass());
-        }
-
-        boolean at(Opcode opcode) {
-            return position < code.length && Byte.toUnsignedInt(code[position]) == opcode.bytecode();
-        }
-
-        void expect(Opcode opcode) {
-            if (!at(opcode)) {
-                throw unsupportedAccessor("expected " + opcode + " at bytecode index " + position);
-            }
-            position++;
-        }
-
-        void expectIntLoad(int local) {
-            expect(intLoadOpcode(local));
-        }
-
-        int intLoad(int firstLocal, int count) {
-            for (int local = firstLocal; local < firstLocal + count; local++) {
-                if (at(intLoadOpcode(local))) {
-                    position++;
-                    return local;
-                }
-            }
-            throw unsupportedAccessor("expected a direct int index at bytecode index " + position);
-        }
-
-        private static Opcode intLoadOpcode(int local) {
-            return switch (local) {
-                case 0 -> ILOAD_0;
-                case 1 -> ILOAD_1;
-                case 2 -> ILOAD_2;
-                case 3 -> ILOAD_3;
-                default -> throw new IllegalArgumentException("Unsupported local index: " + local);
+        MethodHandle target;
+        if (access instanceof ArrayAccess array) {
+            ArrayUpdater updater = new ArrayUpdater(mode, array, computerMethod,
+                    boundComputer);
+            MethodType readType = switch (array.rank()) {
+                case 1 -> useSite ? ArrayUpdater.READ1_WITH_COMPUTER_TYPE
+                        : ArrayUpdater.READ1_TYPE;
+                case 2 -> useSite ? ArrayUpdater.READ2_WITH_COMPUTER_TYPE
+                        : ArrayUpdater.READ2_TYPE;
+                default -> useSite ? ArrayUpdater.READ_N_WITH_COMPUTER_TYPE
+                        : ArrayUpdater.READ_N_TYPE;
             };
+            String methodName = switch (array.rank()) {
+                case 1 -> useSite ? "get1WithComputer" : "get1";
+                case 2 -> useSite ? "get2WithComputer" : "get2";
+                default -> useSite ? "getNWithComputer" : "getN";
+            };
+            target = MethodHandles.lookup().findVirtual(ArrayUpdater.class,
+                    methodName, readType).bindTo(updater);
+        } else {
+            FieldUpdater updater = new FieldUpdater(mode, (FieldAccess) access,
+                    computerMethod, boundComputer);
+            target = MethodHandles.lookup().findVirtual(FieldUpdater.class,
+                    useSite ? "getWithComputer" : "get",
+                    useSite ? FieldUpdater.READ_WITH_COMPUTER_TYPE
+                            : FieldUpdater.READ_TYPE).bindTo(updater);
         }
+        if (!hasReceiver) {
+            target = MethodHandles.insertArguments(target, useSite ? 1 : 0,
+                    (Object) null);
+        }
+        if (access instanceof ArrayAccess array && array.rank() > 2) {
+            target = target.asCollector(int[].class, array.rank());
+        }
+        target = target.asType(MethodType.methodType(method.getReturnType(),
+                method.getParameterTypes()));
+        return LazyUpdaterFactory.create(type, method, target);
+    }
 
-        int member(Opcode opcode) {
-            expect(opcode);
-            if (code.length - position < 2) {
-                throw unsupportedAccessor("incomplete instruction");
-            }
-            int index = Byte.toUnsignedInt(code[position]) << 8
-                    | Byte.toUnsignedInt(code[position + 1]);
-            position += 2;
-            return index;
+    private static boolean compatibleComputerResult(Class<?> resultType,
+                                                    Class<?> valueType,
+                                                    Class<?> boxedType) {
+        if (resultType == valueType || resultType.isAssignableFrom(boxedType)) {
+            return true;
         }
-
-        Method method(Opcode opcode) {
-            if (pool.getMethodAt(member(opcode)) instanceof Method method) {
-                return method;
-            }
-            throw unsupportedAccessor("expected a method invocation");
+        if (!valueType.isPrimitive()) {
+            Class<?> boxedResult = resultType.isPrimitive()
+                    ? Wrapper.forPrimitiveType(resultType).wrapperType() : resultType;
+            return valueType.isAssignableFrom(boxedResult);
         }
-
-        void finishReturn(Class<?> valueType, Class<?> returnType) {
-            if (valueType == void.class) {
-                throw unsupportedAccessor("expected a field value");
-            }
-            if (at(INVOKESTATIC) && valueType.isPrimitive()) {
-                Class<?> boxedType = Wrapper.forPrimitiveType(valueType).wrapperType();
-                Method boxing = method(INVOKESTATIC);
-                if (boxing.getDeclaringClass() != boxedType
-                        || !boxing.getName().equals("valueOf")
-                        || !Modifier.isStatic(boxing.getModifiers())
-                        || boxing.getParameterCount() != 1
-                        || boxing.getParameterTypes()[0] != valueType
-                        || boxing.getReturnType() != boxedType) {
-                    throw unsupportedAccessor("expected primitive boxing");
-                }
-                valueType = boxedType;
-            }
-            if (valueType.isPrimitive() ? valueType != returnType
-                    : !returnType.isAssignableFrom(valueType)) {
-                throw unsupportedAccessor("unsupported return conversion");
-            }
-            Opcode opcode = !valueType.isPrimitive() ? ARETURN
-                    : valueType == long.class ? LRETURN
-                      : valueType == float.class ? FRETURN
-                        : valueType == double.class ? DRETURN : IRETURN;
-            expect(opcode);
-            if (position != code.length) {
-                throw unsupportedAccessor("additional instructions");
-            }
+        Wrapper target = Wrapper.forPrimitiveType(valueType);
+        if (resultType.isPrimitive()) {
+            return target.isConvertibleFrom(Wrapper.forPrimitiveType(resultType));
         }
+        return Wrapper.isWrapperType(resultType)
+                && target.isConvertibleFrom(Wrapper.forWrapperType(resultType));
     }
 
     private static VarHandle.AccessMode readMode(Mode mode) {
@@ -666,6 +1050,8 @@ public final class LazyUpdaterSupport {
 
     private static final class FieldUpdater {
         static final MethodType READ_TYPE = MethodType.methodType(Object.class, Object.class);
+        static final MethodType READ_WITH_COMPUTER_TYPE = MethodType.methodType(Object.class,
+                Object.class, Object.class);
         static final MethodType EXCHANGE_TYPE = MethodType.methodType(Object.class,
                 Object.class, Object.class, Object.class);
         static final MethodType WRITE_TYPE = MethodType.methodType(void.class,
@@ -676,13 +1062,16 @@ public final class LazyUpdaterSupport {
         private final MethodHandle exchange;
         private final MethodHandle write;
         private final MethodHandle compute;
+        private final Object boundComputer;
         private final Object defaultValue;
         private final SynchronizedField synchronizedField;
 
-        FieldUpdater(Mode mode, FieldAccess access, Method method, Object computingFunction)
+        FieldUpdater(Mode mode, FieldAccess access, Method computerMethod,
+                     Object boundComputer)
                 throws IllegalAccessException {
             this.mode = mode;
-            VarHandle field = access.handle();
+            this.boundComputer = boundComputer;
+            VarHandle field = access.valueHandle();
             Class<?> valueType = field.varType();
             defaultValue = valueType.isPrimitive() ? Wrapper.forPrimitiveType(valueType).zero() : null;
             MethodHandle reader = field.toMethodHandle(readMode(mode));
@@ -690,9 +1079,9 @@ public final class LazyUpdaterSupport {
                     ? field.toMethodHandle(VarHandle.AccessMode.COMPARE_AND_EXCHANGE_RELEASE) : null;
             MethodHandle writer = mode == Mode.PUBLISH_ONCE
                     ? null : field.toMethodHandle(writeMode(mode));
-            MethodHandle computation = SharedSecrets.getJavaLangInvokeAccess().unreflectMethod(method).bindTo(computingFunction);
+            MethodHandle computation = SharedSecrets.getJavaLangInvokeAccess()
+                    .unreflectMethod(computerMethod);
             if (access.receiverType() == null) {
-                computation = computation.asType(MethodType.methodType(valueType));
                 reader = MethodHandles.dropArguments(reader, 0, Object.class);
                 if (exchanger != null) {
                     exchanger = MethodHandles.dropArguments(exchanger, 0, Object.class);
@@ -700,7 +1089,7 @@ public final class LazyUpdaterSupport {
                 if (writer != null) {
                     writer = MethodHandles.dropArguments(writer, 0, Object.class);
                 }
-                computation = MethodHandles.dropArguments(computation, 0, Object.class);
+                computation = MethodHandles.dropArguments(computation, 1, Object.class);
             } else {
                 // Preserve the selector's receiver cast even when the erased
                 // functional interface or the field owner has a broader type.
@@ -714,30 +1103,42 @@ public final class LazyUpdaterSupport {
                     writer = writer.asType(MethodType.methodType(void.class,
                             receiver, Object.class));
                 }
-                computation = computation.asType(MethodType.methodType(valueType, receiver));
             }
             read = reader.asType(READ_TYPE);
             exchange = exchanger == null ? null : exchanger.asType(EXCHANGE_TYPE);
             write = writer == null ? null : writer.asType(WRITE_TYPE);
-            compute = computation.asType(READ_TYPE);
+            // Normalize to the selected storage type before checking the
+            // reserved value, including for broad reference results.
+            computation = computation.asType(MethodType.methodType(valueType,
+                    Object.class, Object.class));
+            compute = computation.asType(READ_WITH_COMPUTER_TYPE);
             synchronizedField = mode == Mode.SERIALIZED
                     ? SynchronizedField.forField(access.field(), access.receiverType() == null) : null;
         }
 
         Object get(Object receiver) throws Throwable {
+            return getValue(boundComputer, receiver);
+        }
+
+        Object getWithComputer(Object computer, Object receiver) throws Throwable {
+            Objects.requireNonNull(computer);
+            return getValue(computer, receiver);
+        }
+
+        private Object getValue(Object computer, Object receiver) throws Throwable {
             Object value = (Object) read.invokeExact(receiver);
             if (!isDefault(value)) {
                 return value;
             }
             return switch (mode) {
-                case PLAIN -> getPlain(receiver);
-                case PUBLISH_ONCE -> getCas(receiver);
-                case SERIALIZED -> getSynchronized(receiver);
+                case PLAIN -> getPlain(computer, receiver);
+                case PUBLISH_ONCE -> getCas(computer, receiver);
+                case SERIALIZED -> getSynchronized(computer, receiver);
             };
         }
 
-        private Object getCas(Object receiver) throws Throwable {
-            Object candidate = (Object) compute.invokeExact(receiver);
+        private Object getCas(Object computer, Object receiver) throws Throwable {
+            Object candidate = (Object) compute.invokeExact(computer, receiver);
             if (isDefault(candidate)) {
                 throw new IllegalArgumentException("The computed value is reserved for uninitialized storage");
             }
@@ -750,8 +1151,8 @@ public final class LazyUpdaterSupport {
             return (Object) read.invokeExact(receiver);
         }
 
-        private Object getPlain(Object receiver) throws Throwable {
-            Object candidate = (Object) compute.invokeExact(receiver);
+        private Object getPlain(Object computer, Object receiver) throws Throwable {
+            Object candidate = (Object) compute.invokeExact(computer, receiver);
             if (isDefault(candidate)) {
                 throw new IllegalArgumentException("The computed value is reserved for uninitialized storage");
             }
@@ -759,7 +1160,7 @@ public final class LazyUpdaterSupport {
             return candidate;
         }
 
-        private Object getSynchronized(Object receiver) throws Throwable {
+        private Object getSynchronized(Object computer, Object receiver) throws Throwable {
             SynchronizedState state = synchronizedField.stateFor(receiver);
             synchronized (state) {
                 Object value = (Object) read.invokeExact(receiver);
@@ -772,7 +1173,7 @@ public final class LazyUpdaterSupport {
                 state.computingThread = Thread.currentThread();
                 Object candidate;
                 try {
-                    candidate = (Object) compute.invokeExact(receiver);
+                    candidate = (Object) compute.invokeExact(computer, receiver);
                     if (isDefault(candidate)) {
                         throw new IllegalArgumentException(
                                 "The computed value is reserved for uninitialized storage");
@@ -796,8 +1197,20 @@ public final class LazyUpdaterSupport {
     private static final class ArrayUpdater {
         static final MethodType READ1_TYPE = MethodType.methodType(Object.class,
                 Object.class, int.class);
+        static final MethodType READ1_WITH_COMPUTER_TYPE = MethodType.methodType(Object.class,
+                Object.class, Object.class, int.class);
         static final MethodType READ2_TYPE = MethodType.methodType(Object.class,
                 Object.class, int.class, int.class);
+        static final MethodType READ2_WITH_COMPUTER_TYPE = MethodType.methodType(Object.class,
+                Object.class, Object.class, int.class, int.class);
+        static final MethodType READ_N_TYPE = MethodType.methodType(Object.class,
+                Object.class, int[].class);
+        static final MethodType READ_N_WITH_COMPUTER_TYPE = MethodType.methodType(Object.class,
+                Object.class, Object.class, int[].class);
+        private static final MethodType COMPUTE2_TYPE = MethodType.methodType(Object.class,
+                Object.class, Object.class, int.class, int.class);
+        private static final MethodType COMPUTE_N_TYPE = MethodType.methodType(Object.class,
+                Object.class, Object.class, int[].class);
         private static final MethodType ARRAY_GETTER_TYPE = MethodType.methodType(Object.class,
                 Object.class);
         private static final MethodType ELEMENT_READ_TYPE = MethodType.methodType(Object.class,
@@ -810,31 +1223,43 @@ public final class LazyUpdaterSupport {
         private final Mode mode;
         private final MethodHandle arrayGetter;
         private final MethodHandle rowGetter;
+        private final MethodHandle[] rowGetters;
         private final MethodHandle read;
         private final MethodHandle exchange;
         private final MethodHandle write;
         private final MethodHandle compute;
+        private final Object boundComputer;
         private final Object defaultValue;
-        private final boolean swapIndices;
 
-        ArrayUpdater(Mode mode, ArrayAccess access, Method method, Object computingFunction)
+        ArrayUpdater(Mode mode, ArrayAccess access, Method computerMethod,
+                     Object boundComputer)
                 throws IllegalAccessException {
-            this(mode, access.arrayGetter(), access.arrayType(), access.elementHandle(),
-                    access.receiverType(), access.rank(),
-                    access.rank() == 2 && access.indexOrder()[0] == 1,
-                    method, computingFunction);
+            this(mode, access.arrayGetter(), access.arrayType(), access.valueHandle(),
+                    access.receiverType(), access.rank(), computerMethod,
+                    boundComputer);
         }
 
         private ArrayUpdater(Mode mode, MethodHandle arrayGetter, Class<?> arrayType,
                              VarHandle element, Class<?> receiverType, int rank,
-                             boolean swapIndices, Method method, Object computingFunction)
+                             Method computerMethod, Object boundComputer)
                 throws IllegalAccessException {
             this.mode = mode;
+            this.boundComputer = boundComputer;
             this.arrayGetter = arrayGetter.asType(ARRAY_GETTER_TYPE);
             rowGetter = rank == 2
                     ? MethodHandles.arrayElementGetter(arrayType).asType(ELEMENT_READ_TYPE)
                     : null;
-            this.swapIndices = swapIndices;
+            if (rank > 2) {
+                rowGetters = new MethodHandle[rank - 1];
+                Class<?> currentArrayType = arrayType;
+                for (int i = 0; i < rowGetters.length; i++) {
+                    rowGetters[i] = MethodHandles.arrayElementGetter(currentArrayType)
+                            .asType(ELEMENT_READ_TYPE);
+                    currentArrayType = currentArrayType.getComponentType();
+                }
+            } else {
+                rowGetters = null;
+            }
             Class<?> valueType = element.varType();
             defaultValue = valueType.isPrimitive() ? Wrapper.forPrimitiveType(valueType).zero() : null;
             read = element.toMethodHandle(readMode(mode)).asType(ELEMENT_READ_TYPE);
@@ -846,45 +1271,69 @@ public final class LazyUpdaterSupport {
                     ? null : element.toMethodHandle(writeMode(mode)).asType(ELEMENT_WRITE_TYPE);
 
             MethodHandle computation = SharedSecrets.getJavaLangInvokeAccess()
-                    .unreflectMethod(method).bindTo(computingFunction);
-            MethodType computationType;
+                    .unreflectMethod(computerMethod);
             if (receiverType == null) {
-                computationType = rank == 1
-                        ? MethodType.methodType(valueType, int.class)
-                        : MethodType.methodType(valueType, int.class, int.class);
-            } else {
-                computationType = rank == 1
-                        ? MethodType.methodType(valueType, receiverType, int.class)
-                        : MethodType.methodType(valueType, receiverType, int.class, int.class);
-            }
-            computation = computation.asType(computationType);
-            if (receiverType == null) {
-                computation = MethodHandles.dropArguments(computation, 0, Object.class);
+                computation = MethodHandles.dropArguments(computation, 1, Object.class);
             }
             if (rank == 1) {
-                computation = MethodHandles.dropArguments(computation.asType(READ1_TYPE),
-                        2, int.class);
+                computation = computation.asType(MethodType.methodType(valueType,
+                        Object.class, Object.class, int.class));
+                computation = MethodHandles.dropArguments(
+                        computation, 3, int.class).asType(COMPUTE2_TYPE);
+            } else if (rank == 2) {
+                computation = computation.asType(MethodType.methodType(valueType,
+                        Object.class, Object.class, int.class, int.class))
+                        .asType(COMPUTE2_TYPE);
             } else {
-                computation = computation.asType(READ2_TYPE);
+                computation = computation.asSpreader(int[].class, rank)
+                        .asType(MethodType.methodType(valueType,
+                                Object.class, Object.class, int[].class))
+                        .asType(COMPUTE_N_TYPE);
             }
             compute = computation;
         }
 
         Object get1(Object receiver, int index) throws Throwable {
+            return get1WithComputer(boundComputer, receiver, index);
+        }
+
+        Object get1WithComputer(Object computer, Object receiver, int index) throws Throwable {
+            Objects.requireNonNull(computer);
             Object array = (Object) arrayGetter.invokeExact(receiver);
-            return getAt(array, index, receiver, index, 0);
+            return getAt(computer, array, index, receiver, index, 0, null);
         }
 
         Object get2(Object receiver, int index0, int index1) throws Throwable {
-            Object outer = (Object) arrayGetter.invokeExact(receiver);
-            int rowIndex = swapIndices ? index1 : index0;
-            int elementIndex = swapIndices ? index0 : index1;
-            Object row = (Object) rowGetter.invokeExact(outer, rowIndex);
-            return getAt(row, elementIndex, receiver, index0, index1);
+            return get2WithComputer(boundComputer, receiver, index0, index1);
         }
 
-        private Object getAt(Object array, int index, Object receiver,
-                             int index0, int index1) throws Throwable {
+        Object get2WithComputer(Object computer, Object receiver,
+                                int index0, int index1) throws Throwable {
+            Objects.requireNonNull(computer);
+            Object outer = (Object) arrayGetter.invokeExact(receiver);
+            Object row = (Object) rowGetter.invokeExact(outer, index0);
+            return getAt(computer, row, index1, receiver, index0, index1, null);
+        }
+
+        Object getN(Object receiver, int[] indices) throws Throwable {
+            return getNWithComputer(boundComputer, receiver, indices);
+        }
+
+        Object getNWithComputer(Object computer, Object receiver,
+                                int[] indices) throws Throwable {
+            Objects.requireNonNull(computer);
+            Object array = (Object) arrayGetter.invokeExact(receiver);
+            // Resolve the full path before computing. The last array is the
+            // physical container used for coordination, even if paths alias.
+            for (int i = 0; i < rowGetters.length; i++) {
+                array = (Object) rowGetters[i].invokeExact(array, indices[i]);
+            }
+            return getAt(computer, array, indices[rowGetters.length],
+                    receiver, 0, 0, indices);
+        }
+
+        private Object getAt(Object computer, Object array, int index, Object receiver,
+                             int index0, int index1, int[] indices) throws Throwable {
             Object value = (Object) read.invokeExact(array, index);
             if (array instanceof Object[] references
                     && references.getClass().getComponentType().isValue()
@@ -896,16 +1345,15 @@ public final class LazyUpdaterSupport {
                 return value;
             }
             return switch (mode) {
-                case PLAIN -> getPlain(array, index, receiver, index0, index1);
-                case PUBLISH_ONCE -> getCas(array, index, receiver, index0, index1);
-                case SERIALIZED -> getSynchronized(array, index, receiver, index0, index1);
+                case PLAIN -> getPlain(computer, array, index, receiver, index0, index1, indices);
+                case PUBLISH_ONCE -> getCas(computer, array, index, receiver, index0, index1, indices);
+                case SERIALIZED -> getSynchronized(computer, array, index, receiver, index0, index1, indices);
             };
         }
 
-        private Object getCas(Object array, int index, Object receiver,
-                              int index0, int index1) throws Throwable {
-            Object candidate = (Object) compute.invokeExact(receiver, index0, index1);
-            checkCandidate(candidate);
+        private Object getCas(Object computer, Object array, int index, Object receiver,
+                              int index0, int index1, int[] indices) throws Throwable {
+            Object candidate = computeCandidate(computer, receiver, index0, index1, indices);
             Object witness = (Object) exchange.invokeExact(array, index, defaultValue, candidate);
             if (isDefault(witness)) {
                 return candidate;
@@ -914,16 +1362,16 @@ public final class LazyUpdaterSupport {
             return (Object) read.invokeExact(array, index);
         }
 
-        private Object getPlain(Object array, int index, Object receiver,
-                                int index0, int index1) throws Throwable {
-            Object candidate = (Object) compute.invokeExact(receiver, index0, index1);
-            checkCandidate(candidate);
+        private Object getPlain(Object computer, Object array, int index, Object receiver,
+                                int index0, int index1, int[] indices) throws Throwable {
+            Object candidate = computeCandidate(computer, receiver, index0, index1, indices);
             write.invokeExact(array, index, candidate);
             return candidate;
         }
 
-        private Object getSynchronized(Object array, int index, Object receiver,
-                                       int index0, int index1) throws Throwable {
+        private Object getSynchronized(Object computer, Object array, int index,
+                                       Object receiver,
+                                       int index0, int index1, int[] indices) throws Throwable {
             SynchronizedArray synchronizedArray = SynchronizedArray.forArray(array);
             SynchronizedState state = synchronizedArray.stateFor(array, index);
             synchronized (state) {
@@ -937,8 +1385,7 @@ public final class LazyUpdaterSupport {
                 state.computingThread = Thread.currentThread();
                 Object candidate;
                 try {
-                    candidate = (Object) compute.invokeExact(receiver, index0, index1);
-                    checkCandidate(candidate);
+                    candidate = computeCandidate(computer, receiver, index0, index1, indices);
                     write.invokeExact(array, index, candidate);
                 } finally {
                     state.computingThread = null;
@@ -946,6 +1393,16 @@ public final class LazyUpdaterSupport {
                 synchronizedArray.discard(state);
                 return candidate;
             }
+        }
+
+        private Object computeCandidate(Object computer, Object receiver,
+                                        int index0, int index1,
+                                        int[] indices) throws Throwable {
+            Object candidate = indices == null
+                    ? (Object) compute.invokeExact(computer, receiver, index0, index1)
+                    : (Object) compute.invokeExact(computer, receiver, indices);
+            checkCandidate(candidate);
+            return candidate;
         }
 
         private void checkCandidate(Object candidate) {

@@ -53,14 +53,6 @@ class MethodHandleNatives {
     static native MemberName resolve(MemberName self, Class<?> caller, int lookupMode,
             boolean speculativeResolve) throws LinkageError, ClassNotFoundException;
 
-    /**
-     * Returns the loaded method's bytecodes in class-file form, with constant-pool
-     * indices restored after VM rewriting. Returns {@code null} unless the member
-     * is a resolved, non-native, non-abstract method without synchronization or
-     * exception handlers. Used to validate simple field-selector lambdas.
-     */
-    static native byte[] methodBytecodes(MemberName member);
-
     //--- Field layout queries parallel to jdk.internal.misc.Unsafe:
     static native long objectFieldOffset(MemberName self);  // e.g., returns vmindex
     static native long staticFieldOffset(MemberName self);  // e.g., returns vmindex

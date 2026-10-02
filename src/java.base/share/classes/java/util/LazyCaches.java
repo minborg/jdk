@@ -33,16 +33,13 @@ import java.util.function.*;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.util.LazySupport;
 
-// Todo: Close semantics ... AutoClosable
-
 /**
  * Factory methods for lazily computing and retaining values.
  * <p>
- * A lazy value is computed when it is first needed and retained for subsequent
- * access. These factories capture a <em>computing function</em> for deferred
- * computation and provide storage for its result. The access operation invokes
- * the computing function if necessary and returns the retained value.
- * A retained value is never replaced.
+ * These factories accept a <em>computing function</em> for deferred computation
+ * and provide storage for its result. Access computes a value or membership
+ * when needed and retains one successful result for subsequent accesses.
+ * That result is never replaced.
  * <p>
  * The factories provide several ways to access lazy values:
  * <ul>
@@ -57,6 +54,18 @@ import jdk.internal.util.LazySupport;
  *     are computed independently.</li>
  * </ul>
  * <p>
+ * These factories own their storage and can retain non-null values, including
+ * boxed zero. A lazy set can retain either boolean membership result.
+ * {@link java.lang.invoke.LazyUpdaters} instead uses a caller-owned field or
+ * array element, whose Java default value denotes an uninitialized location. Its
+ * {@link java.lang.invoke.LazyUpdaters.Mode#SERIALIZED SERIALIZED} mode allows
+ * retries after a failed computation; it is not equivalent to
+ * {@code COMPUTE_ONCE}, which records a failure permanently.
+ * <p>
+ * Lazily initializing an array reference does not make its elements lazy or
+ * immutable. Use {@link #ofList(Mode, int, IntFunction) ofList} when elements
+ * should be computed independently.
+ * <p>
  * A method reference applicable to both {@link #ofScalar(Mode, Supplier)} and
  * {@link #ofScalar(Mode, Function)} can make overload selection ambiguous.
  * A lambda with the intended parameter count or a cast to the intended
@@ -64,39 +73,49 @@ import jdk.internal.util.LazySupport;
  *
  * <p>
  * For example, a service can be created on its first use:
- * {@snippet lang = java:
- * private static final Supplier<Service> SERVICE = LazyCaches.ofScalar(Service::new);
+ * {@snippet lang=java :
+ * import java.util.LazyCaches;
+ * import java.util.function.Supplier;
  *
- * static Service service() {
- *     return SERVICE.get();
+ * class Services {
+ *     private static final Supplier<Service> SERVICE =
+ *             LazyCaches.ofScalar(Service::new);
+ *
+ *     static Service service() {
+ *         return SERVICE.get();
+ *     }
+ *
+ *     static final class Service { }
  * }
  * }
  *
  * <h2 id="initialization-modes">Initialization modes</h2>
  * Each factory specifies an {@link Mode initialization mode}, either
  * explicitly or by default. The mode applies independently to each lazy value.
- * In both modes, computing functions are invoked synchronously on the thread
- * performing the lazy access. A collection's computing function may be invoked
- * concurrently for different elements, keys, or candidates, even in
- * {@code COMPUTE_ONCE} mode. That mode prevents concurrent or repeated
- * computation of the same value, not concurrent computation of different values.
+ * When invoked, a computing function runs on the accessing thread; these
+ * factories do not schedule computation on another thread. For a collection,
+ * the computing function may run concurrently for distinct indices, keys, or
+ * candidates, even in {@code COMPUTE_ONCE} mode. At-most-once invocation in that
+ * mode applies to each storage location separately.
  * <p>
  * {@link Mode#COMPUTE_ONCE} is intended for <em>initialization</em>,
  * including computations with side effects that must not be repeated. At-most-once
- * invocation of the computing function is guaranteed for each value. A
- * thread that first needs the value invokes the function on that thread;
- * competing threads wait for that invocation to finish. If it succeeds, its
- * result is retained. If it fails, the failure is permanent and no further
- * invocation is attempted. A value that is never accessed need not be computed.
+ * invocation of the computing function is guaranteed for each storage
+ * location. One accessing thread invokes the function; accesses by other
+ * threads to the same storage wait while that invocation is in progress.
+ * If it succeeds, its result is retained. If it fails, the failure is
+ * permanent and no further invocation is attempted. The computing function
+ * is not invoked for a storage location that is never accessed.
  * The {@link #ofScalar(Supplier)} factory uses this mode by default.
  * <p>
  * {@link Mode#PUBLISH_ONCE} is intended for <em>memoization</em>,
  * where computing a value more than once is acceptable. Competing threads may
- * each invoke the computing function. A non-null result is installed atomically
- * only if no result has already been installed. Every access that completes
- * normally returns the installed value, including accesses whose computations
- * produced a different result. Results that are not installed are discarded;
- * this API does not close them or otherwise release resources they hold.
+ * each invoke the computing function. A successful result is installed atomically
+ * only if no result has already been installed. Every access to that lazy
+ * storage location that completes normally returns the installed result,
+ * including accesses whose computations produced a different result. Results
+ * that are not installed are discarded; this API does not close them or
+ * otherwise release resources they hold.
  * Failures are not retained, so later accesses may retry computation. Computing
  * functions used with this mode should tolerate concurrent and repeated
  * invocation and should avoid side effects that require at-most-once execution.
@@ -121,8 +140,9 @@ import jdk.internal.util.LazySupport;
  * initialization in section {@jls 12.4.2} of
  * <cite>The Java Language Specification</cite>.
  * <p>
- * Returning {@code null} is treated as a computation failure with a
- * {@link NullPointerException}. In {@code COMPUTE_ONCE} mode, recursive access
+ * A {@code null} result from a value-producing computing function is treated as
+ * a computation failure with a {@link NullPointerException}. In
+ * {@code COMPUTE_ONCE} mode, recursive access
  * by the computing thread to the same uninitialized value throws
  * {@link IllegalStateException}; if it escapes from the computing function,
  * it is handled as a computation failure.
@@ -145,7 +165,8 @@ import jdk.internal.util.LazySupport;
  * already retained, and permanent failures already recorded are not rolled back.
  * The initialization mode governs the computing function, not other actions or
  * callbacks invoked by the operation, such as a {@code forEach} action, a stream
- * stage, or an element's {@code equals} or {@code hashCode} method. Failures from
+ * stage, or an element's {@code equals} or {@code hashCode} method. Such code
+ * may itself perform further lazy accesses. Failures from
  * such code are handled according to the operation's contract; their propagation
  * does not itself record an additional initialization failure. Any lazy accesses
  * performed by such code, and any throwable that escapes a computing function,
@@ -192,8 +213,9 @@ import jdk.internal.util.LazySupport;
  * the failing element or candidate remains pending. If
  * {@link Spliterator#tryAdvance(java.util.function.Consumer) tryAdvance}
  * encounters a computation failure in a lazy access performed by the traversal
- * itself, its action is not invoked. If {@link Spliterator#trySplit() trySplit} fails because of a
- * computation failure, the original spliterator retains coverage of all
+ * itself, its action is not invoked. If
+ * {@link Spliterator#trySplit() trySplit} fails because of a computation failure,
+ * the original spliterator retains coverage of all
  * remaining elements and candidates whose membership is unresolved.
  * <p>
  * A subsequent operation that requires the pending value or membership accesses
@@ -265,19 +287,20 @@ import jdk.internal.util.LazySupport;
  * known size.
  *
  * <h2 id="thread-safety">Thread safety and memory consistency</h2>
- * Lazy storage supports concurrent access in both modes. Installation of a value
- * by a lazy access has the memory effects of a
- * {@linkplain VarHandle.AccessMode#SET_RELEASE release write} of its storage;
- * observation of the retained value has the memory effects of an
- * {@linkplain VarHandle.AccessMode#GET_ACQUIRE acquire read} of its storage.
- * In particular, actions in the installing thread preceding installation
+ * Lazy storage supports concurrent access in both modes. Installation of a
+ * value by a lazy access has the effects of a
+ * {@linkplain VarHandle.AccessMode#SET_RELEASE release write}. Another access
+ * that observes the installed value has
+ * {@linkplain VarHandle.AccessMode#GET_ACQUIRE acquire effects} with respect to
+ * that publication. Actions in the installing thread preceding installation
  * {@linkplain java.util.concurrent##MemoryVisibility <em>happen-before</em>}
- * actions following a successful access that returns that value. This guarantee
- * applies in both modes. A successful access whose computed result is discarded
- * still observes the publication of the installed value. In {@code PUBLISH_ONCE}
- * mode, actions performed by computations that fail or produce discarded results
- * have no publication guarantee to other threads through accesses to the lazy
- * value.
+ * actions following an access that observes and returns the installed value.
+ * The installing access may return its own result without rereading it. These
+ * guarantees apply in both modes. A successful access whose computed result
+ * is discarded also observes the winner's publication with acquire effects.
+ * In {@code PUBLISH_ONCE} mode, actions performed by computations that fail or
+ * produce discarded results have no publication guarantee to other threads
+ * through accesses to the lazy value.
  * <p>
  * In {@code COMPUTE_ONCE} mode, recording a computation failure has the memory
  * effects of a release write of the failure state; observing that recorded
@@ -294,34 +317,16 @@ import jdk.internal.util.LazySupport;
  * provides no additional memory ordering or visibility guarantees.
  * <p>
  * Publication of a value or failure does not make subsequent mutations of a
- * computed value, or concurrent access to
- * mutable state used by the computing function, thread-safe. Such mutations and
- * accesses require their own coordination. Lazy access does not provide cancellation or
- * a timeout. Waiting for initialization is not interruptible. If a thread is
+ * computed value, or concurrent access to mutable state used by the computing
+ * function, thread-safe. Such mutations and accesses require their own
+ * coordination. Lazy access does not provide cancellation or a timeout. Waiting
+ * for initialization is not interruptible. If a thread is
  * already interrupted when waiting begins, or is interrupted while waiting,
  * the waiting mechanism preserves that interruption: the thread's interrupted
  * status is set when the access completes, whether normally or abruptly.
  * This guarantee does not constrain the computing function's own handling of
  * interruption, which may change the interrupted status. A computation that
  * blocks indefinitely can prevent access to its value indefinitely.
- *
- * <h2 id="performance">Performance</h2>
- * The value retained in a particular lazy storage location never changes after
- * installation. If a JVM implementation can determine that location and its
- * installed value, it may elide subsequent reads and use the previously observed
- * value, provided the {@linkplain ##thread-safety publication guarantee} is
- * preserved for every successful access. We call this optimization
- * <em>constant folding</em>.
- * <p>
- * Such optimization opportunities may arise when there is a direct reference
- * from a {@code static final} field to a lazy supplier, or a chain of
- * <em>trusted fields</em> (such as {@code static final} fields,
- * {@linkplain Record record} fields, or final instance fields in hidden classes)
- * leading to a lazy storage location.
- * <p>
- * Lazily initializing an array reference does not make its elements lazy or
- * immutable. Use {@link #ofList(Mode, int, IntFunction) ofList} when elements
- * should be computed independently.
  *
  * <h2 id="function-composition">Function composition</h2>
  * Functions returned by {@code ofScalar(Mode, Function)} support the
@@ -338,12 +343,8 @@ import jdk.internal.util.LazySupport;
  * to their applicable initialization and failure rules.
  *
  * <h2 id="computing-function-retention">Computing-function retention</h2>
- * Storage provided by {@linkplain #ofScalar(Supplier) ofScalar},
- * {@linkplain #ofScalar(Mode, Function) ofScalar},
- * {@link #ofList(Mode, int, IntFunction) ofList},
- * {@linkplain #ofMap(Mode, java.util.Set, Function) ofMap}, and
- * {@linkplain #ofSet(Mode, java.util.Set, Predicate) ofSet} strongly retains its
- * computing function while any element, value or membership still requires
+ * Storage provided by every factory in this class strongly retains its
+ * computing function while any element, value, or membership still requires
  * initialization. Once every value or membership has either a retained result or a
  * recorded permanent failure, the storage releases the reference held for invoking
  * that function. This includes any mixture of successful and permanently failed
@@ -360,25 +361,36 @@ import jdk.internal.util.LazySupport;
  * Providing a {@code null} argument to any of the factories in this class causes
  * a {@link NullPointerException} to be thrown.
  * <p>
- * If a computing function returns {@code null}, the result is treated as a
- * {@linkplain ##failures computation failure} with a {@code NullPointerException}.
+ * If a value-producing computing function returns {@code null}, the result is
+ * treated as a {@linkplain ##failures computation failure} with a
+ * {@code NullPointerException}.
  * In {@code COMPUTE_ONCE} mode, the computing thread throws a
  * {@code NoSuchElementException} with that exception as its cause, and the failure
  * is permanent. In {@code PUBLISH_ONCE} mode, the {@code NullPointerException}
  * is thrown directly and subsequent accesses may retry. An {@link Optional}
- * can be used to represent an absent value.
+ * can be used to represent an absent value. A set's {@link Predicate}
+ * instead returns a primitive {@code boolean}; both {@code true} and
+ * {@code false} are retained membership results.
  *
  * @apiNote A lazy value strongly references its installed value for as long as
- *          the storage remains reachable. Suppliers and functions returned by this class,
- *          and the collections returned by its factories, are by design not
- *          {@link Serializable}. The collection contents, and values returned by
- *          suppliers, may themselves be mutable.
+ *          the storage remains reachable. Suppliers, functions, and collections
+ *          returned by these factories are by design not {@link Serializable}.
+ *          Retained values may themselves be mutable.
+ *
+ * @implNote A retained result is never replaced, which may permit an
+ *           implementation to constant-fold repeated accesses when it can
+ *           determine a stable path to the storage and its result. Such a path
+ *           may start from a {@code static final} field. Whether and when this
+ *           optimization occurs is implementation-dependent. Eliding a storage
+ *           read must preserve the {@linkplain ##thread-safety publication
+ *           guarantee} for the access.
  *
  * @since 29
  */
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
 public final class LazyCaches {
 
+    // Suppresses default constructor, ensuring non-instantiability.
     private LazyCaches() { }
 
     /**
@@ -390,17 +402,18 @@ public final class LazyCaches {
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
     public enum Mode {
         /**
-         * Invokes the computing function <em>at most once</em> per value and permanently
-         * retains either its non-null result or the fact that computation failed.
-         * Competing accesses wait for that invocation to finish.
+         * Invokes the computing function <em>at most once</em> per storage location
+         * and permanently retains either its successful result or the fact that
+         * computation failed.
+         * Competing accesses by other threads wait for that invocation to finish.
          */
         COMPUTE_ONCE,
 
         /**
          * Permits concurrent computations and retries after failure, and
-         * atomically installs and <em>publishes</em> one non-null result. All successful
-         * accesses return the installed value, including those that lose the race to
-         * install their result.
+         * atomically installs and <em>publishes</em> one successful result.
+         * All successful accesses to that storage location return the installed
+         * result, including those that lose the race to install their result.
          */
         PUBLISH_ONCE
     }
@@ -445,6 +458,7 @@ public final class LazyCaches {
      *
      * @param computingFunction the function that computes the non-null value
      * @param <T> the type of the supplied value
+     * @throws NullPointerException if {@code computingFunction} is {@code null}
      * @see #ofScalar(Mode, Supplier)
      */
     public static <T> Supplier<T> ofScalar(Supplier<? extends T> computingFunction) {
@@ -469,6 +483,8 @@ public final class LazyCaches {
      * @param mode the initialization mode
      * @param computingFunction the function that computes the non-null value
      * @param <T> the type of the supplied value
+     * @throws NullPointerException if {@code mode} or {@code computingFunction}
+     *         is {@code null}
      */
     public static <T> Supplier<T> ofScalar(Mode mode,
                                            Supplier<? extends T> computingFunction) {
@@ -496,14 +512,16 @@ public final class LazyCaches {
      * <p>
      * For example, each {@code Document} below has its own cache, while the
      * computing function need not capture the document:
-     * {@snippet lang = java:
+     * {@snippet lang=java :
+     * import java.util.LazyCaches;
+     * import java.util.function.Function;
+     *
      * class Document {
      *     private final String text;
      *
      *     // A lazily derived property
      *     private final Function<Document, Integer> wordCount =
-     *         LazyCaches.ofScalar(LazyCaches.Mode.PUBLISH_ONCE,
-     *                 Document::computeWordCount);
+     *         LazyCaches.ofScalar(LazyCaches.Mode.PUBLISH_ONCE, Document::computeWordCount);
      *
      *     Document(String text) { this.text = text; }
      *
@@ -511,12 +529,12 @@ public final class LazyCaches {
      *
      *     private int computeWordCount() { return text.split("\\s+").length; }
      * }
-     *}
+     * }
      * <p>
      * Retention of the computing function is described in
      * {@linkplain LazyCaches##computing-function-retention Computing-function retention}.
-     * The returned function does not
-     * retain the context except through the computing function or its result.
+     * Merely passing a context to {@code apply} does not retain it; the
+     * computing function or a retained result may do so.
      * Its {@code equals}, {@code hashCode}, and {@code toString} methods do not
      * trigger computation.
      *
@@ -535,6 +553,8 @@ public final class LazyCaches {
      * @param computingFunction the function that computes the non-null value
      * @param <C> the type of the context
      * @param <T> the type of the supplied value
+     * @throws NullPointerException if {@code mode} or {@code computingFunction}
+     *         is {@code null}
      * @see LazyCaches##function-composition Function composition
      */
     public static <C, T> Function<C, T> ofScalar(Mode mode,
@@ -577,6 +597,8 @@ public final class LazyCaches {
      * @param computingFunction the function that computes non-null elements
      * @param <T> the type of the elements
      * @throws IllegalArgumentException if {@code size} is negative
+     * @throws NullPointerException if {@code mode} or {@code computingFunction}
+     *         is {@code null}
      * @see LazyCaches##collection-properties Collection properties
      * @see LazyCaches##traversal-failures Computation failures during traversal
      * @see LazyCaches##streams Streams and spliterators
@@ -617,14 +639,16 @@ public final class LazyCaches {
      * values for other keys. Accessing an absent key does not invoke the function.
      * <p>
      * {@code size()}, {@code isEmpty()}, {@code containsKey}, and operations
-     * on {@code keySet()} do not compute values. Obtaining {@code values()} or
-     * {@code entrySet()} does not compute values either. Obtaining entries from
-     * the entry-set view, including through iterators, spliterators, streams, or
-     * array conversion, and reading an entry's key do not themselves compute
-     * mapped values. Reading an entry's value or iterating over the values
-     * computes the accessed values if necessary. Other operations that inspect
-     * values, such as equality, hashing, string conversion, or
-     * {@code containsValue}, may compute the values they inspect.
+     * on {@code keySet()} do not directly access the map's lazy value storage.
+     * Obtaining {@code values()} or {@code entrySet()} does not access it either.
+     * Traversing the entry-set view merely to yield entries does not itself
+     * compute mapped values, whether by iterator, spliterator, or stream;
+     * neither does converting the view to an array or reading an entry's key.
+     * Reading an entry's value or iterating over the values computes the
+     * accessed values if necessary.
+     * Other operations that inspect values, such as equality, hashing,
+     * string conversion, and {@code containsValue}, may compute the values
+     * they inspect.
      * <p>
      * All views and entries share the map's value storage. Entries remain valid
      * after iteration or traversal has ended, regardless of how they were
@@ -651,26 +675,33 @@ public final class LazyCaches {
      * For example, the following customers compare equal by ID, but have
      * different names. Looking up either customer computes the value from
      * {@code stored}, the key supplied when the map was created:
-     * {@snippet lang = java:
-     * record Customer(int id, String name) {
-     *     @Override
-     *     public boolean equals(Object obj) {
-     *         return obj instanceof Customer other && id == other.id;
+     * {@snippet lang=java :
+     * import java.util.LazyCaches;
+     * import java.util.Set;
+     *
+     * class CustomerNames {
+     *     record Customer(int id, String name) {
+     *         @Override
+     *         public boolean equals(Object obj) {
+     *             return obj instanceof Customer other && id == other.id;
+     *         }
+     *
+     *         @Override
+     *         public int hashCode() {
+     *             return Integer.hashCode(id);
+     *         }
      *     }
      *
-     *     @Override
-     *     public int hashCode() {
-     *         return Integer.hashCode(id);
+     *     public static void main(String[] args) {
+     *         var stored = new Customer(7, "Alice");
+     *         var lookup = new Customer(7, "Bob");
+     *         var names = LazyCaches.ofMap(LazyCaches.Mode.COMPUTE_ONCE,
+     *                 Set.of(stored), Customer::name);
+     *
+     *         System.out.println(names.get(lookup)); // Alice: computes from stored
+     *         System.out.println(names.get(stored)); // Alice: returns the retained value
      *     }
      * }
-     *
-     * var stored = new Customer(7, "Alice");
-     * var lookup = new Customer(7, "Bob");
-     * var names = LazyCaches.ofMap(LazyCaches.Mode.COMPUTE_ONCE,
-     *         Set.of(stored), Customer::name);
-     *
-     * System.out.println(names.get(lookup)); // Alice: computes from stored
-     * System.out.println(names.get(stored)); // Alice: returns the retained value
      * }
      *
      * @param mode the initialization mode for each mapped value
@@ -727,12 +758,12 @@ public final class LazyCaches {
      * determining membership for other candidates. Failure behavior is
      * described in {@linkplain LazyCaches##failures Computation failures}.
      * <p>
-     * A {@code contains} call computes only the matching retained candidate's
-     * membership, if necessary. The argument to the computing function is
-     * always that candidate from {@code elementCandidates}, including when the
-     * queried object is distinct but equal. Querying a non-null object that is
-     * not equal to any candidate returns {@code false} without invoking the
-     * computing function. Querying {@code null} throws
+     * A {@code contains} call directly computes only the matching retained
+     * candidate's membership, if necessary. The argument to the computing
+     * function is always that candidate from {@code elementCandidates}, including
+     * when the queried object is distinct but equal. Querying a non-null object
+     * that is not equal to any candidate returns {@code false} without invoking
+     * the computing function. Querying {@code null} throws
      * {@code NullPointerException}.
      * <p>
      * Obtaining an iterator does not compute membership. Its {@code hasNext}

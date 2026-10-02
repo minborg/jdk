@@ -47,10 +47,11 @@ import static jdk.internal.constant.ConstantUtils.methodTypeDesc;
 import static jdk.internal.constant.ConstantUtils.referenceClassDesc;
 
 /**
- * Adapts an updater method handle to its functional interface. Storage access
- * must have been authorized before an adapter is created. The trusted lookup
- * used here only defines an implementation in the interface's nest; it is
- * never used to resolve a field or obtain an updater target.
+ * Adapts an updater method handle to its functional interface. Access to
+ * field-backed storage must have been authorized before an adapter is created.
+ * The trusted lookup used here only defines an implementation in the
+ * interface's nest; it is never used to resolve a field or obtain an updater
+ * target.
  */
 final class LazyUpdaterFactory {
     private LazyUpdaterFactory() { }

@@ -38,6 +38,7 @@ class OfLocationModeTypeMismatch {
 
     void test() {
         LazyUpdaters.ofLocation(LazyCaches.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
-                IntSupplier.class, () -> value, () -> 42);
+                IntSupplier.class,
+                OfLocationModeTypeMismatch.class.getName() + ".value", () -> 42);
     }
 }

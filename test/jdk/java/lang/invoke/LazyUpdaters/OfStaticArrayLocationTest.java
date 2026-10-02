@@ -66,8 +66,20 @@ public class OfStaticArrayLocationTest {
         long get(int index);
     }
 
+    private interface StringElement {
+        String apply(int index);
+    }
+
     private interface IntArrayRow {
         int[] get(int index);
+    }
+
+    private interface IntTernaryOperator {
+        int applyAsInt(int i0, int i1, int i2);
+    }
+
+    private interface IntVolumeRow {
+        int[] get(int i0, int i1);
     }
 
     private interface IntArrayElement {
@@ -90,8 +102,22 @@ public class OfStaticArrayLocationTest {
         private static final int[][] serialized = { { 0, 29 }, new int[2] };
     }
 
-    private static class SwappedMatrix {
+    private static class NaturalMatrix {
         private static final int[][] elements = { new int[3], new int[3] };
+    }
+
+    private static class IntVolumes {
+        private static final int[][][] plain = newVolume();
+        private static final int[][][] published = newVolume();
+        private static final int[][][] serialized = newVolume();
+
+        private static int[][][] newVolume() {
+            return new int[][][] { { { 0, 29 }, new int[2] }, { new int[2] } };
+        }
+    }
+
+    private static class VolumeRows {
+        private static final int[][][] rows = { { null, { 9 } } };
     }
 
     private static class RetryArrays {
@@ -128,16 +154,11 @@ public class OfStaticArrayLocationTest {
         private static final int[] elements = new int[1];
     }
 
-    @SuppressWarnings("unchecked")
-    private static Class<IntFunction<String>> stringFunctionType() {
-        return (Class<IntFunction<String>>) (Class<?>) IntFunction.class;
-    }
-
     @Test
     public void defaultModeSupportsStaticArrayElements() {
         AtomicInteger computations = new AtomicInteger();
-        IntUnaryOperator updater = LazyUpdaters.ofLocation(LOOKUP,
-                IntUnaryOperator.class, i -> DefaultModeArray.elements[i], i -> {
+        IntUnaryOperator updater = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                IntUnaryOperator.class, DefaultModeArray.class.getName() + ".elements", i -> {
                     computations.incrementAndGet();
                     return 42;
                 });
@@ -150,10 +171,10 @@ public class OfStaticArrayLocationTest {
     @Test
     public void oneRankStaticArrayFields() {
         for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
-            IntUnaryOperator selector = switch (mode) {
-                case PLAIN -> i -> IntArrays.plain[i];
-                case PUBLISH_ONCE -> i -> IntArrays.published[i];
-                case SERIALIZED -> i -> IntArrays.serialized[i];
+            String selector = switch (mode) {
+                case PLAIN -> IntArrays.class.getName() + ".plain";
+                case PUBLISH_ONCE -> IntArrays.class.getName() + ".published";
+                case SERIALIZED -> IntArrays.class.getName() + ".serialized";
             };
             int[] array = switch (mode) {
                 case PLAIN -> IntArrays.plain;
@@ -181,10 +202,10 @@ public class OfStaticArrayLocationTest {
     @Test
     public void twoRankStaticArrayFields() {
         for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
-            IntBinaryOperator selector = switch (mode) {
-                case PLAIN -> (i, j) -> IntMatrices.plain[i][j];
-                case PUBLISH_ONCE -> (i, j) -> IntMatrices.published[i][j];
-                case SERIALIZED -> (i, j) -> IntMatrices.serialized[i][j];
+            String selector = switch (mode) {
+                case PLAIN -> IntMatrices.class.getName() + ".plain";
+                case PUBLISH_ONCE -> IntMatrices.class.getName() + ".published";
+                case SERIALIZED -> IntMatrices.class.getName() + ".serialized";
             };
             int[][] array = switch (mode) {
                 case PLAIN -> IntMatrices.plain;
@@ -212,30 +233,62 @@ public class OfStaticArrayLocationTest {
     }
 
     @Test
-    public void twoRankStaticArrayMaySwapIndices() {
+    public void threeRankStaticArrayFields() {
+        for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
+            String selector = switch (mode) {
+                case PLAIN -> IntVolumes.class.getName() + ".plain";
+                case PUBLISH_ONCE -> IntVolumes.class.getName() + ".published";
+                case SERIALIZED -> IntVolumes.class.getName() + ".serialized";
+            };
+            int[][][] array = switch (mode) {
+                case PLAIN -> IntVolumes.plain;
+                case PUBLISH_ONCE -> IntVolumes.published;
+                case SERIALIZED -> IntVolumes.serialized;
+            };
+            AtomicInteger computations = new AtomicInteger();
+            IntTernaryOperator updater = LazyUpdaters.ofLocation(mode, LOOKUP,
+                    IntTernaryOperator.class, selector, (i0, i1, i2) -> {
+                        computations.incrementAndGet();
+                        return 1000 + 100 * i0 + 10 * i1 + i2;
+                    });
+            assertEquals(0, computations.get());
+            assertEquals(1000, updater.applyAsInt(0, 0, 0));
+            assertEquals(1000, updater.applyAsInt(0, 0, 0));
+            assertEquals(29, updater.applyAsInt(0, 0, 1));
+            assertEquals(1010, updater.applyAsInt(0, 1, 0));
+            assertEquals(1101, updater.applyAsInt(1, 0, 1));
+            assertEquals(3, computations.get());
+            assertEquals(1000, array[0][0][0]);
+            assertEquals(29, array[0][0][1]);
+            assertEquals(1010, array[0][1][0]);
+            assertEquals(1101, array[1][0][1]);
+        }
+    }
+
+    @Test
+    public void twoRankStaticArrayUsesNaturalIndexOrder() {
         AtomicInteger computations = new AtomicInteger();
         IntBinaryOperator updater = LazyUpdaters.ofLocation(
                 LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                IntBinaryOperator.class,
-                (i, j) -> SwappedMatrix.elements[j][i],
+                IntBinaryOperator.class, NaturalMatrix.class.getName() + ".elements",
                 (i, j) -> {
                     computations.incrementAndGet();
                     return 100 + 10 * i + j;
                 });
-        assertEquals(120, updater.applyAsInt(2, 0));
-        assertEquals(120, updater.applyAsInt(2, 0));
-        assertEquals(121, updater.applyAsInt(2, 1));
+        assertEquals(102, updater.applyAsInt(0, 2));
+        assertEquals(102, updater.applyAsInt(0, 2));
+        assertEquals(112, updater.applyAsInt(1, 2));
         assertEquals(2, computations.get());
-        assertEquals(120, SwappedMatrix.elements[0][2]);
-        assertEquals(121, SwappedMatrix.elements[1][2]);
-        assertEquals(0, SwappedMatrix.elements[0][0]);
+        assertEquals(102, NaturalMatrix.elements[0][2]);
+        assertEquals(112, NaturalMatrix.elements[1][2]);
+        assertEquals(0, NaturalMatrix.elements[0][0]);
     }
 
     @Test
     public void oneIndexMayInitializeRowsOfATwoRankArray() {
         AtomicInteger computations = new AtomicInteger();
         IntArrayRow updater = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
-                LOOKUP, IntArrayRow.class, index -> RowArray.rows[index],
+                LOOKUP, IntArrayRow.class, RowArray.class.getName() + ".rows",
                 index -> {
                     computations.incrementAndGet();
                     return new int[] { index + 10, index + 20 };
@@ -250,10 +303,27 @@ public class OfStaticArrayLocationTest {
     }
 
     @Test
+    public void twoIndicesMayInitializeRowsOfAThreeRankStaticArray() {
+        AtomicInteger computations = new AtomicInteger();
+        IntVolumeRow updater = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
+                LOOKUP, IntVolumeRow.class, VolumeRows.class.getName() + ".rows",
+                (i0, i1) -> {
+                    computations.incrementAndGet();
+                    return new int[] { 100 + 10 * i0 + i1 };
+                });
+        int[] first = updater.get(0, 0);
+        assertSame(first, updater.get(0, 0));
+        assertSame(first, VolumeRows.rows[0][0]);
+        assertEquals(100, first[0]);
+        assertSame(VolumeRows.rows[0][1], updater.get(0, 1));
+        assertEquals(1, computations.get());
+    }
+
+    @Test
     public void constructionDoesNotInitializeDeclaringClass() {
         AtomicInteger computations = new AtomicInteger();
         IntUnaryOperator updater = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
-                LOOKUP, IntUnaryOperator.class, index -> DeferredArrayHolder.ints[index],
+                LOOKUP, IntUnaryOperator.class, DeferredArrayHolder.class.getName() + ".ints",
                 index -> {
                     computations.incrementAndGet();
                     return 42;
@@ -272,7 +342,7 @@ public class OfStaticArrayLocationTest {
             int index = mode.ordinal();
             AtomicInteger attempts = new AtomicInteger();
             IntUnaryOperator updater = LazyUpdaters.ofLocation(mode, LOOKUP,
-                    IntUnaryOperator.class, i -> ModeRetryArrays.ints[i],
+                    IntUnaryOperator.class, ModeRetryArrays.class.getName() + ".ints",
                     i -> attempts.incrementAndGet() == 1 ? 0 : 40 + i);
             assertThrows(IllegalArgumentException.class, () -> updater.applyAsInt(index));
             assertEquals(0, ModeRetryArrays.ints[index]);
@@ -290,7 +360,7 @@ public class OfStaticArrayLocationTest {
     public void customPrimitiveAndReferenceInterfaces() {
         AtomicInteger floatAttempts = new AtomicInteger();
         FloatElement floats = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
-                LOOKUP, FloatElement.class, i -> RetryArrays.floats[i],
+                LOOKUP, FloatElement.class, RetryArrays.class.getName() + ".floats",
                 index -> {
                     if (index == 0) {
                         return -0.0f;
@@ -305,8 +375,8 @@ public class OfStaticArrayLocationTest {
         assertEquals(2, floatAttempts.get());
 
         AtomicInteger stringAttempts = new AtomicInteger();
-        IntFunction<String> strings = LazyUpdaters.ofLocation(LazyUpdaters.Mode.SERIALIZED,
-                LOOKUP, stringFunctionType(), i -> RetryArrays.strings[i],
+        StringElement strings = LazyUpdaters.ofLocation(LazyUpdaters.Mode.SERIALIZED,
+                LOOKUP, StringElement.class, RetryArrays.class.getName() + ".strings",
                 index -> stringAttempts.incrementAndGet() == 1 ? null : "computed");
         assertThrows(IllegalArgumentException.class, () -> strings.apply(0));
         assertNull(RetryArrays.strings[0]);
@@ -320,7 +390,7 @@ public class OfStaticArrayLocationTest {
     public void invalidCoordinatesFailBeforeComputation() {
         AtomicInteger computations = new AtomicInteger();
         IntUnaryOperator updater = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
-                LOOKUP, IntUnaryOperator.class, i -> InvalidArrays.ints[i],
+                LOOKUP, IntUnaryOperator.class, InvalidArrays.class.getName() + ".ints",
                 i -> {
                     computations.incrementAndGet();
                     return 7;
@@ -329,7 +399,7 @@ public class OfStaticArrayLocationTest {
         assertThrows(ArrayIndexOutOfBoundsException.class, () -> updater.applyAsInt(1));
 
         IntUnaryOperator missing = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
-                LOOKUP, IntUnaryOperator.class, i -> InvalidArrays.nullArray[i],
+                LOOKUP, IntUnaryOperator.class, InvalidArrays.class.getName() + ".nullArray",
                 i -> {
                     computations.incrementAndGet();
                     return 7;
@@ -337,7 +407,7 @@ public class OfStaticArrayLocationTest {
         assertThrows(NullPointerException.class, () -> missing.applyAsInt(0));
 
         IntBinaryOperator nullRow = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
-                LOOKUP, IntBinaryOperator.class, (i, j) -> InvalidArrays.nullRow[i][j],
+                LOOKUP, IntBinaryOperator.class, InvalidArrays.class.getName() + ".nullRow",
                 (i, j) -> {
                     computations.incrementAndGet();
                     return 7;
@@ -351,7 +421,7 @@ public class OfStaticArrayLocationTest {
     public void selectorsAndInterfacesAreValidated() {
         IntUnaryOperator unary = i -> 7;
         IntBinaryOperator binary = (i, j) -> 7;
-        IntUnaryOperator selector = i -> InvalidArrays.ints[i];
+        String selector = InvalidArrays.class.getName() + ".ints";
         assertThrows(NullPointerException.class,
                 () -> LazyUpdaters.ofLocation(null, LOOKUP, IntUnaryOperator.class,
                         selector, unary));
@@ -370,26 +440,58 @@ public class OfStaticArrayLocationTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                        IntUnaryOperator.class, i -> InvalidArrays.ints.clone()[i], unary));
-        int[] captured = new int[1];
+                        IntUnaryOperator.class, "", unary));
+        assertThrows(IllegalArgumentException.class,
+                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP, IntUnaryOperator.class,
+                        "ints", unary));
         assertThrows(IllegalArgumentException.class,
                 () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                        IntUnaryOperator.class, i -> captured[i], unary));
+                        IntUnaryOperator.class, InvalidArrays.class.getName() + "..ints", unary));
         assertThrows(IllegalArgumentException.class,
                 () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                        IntUnaryOperator.class, i -> InvalidArrays.ints[i] + 1, unary));
+                        IntUnaryOperator.class, InvalidArrays.class.getName() + ".missing", unary));
         assertThrows(IllegalArgumentException.class,
                 () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                        IntBinaryOperator.class, (i, j) -> InvalidArrays.ints[i], binary));
+                        IntUnaryOperator.class,
+                        InvalidArrays.class.getCanonicalName() + ".ints", unary));
+        IllegalArgumentException missingOwner = assertThrows(IllegalArgumentException.class,
+                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP, IntUnaryOperator.class,
+                        "no.such.Class.ints", unary));
+        assertInstanceOf(ClassNotFoundException.class, missingOwner.getCause());
         assertThrows(IllegalArgumentException.class,
                 () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                        LongElement.class, i -> (long) InvalidArrays.ints[i], i -> 7L));
+                        IntBinaryOperator.class, selector, binary));
+        assertThrows(IllegalArgumentException.class,
+                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                        IntTernaryOperator.class, InvalidArrays.class.getName() + ".nullRow",
+                        (i0, i1, i2) -> 7));
+        assertThrows(IllegalArgumentException.class,
+                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                        LongElement.class, selector, i -> 7L));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, IntUnaryOperator.class, unary));
 
         IllegalArgumentException denied = assertThrows(IllegalArgumentException.class,
                 () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
-                        MethodHandles.publicLookup(), IntUnaryOperator.class,
+                        LOOKUP.dropLookupMode(Lookup.PRIVATE), IntUnaryOperator.class,
                         selector, unary));
         assertInstanceOf(IllegalAccessException.class, denied.getCause());
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void rawGenericInterfaceTokenExplainsRemedy() {
+        IntFunction computer = index -> "unused";
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP, IntFunction.class,
+                        RetryArrays.class.getName() + ".strings", computer));
+        String message = error.getMessage();
+        assertTrue(message.contains("IntFunction"), () -> message);
+        assertTrue(message.contains("type variable") && message.contains("erased"),
+                () -> message);
+        assertTrue(message.contains("non-generic") && message.contains("concrete"),
+                () -> message);
     }
 
     @Test
@@ -400,7 +502,7 @@ public class OfStaticArrayLocationTest {
         AtomicInteger firstComputations = new AtomicInteger();
         AtomicInteger aliasComputations = new AtomicInteger();
         IntBinaryOperator first = LazyUpdaters.ofLocation(LazyUpdaters.Mode.SERIALIZED,
-                LOOKUP, IntBinaryOperator.class, (i, j) -> AliasedMatrices.first[i][j],
+                LOOKUP, IntBinaryOperator.class, AliasedMatrices.class.getName() + ".first",
                 (row, column) -> {
                     firstComputations.incrementAndGet();
                     if (column == 0) {
@@ -415,7 +517,7 @@ public class OfStaticArrayLocationTest {
                     return 42 + column;
                 });
         IntBinaryOperator second = LazyUpdaters.ofLocation(LazyUpdaters.Mode.SERIALIZED,
-                LOOKUP, IntBinaryOperator.class, (i, j) -> AliasedMatrices.second[i][j],
+                LOOKUP, IntBinaryOperator.class, AliasedMatrices.class.getName() + ".second",
                 (row, column) -> {
                     aliasComputations.incrementAndGet();
                     return 99;
@@ -458,7 +560,7 @@ public class OfStaticArrayLocationTest {
         AtomicInteger locationComputations = new AtomicInteger();
         IntUnaryOperator staticUpdater = LazyUpdaters.ofLocation(
                 LazyUpdaters.Mode.SERIALIZED, LOOKUP, IntUnaryOperator.class,
-                index -> CrossShapeArray.elements[index], index -> {
+                CrossShapeArray.class.getName() + ".elements", index -> {
                     entered.countDown();
                     try {
                         assertTrue(release.await(20, SECONDS));
@@ -468,9 +570,9 @@ public class OfStaticArrayLocationTest {
                     }
                     return 42;
                 });
-        IntArrayElement locationUpdater = LazyUpdaters.ofLocation(
-                LazyUpdaters.Mode.SERIALIZED, LOOKUP, IntArrayElement.class,
-                (array, index) -> array[index], (array, index) -> {
+        IntArrayElement locationUpdater = LazyUpdaters.ofArray(
+                LazyUpdaters.Mode.SERIALIZED, IntArrayElement.class,
+                (array, index) -> {
                     locationComputations.incrementAndGet();
                     return 99;
                 });

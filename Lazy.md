@@ -1,6 +1,6 @@
 # LazyCaches: API decisions and tradeoffs
 
-**Decision record for Java architects — updated 30 September 2026 — branch `prototype/lazy`.**
+**Decision record for Java architects — updated 1 October 2026 — branch `prototype/lazy`.**
 
 This document records the design developed in this discussion and embodied in the current specifications of `java.util.LazyCaches` and its field-updater extension in `java.lang.invoke.LazyUpdaters` in this branch. It summarizes the decisions and their consequences; the source Javadoc remains the normative contract for this prototype. “Adopted” means adopted in this branch, not approved for the Java platform or committed to a release.
 
@@ -14,7 +14,7 @@ Two principles from Brian's proposal drive the design. First, laziness has sever
 
 Grouping the storage-owning factories in `LazyCaches` gives them a common vocabulary and one place to learn their differences. Its cost is a relatively substantial shared specification: the familiar return types do not express all the lazy semantics. Separating the field updater keeps its more demanding storage protocol out of that surface, at the cost of another API to learn. The design deliberately covers selected useful combinations rather than every combination of coordinates, storage, failure policy, and memory ordering.
 
-The central choices for `LazyCaches` are standard `Supplier`/`Function`/collection interfaces, storage owned by the returned object, two modes named for what happens once, and acquire/release publication. `LazyUpdaters` supplies the separate, lower-level choice of caller-owned field or array-element storage and explicit lookup authority. The main costs accepted are semantics that must be learned from factory contracts, duplicate work or permanent failure depending on mode, and extra obligations when clients supply storage to an updater.
+The central choices for `LazyCaches` are standard `Supplier`/`Function`/collection interfaces, storage owned by the returned object, two modes named for what happens once, and acquire/release publication. `LazyUpdaters` supplies the separate, lower-level choice of caller-owned field or array-element storage, with explicit lookup authority for named fields. The main costs accepted are semantics that must be learned from factory contracts, duplicate work or permanent failure depending on mode, and extra obligations when clients supply storage to an updater.
 
 **How the design evolved**
 
@@ -24,9 +24,11 @@ The central choices for `LazyCaches` are standard `Supplier`/`Function`/collecti
 | Factory usability | Initially separated context access into `ofContext` and replaced the branch's `BoundFunction` with `Function`; subsequently named both scalar factory shapes `ofScalar`. | Did not retain `of` / `ofContext` as public factory names or a public custom context-access interface. The shared `ofScalar` name accepts some method-reference overload ambiguity. |
 | Policy naming | Evolved the proposal's `InitMode` and the branch's `ONCE` / `RACE` terminology into `LazyCaches.Mode.COMPUTE_ONCE` / `PUBLISH_ONCE`; renamed updater `CAS` / `SYNCHRONIZED` to `PUBLISH_ONCE` / `SERIALIZED` to describe their guarantees. | Did not make the public mode names depend on a particular atomic instruction or locking mechanism, or offer independent retry, exclusion, and fencing switches. |
 | Mode typing | Kept `LazyCaches.Mode` as a two-value enum and gave `LazyUpdaters.Mode` its own three-value enum. | Did not couple the APIs through inherited mode values or expose updater-only modes to `LazyCaches` factories. |
+| Updater mode selection | Required `Mode` as the first argument of every `LazyUpdaters` factory and listed `PUBLISH_ONCE` first as the usual choice for repeatable computations. | Did not keep implicit-`PUBLISH_ONCE` overloads; the extra argument makes the policy explicit but lengthens common calls. |
 | Memory contract | Replaced the earlier volatile-access guarantee with acquire/release publication, including recorded failures. | Did not promise a total ordering across different lazy values or extra synchronization from repeated access. |
-| Field access | Explored a named-field `Lazy.ofField` with an exact field-type token and explicit `Lookup`, then removed it in favor of the separate `LazyUpdaters.ofLocation` API. | Did not retain caller-owned field storage in `LazyCaches` or bypass access checks in the updater. |
-| Array access | Extended `LazyUpdaters.ofLocation` to one- and two-dimensional array elements, reached directly, through one owner field, or through a static array field. Index-only static-array accessors use the same factory and may return standard functional interfaces. A separate `ofArray` factory was prototyped and then removed as redundant. | Did not add an array factory to `LazyCaches` or accept arbitrary index expressions, captures, or deeper field traversal in updater accessors. |
+| Field access | Explored a named-field `Lazy.ofField` with an exact field-type token and explicit `Lookup`, then moved caller-owned storage to `LazyUpdaters.ofLocation`. That factory takes a string field selector and checks the named field's type against the functional-interface result. | Did not retain caller-owned field storage in `LazyCaches`, bypass access checks, or keep the later bytecode-cracked accessor-lambda scheme. |
+| Array access | Extended `LazyUpdaters` from one- and two-index access to any positive index count supported by the array rank and method arity. `ofLocation` selects an instance or static array field by name and applies indices in their declared order; `ofArray` takes the array itself as a storage argument, with no selector string or caller lookup. | Did not add an array factory to `LazyCaches`, infer arbitrary array expressions from lambdas, or promise index permutation. |
+| Computation timing | Retained declaration-site factories that store one computation in the updater, and added use-site overloads that take a computation as the updater's first argument on each access. | Did not require a callback stored by the updater when different accesses need different computations. The caller must keep computations interchangeable for a shared location. |
 | Contract completion | Added `ofSet` and specified collection views, entries, traversal failures, streams, callback retention, composition, and execution context. | Did not treat ordinary interface defaults as sufficient to define these interactions. |
 | Implementation | After the API reviews, brought implementations into line and added focused and general collection regressions. | Did not remove the earlier lazy APIs, settle their migration policy, or establish performance claims from benchmarks in this work. |
 
@@ -64,7 +66,7 @@ The nested public types are the enum `Mode`, with `COMPUTE_ONCE` and `PUBLISH_ON
 | `ofMap` | One value per copied key | `get(key)` and ordinary map operations | One explicit mode, applied independently per mapped value |
 | `ofSet` | One Boolean membership result per copied candidate | `contains(candidate)` and ordinary set operations | One explicit mode, applied independently per candidate |
 
-Only `ofScalar(Supplier)` supplies a default mode. `LazyCaches` has no field, segment, or array factory and no indexed-context shape. A list provides indexed access together with size, views, iteration, and streams; the price is a collection contract rather than a minimal coordinate interface. This is a surface-area choice, not a demonstrated claim of identical performance to an array. `LazyUpdaters.ofLocation` can instead update an existing array element selected by a direct indexed lambda, including an index-only lambda that reaches an element through a static array field.
+Among `LazyCaches` factories, only `ofScalar(Supplier)` supplies a default mode. `LazyCaches` has no field, segment, or array factory and no indexed-context shape. A list provides indexed access together with size, views, iteration, and streams; the price is a collection contract rather than a minimal coordinate interface. This is a surface-area choice, not a demonstrated claim of identical performance to an array. `LazyUpdaters.ofLocation` can instead update an element reached through a named array field, while `LazyUpdaters.ofArray` updates an element of an array supplied directly to the updater.
 
 **Standard interfaces, overload resolution, and inference**
 
@@ -113,23 +115,23 @@ Initialization versus memoization is an intended-use distinction, not a static-v
 
 The two `LazyCaches` policies bundle exclusion and failure handling. The benefit is a small choice set; the cost is that users cannot request, for example, serialized initialization with retry or concurrent computation with sticky failure. `PUBLISH_ONCE` is not a promise that the API or computing function is lock-free or wait-free. Discarded results are not closed or otherwise disposed of by `LazyCaches`.
 
-**Mode types and the field-updater extension**
+**Mode types and the caller-owned-storage updater**
 
-`LazyCaches.Mode` and `LazyUpdaters.Mode` are unrelated enums. `LazyCaches.Mode` retains `COMPUTE_ONCE` and `PUBLISH_ONCE`. `LazyUpdaters.Mode` offers `PLAIN`, `PUBLISH_ONCE`, and `SERIALIZED` for caller-owned field and array-element storage. `LazyUpdaters.ofLocation` accepts these three modes. A mode from either enum cannot be passed to a factory expecting the other; each API keeps a vocabulary suited to its guarantees, and both retain enum conveniences such as `values()` and `switch` expressions.
+`LazyCaches.Mode` and `LazyUpdaters.Mode` are unrelated enums. `LazyCaches.Mode` retains `COMPUTE_ONCE` and `PUBLISH_ONCE`. `LazyUpdaters.Mode` offers `PLAIN`, `PUBLISH_ONCE`, and `SERIALIZED` for caller-owned field and array-element storage. Both `LazyUpdaters.ofLocation` and `LazyUpdaters.ofArray` accept these three modes. A mode from either enum cannot be passed to a factory expecting the other; each API keeps a vocabulary suited to its guarantees, and both retain enum conveniences such as `values()` and `switch` expressions.
 
 The updater's `PUBLISH_ONCE` replaces the earlier name `CAS`: it names the one installed value rather than the operation used to install it. `SERIALIZED` replaces `SYNCHRONIZED`: it promises one computation at a time per storage location without requiring a particular locking implementation. Unlike `LazyCaches.Mode.COMPUTE_ONCE`, `SERIALIZED` allows another access to retry after failure.
 
-The `ofLocation` mode-taking factory identifies an instance field, static field, or one- or two-dimensional array element with a direct, non-capturing accessor lambda. An array may be passed directly, read from one instance field of the supplied owner, or read from one static field by an index-only accessor. Its four-argument overload defaults to `PUBLISH_ONCE`. All updater modes reserve the selected location's Java default value to mean uninitialized and reject a computation that produces that value.
+The `ofLocation` factories identify an instance or static field by string. An instance-field selector is the field's simple name, with its owner inferred from the updater interface's concrete receiver type; a static-field selector is the owner's binary name followed by a dot and the field name. One or more `int` parameters following the receiver, or comprising all storage parameters for a static array field, select an array element through that field. The separate `ofArray` factories need no selector: their first storage parameter is the array and the following one or more `int` parameters select an element. In a use-site interface, the computing-function parameter comes before these storage parameters. The index count must not exceed the array rank and remains subject to ordinary Java and JVM method-parameter limits. The interface fixes that count: `int...` erases to one `int[]` parameter and cannot stand in for several index parameters. Every updater factory requires a `Mode` argument. All updater modes reserve the selected location's Java default value to mean uninitialized and reject a computation that produces that value.
 
-| `LazyUpdaters.ofLocation` mode | Access and coordination | Failure | Principal benefit and cost |
+| `LazyUpdaters.Mode` | Access and coordination | Failure | Principal benefit and cost |
 | --- | --- | --- | --- |
 | `PLAIN` | Plain read and write, without CAS or exclusion; each computing caller returns its own result | Propagated directly; retry remains possible | Least coordination, at the cost of possible overwrites, stale reads, and no safe-publication guarantee; plain `long`/`double` access may tear |
-| `PUBLISH_ONCE` | Acquire read and release compare-and-exchange of the non-default value; competing candidates race and successful callers return the installed winner | Propagated directly; retry remains possible | No per-receiver coordination state, at the cost of duplicate work and discarded candidates |
+| `PUBLISH_ONCE` | Acquire observation and atomic release installation of a non-default value; competing candidates race and successful callers return the installed winner | Propagated directly; retry remains possible | No per-receiver coordination state, at the cost of duplicate work and discarded candidates |
 | `SERIALIZED` | Acquire read, release write, and one computing thread at a time for the same field and receiver (or static field), or physical array element, across updater objects | Propagated directly without being retained; a later or waiting caller may retry | Avoids concurrent computations, at the cost of waiting and auxiliary coordination state |
 
-`SERIALIZED` shares coordination state across updater objects for a field and tracks instance receivers by weak identity. For arrays, its key is the final leaf array by identity and the final element index. Two outer arrays or owner fields that refer to the same leaf array therefore coordinate access to the same element, as do updaters whose accessor lambdas use different index orders to select that element. If a computation throws or returns the reserved default value, the location remains uninitialized; the next caller to acquire that state may compute again. The state must remain shared after failure so waiting and newly arriving callers cannot compute concurrently. After success, the location retains the result and the coordination state may be discarded. Cleared receiver or leaf-array entries are removed on a later uninitialized access, so their metadata may remain until then or until class unloading.
+`SERIALIZED` shares coordination state across updater objects for a field and tracks instance receivers by weak identity. For arrays of any rank, its key is the identity of the final container array and the final index. The preceding indices only traverse outer dimensions. Two outer arrays or owner fields that refer to the same selected container array therefore coordinate access to the same element, as do direct-array and field-backed updaters that reach it. If a computation throws or returns the reserved default value, the location remains uninitialized; the next caller to acquire that state may compute again. The state must remain shared after failure so waiting and newly arriving callers cannot compute concurrently. After success, the location retains the result and the coordination state may be discarded. Cleared receiver or container-array entries are removed on a later uninitialized access, so their metadata may remain until then or until class unloading.
 
-Updaters sharing a physical storage location must all use the same mode and should have interchangeable computing functions. They must not mix with direct writes or another lazy updater on that location. `PLAIN` is appropriate only when callers accept its weaker outcomes or provide their own synchronization. It is deliberately available at the updater layer, where the caller explicitly controls storage, without weakening the guarantees of the high-level `LazyCaches` factories.
+Updaters sharing a physical storage location must all use the same mode and should have interchangeable computing functions. For a use-site updater, this also applies to callbacks supplied on different calls to the same updater. The location must not be reset or written directly while they are in use; compatible same-mode updaters may share it. `PLAIN` is appropriate only when callers accept its weaker outcomes or provide their own synchronization. It is deliberately available at the updater layer, where the caller explicitly controls storage, without weakening the guarantees of the high-level `LazyCaches` factories.
 
 **Failure policy: preserve the Error category without retaining the original failure**
 
@@ -157,7 +159,7 @@ The adopted guarantee for `LazyCaches` is release publication and acquire observ
 
 | Alternative | Benefit | Cost / status                                                                                                                                      |
 | --- | --- |----------------------------------------------------------------------------------------------------------------------------------------------------|
-| Volatile-access contract | Stronger ordering, including a total order of volatile accesses | Stronger than the selected publication requirement; adds obligations to repeated access (e.g., prevents @Stable accesss). Replaced in this branch. |
+| Volatile-access contract | Stronger ordering, including a total order of volatile accesses | Stronger than the selected publication requirement; adds obligations to repeated access (e.g., prevents @Stable access). Replaced in this branch. |
 | Acquire/release publication | Preserves visibility of initialization while allowing later reads to be elided when publication is preserved | Does not guarantee additional ordering or visibility for subsequent mutations, or total ordering across different lazy values. Adopted.            |
 | Plain access without publication guarantees | Potentially weaker access costs | Requires a weaker user model or external synchronization. Excluded from `LazyCaches` factories; available as `LazyUpdaters.Mode.PLAIN` for field and array-element updates. |
 
@@ -173,56 +175,225 @@ The revised contract permits constant folding and elision of later value or fail
 
 **Caller-owned field and array-element storage: a separate updater API**
 
-Brian's email identified an allocation-sensitive case: many cheap, short-lived objects whose caches are usually never read. Using a field already in each receiver avoids allocating a lazy holder per receiver. The earlier named-field `Lazy.ofField` overload explored that approach, but is no longer part of the storage-owning utility class, now `LazyCaches`. `LazyUpdaters.ofLocation` is the separate caller-owned-storage API; its caller supplies a direct accessor lambda and a computing function of the same functional-interface type. It supports instance and static fields, including primitive fields, as well as existing one- and two-dimensional array elements. The array may be the first lambda argument, come from one readable instance field of that argument, or come from one static field in an index-only accessor. Its `Class<T>` argument identifies the functional interface, not the stored value's type.
+Brian's email identified an allocation-sensitive case: many cheap, short-lived objects whose caches are usually never read. Using a field already in each receiver avoids allocating a lazy holder per receiver. The earlier named-field `Lazy.ofField` overload explored that approach, but is no longer part of the storage-owning utility class, now `LazyCaches`. The separate `LazyUpdaters` API uses caller-owned fields and array elements. Its `Class<T>` argument identifies the functional interface implemented by the returned updater; it is not a token for the stored value type. A declaration-site factory also requires the computing function to implement `T`. A use-site factory instead requires the updater's first method parameter to be a functional interface for the computation.
 
-The name `ofLocation` reflects the accessor's role: it identifies a field or array element as the storage location. A receiver, when present, and any indices supplied to the updater select the physical location for that invocation.
-
-An index-only accessor can update an element of a static array field without supplying the array at each call. It directly reads the selected element, and its functional-interface parameters are the indices:
+The adopted factories have these shapes (with generic bounds and Javadoc omitted):
 
 ```java
-class Holder {
-    private static final int[] ints = new int[8];
-    private static final int[][] matrix = { new int[4], new int[4] };
+static <T> T ofLocation(Mode mode, Lookup lookup, Class<T> type,
+                        String fieldSelector, T computingFunction);
+static <T> T ofLocation(Mode mode, Lookup lookup, Class<T> type,
+                        String fieldSelector);
 
-    private static final IntUnaryOperator LAZY_INTS = LazyUpdaters.ofLocation(
-            MethodHandles.lookup(), IntUnaryOperator.class,
-            index -> Holder.ints[index], index -> index + 1);
+static <T> T ofArray(Mode mode, Class<T> type, T computingFunction);
+static <T> T ofArray(Mode mode, Class<T> type);
+```
 
-    private static final IntBinaryOperator LAZY_CELLS = LazyUpdaters.ofLocation(
-            LazyUpdaters.Mode.SERIALIZED, MethodHandles.lookup(),
-            IntBinaryOperator.class,
-            (row, column) -> Holder.matrix[row][column],
-            (row, column) -> 1 + row * 4 + column);
+Requiring `Mode` leaves four updater factories rather than eight and makes the coordination choice visible at every declaration. `PUBLISH_ONCE` is listed first in `LazyUpdaters.Mode` and is the usual choice when concurrent duplicate computations and discarded candidates are acceptable. Enum order helps discovery but does not supply a Java default. The cost is repeating `Mode.PUBLISH_ONCE` in common calls and requiring clients to choose a policy before creating an updater. Removing the no-mode overloads also breaks sources that used them.
+
+Annotating `LazyUpdaters` at class level with `@PreviewFeature` makes every factory a preview entry point. Previously the no-mode overloads were unannotated while the mode-taking forms were preview. Requiring preview opt-in for all updater factory calls is intentional while this API's surface and contract are being shaped.
+
+An overload with a `computingFunction` argument binds one computation when the updater is created; one without it takes a computation at each access. In the latter form the updater's first method parameter is a functional interface whose single abstract method accepts the updater's remaining storage arguments in order and produces a compatible value. The factory checks both method shapes and the selected storage type. A callback may return a subtype of reference storage or use boxing, unboxing, or widening primitive conversion; a broad reference result is checked when computed. The callback parameter is not a storage coordinate. `ofLocation` names a field, optionally indexing into an array held by that field; `ofArray` operates on an array supplied as the first storage argument. `ofArray` is deliberately array-specific. An ordinary receiver type does not identify which of its fields to update without a selector. Other intrinsic storage carriers, such as atomic holders, would need their own explicit contract if added later.
+
+| Storage selected | Selector and storage-argument shape | Consequence |
+| --- | --- | --- |
+| Instance field | Simple field name, such as `"radius"`; receiver followed by no indices | The receiver supplies storage for each invocation; a concrete SAM receiver type or fixed generic specialization identifies its owner |
+| Static field | Binary owner name, dot, and field name, such as `"example.Answer.value"`; no storage arguments | The named class supplies one shared location; the static use-site interfaces cover `int`, `long`, and reference values |
+| Element reached through an instance array field | Simple array-field name; concrete owner followed by one or more `int` indices, up to array rank | The element, not the array-reference field, is the storage location |
+| Element reached through a static array field | Qualified static array-field name; one or more `int` indices, up to array rank, and no receiver | The selected element is the storage location; standard `IntUnaryOperator` or `IntBinaryOperator` can fit one- or two-index declaration-site cases |
+| Element of a direct array | No selector; concrete array followed by one or more `int` indices, up to array rank | The updater may serve many arrays of the same type |
+
+For use-site computation, prepend one callback parameter to the storage arguments in this table. The callback receives those same storage arguments. The named field or selected array element remains the location whose default value signals that computation is needed.
+
+Nine pre-canned accessor interfaces in `LazyUpdaters` cover common use-site shapes. The six primitive interfaces retain their fixed `int` or `long` results: `IntArrayAccessor` and `LongArrayAccessor` access one-dimensional arrays, `IntFieldAccessor<R>` and `LongFieldAccessor<R>` access instance fields, and `StaticIntFieldAccessor` and `StaticLongFieldAccessor` access static fields. The three reference-valued counterparts are `ReferenceArrayAccessor<E>` for an element of a directly supplied `E[]`, `ReferenceFieldAccessor<R,V>` for an instance field, and `StaticReferenceFieldAccessor<V>` for a static field. Each accessor's outer method is named `getOrCompute`; the nested array `Computer` methods remain `apply`. Their callbacks likewise receive the storage coordinates, if any, and run only when the selected location has its reserved default value. A custom callback-first interface remains available for other primitive types or index shapes.
+
+Unlike the non-generic primitive array and static-field accessors, each reference accessor needs a concrete, non-generic subinterface as its factory `Class` token, for example `interface Names extends ReferenceArrayAccessor<String> { }`, `interface Title extends ReferenceFieldAccessor<Document,String> { }`, or `interface Caption extends StaticReferenceFieldAccessor<String> { }`. This fixes the array element type, receiver and value type, or static value type that a raw generic token cannot supply. The selected reference field's existing value must be compatible with the accessor result; a newly computed value must also be storable in that field. A parameterized accessor value type must exactly match the field's declared generic type; the factory does not resolve type variables inherited through a generic field owner. A raw or broader result is checked against the field's erased storage type before publication, but Java cannot check its generic arguments at runtime. As with other reference locations, `null` is reserved for the uninitialized state and cannot be a successful computed result.
+
+The field selector names one field; it is not a Java expression or a path through several fields. For a nested static owner, the selector uses its binary name, such as `example.Outer$Inner.value`. A field declared directly by the named owner or receiver type takes precedence. Otherwise, the nearest superclass declaration is selected if no interface declares the same name; with no superclass declaration, exactly one interface declaration is accepted. A superclass/interface conflict or multiple interface declarations are rejected as ambiguous. The search considers declarations even when a field is not inherited in Java source; the supplied lookup must still authorize access. A static caller can name the declaring class or interface to resolve such a conflict. Field access is authorized through the named owner or receiver type, allowing an accessible public subclass to expose an inherited public field from an inaccessible superclass. The `Lookup` resolves a static owner name using its lookup class's loader and authorizes access. Thus identical selector text can designate different classes under different loaders, but it cannot select an arbitrary class of the same name independently of the supplied lookup. A separate `Class<?> owner` token would make that identity explicit at the call site, at the cost of another argument or factory shape.
+
+For an instance field, the receiver is normally inferred from the updater interface's **concrete erased receiver parameter type**. `Function<Point, Double>` does not provide this type to the factory: its `apply` method erases the parameter to `Object`. More generally, a raw generic interface token such as `Function.class` or `Supplier.class` is rejected at factory creation with an `IllegalArgumentException` explaining the erased type variable and how to declare a non-generic interface with concrete method types. A concrete subinterface of an arbitrary generic accessor may still inherit an `Object` receiver in its erased method; in that case the client must declare an independent interface with a concrete receiver parameter. The pre-canned generic interfaces are a deliberate exception: a non-generic subinterface such as `CounterAccessor extends IntFieldAccessor<Counter>` fixes the owner, while the reference forms above fix their element or field-value types as well. The raw `IntFieldAccessor.class`, `LongFieldAccessor.class`, and reference-accessor base tokens leave required types unresolved and receive a diagnostic showing the necessary specialization. The field name is validated against the inferred receiver type, and the selected field type is checked against the updater's result type. A static field needs no receiver, so a non-generic zero-argument interface such as `IntSupplier` remains useful for declaration-site computation.
+
+```java
+class Point {
+    private final double x, y;
+    private Double radius;                 // null means not initialized
+
+    Point(double x, double y) { this.x = x; this.y = y; }
+    interface Radius { Double getOrCompute(Point point); }
+
+    private static final Radius LAZY_RADIUS = LazyUpdaters.ofLocation(
+            LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+            Radius.class, "radius",
+            point -> Math.hypot(point.x, point.y));
+
+    double radius() { return LAZY_RADIUS.getOrCompute(this); }
 }
 ```
 
-Thus `LAZY_INTS.applyAsInt(3)` selects `ints[3]`, and `LAZY_CELLS.applyAsInt(1, 2)` selects `matrix[1][2]`. By contrast, `() -> Holder.ints` selects the whole static field, not an element; an index-only accessor must include the array read. The static array field can be `final` because its elements remain mutable. The factory inspects the noncapturing accessor without invoking it or reading the selected array. The field must have enough dimensions for the indices, and each index must be used exactly once; a two-index accessor may reverse their order. An array-valued row can itself be the selected element if the interface's result type is compatible.
+The boxed `Double` permits a computed positive zero: `null`, rather than `+0.0`, is the reserved uninitialized value. For a primitive `double` field, positive zero could not be stored as a computed result.
 
-The field reference and any intermediate array references must remain stable while the updater is used. The path is resolved once per invocation. A null array along that path or an invalid index fails before computing. Selected elements follow the same reserved-default-value, mode, failure, sharing, and lookup-access rules as other `ofLocation` locations. A null-restricted reference array lacks the required null sentinel; selecting one of its elements fails with `IllegalArgumentException` before computing or returning a preexisting value. In `SERIALIZED` mode, coordination is per physical element, keyed by the leaf array's identity and final index, so aliased paths coordinate.
+The pre-canned instance accessor gives the computation its own interface. A concrete subinterface fixes the receiver type, while each access supplies a callback before that receiver:
 
-| Static-array design | Benefit | Cost or limitation | Decision |
-| --- | --- | --- | --- |
-| Separate `ofArray` factory with `() -> Holder.ints` selector | An index-only standard interface and an explicit static-array use case | Another public factory and accessor shape with otherwise duplicated semantics and implementation | Prototyped, then removed |
-| Extend `ofLocation` to accept `i -> Holder.ints[i]` | One storage-location factory with the same index-only interface and default-mode overload | Lambda cracking must recognize the direct static-field read followed by array loads | Adopted |
+```java
+class Counter {
+    private int seed = 41;
+    private int cached;                    // zero means not initialized
 
-The interface token identifies the raw interface, not a parameterization such as `IntFunction<String>`. Generic result compatibility therefore cannot always be checked at factory creation, and an incompatible value may fail later at a cast or array store. This limitation applies to generic functional interfaces with either array-access shape.
+    interface CounterAccessor extends LazyUpdaters.IntFieldAccessor<Counter> { }
 
-| Access-authority design | Pros | Cons | Decision |
-| --- | --- | --- | --- |
-| `@CallerSensitive` | Smaller call-site signature; caller identity is implicit | Authority is tied to invocation context; helper layers cannot simply carry the original caller's authority as an ordinary argument | Replaced |
-| Explicit `MethodHandles.Lookup` | Authority is explicit, can be delegated through helpers, and follows established lookup/module rules | Extra argument; callers must obtain and deliberately pass an appropriately privileged capability | Adopted for `LazyUpdaters` |
+    private static final CounterAccessor LAZY = LazyUpdaters.ofLocation(
+            LazyUpdaters.Mode.SERIALIZED, MethodHandles.lookup(),
+            CounterAccessor.class, "cached");
 
-The lookup is an access capability, not a bypass. `LazyUpdaters.ofLocation` inspects its accessor without invoking it and checks access to the functional interface, any field on the access path, and, where applicable, the selected array type at factory creation. The lookup does not gain permissions through the factory, and any lookup-imposed field-receiver restriction remains in force. This follows the established [lookup capability model](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/invoke/MethodHandles.Lookup.html).
+    int value() { return LAZY.getOrCompute(counter -> counter.seed + 1, this); }
+}
+```
 
-| Adopted updater rule | Benefit | Cost or obligation |
+Here `LAZY` retains no computation. The lambda has a `Counter` parameter and runs only when `cached` is zero. In `SERIALIZED` mode, the first successful callback for a location supplies its value; a later access receives that value without invoking its own callback. After a callback fails, a later access may try its own callback. A caller can instead declare a custom updater interface with its own `Computer` and access method for an instance field of another value type.
+
+A static selector includes the owner's binary name. An index-only interface can reach an element through a static array field without passing the array at each invocation (imports omitted):
+
+```java
+package example;
+
+class Answer {
+    private static int value;
+    private static final IntSupplier LAZY_VALUE = LazyUpdaters.ofLocation(
+            LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+            IntSupplier.class,
+            "example.Answer.value", () -> 42);
+}
+
+class Holder {
+    private static final int[] ints = new int[8];
+    private static final int[][] matrix = { new int[4], new int[4] };
+    private static final int[][][] volume = new int[2][3][4];
+
+    interface Voxel { int getOrCompute(int plane, int row, int column); }
+
+    private static final IntUnaryOperator LAZY_INTS = LazyUpdaters.ofLocation(
+            LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+            IntUnaryOperator.class,
+            "example.Holder.ints", index -> index + 1);
+
+    private static final IntBinaryOperator LAZY_CELLS = LazyUpdaters.ofLocation(
+            LazyUpdaters.Mode.SERIALIZED, MethodHandles.lookup(),
+            IntBinaryOperator.class, "example.Holder.matrix",
+            (row, column) -> 1 + row * 4 + column);
+
+    private static final Voxel LAZY_VOXELS = LazyUpdaters.ofLocation(
+            LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+            Voxel.class, "example.Holder.volume",
+            (plane, row, column) -> 1 + plane * 12 + row * 4 + column);
+}
+```
+
+`LAZY_INTS.applyAsInt(3)` selects `ints[3]`; `LAZY_CELLS.applyAsInt(1, 2)` selects `matrix[1][2]`; `LAZY_VOXELS.getOrCompute(1, 2, 3)` selects `volume[1][2][3]`. The `final` static fields are paths to mutable elements; the fields themselves are not updated. For any rank, index arguments follow array dimensions from outermost to innermost. There is no accessor expression in which to swap, repeat, or transform them.
+
+The pre-canned static field accessors accept `IntSupplier`, `LongSupplier`, or `Supplier<V>` callbacks for `int`, `long`, or reference fields. These callbacks take no parameters because there is no receiver or index to pass through:
+
+```java
+class UseSiteAnswer {
+    private static int value;
+
+    private static final LazyUpdaters.StaticIntFieldAccessor ACCESS =
+            LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
+                    MethodHandles.lookup(),
+                    LazyUpdaters.StaticIntFieldAccessor.class,
+                    UseSiteAnswer.class.getName() + ".value");
+
+    static int answer() { return ACCESS.getOrCompute(() -> 42); }
+}
+```
+
+The earlier `Counter.CounterAccessor` example fixes the instance owner through its `IntFieldAccessor<Counter>` specialization. Supplying the raw generic base type instead leaves the owner unknown and fails at factory creation.
+
+For an instance array field, `ofLocation` takes the field's simple name and the interface includes its owner. For a direct array, `ofArray` takes no selector and the interface includes the array itself:
+
+```java
+class Names {
+    private final String[] entries = new String[8];
+    interface Entry { String getOrCompute(Names owner, int index); }
+    private static final Entry LAZY_ENTRY = LazyUpdaters.ofLocation(
+            LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+            Entry.class, "entries",
+            (owner, index) -> "entry-" + index);
+}
+
+class Values {
+    private final int[] entries = new int[8];
+    interface Entry { int getOrCompute(int[] array, int index); }
+    private static final Entry LAZY_ENTRY = LazyUpdaters.ofArray(
+            LazyUpdaters.Mode.PUBLISH_ONCE, Entry.class,
+            (array, index) -> index + 1);
+
+    int entry(int index) { return LAZY_ENTRY.getOrCompute(entries, index); }
+}
+```
+
+The use-site form makes the callback first and keeps the array and index together. A call with the built-in `int[]` accessor is:
+
+```java
+int[] entries = new int[8];
+LazyUpdaters.IntArrayAccessor access = LazyUpdaters.ofArray(
+        LazyUpdaters.Mode.PUBLISH_ONCE,
+        LazyUpdaters.IntArrayAccessor.class);
+int value = access.getOrCompute((array, index) -> array.length + index + 1,
+                              entries, 0);
+```
+
+The callback receives the array and index, with no unused updater parameter. A cached nonzero element is returned without calling it. In `PUBLISH_ONCE` mode, callbacks can race and successful accesses return the installed winner; a losing candidate's result is discarded. A one-index reference array can use `ReferenceArrayAccessor<E>` through a concrete subinterface; other primitive element types or multiple indices can use a custom callback-first interface.
+
+The direct-array shape also permits an array-valued element. For `int[][][]`, one index selects an `int[][]` plane, two select an `int[]` row, and three select an `int` cell:
+
+```java
+class Volume {
+    interface Plane { int[][] getOrCompute(int[][][] array, int plane); }
+    interface Row { int[] getOrCompute(int[][][] array, int plane, int row); }
+    interface Cell { int getOrCompute(int[][][] array, int plane, int row, int column); }
+
+    private static final Plane PLANES = LazyUpdaters.ofArray(
+            LazyUpdaters.Mode.PUBLISH_ONCE, Plane.class,
+            (array, plane) -> new int[3][]);
+    private static final Row ROWS = LazyUpdaters.ofArray(
+            LazyUpdaters.Mode.PUBLISH_ONCE, Row.class,
+            (array, plane, row) -> new int[4]);
+    private static final Cell CELLS = LazyUpdaters.ofArray(
+            LazyUpdaters.Mode.PUBLISH_ONCE, Cell.class,
+            (array, plane, row, column) ->
+                    1 + plane * 12 + row * 4 + column);
+
+    private final int[][][] volume = new int[2][][];
+
+    int cell(int plane, int row, int column) {
+        PLANES.getOrCompute(volume, plane);
+        ROWS.getOrCompute(volume, plane, row);
+        return CELLS.getOrCompute(volume, plane, row, column);
+    }
+}
+```
+
+On a new `Volume`, the outer calls install a plane and row into `null` slots before the cell updater traverses them. An intermediate array reference must be non-null for a deeper selection; a null reference or an invalid index fails before computing. Each updater selects a distinct physical element and uses that element's default value as its uninitialized sentinel. If `CELLS` used `SERIALIZED` mode, the final container array and final index would determine coordination: the `int[]` row and `column`. All forms rely on a concrete array parameter in the interface. A generic interface erased to `Object` cannot reveal the direct array type merely through `Class<T>`.
+
+For `ofLocation`, the lookup is an access capability, not a bypass: it authorizes the updater interface and selected field, and lookup-imposed receiver restrictions remain in force. The capability can be delegated through helpers, whereas a `@CallerSensitive` scheme would tie authority to invocation context. Its cost is an extra argument at each `ofLocation` call. This follows the established [lookup capability model](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/invoke/MethodHandles.Lookup.html). Direct `ofArray` access needs no field resolution or caller-supplied lookup. Its concrete array parameter and index parameters identify the element; it does not check caller access to the updater interface or array class. Adapter generation remains an internal implementation detail.
+
+Both factories keep the existing updater modes and storage protocol. The selected mutable field or physical array element uses its Java default value as the uninitialized sentinel: `null`, `false`, integral zero, or positive floating-point zero. A computation returning that value throws `IllegalArgumentException`, and a preexisting non-default value is returned without computation. A selected field cannot be `final`, but a final array-reference field can lead to mutable elements. A null array along a path or invalid index fails before computing. A null-restricted reference field is rejected at factory creation; a null-restricted reference array element cannot supply the required `null` sentinel and is rejected on access. An array-reference path is resolved once per invocation. The caller must safely publish any receiver, array, or preinitialized value and must not reset a selected location or change intermediate array references while its updater is in use.
+
+The modes retain their distinct tradeoffs: `PLAIN` permits racy plain writes without safe publication, `PUBLISH_ONCE` uses acquire observation and atomic release publication to retain one non-default winner, and `SERIALIZED` runs at most one computation at a time per physical location, with retry after failure. Across either factory, aliases of the same selected container array and index designate one location and share `SERIALIZED` coordination. Updaters sharing a location must use the same mode and should have interchangeable computing functions, including callbacks provided to a use-site updater on separate calls. Neither factory eagerly adds a value holder to every receiver or array element; `SERIALIZED` may allocate auxiliary weakly keyed coordination state on access. Generic functional-interface parameterizations are erased at `Class<T>`, so some result compatibility cannot be proved at factory creation; an incompatible computed value may fail at a later cast or array store.
+
+**Path not taken: cracking accessor lambdas**
+
+An earlier revision supplied a second lambda to select storage, for example `point -> point.radius`, `index -> Holder.ints[index]`, or `(array, row, column) -> array[row][column]`. This made the selector type-checked by the Java compiler, supported IDE rename tools, and avoided string field names. It also let a single `ofLocation` factory cover fields and direct arrays. The prototype inspected generated lambda implementation bytecode without executing the accessor.
+
+That advantage came with a complex and fragile contract. The implementation had to recover the lambda's implementation method, inspect bytecode and constant-pool references, recognize array-load opcodes and method-handle forwarding shapes, and then recheck lookup authority. Captures, method references, transformed indices, and several compiler or hidden-class shapes needed exclusions or special cases; custom class loaders complicated access to implementation bytes. Even simple source expressions depended on the exact bytecode shape emitted by the compiler. The mechanism also allowed reversed index arguments, adding a semantic choice whose only expression was the selector lambda. Those costs outweighed the convenience of a type-checked field expression for this prototype.
+
+| Storage-selection choice | Pros | Cons / decision |
 | --- | --- | --- |
-| A noncapturing lambda directly reads the chosen field or array element | Selects storage without a string name or a separate value-type token | Accessors containing captures, more than one field read, method references, or other computation are unsupported; the implementation inspects loaded method bytecode |
-| An `ofLocation` array accessor has one or two `int` coordinates, each used exactly once, optionally preceded by a reference | The physical element rather than the whole array is the lazy slot; a rank-two accessor may reverse its index arguments | No arithmetic, constant or repeated indices, arbitrary nesting, or more than one field read; the computing function receives arguments in their original order |
-| The location is mutable and its Java default value means uninitialized | No separate lazy holder per receiver or element; supports primitive as well as reference locations | A computed default value is rejected; final selected fields and direct resetting are unsuitable, though a final array-reference field can supply mutable elements |
-| A preexisting non-default value is returned without computation | Allows eager initialization where needed | The caller remains responsible for safe publication of a receiver or array and its preinitialized value |
-| Updaters sharing one location use the same mode and interchangeable computing functions | The coordinated modes can agree on the retained value | Mixing modes or writing the location directly can defeat the guarantees; `PLAIN` permits overwrites |
+| Named field with `String` and `Lookup` | Simple selector grammar; no inspection of compiler-generated accessor code; explicit access authority | Field names are checked at factory creation rather than compilation, and static names resolve in the lookup's loader. Adopted for `ofLocation`. |
+| Direct array identified by a concrete SAM parameter | No selector string or storage-selection callback; coordinates have one order | Requires a separate `ofArray` name and a concrete erased array parameter. Adopted for direct arrays. |
+| Cracked accessor lambda | Compiler type-checks the storage expression and IDE renames can update it | Depends on generated bytecode and rejects several otherwise ordinary lambda shapes. Dropped. |
 
-The `ofLocation` updater's default mode is `PUBLISH_ONCE`, with `PLAIN` and `SERIALIZED` available explicitly. The modes differ in publication, retry, and coordination as described above. Field-backed storage avoids a lazy-holder allocation in each receiver; array-element storage needs no per-element holder, although `SERIALIZED` uses auxiliary state. The storage protocol and compatibility of shared updaters remain the caller's responsibility. An array element or field is not a resettable cache. A null array reference along the path to the selected element, or an out-of-bounds index, fails before computation. A selected array-valued element may itself be null and serve as the uninitialized sentinel. The selected container array and index determine where the value is read and written; aliased paths to that same element share a slot. An owner or static array field may be final, because the array elements remain mutable. The array-reference path is resolved once per invocation; an owner or static array field reference or intermediate array reference must not be replaced while the updater is in use.
+The current design uses a string only where a field genuinely needs a name and uses `ofArray` where the concrete SAM storage parameters and indices already identify a direct array element. This removes accessor bytecode inspection from the public contract and implementation path. The computation remains a normal lambda or method reference; it may capture state. A declaration-site updater retains it, while a use-site updater receives it on each access. The design gives up compile-time checking and automatic refactoring of field names; a wrong selector is detected when the factory is created. A more general string-free overload for arbitrary receivers was not adopted because a receiver type alone cannot identify which of its fields is the desired storage location.
 
 **Collections: retain ordinary shapes, specify the lazy boundary**
 
@@ -272,15 +443,15 @@ Computations run synchronously on the accessing thread. `COMPUTE_ONCE` coordinat
 
 This keeps access and exception propagation direct and avoids an executor policy. It also means that a blocking computation blocks its caller, and potentially other callers waiting for its result. Neither mode provides a general liveness guarantee.
 
-`LazyCaches` factories strongly retain the computing function while any slot remains unresolved, and release the invocation reference when all slots have either a result or permanent failure. Mixed successful and failed slots count as terminal. A view's lifetime is assessed against the whole original storage, including slots outside that view. A `LazyUpdaters.ofLocation` updater retains its computing function for the updater's lifetime because new receivers or array elements can always arrive.
+`LazyCaches` factories strongly retain the computing function while any slot remains unresolved, and release the invocation reference when all slots have either a result or permanent failure. Mixed successful and failed slots count as terminal. A view's lifetime is assessed against the whole original storage, including slots outside that view. Declaration-site `LazyUpdaters.ofLocation` and `ofArray` updaters retain their computing functions for their lifetimes because new receivers or array elements can always arrive. Use-site updaters do not retain a computation between accesses; a callback supplied to an access can still be held while that invocation is in progress.
 
-This rule bounds retention after completed initialization while ensuring that unresolved slots remain computable. It cannot guarantee garbage collection: values, keys, candidates, in-flight computations, and other application references may still retain the callback. `LazyCaches.ofScalar(Mode, Function)` does not otherwise retain its context, and `LazyUpdaters.ofLocation` does not otherwise retain receivers or arrays; callbacks or results can themselves contain references. The updater's `SERIALIZED` mode uses weak receiver or leaf-array keys for its auxiliary coordination state.
+This rule bounds retention after completed initialization while ensuring that unresolved slots remain computable. It cannot guarantee garbage collection: values, keys, candidates, in-flight computations, and other application references may still retain the callback. `LazyCaches.ofScalar(Mode, Function)` does not otherwise retain its context, and the `LazyUpdaters` factories do not otherwise retain receivers or arrays; callbacks or results can themselves contain references. The updater's `SERIALIZED` mode uses weak receiver or selected-container-array keys for its auxiliary coordination state.
 
 **Records and Valhalla: supported patterns and limits**
 
 The discussion tested the derived-property use case for `record Point(int x, int y)`. That exact record cannot declare extra instance fields for `radius` and `phi`; see [JLS 8.10.2](https://docs.oracle.com/javase/specs/jls/se26/html/jls-8.html#jls-8.10.2). A static `ofScalar(Mode, Function)` would incorrectly share one slot across points. An ordinary class can declare per-instance holder or updater storage instead. Adding holders as record components would change its representation and generated equality; no transparent record cache facility or new language feature was implemented.
 
-For the Valhalla value-class model examined here, a final field can reference a mutable lazy holder, and `ofScalar(Mode, Function)` with a noncapturing callback avoids capturing incompletely initialized `this`. A value-class instance field cannot itself serve as mutable storage for `LazyUpdaters.ofLocation` because value-class instance fields are final. A final field referencing a mutable array could in principle supply lazy array elements, subject to the value-class and array rules; this combination has not been validated here. The important cost is equality: holder or array references participate in value-object `==` and inherited `Object.equals`, so objects with otherwise equal application data may compare unequal. Custom `equals`/`hashCode` can define logical equality but cannot change `==`. These points concern the Valhalla model, whose [draft specification](https://cr.openjdk.org/~dlsmith/jep401/latest/) remains a separate language-development effort.
+For the Valhalla value-class model examined here, a final field can reference a mutable lazy holder, and `ofScalar(Mode, Function)` with a noncapturing callback avoids capturing incompletely initialized `this`. A value-class instance field cannot itself serve as mutable storage for `LazyUpdaters.ofLocation` because value-class instance fields are final. A final field referencing a mutable array could in principle supply lazy array elements through `ofLocation` or pass that array directly to `ofArray`, subject to the value-class and array rules; this combination has not been validated here. The important cost is equality: holder or array references participate in value-object `==` and inherited `Object.equals`, so objects with otherwise equal application data may compare unequal. Custom `equals`/`hashCode` can define logical equality but cannot change `==`. These points concern the Valhalla model, whose [draft specification](https://cr.openjdk.org/~dlsmith/jep401/latest/) remains a separate language-development effort.
 
 The benefit is a workable library pattern without adding language machinery. The costs are holder storage and possible equality consequences. The API does not make all capturing lambdas illegal, guarantee allocation-free value-class caching, or supply an indexed-relative collection shape whose ordinary `List.get` accepts an owning value object.
 
@@ -292,15 +463,15 @@ The distinctions in this table matter: absence from the current surface is not p
 | --- | --- | --- |
 | Lazy fields / cached methods as new language features | Discussed in Brian's background; not implemented here | Static and instance use cases do not divide cleanly; records and value classes add separate constraints |
 | Public stability annotation or general stable VarHandle/MethodHandle toolkit | Not exposed by this API | The high-level entry point targets common usage; possible lower-level facilities remain separate work |
-| Full coordinate family, including indexed-relative access | Present in earlier sketches; only one- or two-dimensional array indices, optionally through one owner field or a static array field, exist at the updater layer | A smaller API loses other noncapturing context-plus-index use cases and deeper coordinate shapes |
+| Full coordinate family beyond array indices | Present in earlier sketches; the updater layer supports any feasible array rank, optionally through one owner field or a static array field, but no general indexed-relative coordinate type | A smaller API loses non-array context-plus-index use cases and arbitrary coordinate transformations |
 | Context class-token overload | Explored, not adopted | Better inference cues versus extra signature surface |
-| Primitive specializations | Not provided; no permanent rejection recorded | Boxing and storage costs remain; primitive-specific APIs would enlarge the surface |
+| Further primitive specializations | Pre-canned use-site `int` and `long` accessors cover one-dimensional arrays, instance fields, and static fields; reference counterparts now cover those same shapes, but other primitive types are not provided here | Custom updater and callback interfaces remain available, while a larger built-in family would increase the API surface |
 | Null as a successful lazy result | Not offered | Non-null retained values simplify the contract; absence needs another representation |
 | Reset, invalidation, eviction, or per-argument memoization | Not provided | These require a lifecycle beyond one retained result per storage location |
 | Explicit initialization-state query or non-computing peek | Not provided | Standard return interfaces expose access, not a new lifecycle protocol |
 | Serialized retry in `LazyCaches` factories | Not provided; `LazyUpdaters.Mode.SERIALIZED` offers it for field and array-element storage | Requires waiting and auxiliary coordination state |
 | Independent policy flags | Not provided | The design deliberately stops short of the full policy/storage product |
-| `COMPUTE_ONCE` for field-backed updaters | Not provided by `LazyUpdaters.ofLocation` | At-most-once computation with permanent failure would require sticky failure state in addition to field storage |
+| `COMPUTE_ONCE` for caller-owned updaters | Not provided by `LazyUpdaters` | At-most-once computation with permanent failure would require sticky failure state in addition to the selected field or array element |
 | Segment-backed `Lazy.ofSegment` | Experimental overloads removed from the earlier `Lazy` prototype | A segment-backed factory would need its own storage and lifetime contract |
 | Cancellation, timeouts, executor-backed evaluation | Not provided | No scheduling or task-management policy is added to lazy access |
 | Removal or deprecation of the earlier lazy APIs | Not performed | Migration and compatibility policy require a separate platform decision |
@@ -309,9 +480,9 @@ The distinctions in this table matter: absence from the current surface is not p
 
 The implementation work followed the specification reviews. It updated scalar, field, and collection publication; retained stable storage opportunities; added failure-preserving traversal and views; preserved original storage through map entries and key views; corrected equality exception propagation; and preserved publication through cached set size/hash results. Existing legacy factory behavior was kept on its existing paths.
 
-The source layout keeps `java.util.LazyCaches` and `java.lang.invoke.LazyUpdaters` as public API facades that validate arguments and delegate to internal implementations. Scalar and collection behavior lives in `jdk.internal.util` (`LazySupport` and `LazyCollections`); field selection, updater coordination, and functional-interface adapters live in `jdk.internal.invoke` (`LazyUpdaterSupport` and `LazyUpdaterFactory`). The existing `List.ofLazy`, `Map.ofLazy`, and `Set.ofLazy` factories also use the internal collection implementation. Trusted method-bytecode and hidden-class operations needed by the updater flow through a narrow `java.lang.invoke` bridge; the caller-supplied lookup still governs access to the selected field.
+The source layout keeps `java.util.LazyCaches` and `java.lang.invoke.LazyUpdaters` as public API facades that validate arguments and delegate to internal implementations. Scalar and collection behavior lives in `jdk.internal.util` (`LazySupport` and `LazyCollections`); field selection, updater coordination, and functional-interface adapters live in `jdk.internal.invoke` (`LazyUpdaterSupport` and `LazyUpdaterFactory`). The existing `List.ofLazy`, `Map.ofLazy`, and `Set.ofLazy` factories also use the internal collection implementation. Generated hidden classes may still implement updater interfaces; that adapter mechanism is separate from the dropped accessor-bytecode inspection. The caller-supplied lookup for `ofLocation` governs access to the selected field; `ofArray` has no caller-supplied lookup. One- and two-index updaters retain specialized call paths. Higher-rank updaters collect their indices into an `int[]` before traversal, with a potential per-access allocation cost.
 
-The historical validation results below record earlier revisions under their then-current `Lazy` name and `java/util/Lazy` test path. The final paragraph records checks for the current `LazyCaches` rename.
+The historical validation results below record earlier revisions under their then-current `Lazy` name and `java/util/Lazy` test path. Even the final rename-stage results precede the string-selector and `ofArray` redesign. They describe what was checked at each stage, not validation of the current updater contract.
 
 The earlier validation sequence built `java.base` and passed 13 targeted jtreg test descriptions, comprising 821 successful JUnit invocations plus non-JUnit checks. Coverage included the new Lazy suites, legacy lazy-list/map/set tests, a negative compilation test, lookup/module tests, and MOAT collection checks extended to both coordinated modes. One new test file initially needed a generic assertion typing correction and then passed on a focused rerun; the combined results were all passing. Those recorded results predate the mode-interface and three-mode updater extension and do not validate that extension.
 
@@ -319,10 +490,24 @@ The preceding mode-interface variant was validated against the built JDK: the `j
 
 The internal-package migration passed a clean JDK `images` build. On that build, 17 focused jtreg descriptions passed (904 JUnit executions), covering the independent modes, updater retry and field access, lazy factories and collections, and legacy list/map/set behavior. The throwable class-unloading and MOAT collection checks also passed as two additional jtreg descriptions.
 
-After removal of the `Lazy.ofField` and `Lazy.ofSegment` overloads and their tests, and the updater-mode renaming, the pre-array revision passed the `java.base-java` and JDK API Javadoc builds. All 11 targeted jtreg descriptions passed: eight under `java/util/Lazy` and three under `java/lang/invoke/LazyUpdaters`, including 408 JUnit invocations. These runs establish the tested behavior, not a proof of all memory-model executions, measured allocation savings, or a performance comparison across VMs. The outstanding platform decisions are adoption and release sequencing, the relationship to the earlier APIs, and whether workload evidence warrants any additional shapes or specializations. The current branch records the smaller API and its detailed contracts without committing to those extensions.
+After removal of the `Lazy.ofField` and `Lazy.ofSegment` overloads and their tests, and the updater-mode renaming, the pre-array revision passed the `java.base-java` and JDK API Javadoc builds. All 11 targeted jtreg descriptions passed: eight under `java/util/Lazy` and three under `java/lang/invoke/LazyUpdaters`, including 408 JUnit invocations. These runs establish the tested behavior, not a proof of all memory-model executions, measured allocation savings, or a performance comparison across VMs. The outstanding platform decisions remain adoption and release sequencing, the relationship to the earlier APIs, and whether workload evidence warrants any additional shapes or specializations.
 
-For the array-element extension, the `java.base-java` and JDK API Javadoc builds passed. All three `LazyUpdaters` jtreg descriptions passed, including 104 JUnit executions across normal and interpreter runs. These tests cover one- and two-index direct and owner-field accessors, swapped indices, every primitive array-load opcode and reference elements, the three updater modes, aliasing of inner arrays, reserved-value retries, bounds and null failures, and lookup checks. The `java/util/Lazy` tests were not rerun for this extension, which does not change the `Lazy` implementation.
+For the earlier lambda-selector array-element extension, the `java.base-java` and JDK API Javadoc builds passed. All three `LazyUpdaters` jtreg descriptions passed, including 104 JUnit executions across normal and interpreter runs. Those tests covered one- and two-index direct and owner-field accessors, swapped indices, every primitive array-load opcode and reference elements, the three updater modes, aliasing of inner arrays, reserved-value retries, bounds and null failures, and lookup checks. The `java/util/Lazy` tests were not rerun for that extension, which did not change the `Lazy` implementation.
 
-After folding index-only static-array access into `ofLocation` and removing `ofArray`, the updated JDK image and JDK API Javadoc build passed. The three focused `LazyUpdaters` jtreg descriptions (`OfStaticArrayLocationTest`, `OfLocationTest`, and `FindVarHandleTest`) passed with 130 JUnit invocations across normal and interpreter runs. They cover static one- and two-index accessors, reversed indices, the default and explicit modes, lookup checks, and the existing receiver-based forms.
+In that earlier lambda-selector design, index-only static-array access was folded into `ofLocation` and an earlier, different `ofArray` factory was removed. The updated JDK image and JDK API Javadoc build passed. The three focused `LazyUpdaters` jtreg descriptions (`OfStaticArrayLocationTest`, `OfLocationTest`, and `FindVarHandleTest`) passed with 130 JUnit invocations across normal and interpreter runs. They covered static one- and two-index accessors, reversed indices, the default and explicit modes, lookup checks, and the existing receiver-based forms. The present `ofArray` factory has different parameters and semantics.
 
-For the `LazyCaches` and `ofScalar` rename, the JDK image and JDK API Javadoc builds passed. All eight jtreg descriptions under `test/jdk/java/util/Lazy` passed (326 JUnit invocations), as did the MOAT collection test and the `LazyUpdaters` mode-mismatch compile-fail test. The test directory retains its historical `Lazy` name; its source now exercises `LazyCaches`.
+For the `LazyCaches` and `ofScalar` rename, the JDK image and JDK API Javadoc builds passed. All eight jtreg descriptions under `test/jdk/java/util/Lazy` passed (326 JUnit invocations), as did the MOAT collection test and the `LazyUpdaters` mode-mismatch compile-fail test. The test directory retains its historical `Lazy` name; its source now exercises `LazyCaches`. These results also precede the current selector redesign.
+
+For the initial string-selector and direct-array design, before `ofArray` dropped its lookup parameter, the `java.base-java`, full JDK `images`, and JDK API Javadoc builds passed. All four focused `LazyUpdaters` jtreg descriptions and the updated `LazyDemo` passed, including 101 JUnit invocations across normal and interpreter runs and the mode-mismatch compile-fail check. The tests cover named instance and static fields, direct and field-backed arrays, row-valued selections, natural index order, the three modes, lookup access, inherited fields reached through public subclasses and interfaces, ambiguous-name rejection, and distinct static fields with the same binary name in separate class loaders. An initial static-array test expected an access error from `publicLookup`, but that lookup could not load the application class; the test was corrected to use a restricted lookup in the same loader and passed on rerun. These results validate the focused behavior, not performance claims or all possible memory-model executions.
+
+After removing the lookup parameter from `ofArray`, the `java.base-java` and JDK API Javadoc builds passed. All four focused `LazyUpdaters` jtreg descriptions passed, including 101 JUnit executions across normal and interpreter runs; a test-only naming cleanup was followed by another successful `OfLocationTest` run. The suite now covers a direct array with a private functional interface and a private element type, while retaining `ofLocation` lookup-access tests. These checks do not establish performance or all possible memory-model executions.
+
+For the arbitrary-rank extension, the `java.base-java` and JDK API Javadoc builds passed. All four focused `LazyUpdaters` jtreg descriptions passed, including 115 JUnit executions across normal and interpreter runs. New tests cover three- and four-index direct access, three-index instance and static array fields, higher-rank partial indexing, aliases, failures before computation, retries after a reserved result, and rejection when the index count exceeds array rank. These are representative ranks, not an exhaustive test of every JVM-legal method arity or memory-model execution.
+
+Before adding the reference pre-canned interfaces, the declaration-site and use-site design passed the JDK API Javadoc build and all five `LazyUpdaters` jtreg descriptions, including 153 JUnit executions across normal and interpreter runs. The use-site tests covered direct and field-backed arrays, static and instance fields, the six pre-canned `int` and `long` shapes, all three modes, shared physical-element coordination, generic receiver specialization, callback validation, reference subtype results, primitive widening, and diagnostics for erased generic interface tokens and storage coordinates. This validates the exercised behavior at that stage, not the subsequently added reference interfaces, performance, or every memory-model execution.
+
+With the three reference pre-canned interfaces, the `java.base-java` and JDK API Javadoc builds passed. All five `LazyUpdaters` jtreg descriptions passed, including 167 JUnit executions across normal and interpreter runs. The added tests cover all three updater modes for direct reference arrays and static and instance reference fields, cached and reserved-null results, array covariance, raw generic-token diagnostics, incompatible field types, and matching or mismatching parameterized field types through direct and indirect specializations, including wildcard bounds. These tests do not establish performance or every memory-model execution.
+
+After requiring an explicit updater `Mode` and moving `@PreviewFeature` to the `LazyUpdaters` class, the `java.base-java` and JDK API Javadoc builds passed. All five `LazyUpdaters` jtreg descriptions and `LazyDemo` passed, comprising 169 JUnit executions across normal and interpreter runs. A client compilation using the built JDK rejected `LazyUpdaters` without preview enabled and succeeded with `--enable-preview`. These checks validate the migrated call sites and preview boundary, not source or binary compatibility with the removed overloads.
+
+For the current documentation reconciliation, the JDK API Javadoc build passed, followed by all five `LazyUpdaters` and eight `LazyCaches` jtreg descriptions (494 JUnit executions). All 13 examples in the two class Javadocs were compiled individually and exercised with the built preview JDK. A separate value-class probe confirmed the documented rejection timing for null-restricted reference fields and array elements in all three updater modes. These checks establish that the examples are usable and the focused regressions pass; they do not prove every memory-model execution or measure performance.

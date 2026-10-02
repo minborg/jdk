@@ -143,12 +143,6 @@ public interface JavaLangInvokeAccess {
     MethodHandle unreflectMethod(Method method) throws IllegalAccessException;
 
     /**
-     * Returns the bytecodes of a loaded method for inspecting a field-access
-     * lambda without invoking it.
-     */
-    byte[] methodBytecodes(Method method);
-
-    /**
      * Defines a hidden class in the given host's nest and returns a
      * handle to its constructor.
      */
