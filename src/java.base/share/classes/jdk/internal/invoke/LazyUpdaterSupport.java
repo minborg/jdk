@@ -25,12 +25,6 @@
 
 package jdk.internal.invoke;
 
-import java.lang.invoke.LazyUpdaters.IntFieldAccessor;
-import java.lang.invoke.LazyUpdaters.LongFieldAccessor;
-import java.lang.invoke.LazyUpdaters.Mode;
-import java.lang.invoke.LazyUpdaters.ReferenceArrayAccessor;
-import java.lang.invoke.LazyUpdaters.ReferenceFieldAccessor;
-import java.lang.invoke.LazyUpdaters.StaticReferenceFieldAccessor;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -45,6 +39,12 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.lang.util.Lazy.IntFieldAccessor;
+import java.lang.util.Lazy.LongFieldAccessor;
+import java.lang.util.Lazy.ReferenceArrayAccessor;
+import java.lang.util.Lazy.ReferenceFieldAccessor;
+import java.lang.util.Lazy.StaticReferenceFieldAccessor;
+import java.lang.util.Lazy.UpdaterMode;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,6 +53,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.value.ValueClass;
@@ -66,7 +67,7 @@ import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 public final class LazyUpdaterSupport {
     private LazyUpdaterSupport() { }
 
-    public static <T> T ofLocation(Mode mode,
+    public static <T> T ofLocation(UpdaterMode mode,
                                    MethodHandles.Lookup lookup,
                                    Class<T> type,
                                    String fieldSelector,
@@ -91,7 +92,7 @@ public final class LazyUpdaterSupport {
         }
     }
 
-    public static <T> T ofLocation(Mode mode,
+    public static <T> T ofLocation(UpdaterMode mode,
                                    MethodHandles.Lookup lookup,
                                    Class<T> type,
                                    String fieldSelector) {
@@ -121,7 +122,62 @@ public final class LazyUpdaterSupport {
         }
     }
 
-    public static <T> T ofArray(Mode mode,
+    /**
+     * The explicit owner supplies the receiver type erased from Function's
+     * method descriptor. All storage selection and mode handling still use
+     * the same path as a declaration-site location updater.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static <R, T> Function<R, T> ofInstanceField(UpdaterMode mode,
+            MethodHandles.Lookup lookup, Class<R> owner, String fieldName,
+            Function<R, T> computingFunction) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(lookup);
+        Objects.requireNonNull(owner);
+        Objects.requireNonNull(fieldName);
+        Objects.requireNonNull(computingFunction);
+        Method method = LazyUpdaterFactory.functionalMethod(Function.class);
+        try {
+            lookup.accessClass(owner);
+            StorageAccess access = selectField(lookup, method.getParameterTypes(),
+                    fieldName, owner);
+            return (Function<R, T>) createUpdater(mode, Function.class, method,
+                    method, access, computingFunction, false);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Cannot access the lazy location", e);
+        }
+    }
+
+    @FunctionalInterface
+    private interface ObjectArrayElementFunction {
+        Object apply(Object[] array, int index);
+    }
+
+    /**
+     * Specializes the general direct-array updater for reference elements.
+     * The array token checks actual arrays without requiring a non-generic
+     * client-declared interface for each element type.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> ReferenceArrayAccessor.Computer<T> ofReferenceArray(UpdaterMode mode,
+            Class<T> elementType, ReferenceArrayAccessor.Computer<T> computingFunction) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(elementType);
+        Objects.requireNonNull(computingFunction);
+        if (elementType.isPrimitive() || elementType == void.class) {
+            throw new IllegalArgumentException("A reference array updater requires a reference element type");
+        }
+        Class<?> arrayType = elementType.arrayType();
+        ObjectArrayElementFunction computer = (array, index) ->
+                elementType.cast(computingFunction.apply(
+                        (T[]) arrayType.cast(array), index));
+        ObjectArrayElementFunction updater = ofArray(mode,
+                ObjectArrayElementFunction.class, computer);
+        return (array, index) -> elementType.cast(updater.apply(
+                (Object[]) arrayType.cast(array), index));
+    }
+
+    public static <T> T ofArray(UpdaterMode mode,
                                 Class<T> type,
                                 T computingFunction) {
         Objects.requireNonNull(mode);
@@ -141,7 +197,7 @@ public final class LazyUpdaterSupport {
         }
     }
 
-    public static <T> T ofArray(Mode mode, Class<T> type) {
+    public static <T> T ofArray(UpdaterMode mode, Class<T> type) {
         Objects.requireNonNull(mode);
         Objects.requireNonNull(type);
         Method accessor = accessorMethod(type);
@@ -763,7 +819,7 @@ public final class LazyUpdaterSupport {
                 receiverType, arrayType, rank);
     }
 
-    private static <T> T createUpdater(Mode mode,
+    private static <T> T createUpdater(UpdaterMode mode,
                                        Class<T> type,
                                        Method method,
                                        Method computerMethod,
@@ -875,14 +931,14 @@ public final class LazyUpdaterSupport {
                 && target.isConvertibleFrom(Wrapper.forWrapperType(resultType));
     }
 
-    private static VarHandle.AccessMode readMode(Mode mode) {
+    private static VarHandle.AccessMode readMode(UpdaterMode mode) {
         return switch (mode) {
             case PLAIN -> VarHandle.AccessMode.GET;
             case PUBLISH_ONCE, SERIALIZED -> VarHandle.AccessMode.GET_ACQUIRE;
         };
     }
 
-    private static VarHandle.AccessMode writeMode(Mode mode) {
+    private static VarHandle.AccessMode writeMode(UpdaterMode mode) {
         return switch (mode) {
             case PLAIN -> VarHandle.AccessMode.SET;
             case PUBLISH_ONCE -> VarHandle.AccessMode.COMPARE_AND_EXCHANGE_RELEASE;
@@ -1057,7 +1113,7 @@ public final class LazyUpdaterSupport {
         static final MethodType WRITE_TYPE = MethodType.methodType(void.class,
                 Object.class, Object.class);
 
-        private final Mode mode;
+        private final UpdaterMode mode;
         private final MethodHandle read;
         private final MethodHandle exchange;
         private final MethodHandle write;
@@ -1066,7 +1122,7 @@ public final class LazyUpdaterSupport {
         private final Object defaultValue;
         private final SynchronizedField synchronizedField;
 
-        FieldUpdater(Mode mode, FieldAccess access, Method computerMethod,
+        FieldUpdater(UpdaterMode mode, FieldAccess access, Method computerMethod,
                      Object boundComputer)
                 throws IllegalAccessException {
             this.mode = mode;
@@ -1075,9 +1131,9 @@ public final class LazyUpdaterSupport {
             Class<?> valueType = field.varType();
             defaultValue = valueType.isPrimitive() ? Wrapper.forPrimitiveType(valueType).zero() : null;
             MethodHandle reader = field.toMethodHandle(readMode(mode));
-            MethodHandle exchanger = mode == Mode.PUBLISH_ONCE
+            MethodHandle exchanger = mode == UpdaterMode.PUBLISH_ONCE
                     ? field.toMethodHandle(VarHandle.AccessMode.COMPARE_AND_EXCHANGE_RELEASE) : null;
-            MethodHandle writer = mode == Mode.PUBLISH_ONCE
+            MethodHandle writer = mode == UpdaterMode.PUBLISH_ONCE
                     ? null : field.toMethodHandle(writeMode(mode));
             MethodHandle computation = SharedSecrets.getJavaLangInvokeAccess()
                     .unreflectMethod(computerMethod);
@@ -1112,7 +1168,7 @@ public final class LazyUpdaterSupport {
             computation = computation.asType(MethodType.methodType(valueType,
                     Object.class, Object.class));
             compute = computation.asType(READ_WITH_COMPUTER_TYPE);
-            synchronizedField = mode == Mode.SERIALIZED
+            synchronizedField = mode == UpdaterMode.SERIALIZED
                     ? SynchronizedField.forField(access.field(), access.receiverType() == null) : null;
         }
 
@@ -1220,7 +1276,7 @@ public final class LazyUpdaterSupport {
         private static final MethodType ELEMENT_WRITE_TYPE = MethodType.methodType(void.class,
                 Object.class, int.class, Object.class);
 
-        private final Mode mode;
+        private final UpdaterMode mode;
         private final MethodHandle arrayGetter;
         private final MethodHandle rowGetter;
         private final MethodHandle[] rowGetters;
@@ -1231,7 +1287,7 @@ public final class LazyUpdaterSupport {
         private final Object boundComputer;
         private final Object defaultValue;
 
-        ArrayUpdater(Mode mode, ArrayAccess access, Method computerMethod,
+        ArrayUpdater(UpdaterMode mode, ArrayAccess access, Method computerMethod,
                      Object boundComputer)
                 throws IllegalAccessException {
             this(mode, access.arrayGetter(), access.arrayType(), access.valueHandle(),
@@ -1239,7 +1295,7 @@ public final class LazyUpdaterSupport {
                     boundComputer);
         }
 
-        private ArrayUpdater(Mode mode, MethodHandle arrayGetter, Class<?> arrayType,
+        private ArrayUpdater(UpdaterMode mode, MethodHandle arrayGetter, Class<?> arrayType,
                              VarHandle element, Class<?> receiverType, int rank,
                              Method computerMethod, Object boundComputer)
                 throws IllegalAccessException {
@@ -1263,11 +1319,11 @@ public final class LazyUpdaterSupport {
             Class<?> valueType = element.varType();
             defaultValue = valueType.isPrimitive() ? Wrapper.forPrimitiveType(valueType).zero() : null;
             read = element.toMethodHandle(readMode(mode)).asType(ELEMENT_READ_TYPE);
-            exchange = mode == Mode.PUBLISH_ONCE
+            exchange = mode == UpdaterMode.PUBLISH_ONCE
                     ? element.toMethodHandle(VarHandle.AccessMode.COMPARE_AND_EXCHANGE_RELEASE)
                              .asType(ELEMENT_EXCHANGE_TYPE)
                     : null;
-            write = mode == Mode.PUBLISH_ONCE
+            write = mode == UpdaterMode.PUBLISH_ONCE
                     ? null : element.toMethodHandle(writeMode(mode)).asType(ELEMENT_WRITE_TYPE);
 
             MethodHandle computation = SharedSecrets.getJavaLangInvokeAccess()

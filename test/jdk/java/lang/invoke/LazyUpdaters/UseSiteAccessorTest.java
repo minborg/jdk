@@ -29,9 +29,9 @@
  * @run junit/othervm -Xint UseSiteAccessorTest
  */
 
-import java.lang.invoke.LazyUpdaters;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.util.Lazy;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
@@ -107,42 +107,42 @@ public class UseSiteAccessorTest {
 
     private interface DeclaredIntElement { int get(int[] array, int index); }
 
-    private interface HolderIntAccessor extends LazyUpdaters.IntFieldAccessor<Holder> { }
+    private interface HolderIntAccessor extends Lazy.IntFieldAccessor<Holder> { }
 
-    private interface HolderLongAccessor extends LazyUpdaters.LongFieldAccessor<Holder> { }
+    private interface HolderLongAccessor extends Lazy.LongFieldAccessor<Holder> { }
 
     private interface IndirectHolderLongAccessor extends HolderLongAccessor { }
 
     private interface StringArrayAccessor
-            extends LazyUpdaters.ReferenceArrayAccessor<String> { }
+            extends Lazy.ReferenceArrayAccessor<String> { }
 
     private interface NumberArrayAccessor
-            extends LazyUpdaters.ReferenceArrayAccessor<Number> { }
+            extends Lazy.ReferenceArrayAccessor<Number> { }
 
     private interface StaticStringAccessor
-            extends LazyUpdaters.StaticReferenceFieldAccessor<String> { }
+            extends Lazy.StaticReferenceFieldAccessor<String> { }
 
     private interface HolderStringAccessor
-            extends LazyUpdaters.ReferenceFieldAccessor<Holder, String> { }
+            extends Lazy.ReferenceFieldAccessor<Holder, String> { }
 
     private interface HolderStringListAccessor
-            extends LazyUpdaters.ReferenceFieldAccessor<Holder, List<String>> { }
+            extends Lazy.ReferenceFieldAccessor<Holder, List<String>> { }
 
     private interface GenericHolderListAccessor<T>
-            extends LazyUpdaters.ReferenceFieldAccessor<Holder, List<T>> { }
+            extends Lazy.ReferenceFieldAccessor<Holder, List<T>> { }
 
     private interface IndirectHolderStringListAccessor
             extends GenericHolderListAccessor<String> { }
 
     private interface GenericWildcardListAccessor<T>
-            extends LazyUpdaters.ReferenceFieldAccessor<Holder,
+            extends Lazy.ReferenceFieldAccessor<Holder,
                     List<? extends T>> { }
 
     private interface IndirectHolderNumberListAccessor
             extends GenericWildcardListAccessor<Number> { }
 
     private interface StaticStringListAccessor
-            extends LazyUpdaters.StaticReferenceFieldAccessor<List<String>> { }
+            extends Lazy.StaticReferenceFieldAccessor<List<String>> { }
 
     private interface GenericIntField<R> {
         interface Computer<R> { int compute(R receiver); }
@@ -231,8 +231,8 @@ public class UseSiteAccessorTest {
 
     @Test
     public void arrayComputationIsSuppliedPerCallInEveryMode() {
-        for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
-            IntCell accessor = LazyUpdaters.ofArray(mode, IntCell.class);
+        for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
+            IntCell accessor = Lazy.ofArrayUpdater(mode, IntCell.class);
             int[][] first = { { 0, 31 }, { 0 } };
             int[][] second = { { 0 } };
             AtomicInteger computations = new AtomicInteger();
@@ -277,7 +277,7 @@ public class UseSiteAccessorTest {
 
     @Test
     public void arrayFailuresLeaveTheElementAvailableForAnotherComputation() {
-        IntCell accessor = LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, IntCell.class);
+        IntCell accessor = Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, IntCell.class);
         int[][] array = { new int[2] };
         IllegalStateException failure = new IllegalStateException("failed");
         assertSame(failure, assertThrows(IllegalStateException.class,
@@ -295,7 +295,7 @@ public class UseSiteAccessorTest {
 
     @Test
     public void referenceArrayUsesNullAsTheSentinel() {
-        StringElement accessor = LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, StringElement.class);
+        StringElement accessor = Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, StringElement.class);
         String[] array = new String[2];
         String value = new String("computed");
         assertThrows(IllegalArgumentException.class,
@@ -310,7 +310,7 @@ public class UseSiteAccessorTest {
 
     @Test
     public void boxedCallbackResultIsCheckedAgainstPrimitiveStorage() {
-        BoxedIntElement accessor = LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, BoxedIntElement.class);
+        BoxedIntElement accessor = Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, BoxedIntElement.class);
         int[] array = new int[1];
         assertThrows(IllegalArgumentException.class,
                 () -> accessor.get((a, index) -> Integer.valueOf(0), array, 0));
@@ -325,10 +325,10 @@ public class UseSiteAccessorTest {
 
     @Test
     public void referenceStorageAcceptsNarrowerCallbackResults() {
-        IntegerIntoNumberField field = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+        IntegerIntoNumberField field = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 IntegerIntoNumberField.class, "number");
-        IntegerIntoNumberArray element = LazyUpdaters.ofArray(
-                LazyUpdaters.Mode.PUBLISH_ONCE,
+        IntegerIntoNumberArray element = Lazy.ofArrayUpdater(
+                Lazy.UpdaterMode.PUBLISH_ONCE,
                 IntegerIntoNumberArray.class);
         Holder holder = new Holder();
         Number[] array = new Number[1];
@@ -350,7 +350,7 @@ public class UseSiteAccessorTest {
 
     @Test
     public void primitiveWideningAndBroaderCallbackCoordinates() {
-        IntIntoLongField accessor = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+        IntIntoLongField accessor = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 IntIntoLongField.class, "large");
         Holder holder = new Holder();
         assertEquals(29L, accessor.get(receiver -> {
@@ -366,11 +366,11 @@ public class UseSiteAccessorTest {
 
     @Test
     public void builtInIntAndLongArrayAccessors() {
-        for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
-            LazyUpdaters.IntArrayAccessor ints = LazyUpdaters.ofArray(mode,
-                    LazyUpdaters.IntArrayAccessor.class);
-            LazyUpdaters.LongArrayAccessor longs = LazyUpdaters.ofArray(mode,
-                    LazyUpdaters.LongArrayAccessor.class);
+        for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
+            Lazy.IntArrayAccessor ints = Lazy.ofArrayUpdater(mode,
+                    Lazy.IntArrayAccessor.class);
+            Lazy.LongArrayAccessor longs = Lazy.ofArrayUpdater(mode,
+                    Lazy.LongArrayAccessor.class);
             int[] intArray = new int[2];
             long[] longArray = new long[2];
             AtomicInteger computations = new AtomicInteger();
@@ -399,10 +399,10 @@ public class UseSiteAccessorTest {
 
     @Test
     public void builtInReferenceArrayAccessorsInEveryMode() {
-        for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
-            StringArrayAccessor strings = LazyUpdaters.ofArray(mode,
+        for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
+            StringArrayAccessor strings = Lazy.ofArrayUpdater(mode,
                     StringArrayAccessor.class);
-            NumberArrayAccessor numbers = LazyUpdaters.ofArray(mode,
+            NumberArrayAccessor numbers = Lazy.ofArrayUpdater(mode,
                     NumberArrayAccessor.class);
             String existing = new String("existing");
             String[] values = { null, existing };
@@ -446,11 +446,11 @@ public class UseSiteAccessorTest {
 
     @Test
     public void declarationAndUseSiteAccessorsShareArrayElements() {
-        LazyUpdaters.IntArrayAccessor useSite = LazyUpdaters.ofArray(
-                LazyUpdaters.Mode.SERIALIZED, LazyUpdaters.IntArrayAccessor.class);
+        Lazy.IntArrayAccessor useSite = Lazy.ofArrayUpdater(
+                Lazy.UpdaterMode.SERIALIZED, Lazy.IntArrayAccessor.class);
         AtomicInteger declarationComputations = new AtomicInteger();
-        DeclaredIntElement declarationSite = LazyUpdaters.ofArray(
-                LazyUpdaters.Mode.SERIALIZED, DeclaredIntElement.class,
+        DeclaredIntElement declarationSite = Lazy.ofArrayUpdater(
+                Lazy.UpdaterMode.SERIALIZED, DeclaredIntElement.class,
                 (array, index) -> {
                     declarationComputations.incrementAndGet();
                     return 19;
@@ -468,9 +468,9 @@ public class UseSiteAccessorTest {
 
     @Test
     public void fieldAndArrayFieldComputationIsSuppliedPerCall() {
-        for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
-            IntField field = LazyUpdaters.ofLocation(mode, LOOKUP, IntField.class, "count");
-            IntOwnerElement element = LazyUpdaters.ofLocation(mode, LOOKUP,
+        for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
+            IntField field = Lazy.ofLocationUpdater(mode, LOOKUP, IntField.class, "count");
+            IntOwnerElement element = Lazy.ofLocationUpdater(mode, LOOKUP,
                     IntOwnerElement.class, "entries");
             Holder first = new Holder();
             Holder second = new Holder();
@@ -517,7 +517,7 @@ public class UseSiteAccessorTest {
 
     @Test
     public void publishOnceLocationFactorySupportsStaticFields() {
-        StaticLongField accessor = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
+        StaticLongField accessor = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, StaticLongField.class, StaticHolder.class.getName() + ".large");
         AtomicInteger computations = new AtomicInteger();
         assertEquals(52L, accessor.get(() -> {
@@ -533,7 +533,7 @@ public class UseSiteAccessorTest {
 
     @Test
     public void useSiteStaticArrayFieldElement() {
-        StaticIntElement accessor = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+        StaticIntElement accessor = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 StaticIntElement.class, StaticHolder.class.getName() + ".entries");
         AtomicInteger computations = new AtomicInteger();
 
@@ -558,12 +558,12 @@ public class UseSiteAccessorTest {
 
     @Test
     public void builtInIntAndLongStaticFieldAccessors() {
-        LazyUpdaters.StaticIntFieldAccessor ints = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                LazyUpdaters.StaticIntFieldAccessor.class,
+        Lazy.StaticIntFieldAccessor ints = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+                Lazy.StaticIntFieldAccessor.class,
                 StaticHolder.class.getName() + ".builtInInt");
-        LazyUpdaters.StaticLongFieldAccessor longs = LazyUpdaters.ofLocation(
-                LazyUpdaters.Mode.SERIALIZED, LOOKUP,
-                LazyUpdaters.StaticLongFieldAccessor.class,
+        Lazy.StaticLongFieldAccessor longs = Lazy.ofLocationUpdater(
+                Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+                Lazy.StaticLongFieldAccessor.class,
                 StaticHolder.class.getName() + ".builtInLong");
         AtomicInteger computations = new AtomicInteger();
 
@@ -590,13 +590,13 @@ public class UseSiteAccessorTest {
 
     @Test
     public void builtInReferenceStaticFieldAccessorsInEveryMode() {
-        for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
+        for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             String fieldName = switch (mode) {
                 case PLAIN -> "referencePlain";
                 case PUBLISH_ONCE -> "referencePublish";
                 case SERIALIZED -> "referenceSerialized";
             };
-            StaticStringAccessor accessor = LazyUpdaters.ofLocation(mode, LOOKUP,
+            StaticStringAccessor accessor = Lazy.ofLocationUpdater(mode, LOOKUP,
                     StaticStringAccessor.class,
                     StaticHolder.class.getName() + "." + fieldName);
             AtomicInteger computations = new AtomicInteger();
@@ -623,10 +623,10 @@ public class UseSiteAccessorTest {
 
     @Test
     public void builtInInstanceFieldAccessorsResolveSpecializedReceivers() {
-        for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
-            HolderIntAccessor ints = LazyUpdaters.ofLocation(mode, LOOKUP,
+        for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
+            HolderIntAccessor ints = Lazy.ofLocationUpdater(mode, LOOKUP,
                     HolderIntAccessor.class, "count");
-            IndirectHolderLongAccessor longs = LazyUpdaters.ofLocation(mode, LOOKUP,
+            IndirectHolderLongAccessor longs = Lazy.ofLocationUpdater(mode, LOOKUP,
                     IndirectHolderLongAccessor.class, "large");
             Holder holder = new Holder();
             AtomicInteger computations = new AtomicInteger();
@@ -655,8 +655,8 @@ public class UseSiteAccessorTest {
 
     @Test
     public void builtInReferenceInstanceFieldAccessorsInEveryMode() {
-        for (LazyUpdaters.Mode mode : LazyUpdaters.Mode.values()) {
-            HolderStringAccessor accessor = LazyUpdaters.ofLocation(mode, LOOKUP,
+        for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
+            HolderStringAccessor accessor = Lazy.ofLocationUpdater(mode, LOOKUP,
                     HolderStringAccessor.class, "text");
             Holder holder = new Holder();
             AtomicInteger computations = new AtomicInteger();
@@ -683,77 +683,77 @@ public class UseSiteAccessorTest {
     @Test
     public void referenceFieldAccessorsRejectIncompatibleStorageAtFactory() {
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         HolderStringAccessor.class, "objectValue"));
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         HolderStringAccessor.class, "count"));
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         StaticStringAccessor.class,
                         StaticHolder.class.getName() + ".objectValue"));
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         StaticStringAccessor.class,
                         StaticHolder.class.getName() + ".builtInInt"));
     }
 
     @Test
     public void parameterizedReferenceFieldTypesAreCheckedAtFactory() {
-        HolderStringListAccessor instance = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+        HolderStringListAccessor instance = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 HolderStringListAccessor.class, "stringList");
         Holder holder = new Holder();
         List<String> instanceValue = List.of("instance");
         assertSame(instanceValue, instance.getOrCompute(receiver -> instanceValue, holder));
         assertSame(instanceValue, holder.stringList);
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         HolderStringListAccessor.class, "integerList"));
 
-        StaticStringListAccessor staticAccessor = LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+        StaticStringListAccessor staticAccessor = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 StaticStringListAccessor.class,
                 StaticHolder.class.getName() + ".stringList");
         List<String> staticValue = List.of("static");
         assertSame(staticValue, staticAccessor.getOrCompute(() -> staticValue));
         assertSame(staticValue, StaticHolder.stringList);
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         StaticStringListAccessor.class,
                         StaticHolder.class.getName() + ".integerList"));
     }
 
     @Test
     public void indirectParameterizedReferenceFieldTypeIsResolved() {
-        IndirectHolderStringListAccessor accessor = LazyUpdaters.ofLocation(
-                LazyUpdaters.Mode.PUBLISH_ONCE,
+        IndirectHolderStringListAccessor accessor = Lazy.ofLocationUpdater(
+                Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, IndirectHolderStringListAccessor.class, "stringList");
         Holder holder = new Holder();
         List<String> value = List.of("indirect");
         assertSame(value, accessor.getOrCompute(receiver -> value, holder));
         assertSame(value, holder.stringList);
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         IndirectHolderStringListAccessor.class, "integerList"));
     }
 
     @Test
     public void indirectWildcardReferenceFieldTypeIsResolved() {
-        IndirectHolderNumberListAccessor accessor = LazyUpdaters.ofLocation(
-                LazyUpdaters.Mode.PUBLISH_ONCE,
+        IndirectHolderNumberListAccessor accessor = Lazy.ofLocationUpdater(
+                Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, IndirectHolderNumberListAccessor.class, "numberList");
         Holder holder = new Holder();
         List<Integer> value = List.of(17);
         assertSame(value, accessor.getOrCompute(receiver -> value, holder));
         assertSame(value, holder.numberList);
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         IndirectHolderNumberListAccessor.class, "stringList"));
     }
 
     @Test
     public void serializedAccessorsShareThePhysicalArrayElement() throws Exception {
-        IntCell firstAccessor = LazyUpdaters.ofArray(LazyUpdaters.Mode.SERIALIZED, IntCell.class);
-        IntCell secondAccessor = LazyUpdaters.ofArray(LazyUpdaters.Mode.SERIALIZED, IntCell.class);
+        IntCell firstAccessor = Lazy.ofArrayUpdater(Lazy.UpdaterMode.SERIALIZED, IntCell.class);
+        IntCell secondAccessor = Lazy.ofArrayUpdater(Lazy.UpdaterMode.SERIALIZED, IntCell.class);
         int[] row = new int[1];
         int[][] first = { row };
         int[][] alias = { row };
@@ -813,56 +813,56 @@ public class UseSiteAccessorTest {
     @SuppressWarnings("rawtypes")
     public void rawGenericInterfacesExplainHowToAvoidErasure() {
         String intField = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                        LazyUpdaters.IntFieldAccessor.class, "count"),
-                LazyUpdaters.IntFieldAccessor.class);
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+                        Lazy.IntFieldAccessor.class, "count"),
+                Lazy.IntFieldAccessor.class);
         assertTrue(intField.contains("extends intfieldaccessor<"), () -> intField);
 
         String longField = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                        LazyUpdaters.LongFieldAccessor.class, "large"),
-                LazyUpdaters.LongFieldAccessor.class);
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+                        Lazy.LongFieldAccessor.class, "large"),
+                Lazy.LongFieldAccessor.class);
         assertTrue(longField.contains("extends longfieldaccessor<"), () -> longField);
 
         String referenceArray = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofArray(
-                        LazyUpdaters.Mode.PUBLISH_ONCE,
-                        LazyUpdaters.ReferenceArrayAccessor.class),
-                LazyUpdaters.ReferenceArrayAccessor.class);
+                () -> Lazy.ofArrayUpdater(
+                        Lazy.UpdaterMode.PUBLISH_ONCE,
+                        Lazy.ReferenceArrayAccessor.class),
+                Lazy.ReferenceArrayAccessor.class);
         assertTrue(referenceArray.contains("extends referencearrayaccessor<"),
                 () -> referenceArray);
 
         String staticReference = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                        LazyUpdaters.StaticReferenceFieldAccessor.class,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+                        Lazy.StaticReferenceFieldAccessor.class,
                         StaticHolder.class.getName() + ".referencePlain"),
-                LazyUpdaters.StaticReferenceFieldAccessor.class);
+                Lazy.StaticReferenceFieldAccessor.class);
         assertTrue(staticReference.contains("extends staticreferencefieldaccessor<"),
                 () -> staticReference);
 
         String referenceField = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
-                        LazyUpdaters.ReferenceFieldAccessor.class, "text"),
-                LazyUpdaters.ReferenceFieldAccessor.class);
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+                        Lazy.ReferenceFieldAccessor.class, "text"),
+                Lazy.ReferenceFieldAccessor.class);
         assertTrue(referenceField.contains("extends referencefieldaccessor<"),
                 () -> referenceField);
 
         String genericUseSiteField = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP, GenericIntField.class, "count"),
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, GenericIntField.class, "count"),
                 GenericIntField.class);
         assertTrue(genericUseSiteField.contains("non-generic interface")
                 && genericUseSiteField.contains("concrete parameter"),
                 () -> genericUseSiteField);
 
         String genericUseSiteArray = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, GenericIntArray.class),
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, GenericIntArray.class),
                 GenericIntArray.class);
         assertTrue(genericUseSiteArray.contains("non-generic interface")
                 && genericUseSiteArray.contains("concrete parameter"),
                 () -> genericUseSiteArray);
 
         String genericDeclarationField = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP, GenericDeclaredIntField.class,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, GenericDeclaredIntField.class,
                         "count", (GenericDeclaredIntField) receiver -> 3),
                 GenericDeclaredIntField.class);
         assertTrue(genericDeclarationField.contains("non-generic interface")
@@ -870,7 +870,7 @@ public class UseSiteAccessorTest {
                 () -> genericDeclarationField);
 
         String genericDeclarationArray = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, GenericDeclaredIntArray.class,
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, GenericDeclaredIntArray.class,
                         (GenericDeclaredIntArray) (array, index) -> 3),
                 GenericDeclaredIntArray.class);
         assertTrue(genericDeclarationArray.contains("non-generic interface")
@@ -881,14 +881,14 @@ public class UseSiteAccessorTest {
     @Test
     public void hiddenTypeVariablesAlsoExplainHowToAvoidErasure() {
         String inherited = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP, RawInheritedIntField.class,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, RawInheritedIntField.class,
                         "count", (RawInheritedIntField) receiver -> 3),
                 RawInheritedIntField.class);
         assertTrue(inherited.contains("non-generic interface")
                 && inherited.contains("concrete parameter"), () -> inherited);
 
         String specialized = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         SpecializedGenericDeclaredIntField.class, "count",
                         (SpecializedGenericDeclaredIntField) receiver -> 3),
                 SpecializedGenericDeclaredIntField.class);
@@ -896,19 +896,19 @@ public class UseSiteAccessorTest {
                 && specialized.contains("concrete parameter"), () -> specialized);
 
         String methodLocal = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, MethodGenericIntArray.class),
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, MethodGenericIntArray.class),
                 MethodGenericIntArray.class);
         assertTrue(methodLocal.contains("non-generic interface")
                 && methodLocal.contains("concrete parameter"), () -> methodLocal);
 
         String callback = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, RawComputerIntArray.class),
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, RawComputerIntArray.class),
                 GenericArrayComputer.class);
         assertTrue(callback.contains("non-generic interface")
                 && callback.contains("concrete parameter"), () -> callback);
 
         String fixedCallback = assertErasureDiagnostic(
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, FixedCallbackIntArray.class),
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, FixedCallbackIntArray.class),
                 FixedCallbackIntArray.class);
         assertTrue(fixedCallback.contains("non-generic interface")
                 && fixedCallback.contains("concrete parameter"),
@@ -919,26 +919,26 @@ public class UseSiteAccessorTest {
     @SuppressWarnings("rawtypes")
     public void factoriesRejectInvalidUseSiteShapes() {
         assertThrows(NullPointerException.class,
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, (Class<IntCell>) null));
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, (Class<IntCell>) null));
         assertThrows(NullPointerException.class,
-                () -> LazyUpdaters.ofArray((LazyUpdaters.Mode) null, IntCell.class));
+                () -> Lazy.ofArrayUpdater((Lazy.UpdaterMode) null, IntCell.class));
         assertThrows(NullPointerException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                         null, IntField.class, "count"));
         assertThrows(NullPointerException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP, IntField.class, null));
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, IntField.class, null));
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, NoComputer.class));
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, NoComputer.class));
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, WrongComputerArguments.class));
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, WrongComputerArguments.class));
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, VoidComputer.class));
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, VoidComputer.class));
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofArray(LazyUpdaters.Mode.PUBLISH_ONCE, TooManyIndices.class));
+                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, TooManyIndices.class));
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, LOOKUP, IntField.class, "missing"));
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, IntField.class, "missing"));
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE,
-                        LOOKUP, LazyUpdaters.IntFieldAccessor.class, "count"));
+                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+                        LOOKUP, Lazy.IntFieldAccessor.class, "count"));
     }
 }

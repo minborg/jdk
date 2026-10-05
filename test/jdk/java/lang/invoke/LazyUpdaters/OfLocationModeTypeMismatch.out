@@ -1,0 +1,4 @@
+OfLocationModeTypeMismatch.java:39:13: compiler.err.cant.apply.symbols: kindname.method, ofLocationUpdater, java.lang.util.Lazy.CacheMode,java.lang.invoke.MethodHandles.Lookup,java.lang.Class<java.util.function.IntSupplier>,java.lang.String,@41:72,{(compiler.misc.inapplicable.method: kindname.method, java.lang.util.Lazy, <T>ofLocationUpdater(java.lang.util.Lazy.UpdaterMode,java.lang.invoke.MethodHandles.Lookup,java.lang.Class<T>,java.lang.String,T), (compiler.misc.infer.no.conforming.assignment.exists: T, (compiler.misc.inconvertible.types: java.lang.util.Lazy.CacheMode, java.lang.util.Lazy.UpdaterMode))),(compiler.misc.inapplicable.method: kindname.method, java.lang.util.Lazy, <T>ofLocationUpdater(java.lang.util.Lazy.UpdaterMode,java.lang.invoke.MethodHandles.Lookup,java.lang.Class<T>,java.lang.String), (compiler.misc.infer.arg.length.mismatch: T))}
+- compiler.note.preview.filename: OfLocationModeTypeMismatch.java, DEFAULT
+- compiler.note.preview.recompile
+1 error

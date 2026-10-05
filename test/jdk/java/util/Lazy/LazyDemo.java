@@ -28,11 +28,11 @@
  * @run junit LazyDemo
  */
 
-import org.junit.jupiter.api.Test;
-
-import java.lang.invoke.LazyUpdaters;
 import java.lang.invoke.MethodHandles;
+import java.lang.util.Lazy;
 import java.util.function.IntSupplier;
+
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -44,12 +44,12 @@ public class LazyDemo {
         }
 
         private static final ToDoubleFunctionPoint LAZY_RADIUS =
-                LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+                Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, MethodHandles.lookup(),
                         ToDoubleFunctionPoint.class, "radius",
                         p -> Math.hypot(p.x, p.y));
 
         private static final ToDoubleFunctionPoint LAZY_PHI =
-                LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+                Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, MethodHandles.lookup(),
                         ToDoubleFunctionPoint.class, "phi",
                         p -> Math.atan2(p.y, p.x));
 
@@ -78,7 +78,7 @@ public class LazyDemo {
         private MeaningOfLife() { throw new RuntimeException(); }
 
         private static final IntSupplier LAZY_MEANING_OF_LIFE =
-                LazyUpdaters.ofLocation(LazyUpdaters.Mode.PUBLISH_ONCE, MethodHandles.lookup(),
+                Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, MethodHandles.lookup(),
                         IntSupplier.class,
                         MeaningOfLife.class.getName() + ".meaningOfLife",
                         () -> 42);

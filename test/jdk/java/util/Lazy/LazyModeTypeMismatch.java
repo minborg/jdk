@@ -23,16 +23,15 @@
 
 /*
  * @test
- * @summary An updater mode cannot be passed to LazyCaches factories
+ * @summary An updater mode cannot be passed to Lazy cache factories
  * @enablePreview
- * @compile/fail LazyModeTypeMismatch.java
+ * @compile/fail/ref=LazyModeTypeMismatch.out -XDrawDiagnostics LazyModeTypeMismatch.java
  */
 
-import java.lang.invoke.LazyUpdaters;
-import java.util.LazyCaches;
+import java.lang.util.Lazy;
 
 class LazyModeTypeMismatch {
     void test() {
-        LazyCaches.ofScalar(LazyUpdaters.Mode.PUBLISH_ONCE, Object::new);
+        Lazy.ofScalarCache(Lazy.UpdaterMode.PUBLISH_ONCE, Object::new);
     }
 }

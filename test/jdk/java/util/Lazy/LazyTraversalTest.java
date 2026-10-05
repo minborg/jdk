@@ -28,14 +28,14 @@
  * @run junit LazyTraversalTest
  */
 
+import java.lang.util.Lazy;
+import java.lang.util.Lazy.CacheMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LazyCaches;
-import java.util.LazyCaches.Mode;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -48,7 +48,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import static java.util.LazyCaches.Mode.COMPUTE_ONCE;
+import static java.lang.util.Lazy.CacheMode.COMPUTE_ONCE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LazyTraversalTest {
@@ -57,19 +57,19 @@ class LazyTraversalTest {
     enum Shape {
         LIST, SUBLIST, REVERSED, MAP_VALUES, ENUM_MAP_VALUES, SET, ENUM_SET;
 
-        Collection<?> create(Mode mode, IntFunction<Integer> computation) {
+        Collection<?> create(CacheMode mode, IntFunction<Integer> computation) {
             return switch (this) {
-                case LIST -> LazyCaches.ofList(mode, 3, computation);
-                case SUBLIST -> LazyCaches.ofList(mode, 5,
+                case LIST -> Lazy.ofListCache(mode, 3, computation);
+                case SUBLIST -> Lazy.ofListCache(mode, 5,
                         index -> computation.apply(index - 1)).subList(1, 4);
-                case REVERSED -> LazyCaches.ofList(mode, 3,
+                case REVERSED -> Lazy.ofListCache(mode, 3,
                         index -> computation.apply(2 - index)).reversed();
-                case MAP_VALUES -> LazyCaches.ofMap(mode, Set.of(0, 1, 2), computation::apply).values();
-                case ENUM_MAP_VALUES -> LazyCaches.ofMap(mode, EnumSet.allOf(Key.class),
+                case MAP_VALUES -> Lazy.ofMapCache(mode, Set.of(0, 1, 2), computation::apply).values();
+                case ENUM_MAP_VALUES -> Lazy.ofMapCache(mode, EnumSet.allOf(Key.class),
                         key -> computation.apply(key.ordinal())).values();
-                case SET -> LazyCaches.ofSet(mode, Set.of(0, 1, 2),
+                case SET -> Lazy.ofSetCache(mode, Set.of(0, 1, 2),
                         key -> computation.apply(key) >= 0);
-                case ENUM_SET -> LazyCaches.ofSet(mode, EnumSet.allOf(Key.class),
+                case ENUM_SET -> Lazy.ofSetCache(mode, EnumSet.allOf(Key.class),
                         key -> computation.apply(key.ordinal()) >= 0);
             };
         }
@@ -85,12 +85,12 @@ class LazyTraversalTest {
 
     static Stream<Arguments> shapesAndModes() {
         return Arrays.stream(Shape.values()).flatMap(shape ->
-                Arrays.stream(Mode.values()).map(mode -> Arguments.of(shape, mode)));
+                Arrays.stream(CacheMode.values()).map(mode -> Arguments.of(shape, mode)));
     }
 
     static Stream<Arguments> listShapesAndModes() {
         return Stream.of(Shape.LIST, Shape.SUBLIST, Shape.REVERSED).flatMap(shape ->
-                Arrays.stream(Mode.values()).flatMap(mode ->
+                Arrays.stream(CacheMode.values()).flatMap(mode ->
                         Stream.of(Arguments.of(shape, mode, false), Arguments.of(shape, mode, true))));
     }
 
@@ -115,7 +115,7 @@ class LazyTraversalTest {
             return index;
         }
 
-        void assertFirstFailure(Mode mode, Executable operation) {
+        void assertFirstFailure(CacheMode mode, Executable operation) {
             if (mode == COMPUTE_ONCE) {
                 assertSame(failure, assertThrows(NoSuchElementException.class, operation).getCause());
             } else {
@@ -137,7 +137,7 @@ class LazyTraversalTest {
 
     @ParameterizedTest
     @MethodSource("shapesAndModes")
-    void iteratorNextDoesNotSkipAFailedValue(Shape shape, Mode mode) {
+    void iteratorNextDoesNotSkipAFailedValue(Shape shape, CacheMode mode) {
         Computation computation = new Computation(2);
         Iterator<?> iterator = shape.create(mode, computation).iterator();
         List<Object> seen = new ArrayList<>();
@@ -151,7 +151,7 @@ class LazyTraversalTest {
 
     @ParameterizedTest
     @MethodSource("shapesAndModes")
-    void iteratorBulkTraversalDoesNotSkipAFailedValue(Shape shape, Mode mode) {
+    void iteratorBulkTraversalDoesNotSkipAFailedValue(Shape shape, CacheMode mode) {
         Computation computation = new Computation(2);
         Iterator<?> iterator = shape.create(mode, computation).iterator();
         List<Object> seen = new ArrayList<>();
@@ -159,7 +159,7 @@ class LazyTraversalTest {
         finishIterator(shape, mode, computation, iterator, seen);
     }
 
-    private static void finishIterator(Shape shape, Mode mode, Computation computation,
+    private static void finishIterator(Shape shape, CacheMode mode, Computation computation,
                                        Iterator<?> iterator, List<Object> seen) {
         if (mode == COMPUTE_ONCE) {
             computation.assertRecordedFailure(() -> iterator.forEachRemaining(seen::add));
@@ -175,7 +175,7 @@ class LazyTraversalTest {
 
     @ParameterizedTest
     @MethodSource("listShapesAndModes")
-    void failedListIteratorMovementLeavesItsCursorUnchanged(Shape shape, Mode mode, boolean backwards) {
+    void failedListIteratorMovementLeavesItsCursorUnchanged(Shape shape, CacheMode mode, boolean backwards) {
         Computation computation = new Computation(1);
         List<?> list = (List<?>) shape.create(mode, computation);
         int cursor = backwards ? 2 : 1;
@@ -198,7 +198,7 @@ class LazyTraversalTest {
 
     @ParameterizedTest
     @MethodSource("shapesAndModes")
-    void failedTryAdvanceDoesNotInvokeItsActionOrConsumeTheValue(Shape shape, Mode mode) {
+    void failedTryAdvanceDoesNotInvokeItsActionOrConsumeTheValue(Shape shape, CacheMode mode) {
         Computation computation = new Computation(2);
         Spliterator<?> spliterator = shape.create(mode, computation).spliterator();
         List<Object> seen = new ArrayList<>();
@@ -217,7 +217,7 @@ class LazyTraversalTest {
 
     @ParameterizedTest
     @MethodSource("shapesAndModes")
-    void spliteratorBulkTraversalDoesNotSkipAFailedValue(Shape shape, Mode mode) {
+    void spliteratorBulkTraversalDoesNotSkipAFailedValue(Shape shape, CacheMode mode) {
         Computation computation = new Computation(2);
         Spliterator<?> spliterator = shape.create(mode, computation).spliterator();
         List<Object> seen = new ArrayList<>();
@@ -225,7 +225,7 @@ class LazyTraversalTest {
         finishSpliterator(shape, mode, computation, spliterator, seen);
     }
 
-    private static void finishSpliterator(Shape shape, Mode mode, Computation computation,
+    private static void finishSpliterator(Shape shape, CacheMode mode, Computation computation,
                                           Spliterator<?> spliterator, List<Object> seen) {
         if (mode == COMPUTE_ONCE) {
             computation.assertRecordedFailure(() -> spliterator.forEachRemaining(seen::add));
@@ -241,7 +241,7 @@ class LazyTraversalTest {
 
     @ParameterizedTest
     @MethodSource("shapesAndModes")
-    void aSplitThatComputesAndFailsKeepsTheOriginalCoverage(Shape shape, Mode mode) {
+    void aSplitThatComputesAndFailsKeepsTheOriginalCoverage(Shape shape, CacheMode mode) {
         Computation computation = new Computation(2);
         Spliterator<?> original = shape.create(mode, computation).spliterator();
         Spliterator<?> prefix;

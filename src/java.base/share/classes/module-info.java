@@ -91,6 +91,7 @@ module java.base {
     exports java.lang.ref;
     exports java.lang.reflect;
     exports java.lang.runtime;
+    exports java.lang.util;
     exports java.math;
     exports java.net;
     exports java.net.spi;

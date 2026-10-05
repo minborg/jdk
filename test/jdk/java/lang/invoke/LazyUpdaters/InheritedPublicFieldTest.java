@@ -29,8 +29,8 @@
  * @run junit/othervm InheritedPublicFieldTest
  */
 
-import java.lang.invoke.LazyUpdaters;
 import java.lang.invoke.MethodHandles;
+import java.lang.util.Lazy;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntSupplier;
 import java.util.function.IntUnaryOperator;
@@ -51,8 +51,8 @@ public class InheritedPublicFieldTest {
     @Test
     public void publicInstanceFieldInheritedFromInaccessibleParent() {
         AtomicInteger computations = new AtomicInteger();
-        InstanceValue updater = LazyUpdaters.ofLocation(
-                LazyUpdaters.Mode.PUBLISH_ONCE,
+        InstanceValue updater = Lazy.ofLocationUpdater(
+                Lazy.UpdaterMode.PUBLISH_ONCE,
                 MethodHandles.publicLookup(), InstanceValue.class, "value",
                 receiver -> computations.incrementAndGet() + 40);
         PublicSubclass first = new PublicSubclass();
@@ -69,8 +69,8 @@ public class InheritedPublicFieldTest {
     @Test
     public void publicStaticFieldInheritedFromInaccessibleParent() {
         AtomicInteger computations = new AtomicInteger();
-        IntSupplier updater = LazyUpdaters.ofLocation(
-                LazyUpdaters.Mode.PUBLISH_ONCE,
+        IntSupplier updater = Lazy.ofLocationUpdater(
+                Lazy.UpdaterMode.PUBLISH_ONCE,
                 MethodHandles.lookup(), IntSupplier.class,
                 PublicSubclass.class.getName() + ".staticValue",
                 () -> computations.incrementAndGet() + 70);
@@ -84,8 +84,8 @@ public class InheritedPublicFieldTest {
     @Test
     public void staticArrayFieldInheritedFromInaccessibleInterface() {
         AtomicInteger computations = new AtomicInteger();
-        IntUnaryOperator updater = LazyUpdaters.ofLocation(
-                LazyUpdaters.Mode.PUBLISH_ONCE,
+        IntUnaryOperator updater = Lazy.ofLocationUpdater(
+                Lazy.UpdaterMode.PUBLISH_ONCE,
                 MethodHandles.lookup(), IntUnaryOperator.class,
                 PublicSubclass.class.getName() + ".ARRAY",
                 index -> {
@@ -105,8 +105,8 @@ public class InheritedPublicFieldTest {
     public void ambiguousInheritedArrayFieldIsRejected() {
         AtomicInteger computations = new AtomicInteger();
         assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(
-                        LazyUpdaters.Mode.PUBLISH_ONCE,
+                () -> Lazy.ofLocationUpdater(
+                        Lazy.UpdaterMode.PUBLISH_ONCE,
                         MethodHandles.lookup(), IntUnaryOperator.class,
                         PublicSubclass.Ambiguous.class.getName() + ".DUPLICATE",
                         index -> computations.incrementAndGet()));
@@ -118,8 +118,8 @@ public class InheritedPublicFieldTest {
     public void protectedFieldIsStillInaccessible() {
         AtomicInteger computations = new AtomicInteger();
         IllegalArgumentException denied = assertThrows(IllegalArgumentException.class,
-                () -> LazyUpdaters.ofLocation(
-                        LazyUpdaters.Mode.PUBLISH_ONCE,
+                () -> Lazy.ofLocationUpdater(
+                        Lazy.UpdaterMode.PUBLISH_ONCE,
                         MethodHandles.publicLookup(), InstanceValue.class,
                         "protectedValue", receiver -> computations.incrementAndGet()));
 

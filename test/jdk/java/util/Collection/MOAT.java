@@ -55,12 +55,14 @@
  */
 
 import java.io.*;
+import java.lang.reflect.*;
+import java.lang.util.Lazy;
 import java.util.*;
 import java.util.concurrent.*;
-import static java.util.Collections.*;
-import java.lang.reflect.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.util.Collections.*;
 
 public class MOAT {
     // Collections under test must not be initialized to contain this value,
@@ -399,11 +401,11 @@ public class MOAT {
             testMapMutatorsAlwaysThrow(map);
         }
 
-        // LazyCaches factories and their views obey the ordinary collection contracts
+        // Lazy cache factories and their views obey the ordinary collection contracts
         // in both initialization modes.
-        for (LazyCaches.Mode mode : LazyCaches.Mode.values()) {
+        for (Lazy.CacheMode mode : Lazy.CacheMode.values()) {
             for (int size : new int[] { 0, 1, 3 }) {
-                List<Integer> lazyList = LazyCaches.ofList(mode, size, i -> i + 1);
+                List<Integer> lazyList = Lazy.ofListCache(mode, size, i -> i + 1);
                 for (List<Integer> list : List.of(lazyList, lazyList.reversed(),
                         lazyList.subList(0, size), lazyList.reversed().subList(0, size))) {
                     testCollection(list);
@@ -416,8 +418,8 @@ public class MOAT {
                     }
                 }
                 Set<Integer> keys = Set.copyOf(List.of(1, 2, 3).subList(0, size));
-                for (Set<Integer> set : List.of(LazyCaches.ofSet(mode, keys, _ -> true),
-                        LazyCaches.ofSet(mode, keys, i -> i % 2 == 0))) {
+                for (Set<Integer> set : List.of(Lazy.ofSetCache(mode, keys, _ -> true),
+                        Lazy.ofSetCache(mode, keys, i -> i % 2 == 0))) {
                     testCollection(set);
                     testImmutableSet(set, 99);
                     testCollMutatorsAlwaysThrow(set);
@@ -426,7 +428,7 @@ public class MOAT {
                         testEmptyCollMutatorsAlwaysThrow(set);
                     }
                 }
-                Map<Integer,Integer> map = LazyCaches.ofMap(mode, keys, k -> k + 100);
+                Map<Integer,Integer> map = Lazy.ofMapCache(mode, keys, k -> k + 100);
                 testMap(map);
                 testImmutableMap(map);
                 testMapMutatorsAlwaysThrow(map);

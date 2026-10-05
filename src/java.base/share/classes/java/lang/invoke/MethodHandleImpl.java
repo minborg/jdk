@@ -45,6 +45,7 @@ import java.lang.classfile.ClassFile;
 import java.lang.constant.ClassDesc;
 import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.util.Lazy;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -1541,6 +1542,15 @@ abstract class MethodHandleImpl {
 
     static {
         SharedSecrets.setJavaLangInvokeAccess(new JavaLangInvokeAccess() {
+            @Override
+            @CallerSensitive
+            public Lookup lookupForLazyCaller(Class<?> caller) {
+                if (Reflection.getCallerClass() != Lazy.class) {
+                    throw new IllegalCallerException("Only Lazy may request a caller lookup");
+                }
+                return new Lookup(Objects.requireNonNull(caller));
+            }
+
             @Override
             public Class<?> getDeclaringClass(Object rmname) {
                 ResolvedMethodName method = (ResolvedMethodName)rmname;

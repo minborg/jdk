@@ -29,6 +29,7 @@ import jdk.internal.foreign.abi.NativeEntryPoint;
 
 import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Constructor;
@@ -40,6 +41,14 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 public interface JavaLangInvokeAccess {
+    /**
+     * Returns a full-privilege lookup for a caller identified by a trusted
+     * caller-sensitive entry point. The implementation must reject calls from
+     * other entry points; the {@code caller} argument must not be trusted by
+     * itself.
+     */
+    MethodHandles.Lookup lookupForLazyCaller(Class<?> caller);
+
     /**
      * Returns the declaring class for the given ResolvedMethodName.
      * Used by {@code StackFrameInfo}.

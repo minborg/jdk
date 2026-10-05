@@ -25,7 +25,8 @@
 
 package jdk.internal.util;
 
-import java.util.LazyCaches;
+import java.lang.util.Lazy.CacheMode;
+import java.lang.util.Lazy.InitializationError;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Function;
@@ -39,12 +40,12 @@ import jdk.internal.vm.annotation.Stable;
 public final class LazySupport {
     private LazySupport() { }
 
-    public static <T> Supplier<T> ofSupplier(LazyCaches.Mode mode,
+    public static <T> Supplier<T> ofSupplier(CacheMode mode,
                                              Supplier<? extends T> function) {
         return new LazySupplier<>(mode, function);
     }
 
-    public static <C, T> Function<C, T> ofContext(LazyCaches.Mode mode,
+    public static <C, T> Function<C, T> ofContext(CacheMode mode,
                                                    Function<? super C, ? extends T> function) {
         return new LazyFunction<>(mode, function);
     }
@@ -54,7 +55,7 @@ public final class LazySupport {
         private static final long VALUE_OFFSET =
                 U.objectFieldOffset(LazyValue.class, "value");
 
-        private final LazyCaches.Mode mode;
+        private final CacheMode mode;
 
         // Installed once and accessed with acquire/release semantics. Reads may
         // be folded provided the installed value's publication is preserved.
@@ -69,7 +70,7 @@ public final class LazySupport {
         private boolean failureIsError;
         private Thread computingThread;
 
-        LazyValue(LazyCaches.Mode mode, F function) {
+        LazyValue(CacheMode mode, F function) {
             this.mode = mode;
             this.function = function;
         }
@@ -82,7 +83,7 @@ public final class LazySupport {
             if (result != null) {
                 return result;
             }
-            return mode == LazyCaches.Mode.COMPUTE_ONCE
+            return mode == CacheMode.COMPUTE_ONCE
                     ? getExactlyOnce(context) : getRacing(context);
         }
 
@@ -98,7 +99,7 @@ public final class LazySupport {
                 return result;
             }
             if (failureIsError) {
-                throw new LazyCaches.InitializationError(
+                throw new InitializationError(
                         "Lazy initialization previously failed with "
                                 + (failure != null ? failure : "an Error"));
             }
@@ -162,7 +163,7 @@ public final class LazySupport {
     private static final class LazySupplier<T>
             extends LazyValue<Void, Supplier<? extends T>, T>
             implements Supplier<T> {
-        LazySupplier(LazyCaches.Mode mode, Supplier<? extends T> function) {
+        LazySupplier(CacheMode mode, Supplier<? extends T> function) {
             super(mode, function);
         }
 
@@ -180,7 +181,7 @@ public final class LazySupport {
     private static final class LazyFunction<C, T>
             extends LazyValue<C, Function<? super C, ? extends T>, T>
             implements Function<C, T> {
-        LazyFunction(LazyCaches.Mode mode, Function<? super C, ? extends T> function) {
+        LazyFunction(CacheMode mode, Function<? super C, ? extends T> function) {
             super(mode, function);
         }
 

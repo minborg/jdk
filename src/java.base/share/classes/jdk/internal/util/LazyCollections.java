@@ -26,6 +26,8 @@
 package jdk.internal.util;
 
 import java.lang.reflect.Array;
+import java.lang.util.Lazy.CacheMode;
+import java.lang.util.Lazy.InitializationError;
 import java.util.AbstractCollection;
 import java.util.AbstractMap;
 import java.util.BitSet;
@@ -33,7 +35,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.Iterator;
-import java.util.LazyCaches;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -520,7 +521,7 @@ public final class LazyCollections {
 
         @Stable
         private final E[] elements;
-        private final LazyCaches.Mode mode;
+        private final CacheMode mode;
         // Keeping track of `size` separately reduces bytecode size compared to
         // using `elements.length`.
         private final int size;
@@ -528,15 +529,15 @@ public final class LazyCollections {
         private final Mutexes mutexes;
         private final Throwables throwables;
 
-        private LazyList(LazyCaches.Mode mode, int size,
+        private LazyList(CacheMode mode, int size,
                          IntFunction<? extends E> computingFunction) {
             this.elements = newGenericArray(size);
             this.mode = mode;
             this.size = size;
             this.functionHolder = new FunctionHolder<>(computingFunction, size);
-            this.mutexes = mode == LazyCaches.Mode.PUBLISH_ONCE ? null : new Mutexes(size);
-            this.throwables = mode == LazyCaches.Mode.PUBLISH_ONCE ? null
-                    : new Throwables(size, mode == LazyCaches.Mode.COMPUTE_ONCE);
+            this.mutexes = mode == CacheMode.PUBLISH_ONCE ? null : new Mutexes(size);
+            this.throwables = mode == CacheMode.PUBLISH_ONCE ? null
+                    : new Throwables(size, mode == CacheMode.COMPUTE_ONCE);
             super();
         }
 
@@ -553,7 +554,7 @@ public final class LazyCollections {
         }
 
         private E getSlowPath(int i) {
-            if (mode == LazyCaches.Mode.PUBLISH_ONCE) {
+            if (mode == CacheMode.PUBLISH_ONCE) {
                 return orElseComputeRacy(elements, i, i, functionHolder, true);
             }
             return orElseComputeSlowPath(elements,
@@ -623,7 +624,7 @@ public final class LazyCollections {
         private final Integer min;
         private final IntPredicate member;
 
-        public LazyEnumMap(LazyCaches.Mode mode,
+        public LazyEnumMap(CacheMode mode,
                            Set<K> set,
                            Class<K> enumType,
                            int min,
@@ -681,7 +682,7 @@ public final class LazyCollections {
         @Stable
         private final K[] keysByIndex;
 
-        public LazyMap(LazyCaches.Mode mode, Set<K> keys,
+        public LazyMap(CacheMode mode, Set<K> keys,
                        Function<? super K, ? extends V> computingFunction) {
             @SuppressWarnings("unchecked")
             final Entry<K, Integer>[] entries = (Entry<K, Integer>[]) new Entry<?, ?>[keys.size()];
@@ -736,7 +737,7 @@ public final class LazyCollections {
         // This field shadows AbstractMap.values which is of another type
         @Stable
         private final V[] values;
-        private final LazyCaches.Mode mode;
+        private final CacheMode mode;
         @Stable
         private final K[] iterationKeys;
         // This field shadows AbstractMap.keySet which is not trusted
@@ -747,7 +748,7 @@ public final class LazyCollections {
         @Stable
         private long hash;
 
-        private AbstractLazyMap(LazyCaches.Mode mode,
+        private AbstractLazyMap(CacheMode mode,
                                 Set<K> keySet,
                                 int size,
                                 int backingSize,
@@ -757,9 +758,9 @@ public final class LazyCollections {
             this.values = newGenericArray(backingSize);
             this.mode = mode;
             this.iterationKeys = mode == null ? null : keySet.toArray(newGenericArray(size));
-            this.mutexes = mode == LazyCaches.Mode.PUBLISH_ONCE ? null : new Mutexes(backingSize);
-            this.throwables = mode == LazyCaches.Mode.PUBLISH_ONCE ? null
-                    : new Throwables(backingSize, mode == LazyCaches.Mode.COMPUTE_ONCE);
+            this.mutexes = mode == CacheMode.PUBLISH_ONCE ? null : new Mutexes(backingSize);
+            this.throwables = mode == CacheMode.PUBLISH_ONCE ? null
+                    : new Throwables(backingSize, mode == CacheMode.COMPUTE_ONCE);
             super();
             this.keySet = mode == null ? keySet : new LazyMapKeySet<>(this);
             this.entrySet = LazyMapEntrySet.of(this);
@@ -831,7 +832,7 @@ public final class LazyCollections {
         @Override
         public final int hashCode() {
             if (mode != null) {
-        // A retained value may itself be mutable. New LazyCaches factories
+                // A retained value may itself be mutable. Lazy cache factories
                 // must reflect its current hash code on every invocation.
                 return hashCode0();
             }
@@ -879,7 +880,7 @@ public final class LazyCollections {
             // distinct lookup object triggered this access. Keep this lookup
             // off the fast path for already initialized values.
             final K retainedKey = canonicalKey(key, index);
-            if (mode == LazyCaches.Mode.PUBLISH_ONCE) {
+            if (mode == CacheMode.PUBLISH_ONCE) {
                 return orElseComputeRacy(values, index, retainedKey, functionHolder, false);
             }
             return orElseComputeSlowPath(values,
@@ -1086,7 +1087,7 @@ public final class LazyCollections {
         @Stable
         private long hash;
 
-        public LazySet(LazyCaches.Mode mode,
+        public LazySet(CacheMode mode,
                        Set<? extends E> elementCandidates,
                        Predicate<? super E> computingFunction) {
             this.map = mode == null
@@ -1465,7 +1466,7 @@ public final class LazyCollections {
     private static void throwIfPreviousException(int index, Throwables throwables, Object input) {
         final var throwable = throwables.get(index);
         if (throwables.isError(index)) {
-            throw new LazyCaches.InitializationError(throwable.isPresent()
+            throw new InitializationError(throwable.isPresent()
                     ? failureMessage(throwable.get(), input)
                     : "Lazy initialization previously failed with an Error");
         }
@@ -1560,7 +1561,7 @@ public final class LazyCollections {
         return new LazyList<>(null, size, computingFunction);
     }
 
-    public static <E> List<E> ofLazyList(LazyCaches.Mode mode, int size,
+    public static <E> List<E> ofLazyList(CacheMode mode, int size,
                                   IntFunction<? extends E> computingFunction) {
         Objects.requireNonNull(mode);
         Objects.requireNonNull(computingFunction);
@@ -1575,7 +1576,7 @@ public final class LazyCollections {
         return new LazyMap<>(null, keys, computingFunction);
     }
 
-    public static <K, V> Map<K, V> ofLazyMap(LazyCaches.Mode mode, Set<? extends K> keys,
+    public static <K, V> Map<K, V> ofLazyMap(CacheMode mode, Set<? extends K> keys,
                                       Function<? super K, ? extends V> computingFunction) {
         Objects.requireNonNull(mode);
         Objects.requireNonNull(computingFunction);
@@ -1590,7 +1591,7 @@ public final class LazyCollections {
         return new LazySet<>(null, elementCandidates, computingFunction);
     }
 
-    public static <E> Set<E> ofLazySet(LazyCaches.Mode mode,
+    public static <E> Set<E> ofLazySet(CacheMode mode,
                                Set<? extends E> elementCandidates,
                                Predicate<? super E> computingFunction) {
         Objects.requireNonNull(mode);
@@ -1604,7 +1605,7 @@ public final class LazyCollections {
     }
 
     @SuppressWarnings("unchecked")
-    private static <K, E extends Enum<E>, V> Map<K, V> ofLazyMapWithEnumKeys(LazyCaches.Mode mode,
+    private static <K, E extends Enum<E>, V> Map<K, V> ofLazyMapWithEnumKeys(CacheMode mode,
                                                                              Set<K> keys,
                                                                              Function<? super K, ? extends V> computingFunction) {
         // The input set is not empty
