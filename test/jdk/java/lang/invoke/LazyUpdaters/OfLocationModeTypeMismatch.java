@@ -23,12 +23,11 @@
 
 /*
  * @test
- * @summary A Lazy cache mode cannot be passed to a lazy updater factory
+ * @summary A Lazy cache mode cannot be passed to a lazy updater builder
  * @enablePreview
  * @compile/fail/ref=OfLocationModeTypeMismatch.out -XDrawDiagnostics OfLocationModeTypeMismatch.java
  */
 
-import java.lang.invoke.MethodHandles;
 import java.lang.util.Lazy;
 import java.util.function.IntSupplier;
 
@@ -36,8 +35,6 @@ class OfLocationModeTypeMismatch {
     private static int value;
 
     void test() {
-        Lazy.ofLocationUpdater(Lazy.CacheMode.PUBLISH_ONCE, MethodHandles.lookup(),
-                IntSupplier.class,
-                OfLocationModeTypeMismatch.class.getName() + ".value", () -> 42);
+        Lazy.ofUpdater(IntSupplier.class).withMode(Lazy.CacheMode.PUBLISH_ONCE);
     }
 }

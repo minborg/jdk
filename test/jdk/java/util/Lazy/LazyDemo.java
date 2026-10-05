@@ -44,14 +44,16 @@ public class LazyDemo {
         }
 
         private static final ToDoubleFunctionPoint LAZY_RADIUS =
-                Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, MethodHandles.lookup(),
-                        ToDoubleFunctionPoint.class, "radius",
-                        p -> Math.hypot(p.x, p.y));
+                Lazy.ofUpdater(ToDoubleFunctionPoint.class)
+                        .withLookup(MethodHandles.lookup())
+                        .withLocation(Point.class, "radius")
+                        .build(p -> Math.hypot(p.x, p.y));
 
         private static final ToDoubleFunctionPoint LAZY_PHI =
-                Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, MethodHandles.lookup(),
-                        ToDoubleFunctionPoint.class, "phi",
-                        p -> Math.atan2(p.y, p.x));
+                Lazy.ofUpdater(ToDoubleFunctionPoint.class)
+                        .withLookup(MethodHandles.lookup())
+                        .withLocation(Point.class, "phi")
+                        .build(p -> Math.atan2(p.y, p.x));
 
         final double x, y;
 
@@ -78,10 +80,10 @@ public class LazyDemo {
         private MeaningOfLife() { throw new RuntimeException(); }
 
         private static final IntSupplier LAZY_MEANING_OF_LIFE =
-                Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, MethodHandles.lookup(),
-                        IntSupplier.class,
-                        MeaningOfLife.class.getName() + ".meaningOfLife",
-                        () -> 42);
+                Lazy.ofUpdater(IntSupplier.class)
+                        .withLookup(MethodHandles.lookup())
+                        .withLocation(MeaningOfLife.class, "meaningOfLife")
+                        .build(() -> 42);
         private static int meaningOfLife;
 
         public static int get() {

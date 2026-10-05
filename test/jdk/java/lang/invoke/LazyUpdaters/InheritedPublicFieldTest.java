@@ -26,6 +26,7 @@
  * @summary Named lazy locations retain inherited-field access through a public subclass
  * @enablePreview
  * @build lazyupdaters.inherited.PublicSubclass
+ * @build UpdaterTestAdapter
  * @run junit/othervm InheritedPublicFieldTest
  */
 
@@ -44,6 +45,14 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class InheritedPublicFieldTest {
+    private static <T> T ofLocationUpdater(Lazy.UpdaterMode mode,
+                                           MethodHandles.Lookup lookup,
+                                           Class<T> type, String selector,
+                                           T computingFunction) {
+        return UpdaterTestAdapter.locationBuilder(mode, lookup, type,
+                selector, PublicSubclass.class).build(computingFunction);
+    }
+
     public interface InstanceValue {
         int get(PublicSubclass receiver);
     }
@@ -51,7 +60,7 @@ public class InheritedPublicFieldTest {
     @Test
     public void publicInstanceFieldInheritedFromInaccessibleParent() {
         AtomicInteger computations = new AtomicInteger();
-        InstanceValue updater = Lazy.ofLocationUpdater(
+        InstanceValue updater = ofLocationUpdater(
                 Lazy.UpdaterMode.PUBLISH_ONCE,
                 MethodHandles.publicLookup(), InstanceValue.class, "value",
                 receiver -> computations.incrementAndGet() + 40);
@@ -69,7 +78,7 @@ public class InheritedPublicFieldTest {
     @Test
     public void publicStaticFieldInheritedFromInaccessibleParent() {
         AtomicInteger computations = new AtomicInteger();
-        IntSupplier updater = Lazy.ofLocationUpdater(
+        IntSupplier updater = ofLocationUpdater(
                 Lazy.UpdaterMode.PUBLISH_ONCE,
                 MethodHandles.lookup(), IntSupplier.class,
                 PublicSubclass.class.getName() + ".staticValue",
@@ -84,7 +93,7 @@ public class InheritedPublicFieldTest {
     @Test
     public void staticArrayFieldInheritedFromInaccessibleInterface() {
         AtomicInteger computations = new AtomicInteger();
-        IntUnaryOperator updater = Lazy.ofLocationUpdater(
+        IntUnaryOperator updater = ofLocationUpdater(
                 Lazy.UpdaterMode.PUBLISH_ONCE,
                 MethodHandles.lookup(), IntUnaryOperator.class,
                 PublicSubclass.class.getName() + ".ARRAY",
@@ -105,7 +114,7 @@ public class InheritedPublicFieldTest {
     public void ambiguousInheritedArrayFieldIsRejected() {
         AtomicInteger computations = new AtomicInteger();
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(
+                () -> ofLocationUpdater(
                         Lazy.UpdaterMode.PUBLISH_ONCE,
                         MethodHandles.lookup(), IntUnaryOperator.class,
                         PublicSubclass.Ambiguous.class.getName() + ".DUPLICATE",
@@ -118,7 +127,7 @@ public class InheritedPublicFieldTest {
     public void protectedFieldIsStillInaccessible() {
         AtomicInteger computations = new AtomicInteger();
         IllegalArgumentException denied = assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(
+                () -> ofLocationUpdater(
                         Lazy.UpdaterMode.PUBLISH_ONCE,
                         MethodHandles.publicLookup(), InstanceValue.class,
                         "protectedValue", receiver -> computations.incrementAndGet()));

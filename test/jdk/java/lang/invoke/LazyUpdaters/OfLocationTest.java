@@ -26,6 +26,7 @@
  * @summary Lazy location updaters for fields and array elements
  * @enablePreview
  * @build LazyUpdaterLoaderTarget
+ * @build UpdaterTestAdapter
  * @run junit OfLocationTest
  * @run junit/othervm -Xint OfLocationTest
  */
@@ -36,7 +37,6 @@ import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.util.Lazy;
-import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -65,6 +65,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class OfLocationTest {
     private static final Lookup LOOKUP = MethodHandles.lookup();
+
+    private static <T> T ofLocationUpdater(Lazy.UpdaterMode mode,
+                                           Lookup lookup, Class<T> type,
+                                           String selector, T computingFunction) {
+        return UpdaterTestAdapter.locationBuilder(mode, lookup, type,
+                selector, Holder.class).build(computingFunction);
+    }
+
+    private static <T> T ofArrayUpdater(Lazy.UpdaterMode mode,
+                                        Class<T> type, T computingFunction) {
+        return Lazy.ofUpdater(type).withMode(mode).build(computingFunction);
+    }
+
     private static boolean deferredHolderInitialized;
     private static boolean deferredSynchronizedHolderInitialized;
     private static String privateStaticText;
@@ -237,21 +250,21 @@ public class OfLocationTest {
     @Test
     public void primitiveInstanceFields() {
         Holder holder = new Holder();
-        BooleanField flag = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        BooleanField flag = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, BooleanField.class, "flag", h -> true);
-        ByteField octet = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        ByteField octet = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, ByteField.class, "octet", h -> (byte) 12);
-        ShortField small = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        ShortField small = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, ShortField.class, "small", h -> (short) 123);
-        CharField character = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        CharField character = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, CharField.class, "character", h -> 'x');
-        CountField count = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        CountField count = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, CountField.class, "count", h -> 1234);
-        LongField large = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        LongField large = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, LongField.class, "large", h -> 12345L);
-        FloatField fraction = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        FloatField fraction = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, FloatField.class, "fraction", h -> 1.25f);
-        DoubleField radius = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        DoubleField radius = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, DoubleField.class, "radius", h -> 2.5);
 
         for (int i = 0; i < 2; i++) {
@@ -289,7 +302,7 @@ public class OfLocationTest {
 
     private static <R> void checkBoxing(String field, Function<Holder, R> accessor, R result) {
         AtomicInteger computations = new AtomicInteger();
-        BoxedField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, BoxedField.class,
+        BoxedField updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, BoxedField.class,
                 field, h -> {
                     computations.incrementAndGet();
                     return result;
@@ -305,26 +318,26 @@ public class OfLocationTest {
     public void referenceFieldsAndInheritedInterfaces() {
         Holder holder = new Holder();
         String result = new String("computed");
-        StringField covariant = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        StringField covariant = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, StringField.class, "text", h -> result);
         ParentStringField parentView = covariant;
         assertSame(result, covariant.get(holder));
         assertSame(result, parentView.get(holder));
         assertSame(result, holder.text);
 
-        InheritedStringField inherited = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+        InheritedStringField inherited = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 InheritedStringField.class, "text", h -> "inherited");
         assertEquals("inherited", inherited.apply(new Holder()));
         assertSame(result, inherited.apply(holder));
 
         int[] array = { 1, 2, 3 };
-        IntArrayField arrayUpdater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+        IntArrayField arrayUpdater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 IntArrayField.class, "array", h -> array);
         assertSame(array, arrayUpdater.apply(holder));
         assertSame(array, arrayUpdater.apply(holder));
 
         // A boxed zero is an ordinary non-null value in a reference field.
-        DoubleBoxField boxed = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+        DoubleBoxField boxed = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 DoubleBoxField.class, "boxed", h -> 0.0);
         assertEquals(0.0, boxed.apply(holder));
         assertEquals(0.0, holder.boxed);
@@ -333,7 +346,7 @@ public class OfLocationTest {
     @Test
     public void initializationIsLazyAndPerReceiver() {
         AtomicInteger computations = new AtomicInteger();
-        HolderIntFunction updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+        HolderIntFunction updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 HolderIntFunction.class, "count",
                 h -> computations.incrementAndGet());
         assertEquals(0, computations.get());
@@ -351,7 +364,7 @@ public class OfLocationTest {
     @Test
     public void defaultModeSupportsDirectArrayElements() {
         AtomicInteger computations = new AtomicInteger();
-        IntArrayElement updater = Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, IntArrayElement.class,
+        IntArrayElement updater = ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, IntArrayElement.class,
                 (array, index) -> {
                     computations.incrementAndGet();
                     return index + 1;
@@ -366,7 +379,7 @@ public class OfLocationTest {
     @Test
     public void privateArrayComponentNeedsNoLookup() {
         AtomicInteger computations = new AtomicInteger();
-        PrivateElementArrayElement updater = Lazy.ofArrayUpdater(
+        PrivateElementArrayElement updater = ofArrayUpdater(
                 Lazy.UpdaterMode.PUBLISH_ONCE,
                 PrivateElementArrayElement.class, (array, index) -> {
                     computations.incrementAndGet();
@@ -386,7 +399,7 @@ public class OfLocationTest {
                 Lazy.UpdaterMode.PLAIN, Lazy.UpdaterMode.PUBLISH_ONCE,
                 Lazy.UpdaterMode.SERIALIZED }) {
             AtomicInteger computations = new AtomicInteger();
-            IntArrayElement updater = Lazy.ofArrayUpdater(mode, IntArrayElement.class,
+            IntArrayElement updater = ofArrayUpdater(mode, IntArrayElement.class,
                     (array, index) -> {
                         computations.incrementAndGet();
                         return 11 + index;
@@ -413,7 +426,7 @@ public class OfLocationTest {
             assertEquals(3, computations.get());
 
             AtomicInteger attempts = new AtomicInteger();
-            IntArrayElement retry = Lazy.ofArrayUpdater(mode, IntArrayElement.class,
+            IntArrayElement retry = ofArrayUpdater(mode, IntArrayElement.class,
                     (array, index) -> attempts.incrementAndGet() == 1 ? 0 : 7);
             int[] empty = new int[1];
             assertThrows(IllegalArgumentException.class, () -> retry.get(empty, 0));
@@ -428,7 +441,7 @@ public class OfLocationTest {
     public void twoRankArrayElements() {
         for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             AtomicInteger computations = new AtomicInteger();
-            IntArray2DElement updater = Lazy.ofArrayUpdater(mode, IntArray2DElement.class,
+            IntArray2DElement updater = ofArrayUpdater(mode, IntArray2DElement.class,
                     (array, row, column) -> {
                         computations.incrementAndGet();
                         return 100 + 10 * row + column;
@@ -459,7 +472,7 @@ public class OfLocationTest {
             assertEquals(3, computations.get());
 
             AtomicInteger attempts = new AtomicInteger();
-            IntArray2DElement retry = Lazy.ofArrayUpdater(mode, IntArray2DElement.class,
+            IntArray2DElement retry = ofArrayUpdater(mode, IntArray2DElement.class,
                     (array, row, column) -> attempts.incrementAndGet() == 1 ? 0 : 7);
             int[][] empty = { new int[1] };
             assertThrows(IllegalArgumentException.class, () -> retry.get(empty, 0, 0));
@@ -474,7 +487,7 @@ public class OfLocationTest {
     public void threeRankArrayElements() {
         for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             AtomicInteger computations = new AtomicInteger();
-            IntArray3DElement updater = Lazy.ofArrayUpdater(mode, IntArray3DElement.class,
+            IntArray3DElement updater = ofArrayUpdater(mode, IntArray3DElement.class,
                     (array, i0, i1, i2) -> {
                         computations.incrementAndGet();
                         return 1000 + 100 * i0 + 10 * i1 + i2;
@@ -510,7 +523,7 @@ public class OfLocationTest {
             assertEquals(3, computations.get());
 
             AtomicInteger attempts = new AtomicInteger();
-            IntArray3DElement retry = Lazy.ofArrayUpdater(mode, IntArray3DElement.class,
+            IntArray3DElement retry = ofArrayUpdater(mode, IntArray3DElement.class,
                     (array, i0, i1, i2) -> attempts.incrementAndGet() == 1 ? 0 : 7);
             int[][][] empty = { { new int[1] } };
             assertThrows(IllegalArgumentException.class, () -> retry.get(empty, 0, 0, 0));
@@ -525,7 +538,7 @@ public class OfLocationTest {
     public void fourRankArrayElements() {
         for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             AtomicInteger computations = new AtomicInteger();
-            IntArray4DElement updater = Lazy.ofArrayUpdater(mode, IntArray4DElement.class,
+            IntArray4DElement updater = ofArrayUpdater(mode, IntArray4DElement.class,
                     (array, i0, i1, i2, i3) -> {
                         computations.incrementAndGet();
                         return 10000 + 1000 * i0 + 100 * i1 + 10 * i2 + i3;
@@ -546,7 +559,7 @@ public class OfLocationTest {
     public void threeIndicesCanInitializeRowsOfAFourRankArray() {
         for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             AtomicInteger computations = new AtomicInteger();
-            IntArray4DRow updater = Lazy.ofArrayUpdater(mode, IntArray4DRow.class,
+            IntArray4DRow updater = ofArrayUpdater(mode, IntArray4DRow.class,
                     (array, i0, i1, i2) -> {
                         computations.incrementAndGet();
                         return new int[] { 1000 + 100 * i0 + 10 * i1 + i2 };
@@ -570,7 +583,7 @@ public class OfLocationTest {
     public void twoIndicesCanInitializeRowsOfAThreeRankArray() {
         for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             AtomicInteger computations = new AtomicInteger();
-            IntArray3DRow updater = Lazy.ofArrayUpdater(mode, IntArray3DRow.class,
+            IntArray3DRow updater = ofArrayUpdater(mode, IntArray3DRow.class,
                     (array, i0, i1) -> {
                         computations.incrementAndGet();
                         return new int[] { 100 + 10 * i0 + i1, 200 + 10 * i0 + i1 };
@@ -596,7 +609,7 @@ public class OfLocationTest {
     public void oneIndexCanInitializeRowsOfATwoRankArray() {
         for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             AtomicInteger computations = new AtomicInteger();
-            IntArrayRow updater = Lazy.ofArrayUpdater(mode, IntArrayRow.class,
+            IntArrayRow updater = ofArrayUpdater(mode, IntArrayRow.class,
                     (array, row) -> {
                         computations.incrementAndGet();
                         return new int[] { 10 + row, 20 + row };
@@ -617,14 +630,14 @@ public class OfLocationTest {
     public void arrayElementsInFinalOwnerFields() {
         for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             AtomicInteger rowComputations = new AtomicInteger();
-            OwnedIntArrayElement rowUpdater = Lazy.ofLocationUpdater(mode, LOOKUP,
+            OwnedIntArrayElement rowUpdater = ofLocationUpdater(mode, LOOKUP,
                     OwnedIntArrayElement.class, "row",
                     (owner, index) -> {
                         rowComputations.incrementAndGet();
                         return 20 + index;
                     });
             AtomicInteger matrixComputations = new AtomicInteger();
-            OwnedIntArray2DElement matrixUpdater = Lazy.ofLocationUpdater(mode, LOOKUP,
+            OwnedIntArray2DElement matrixUpdater = ofLocationUpdater(mode, LOOKUP,
                     OwnedIntArray2DElement.class, "matrix",
                     (owner, row, column) -> {
                         matrixComputations.incrementAndGet();
@@ -661,7 +674,7 @@ public class OfLocationTest {
     public void threeRankArrayElementsInFinalOwnerField() {
         for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             AtomicInteger computations = new AtomicInteger();
-            OwnedIntArray3DElement updater = Lazy.ofLocationUpdater(mode, LOOKUP,
+            OwnedIntArray3DElement updater = ofLocationUpdater(mode, LOOKUP,
                     OwnedIntArray3DElement.class, "volume",
                     (owner, i0, i1, i2) -> {
                         computations.incrementAndGet();
@@ -693,7 +706,7 @@ public class OfLocationTest {
         for (Lazy.UpdaterMode mode : Lazy.UpdaterMode.values()) {
             AtomicInteger computations = new AtomicInteger();
             String computed = new String("computed");
-            StringArrayElement updater = Lazy.ofArrayUpdater(mode, StringArrayElement.class,
+            StringArrayElement updater = ofArrayUpdater(mode, StringArrayElement.class,
                     (array, index) -> {
                         computations.incrementAndGet();
                         return computed;
@@ -706,7 +719,7 @@ public class OfLocationTest {
             assertEquals(1, computations.get());
 
             AtomicInteger attempts = new AtomicInteger();
-            StringArrayElement retry = Lazy.ofArrayUpdater(mode, StringArrayElement.class,
+            StringArrayElement retry = ofArrayUpdater(mode, StringArrayElement.class,
                     (values, index) -> attempts.incrementAndGet() == 1 ? null : computed);
             String[] empty = new String[1];
             assertThrows(IllegalArgumentException.class, () -> retry.get(empty, 0));
@@ -727,7 +740,7 @@ public class OfLocationTest {
         CountDownLatch aliasStarted = new CountDownLatch(1);
         AtomicInteger firstComputations = new AtomicInteger();
         AtomicInteger aliasComputations = new AtomicInteger();
-        IntArray2DElement updater = Lazy.ofArrayUpdater(Lazy.UpdaterMode.SERIALIZED,
+        IntArray2DElement updater = ofArrayUpdater(Lazy.UpdaterMode.SERIALIZED,
                 IntArray2DElement.class, (array, i0, i1) -> {
                     firstComputations.incrementAndGet();
                     if (i1 == 0) {
@@ -741,7 +754,7 @@ public class OfLocationTest {
                     }
                     return 42 + i1;
                 });
-        IntArray2DElement aliasedUpdater = Lazy.ofArrayUpdater(Lazy.UpdaterMode.SERIALIZED,
+        IntArray2DElement aliasedUpdater = ofArrayUpdater(Lazy.UpdaterMode.SERIALIZED,
                 IntArray2DElement.class, (array, i0, i1) -> {
                     aliasComputations.incrementAndGet();
                     return 99;
@@ -780,9 +793,9 @@ public class OfLocationTest {
     @Test
     public void inheritedAndVolatileFields() {
         Holder holder = new Holder();
-        CountField inherited = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        CountField inherited = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, CountField.class, "inherited", h -> 12);
-        CountField published = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        CountField published = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, CountField.class, "published", h -> 34);
         assertEquals(12, inherited.get(holder));
         assertEquals(12, holder.inherited);
@@ -792,21 +805,21 @@ public class OfLocationTest {
 
     @Test
     public void primitiveStaticFields() {
-        BooleanSupplier flag = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, BooleanSupplier.class,
+        BooleanSupplier flag = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, BooleanSupplier.class,
                 StaticHolder.class.getName() + ".flag", () -> true);
-        ByteSupplier octet = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, ByteSupplier.class,
+        ByteSupplier octet = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, ByteSupplier.class,
                 StaticHolder.class.getName() + ".octet", () -> (byte) 12);
-        ShortSupplier small = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, ShortSupplier.class,
+        ShortSupplier small = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, ShortSupplier.class,
                 StaticHolder.class.getName() + ".small", () -> (short) 123);
-        CharSupplier character = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CharSupplier.class,
+        CharSupplier character = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CharSupplier.class,
                 StaticHolder.class.getName() + ".character", () -> 'x');
-        IntSupplier count = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, IntSupplier.class,
+        IntSupplier count = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, IntSupplier.class,
                 StaticHolder.class.getName() + ".count", () -> 1234);
-        LongSupplier large = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, LongSupplier.class,
+        LongSupplier large = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, LongSupplier.class,
                 StaticHolder.class.getName() + ".large", () -> 12345L);
-        FloatSupplier fraction = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, FloatSupplier.class,
+        FloatSupplier fraction = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, FloatSupplier.class,
                 StaticHolder.class.getName() + ".fraction", () -> 1.25f);
-        DoubleSupplier radius = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, DoubleSupplier.class,
+        DoubleSupplier radius = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, DoubleSupplier.class,
                 StaticHolder.class.getName() + ".radius", () -> 2.5);
         for (int i = 0; i < 2; i++) {
             assertTrue(flag.get());
@@ -826,7 +839,7 @@ public class OfLocationTest {
     public void referenceStaticFields() {
         AtomicInteger computations = new AtomicInteger();
         String result = new String("static");
-        StaticStringSupplier updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+        StaticStringSupplier updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 StaticStringSupplier.class, StaticHolder.class.getName() + ".text", () -> {
                     computations.incrementAndGet();
                     return result;
@@ -837,7 +850,7 @@ public class OfLocationTest {
         assertSame(result, StaticHolder.text);
         assertEquals(1, computations.get());
 
-        StaticIntegerSupplier boxed = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+        StaticIntegerSupplier boxed = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 StaticIntegerSupplier.class, StaticHolder.class.getName() + ".boxed", () -> 0);
         assertEquals(0, boxed.get());
         assertEquals(0, boxed.get());
@@ -943,7 +956,7 @@ public class OfLocationTest {
     public void staticInitializationIsDeferred() {
         assertFalse(deferredHolderInitialized);
         AtomicInteger computations = new AtomicInteger();
-        IntSupplier updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, IntSupplier.class,
+        IntSupplier updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, IntSupplier.class,
                 DeferredHolder.class.getName() + ".count", () -> {
                     computations.incrementAndGet();
                     return 42;
@@ -971,9 +984,9 @@ public class OfLocationTest {
         assertFalse(firstClass == secondClass);
         Lookup firstLookup = MethodHandles.privateLookupIn(firstClass, LOOKUP);
         Lookup secondLookup = MethodHandles.privateLookupIn(secondClass, LOOKUP);
-        IntSupplier first = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, firstLookup, IntSupplier.class,
+        IntSupplier first = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, firstLookup, IntSupplier.class,
                 binaryName + ".value", () -> 11);
-        IntSupplier second = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, secondLookup, IntSupplier.class,
+        IntSupplier second = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, secondLookup, IntSupplier.class,
                 binaryName + ".value", () -> 22);
 
         assertEquals(11, first.getAsInt());
@@ -1192,7 +1205,7 @@ public class OfLocationTest {
         checkDefault("text", h -> h.text, null);
 
         AtomicInteger computations = new AtomicInteger();
-        CountField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
+        CountField updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
                 "count", h -> computations.getAndIncrement() == 0 ? 0 : 7);
         Holder holder = new Holder();
         assertThrows(IllegalArgumentException.class, () -> updater.get(holder));
@@ -1204,7 +1217,7 @@ public class OfLocationTest {
 
     private static <R> void checkDefault(String field, Function<Holder, R> accessor, R result) {
         AtomicInteger computations = new AtomicInteger();
-        BoxedField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, BoxedField.class,
+        BoxedField updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, BoxedField.class,
                 field, h -> {
                     computations.incrementAndGet();
                     return result;
@@ -1226,7 +1239,7 @@ public class OfLocationTest {
 
     private static void checkFloat(float value) {
         AtomicInteger computations = new AtomicInteger();
-        FloatField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        FloatField updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, FloatField.class, "fraction", h -> {
                     computations.incrementAndGet();
                     return value;
@@ -1243,7 +1256,7 @@ public class OfLocationTest {
 
     private static void checkDouble(double value) {
         AtomicInteger computations = new AtomicInteger();
-        DoubleField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        DoubleField updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, DoubleField.class, "radius", h -> {
                     computations.incrementAndGet();
                     return value;
@@ -1263,7 +1276,7 @@ public class OfLocationTest {
         AtomicInteger computations = new AtomicInteger();
         RuntimeException exception = new IllegalStateException("first attempt");
         Error error = new AssertionError("second attempt");
-        CountField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+        CountField updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                 LOOKUP, CountField.class, "count", h -> {
                     return switch (computations.getAndIncrement()) {
                         case 0 -> throw exception;
@@ -1284,9 +1297,9 @@ public class OfLocationTest {
     @Test
     public void preexistingValuesAndCompatibleUpdaters() {
         AtomicInteger computations = new AtomicInteger();
-        CountField first = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
+        CountField first = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
                 "count", h -> computations.incrementAndGet());
-        CountField second = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
+        CountField second = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
                 "count", h -> computations.incrementAndGet());
         Holder preinitialized = new Holder();
         preinitialized.count = 37;
@@ -1321,9 +1334,9 @@ public class OfLocationTest {
             payload.marker = new Object();
             return payload;
         };
-        PayloadField first = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+        PayloadField first = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 PayloadField.class, "payload", compute);
-        PayloadField second = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+        PayloadField second = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                 PayloadField.class, "payload", compute);
         Holder holder = new Holder();
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -1360,7 +1373,7 @@ public class OfLocationTest {
         CountDownLatch secondStarted = new CountDownLatch(1);
         AtomicInteger firstComputations = new AtomicInteger();
         AtomicInteger secondComputations = new AtomicInteger();
-        CountField first = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField first = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     firstComputations.incrementAndGet();
                     entered.countDown();
@@ -1372,7 +1385,7 @@ public class OfLocationTest {
                     }
                     return 42;
                 });
-        CountField second = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField second = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     secondComputations.incrementAndGet();
                     return 99;
@@ -1407,12 +1420,12 @@ public class OfLocationTest {
         AtomicInteger firstComputations = new AtomicInteger();
         AtomicInteger secondComputations = new AtomicInteger();
         IllegalStateException exception = new IllegalStateException("first computation");
-        CountField first = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField first = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     firstComputations.incrementAndGet();
                     throw exception;
                 });
-        CountField second = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField second = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     secondComputations.incrementAndGet();
                     return 99;
@@ -1428,9 +1441,9 @@ public class OfLocationTest {
         assertEquals(1, secondComputations.get());
 
         Error error = new AssertionError("first computation");
-        CountField errorFirst = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField errorFirst = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> { throw error; });
-        CountField errorSecond = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField errorSecond = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> 101);
         Holder other = new Holder();
         assertSame(error, assertThrows(Error.class, () -> errorFirst.get(other)));
@@ -1442,10 +1455,10 @@ public class OfLocationTest {
     @Test
     public void synchronizedStaticFieldIsSharedAcrossUpdaterInstances() {
         AtomicInteger computations = new AtomicInteger();
-        IntSupplier first = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        IntSupplier first = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 IntSupplier.class, SynchronizedStaticHolder.class.getName() + ".count",
                 () -> computations.incrementAndGet());
-        IntSupplier second = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        IntSupplier second = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 IntSupplier.class, SynchronizedStaticHolder.class.getName() + ".count", () -> 99);
         assertEquals(1, first.getAsInt());
         assertEquals(1, second.getAsInt());
@@ -1457,12 +1470,12 @@ public class OfLocationTest {
     public void synchronizedDefaultResultCanBeRetried() {
         AtomicInteger firstComputations = new AtomicInteger();
         AtomicInteger secondComputations = new AtomicInteger();
-        CountField first = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField first = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     firstComputations.incrementAndGet();
                     return 0;
                 });
-        CountField second = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField second = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     secondComputations.incrementAndGet();
                     return 99;
@@ -1486,7 +1499,7 @@ public class OfLocationTest {
         CountDownLatch entered = new CountDownLatch(2);
         CountDownLatch release = new CountDownLatch(1);
         AtomicInteger computations = new AtomicInteger();
-        CountField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField updater = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     computations.incrementAndGet();
                     entered.countDown();
@@ -1525,7 +1538,7 @@ public class OfLocationTest {
         AtomicInteger secondComputations = new AtomicInteger();
         int[] written = new int[1];
         IllegalStateException failure = new IllegalStateException("first computation");
-        CountField first = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField first = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     firstComputations.incrementAndGet();
                     entered.countDown();
@@ -1538,7 +1551,7 @@ public class OfLocationTest {
                     written[0] = 42;
                     throw failure;
                 });
-        CountField second = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField second = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     secondComputations.incrementAndGet();
                     return 99;
@@ -1574,7 +1587,7 @@ public class OfLocationTest {
     @Test
     public void synchronizedFactoryDefersStaticInitialization() {
         assertFalse(deferredSynchronizedHolderInitialized);
-        IntSupplier updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        IntSupplier updater = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 IntSupplier.class, DeferredSynchronizedHolder.class.getName() + ".count", () -> 42);
         assertFalse(deferredSynchronizedHolderInitialized);
         assertEquals(19, updater.getAsInt());
@@ -1590,7 +1603,7 @@ public class OfLocationTest {
                 "plainText", h -> h.plainText,
                 "plainLarge", h -> h.plainLarge);
 
-        LongSupplier staticWide = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PLAIN, LOOKUP,
+        LongSupplier staticWide = ofLocationUpdater(Lazy.UpdaterMode.PLAIN, LOOKUP,
                 LongSupplier.class, PlainStaticHolder.class.getName() + ".large", () -> 0x2_0000_0001L);
         assertEquals(0x2_0000_0001L, staticWide.getAsLong());
         assertEquals(0x2_0000_0001L, staticWide.getAsLong());
@@ -1604,9 +1617,9 @@ public class OfLocationTest {
                                           LongField longAccessor) {
         Holder holder = new Holder();
         String value = new String("computed");
-        StringValueField reference = Lazy.ofLocationUpdater(mode, LOOKUP,
+        StringValueField reference = ofLocationUpdater(mode, LOOKUP,
                 StringValueField.class, stringField, h -> value);
-        LongField wide = Lazy.ofLocationUpdater(mode, LOOKUP,
+        LongField wide = ofLocationUpdater(mode, LOOKUP,
                 LongField.class, longField, h -> 0x1_0000_0001L);
         assertSame(value, reference.apply(holder));
         assertSame(value, reference.apply(holder));
@@ -1620,7 +1633,7 @@ public class OfLocationTest {
     public void synchronizedDetectsRecursiveAccess() {
         AtomicReference<CountField> reference = new AtomicReference<>();
         AtomicInteger computations = new AtomicInteger();
-        CountField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
+        CountField updater = ofLocationUpdater(Lazy.UpdaterMode.SERIALIZED, LOOKUP,
                 CountField.class, "synchronizedCount", h -> {
                     computations.incrementAndGet();
                     return reference.get().get(h);
@@ -1638,7 +1651,7 @@ public class OfLocationTest {
         CountDownLatch entered = new CountDownLatch(2);
         CountDownLatch release = new CountDownLatch(1);
         AtomicInteger computations = new AtomicInteger();
-        CountField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PLAIN, LOOKUP,
+        CountField updater = ofLocationUpdater(Lazy.UpdaterMode.PLAIN, LOOKUP,
                 CountField.class, "plainCount", h -> {
                     int value = computations.incrementAndGet();
                     entered.countDown();
@@ -1681,7 +1694,7 @@ public class OfLocationTest {
     public void plainFailuresPropagateAndCanBeRetried() {
         AtomicInteger computations = new AtomicInteger();
         IllegalStateException failure = new IllegalStateException("first computation");
-        CountField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PLAIN, LOOKUP,
+        CountField updater = ofLocationUpdater(Lazy.UpdaterMode.PLAIN, LOOKUP,
                 CountField.class, "plainCount", h -> {
                     if (computations.incrementAndGet() == 1) {
                         throw failure;
@@ -1702,32 +1715,32 @@ public class OfLocationTest {
         String selector = "count";
         CountField compute = h -> 42;
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofLocationUpdater(null, LOOKUP, CountField.class, selector, compute));
+                () -> ofLocationUpdater(null, LOOKUP, CountField.class, selector, compute));
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                         null, CountField.class, selector, compute));
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, null, selector, compute));
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, null, selector, compute));
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class, null, compute));
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class, null, compute));
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                         LOOKUP, CountField.class, selector, null));
 
         AtomicInteger computations = new AtomicInteger();
-        CountField updater = Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
+        CountField updater = ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
                 selector, h -> computations.incrementAndGet());
         assertThrows(NullPointerException.class, () -> updater.get(null));
         assertEquals(0, computations.get());
 
         IntArrayElement arrayCompute = (array, index) -> 42;
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofArrayUpdater(null, IntArrayElement.class, arrayCompute));
+                () -> ofArrayUpdater(null, IntArrayElement.class, arrayCompute));
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+                () -> ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                         null, arrayCompute));
         assertThrows(NullPointerException.class,
-                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+                () -> ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                         IntArrayElement.class, null));
     }
 
@@ -1736,34 +1749,34 @@ public class OfLocationTest {
         AtomicInteger computations = new AtomicInteger();
         CountField compute = h -> computations.incrementAndGet();
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
                         "", compute));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, CountField.class,
                         "missing", compute));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, IntSupplier.class,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, IntSupplier.class,
                         "Holder..count", () -> 42));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, TwoArguments.class,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, TwoArguments.class,
                         "count", (first, second) -> 42));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, TwoArguments.class,
+                () -> ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, TwoArguments.class,
                         (first, second) -> 42));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, TooManyArrayIndices.class,
+                () -> ofArrayUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, TooManyArrayIndices.class,
                         (array, i0, i1, i2) -> 42));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, TooManyOwnedArrayIndices.class,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, TooManyOwnedArrayIndices.class,
                         "matrix", (owner, i0, i1, i2) -> 42));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, ParameterBridgeField.class,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, ParameterBridgeField.class,
                         "text", h -> "unsupported parameter bridge"));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
                         FinalHolderFunction.class, "value", h -> new Object()));
         IllegalArgumentException denied = assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, MethodHandles.publicLookup(),
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, MethodHandles.publicLookup(),
                         CountField.class, "count", compute));
         assertInstanceOf(IllegalAccessException.class, denied.getCause());
         assertEquals(0, computations.get());
@@ -1775,39 +1788,33 @@ public class OfLocationTest {
         CountField compute = h -> 42;
         Class type = CountField.class;
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, type, "notAField", compute));
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, type, "notAField", compute));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, type, "count", "not a function"));
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, type, "count", "not a function"));
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
+                () -> ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE,
                         LOOKUP, (Class) Object.class, "count", compute));
     }
 
     @Test
     @SuppressWarnings("rawtypes")
-    public void erasedGenericAccessorTokensExplainRemedy() {
-        HolderFunction fieldComputer = holder -> "unused";
-        IllegalArgumentException fieldError = assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, HolderFunction.class,
-                        "text", fieldComputer));
-        assertErasureDiagnostic(fieldError, HolderFunction.class);
+    public void explicitFieldOwnerSupportsErasedGenericAccessorTokens() {
+        Holder holder = new Holder();
+        HolderFunction fieldComputer = ignored -> "generic field";
+        HolderFunction fieldUpdater = ofLocationUpdater(
+                Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+                HolderFunction.class, "text", fieldComputer);
+        assertEquals("generic field", fieldUpdater.apply(holder));
+        assertEquals("generic field", holder.text);
 
-        Supplier staticComputer = () -> "unused";
-        IllegalArgumentException staticError = assertThrows(IllegalArgumentException.class,
-                () -> Lazy.ofLocationUpdater(Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP, Supplier.class,
-                        StaticHolder.class.getName() + ".text", staticComputer));
-        assertErasureDiagnostic(staticError, Supplier.class);
-    }
-
-    private static void assertErasureDiagnostic(IllegalArgumentException exception,
-                                                Class<?> interfaceType) {
-        String message = exception.getMessage();
-        assertNotNull(message);
-        assertTrue(message.contains(interfaceType.getSimpleName()), () -> message);
-        String lower = message.toLowerCase(Locale.ROOT);
-        assertTrue(lower.contains("type variable"), () -> message);
-        assertTrue(lower.contains("erased") || lower.contains("erasure"), () -> message);
-        assertTrue(lower.contains("non-generic") && lower.contains("concrete"), () -> message);
+        StaticHolder.text = null;
+        Supplier staticComputer = () -> "generic static field";
+        Supplier staticUpdater = ofLocationUpdater(
+                Lazy.UpdaterMode.PUBLISH_ONCE, LOOKUP,
+                Supplier.class, StaticHolder.class.getName() + ".text",
+                staticComputer);
+        assertEquals("generic static field", staticUpdater.get());
+        assertEquals("generic static field", StaticHolder.text);
     }
 }
 

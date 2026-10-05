@@ -27,6 +27,7 @@ package java.lang.util;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Iterator;
@@ -77,11 +78,13 @@ import jdk.internal.util.LazySupport;
  *     <td>{@link CacheMode#COMPUTE_ONCE COMPUTE_ONCE} or
  *         {@link CacheMode#PUBLISH_ONCE PUBLISH_ONCE}</td></tr>
  * <tr><th scope="row">Updaters</th>
- *     <td>The caller provides a field or array element. Its Java default value
- *         represents an uninitialized location and cannot be a computed result.</td>
- *     <td>{@link UpdaterMode#PUBLISH_ONCE PUBLISH_ONCE},
- *         {@link UpdaterMode#SERIALIZED SERIALIZED}, or
- *         {@link UpdaterMode#PLAIN PLAIN}</td></tr>
+ *     <td>The caller provides a field, array element, or memory-segment value.
+ *         Its reserved default value represents an uninitialized location
+ *         and cannot be a computed result.</td>
+ *     <td>{@link UpdaterMode#PUBLISH_ONCE PUBLISH_ONCE} or
+ *         {@link UpdaterMode#PLAIN PLAIN};
+ *         {@link UpdaterMode#SERIALIZED SERIALIZED} for fields and Java
+ *         arrays only</td></tr>
  * </tbody>
  * </table>
  *
@@ -405,108 +408,122 @@ import jdk.internal.util.LazySupport;
  * {@code false} are retained membership results.
  *
  * <h2 id="updater-factories">Updaters</h2>
- * Lazy updaters use caller-owned field or array-element storage. A field or
- * element has independent storage, and a non-default value is returned without
- * computation. The factories do not read the selected storage or invoke the
- * supplied computing function. {@link #ofLocationUpdater(UpdaterMode,
- * MethodHandles.Lookup, Class, String, Object) ofLocationUpdater} selects a
- * named instance or static field, or an element of an array held in such a
- * field. {@link #ofArrayUpdater(UpdaterMode, Class, Object) ofArrayUpdater}
- * selects an element of an array passed directly to the updater, without
- * resolving a field or requiring a lookup.
+ * Lazy updaters use caller-owned storage. An invocation returns a non-default
+ * value already in the selected location without computing. The builder and
+ * convenience factories do not read that storage or invoke the computing
+ * function when an updater is created.
  * <p>
- * The general {@code ofLocationUpdater} and {@code ofArrayUpdater} factories
- * require an explicit {@link UpdaterMode}. The
+ * {@link #ofUpdater(Class)} starts an immutable builder. Its computation
+ * shape is a functional-interface {@code Class} token. A builder defaults to
+ * {@link UpdaterMode#PUBLISH_ONCE} and a public lookup. A
+ * {@link UpdaterBuilder#withMode(UpdaterMode) withMode} call changes the mode;
+ * {@link UpdaterBuilder#withLookup(MethodHandles.Lookup) withLookup} supplies
+ * field-access authority. The builder selects one of three storage forms:
+ * <ul>
+ * <li>No explicit location selects an element of an array supplied directly
+ *     to the updater.</li>
+ * <li>{@link UpdaterBuilder#withLocation(Class, String) withLocation(ownerClass,
+ *     fieldName)} selects a named static or instance field, or an element of
+ *     an array held in that field.</li>
+ * <li>{@code withLocation(layout, pathElements)} selects a value in a supplied
+ *     memory segment through a structured {@link MemoryLayout}.</li>
+ * </ul>
+ * The {@link UpdaterBuilder#build(Object) build} terminal operation retains a
+ * computing function supplied when the updater is created. The
+ * {@link UpdaterBuilder#buildUseSite(Class) buildUseSite} terminal operation
+ * creates an updater whose functional method receives a computing function
+ * on each access. The
  * {@linkplain #ofStaticFieldUpdater(Class, String, Supplier) static-field},
  * {@linkplain #ofFieldUpdater(Class, String, Function) instance-field}, and
- * {@linkplain #ofArrayUpdater(Class, ReferenceArrayAccessor.Computer) reference-array}
- * convenience factories use {@link UpdaterMode#PUBLISH_ONCE}. The field
- * convenience factories check the caller's field access. This mode is the
- * usual choice when competing computations and discarded results are
- * acceptable. Both
- * {@code ofLocationUpdater} and {@code ofArrayUpdater} have a
- * <em>declaration-site</em> form that retains a computing function given when
- * the updater is created, and a <em>use-site</em> form that receives the
- * computing function on each access. Unlike
- * {@link CacheMode#COMPUTE_ONCE}, {@link UpdaterMode#SERIALIZED} allows a failed
- * computation to be retried. {@link UpdaterMode#PLAIN} has no cache counterpart.
+ * {@linkplain #ofArrayUpdater(Class, ReferenceArrayAccessor.Computer)
+ * reference-array} conveniences use {@code PUBLISH_ONCE} with fixed,
+ * common shapes. Unlike {@link CacheMode#COMPUTE_ONCE},
+ * {@link UpdaterMode#SERIALIZED} retries after failure.
+ * {@link UpdaterMode#PLAIN} has no cache counterpart.
  *
  * <h3 id="access-shapes">Locations and access shapes</h3>
- * The single abstract method of the functional-interface {@code type}
- * determines the location's coordinates. In use-site forms, a computing
- * function precedes those coordinates. The following shapes describe the
- * coordinates themselves, excluding that leading function. For
- * {@code ofLocationUpdater}, an instance field takes a receiver first and a simple
- * field name as the selector. A static field takes no receiver and uses a
- * selector of the form {@code binaryClassName.fieldName}. The binary class
- * name, including {@code $} for a nested class, is resolved using the
- * supplied lookup's class loader and access privileges. The same binary
- * name can denote different classes for different lookups. A field declared
- * by the named owner or resolved instance owner takes precedence. Otherwise,
- * the nearest superclass declaration is selected unless an interface also
- * declares the name. With no superclass declaration, exactly one interface
- * declaration is accepted. Conflicting superclass and interface declarations,
- * or multiple interface declarations, are rejected. This search considers
- * declarations even when they are not inherited in Java source; lookup access
- * is checked separately. A static field can instead be named through its
- * declaring class or interface.
- * The selected field must be static precisely when no receiver is present.
- * <p>
- * With no index parameters, {@code ofLocationUpdater} selects the field itself.
- * One or more trailing {@code int} parameters select an element of an array
- * field. For {@code ofArrayUpdater}, the first coordinate's erased parameter type
- * must be a concrete array type, followed by one or more {@code int} indices.
- * In both cases, the number of indices must not exceed the array's rank and
- * is subject to the usual Java and JVM method-parameter limits. Indices
+ * The computation shape's single abstract method receives the storage
+ * coordinates and returns a candidate value. The use-site accessor's
+ * functional method has one leading computing-function parameter, followed
+ * by those coordinates, and returns the selected value. The storage
+ * coordinates depend on the selected location:
+ * <ul>
+ * <li>For a named instance field, the first coordinate is a receiver.
+ *     A named static field has no receiver. With no following indices,
+ *     the field itself is selected. For an array-valued field, one or more
+ *     trailing {@code int} coordinates select an element.</li>
+ * <li>For a directly supplied array, the first coordinate has a concrete
+ *     array type and is followed by one or more {@code int} indices. This
+ *     form always selects an element, not the supplied array reference.</li>
+ * <li>For a memory segment, the first coordinate is a
+ *     {@link java.lang.foreign.MemorySegment}, followed by a {@code long}
+ *     base offset and one {@code long} index for each open sequence element
+ *     in the selected layout path, in path order. The path must select a
+ *     value layout. A dereference path element is not supported.</li>
+ * </ul>
+ * For Java arrays, the number of indices must not exceed the array's rank
+ * and is subject to ordinary Java and JVM method-parameter limits. Indices
  * address dimensions in order, from the outermost array to successively
- * inner arrays. No coordinate permutation or index expression is inferred.
- * The selected value may itself be an array: one index into an
- * {@code int[][][]} selects an {@code int[][]}, while three indices select an
- * {@code int}. {@code ofArrayUpdater} always selects an element, not the array
- * reference itself. An array field may be {@code final} when an element is
- * selected; a field selected as the location must be non-final. An array
- * field's reference and any intermediate array references must not be
- * replaced while an updater is in use.
+ * inner arrays; neither permutation nor index expressions are inferred. A
+ * selected value may itself be an array: one index into {@code int[][][]}
+ * selects an {@code int[][]}, while three indices select an {@code int}.
+ * An array field may be {@code final} when an element is selected; a field
+ * selected as the location must be non-final. An array field's reference and
+ * any intermediate array references must not be replaced while an updater
+ * is in use.
  * <p>
- * The accessor's functional method has a non-void result compatible with the
- * selected field or element type. It may return that type or a reference type
- * to which the selected value, boxed if necessary, can be assigned. For a
- * custom instance-field interface, the receiver type must be present in the
- * functional method's erased parameter types; a generic
- * {@code Function<Point, Double>} is unsuitable by itself because its receiver
- * erases to {@code Object}. A non-generic subinterface that explicitly
- * redeclares {@code Double apply(Point)} can provide the needed concrete
- * receiver. A functional-interface {@code Class} token is rejected
- * when type variables remain unresolved or erase a storage coordinate or
- * computing-function parameter needed to validate the updater. Declare a
- * non-generic interface whose own functional method has concrete parameter
- * and return types.
+ * A field is selected by its {@code Class} token and a simple field name.
+ * The token identifies the class in its defining loader, so the same
+ * binary name in a different loader does not select that class. A field
+ * declared by the named owner takes precedence. Otherwise, the nearest
+ * superclass declaration is selected unless an interface also declares the
+ * name. With no superclass declaration, exactly one interface declaration
+ * is accepted. Conflicting superclass and interface declarations, or
+ * multiple interface declarations, are rejected. This search considers
+ * declarations even when they are not inherited in Java source; lookup
+ * access is checked separately. The selected field must be static exactly
+ * when the shape has no receiver. A static field can be selected through
+ * its declaring class or interface.
+ * <p>
+ * For fields and arrays, a functional method must have a non-void result
+ * compatible with the selected type. It may return that type or a reference
+ * type to which the selected value, boxed if necessary, can be assigned.
+ * The explicit owner token makes a raw generic functional interface usable
+ * for a named field even if its receiver erases to {@code Object}; erased
+ * value type arguments remain the caller's responsibility. A concrete
+ * subinterface can retain source-level parameter and result types; a
+ * specialized ready-made reference-field use-site accessor also validates
+ * the field's generic value type. Direct-array declaration-site shapes must
+ * identify a concrete array coordinate. A specialized use-site accessor can identify
+ * that array even if its callback shape has erased type arguments.
+ * Segment coordinates and result carrier must match the selected layout's
+ * var-handle descriptor exactly.
  * <p>
  * A number of {@linkplain ##ready-made-interfaces ready-made accessor interfaces}
- * are provided for common access coordinates, some of which require a
- * non-generic subinterface that fixes their type arguments. The supplied
- * accessor interface and, in a use-site form, its computing-function
- * interface must not be sealed or hidden. Inherited abstract methods with
- * the same erased parameter types and covariant return types, as well as
- * default methods, including compiler-generated bridges, are supported.
- * An interface requiring multiple abstract methods with different erased
- * parameter types is not.
+ * are provided for common coordinates. The supplied accessor interface and,
+ * in a use-site form, its computing-function interface must not be sealed or
+ * hidden. Inherited abstract methods with the same erased parameter types
+ * and covariant return types, as well as default methods and
+ * compiler-generated bridges, are supported. An interface requiring
+ * multiple abstract methods with different erased parameter types is not.
  *
  * <h3 id="computing-functions">Computing functions</h3>
- * In a declaration-site form, the computing function implements {@code type},
- * receives the updater's coordinates in their original order, and is retained
- * by the updater. In a use-site form, the accessor's functional method takes
- * a computing function first, followed by the storage coordinates. That
- * computing function must itself have a functional-interface type whose
- * method accepts the coordinates and returns a value compatible with the
- * selected storage. A reference parameter of the computing function may be a
- * supertype of its corresponding coordinate type. Its result may be a subtype
- * of reference storage or use boxing, unboxing, or widening primitive
- * conversion; a broader reference result is checked against the storage type
- * when computed. A computed result incompatible with the storage type fails
- * before publication. As with ordinary array stores, a runtime array whose
- * component type is narrower than the accessor's array type may reject a
- * computed value with {@link ArrayStoreException}.
+ * In a declaration-site form, the computing function implements the
+ * builder's computation shape, receives the storage coordinates in their
+ * original order, and is retained by the updater. In a use-site form, the
+ * updater receives a computing function on each invocation. Its functional
+ * method must have the same erased parameter and return types as the
+ * builder's computation shape; the two function interfaces need not have
+ * the same name or nominal type. A reference parameter of a field or array
+ * computing function may be a supertype of its corresponding coordinate
+ * type. Its result may be a subtype of reference storage or use boxing,
+ * unboxing, or widening primitive conversion; a broader reference result
+ * is checked against the storage type when computed. An incompatible result
+ * fails before publication. As with ordinary array stores, a runtime array
+ * whose component type is narrower than the accessor's array type may
+ * reject a computed value with {@link ArrayStoreException}. Segment
+ * computing functions use the exact carrier and coordinates of the
+ * selected layout.
  * <p>
  * A use-site updater does not retain a computing function. Every invocation
  * rejects a {@code null} computing function, even if the location is already
@@ -517,8 +534,9 @@ import jdk.internal.util.LazySupport;
  *
  * <h4 id="ready-made-interfaces">Ready-made interfaces</h4>
  * These interfaces supply the computing function at the use site. Field
- * accessors use {@link #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String)
- * ofLocationUpdater}; direct array accessors use {@link #ofArrayUpdater(UpdaterMode, Class) ofArrayUpdater}.
+ * accessors select a named field through
+ * {@link UpdaterBuilder#withLocation(Class, String) withLocation}; direct
+ * array accessors use the builder with no explicit location.
  * The coordinates below follow the computing-function argument to
  * {@code getOrCompute}. Each computing-function cell gives its type followed
  * by an example lambda. For the instance examples, {@code Holder} has a
@@ -532,7 +550,7 @@ import jdk.internal.util.LazySupport;
  * <th scope="col">Target location</th>
  * <th scope="col">Coordinates</th>
  * <th scope="col">Computing function</th>
- * <th scope="col">Type fixing</th>
+ * <th scope="col">Type fixing for the use-site token</th>
  * </tr>
  * </thead>
  * <tbody>
@@ -555,7 +573,7 @@ import jdk.internal.util.LazySupport;
  * <td>Named static reference field</td>
  * <td>None</td>
  * <td>{@code Supplier<V>}<br>{@code () -> "Ada"}</td>
- * <td>Yes; {@code interface StaticName extends
+ * <td>Recommended; {@code interface StaticName extends
  *     StaticReferenceFieldAccessor<String> { }}</td>
  * </tr>
  * <tr>
@@ -564,7 +582,7 @@ import jdk.internal.util.LazySupport;
  * <td>{@code R} receiver</td>
  * <td>{@code ToIntFunction<R>}<br>
  *     {@code holder -> Math.max(1, holder.seed)}</td>
- * <td>Yes; {@code interface Count extends IntFieldAccessor<Holder> { }}</td>
+ * <td>Recommended; {@code interface Count extends IntFieldAccessor<Holder> { }}</td>
  * </tr>
  * <tr>
  * <th scope="row">{@link LongFieldAccessor LongFieldAccessor}</th>
@@ -572,7 +590,7 @@ import jdk.internal.util.LazySupport;
  * <td>{@code R} receiver</td>
  * <td>{@code ToLongFunction<R>}<br>
  *     {@code holder -> Math.max(1L, 100L * holder.seed)}</td>
- * <td>Yes; {@code interface Total extends LongFieldAccessor<Holder> { }}</td>
+ * <td>Recommended; {@code interface Total extends LongFieldAccessor<Holder> { }}</td>
  * </tr>
  * <tr>
  * <th scope="row">{@link ReferenceFieldAccessor ReferenceFieldAccessor}</th>
@@ -580,7 +598,7 @@ import jdk.internal.util.LazySupport;
  * <td>{@code R} receiver</td>
  * <td>{@code Function<R, V>}<br>
  *     {@code holder -> "name-" + holder.seed}</td>
- * <td>Yes; {@code interface Name extends
+ * <td>Recommended; {@code interface Name extends
  *     ReferenceFieldAccessor<Holder, String> { }}</td>
  * </tr>
  * <tr>
@@ -609,9 +627,12 @@ import jdk.internal.util.LazySupport;
  * </tr>
  * </tbody>
  * </table>
- * For a "Yes" entry, pass the concrete subinterface's {@code Class} token
- * to the factory, for example {@code Count.class}. The generic ready-made
- * interface's {@code Class} token cannot be passed directly. An {@code E}
+ * A named-field builder has an explicit owner, so a raw generic field
+ * accessor token is permitted, though type fixing is recommended for
+ * source type safety. For example, pass {@code Count.class} to
+ * {@code buildUseSite} when using the {@code Count} interface above.
+ * A generic direct-array accessor token needs a concrete subinterface to
+ * identify its array type. An {@code E}
  * that is itself an array type selects an array-valued element with one index.
  * A custom accessor interface is required for access with two or more indices,
  * for array-field elements, and for primitive value types other than
@@ -626,11 +647,15 @@ import jdk.internal.util.LazySupport;
  * arguments.
  *
  * <h3 id="uninitialized-locations">Uninitialized locations</h3>
- * The Java default value of a selected field or element means uninitialized:
+ * The Java default value of a selected field or array element, or the
+ * zero-filled value of a selected segment location, means uninitialized:
  * {@code null} for references, {@code false} for {@code boolean}, zero for
  * integral types, and positive zero for floating-point types. A computation
  * producing this reserved value throws {@code IllegalArgumentException}
  * without publishing it. Negative floating-point zero and NaN are permitted.
+ * For an address layout, the zero native address represented by
+ * {@link java.lang.foreign.MemorySegment#NULL MemorySegment.NULL} is reserved;
+ * a {@code null} candidate is also invalid.
  * A null-restricted reference field cannot use the null sentinel and is
  * rejected when an updater selecting that field is created. A null-restricted
  * reference array likewise cannot use the null sentinel; accessing one of
@@ -649,6 +674,13 @@ import jdk.internal.util.LazySupport;
  * Computations may race, but every invocation that returns normally returns
  * the value installed in the location, including an invocation whose result
  * was discarded.
+ * For an address-layout segment location, only the native address is stored.
+ * A successful {@code PUBLISH_ONCE} invocation rereads that address and
+ * returns a layout-materialized segment. The returned segment need not be
+ * the candidate object and need not have its scope or size, but successful
+ * accesses observe the same installed native address and return segments
+ * equal by {@code MemorySegment.equals}. The caller must keep the pointed-to
+ * memory alive independently of the updater.
  * A losing invocation observes the installed value with acquire effects before
  * returning it. Actions preceding the winner's publication
  * {@linkplain java.util.concurrent##MemoryVisibility happen-before} actions
@@ -661,7 +693,9 @@ import jdk.internal.util.LazySupport;
  * Recursive access to the same uninitialized location is not detected in
  * this mode and may recurse without bound.
  * <p>
- * In {@link UpdaterMode#SERIALIZED} mode, only one thread at a time invokes the
+ * {@link UpdaterMode#SERIALIZED} is available for fields and Java arrays,
+ * but not for memory-segment locations, whose distinct views may alias the
+ * same bytes. In this mode, only one thread at a time invokes the
  * computing function for each selected physical location. For a field, that
  * is the field and receiver, or the static field. For an array element, it is
  * the final container array by identity and the final index, regardless of
@@ -698,36 +732,51 @@ import jdk.internal.util.LazySupport;
  * 32-bit platforms. <em>No safe publication
  * guarantee is provided.</em> A failed computation propagates directly and
  * may be retried. Recursive access is not detected and may recurse without
- * bound.
+ * bound. For an address-layout segment location, a computing invocation
+ * returns its own candidate segment after storing its native address; a
+ * later read materializes a segment from the stored address.
  *
  * <h3 id="access-and-ownership">Access and storage ownership</h3>
- * The caller must safely publish the receiver or array and any preexisting
+ * The caller must safely publish the receiver, array, or segment and any preexisting
  * value to other threads. The selected storage must be reserved for lazy use:
  * it must not be reset or otherwise modified directly while an updater is in
  * use. All updaters sharing a location must use the same mode, and their
  * computing functions should be interchangeable. Other writes can defeat the
  * mode's guarantees. {@code SERIALIZED} updaters share coordination for a
  * physical location even if they use different computing functions. An
- * updater does not add a holder to each receiver or array element. Apart
+ * updater does not add a holder to each receiver, array element, or segment
+ * location. Apart
  * from objects captured by a declaration-site computing function, it does
  * not strongly retain receivers or arrays; {@code SERIALIZED} coordination
  * keys are weak. Publication of a computed reference does not make its later
  * mutations thread-safe, and accesses to different locations have no total
  * order.
  * <p>
- * For {@code ofLocationUpdater}, the lookup must authorize access to the accessor
- * interface, any use-site computing-function interface, the named field, and
- * any selected array type. A receiver restriction imposed by the lookup is
- * preserved. Accessing a static field through the updater
- * initializes its declaring class if necessary, following normal var-handle
- * semantics. {@code ofArrayUpdater} needs no caller-provided lookup; the array
- * parameter and indices identify the element without resolving a field.
- * Non-public functional interfaces and array component types are supported
- * by {@code ofArrayUpdater}. A null receiver, array, or intermediate array, or an
+ * For a named field, the lookup must authorize access to the functional
+ * interfaces, the selected owner and field, and any selected array type.
+ * A receiver restriction imposed by the lookup is preserved. Accessing a
+ * static field through the updater initializes its declaring class if
+ * necessary, following normal var-handle semantics. A direct array needs
+ * no caller-provided lookup; its array coordinate and indices identify the
+ * element. Non-public direct-array functional interfaces and component types
+ * are supported. An explicit {@code withLookup} for a direct array or
+ * segment is rejected by a terminal builder operation instead of being
+ * silently ignored. A null receiver, array, or intermediate array, or an
  * out-of-bounds index, fails before computation with the corresponding
- * {@code NullPointerException} or
- * {@code ArrayIndexOutOfBoundsException}. The array-reference path is resolved
- * once per invocation.
+ * {@code NullPointerException} or {@code ArrayIndexOutOfBoundsException}.
+ * The Java array-reference path is resolved once per invocation.
+ * When an array is reached through a field, {@code PUBLISH_ONCE} and
+ * {@code SERIALIZED} read that field with acquire effects before accessing
+ * an element; {@code PLAIN} reads it with plain effects.
+ * <p>
+ * For a segment location, the layout path is resolved when the updater is
+ * built. Each invocation performs the memory segment's lifetime, thread,
+ * bounds, alignment, and read-only checks through its var handle. The
+ * selected layout must support the access modes required by the updater
+ * mode; {@code PUBLISH_ONCE} requires atomic exchange support. An
+ * unaligned value layout may therefore work with {@code PLAIN} but not with
+ * {@code PUBLISH_ONCE}. The updater does not retain the segment supplied on
+ * invocation.
  *
  * @apiNote A cache strongly references its installed value for as long as its
  *          storage remains reachable. Suppliers, functions, and collections
@@ -1228,17 +1277,18 @@ public final class Lazy {
      * using {@link MethodHandles.Lookup#in(Class) Lookup.in} to preserve the
      * supplied class's loader identity. A caller may select its own private
      * static field or one in a nestmate. Access to an unrelated private field
-     * is denied. A hidden class cannot be selected, since its name cannot be
-     * resolved by a lookup. A caller needing a different mode or explicit lookup
-     * authority can use
-     * {@link #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String, Object)}.
+     * is denied. A caller needing a different mode or explicit lookup
+     * authority can use {@link #ofUpdater(Class)} with the desired
+     * {@link UpdaterBuilder#withMode(UpdaterMode) mode},
+     * {@link UpdaterBuilder#withLookup(MethodHandles.Lookup) lookup}, and
+     * {@link UpdaterBuilder#withLocation(Class, String) field location}.
      * This method is caller-sensitive: a helper that invokes it supplies the
      * helper's access privileges. Once the updater is created, calling its
      * {@code get} method does not repeat the caller access check.
      * A method-handle invocation may use a VM-generated nestmate as its caller;
      * that class need not inherit protected access held by the class that
-     * created the method handle. For such access, use the general factory with
-     * an explicit lookup.
+     * created the method handle. For such access, use an updater builder with
+     * {@code withLookup} and {@code withLocation}.
      *
      * <p>The type parameter {@code T} is not available at run time. The caller
      * must ensure that {@code computing} produces values compatible with the
@@ -1250,9 +1300,10 @@ public final class Lazy {
      *           {@code callerLookup.in(owner)} if the caller lookup cannot
      *           resolve {@code owner} to the supplied {@code Class}. It adapts
      *           {@code computing} to a {@link StaticObjectFieldSupplier} and
-     *           delegates to {@code ofLocationUpdater(UpdaterMode.PUBLISH_ONCE,
-     *           selectedLookup, StaticObjectFieldSupplier.class,
-     *           owner.getName() + "." + name, adaptedComputingFunction)}.
+     *           delegates to a builder equivalent to
+     *           {@code ofUpdater(StaticObjectFieldSupplier.class)
+     *           .withLookup(selectedLookup).withLocation(owner, name)
+     *           .build(adaptedComputingFunction)}.
      *           The returned updater is viewed as a {@code Supplier<T>}.
      *
      * @param owner the type through which the static field is selected
@@ -1265,7 +1316,7 @@ public final class Lazy {
      * @throws IllegalArgumentException if {@code name} is empty or contains a
      *         dot, the field cannot be accessed, is not a suitable mutable
      *         static location, or the required access mode is unsupported
-     * @see #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String, Object)
+     * @see #ofUpdater(Class)
      * @since 29
      */
     @CallerSensitive
@@ -1291,12 +1342,10 @@ public final class Lazy {
         } catch (ClassNotFoundException | IllegalAccessException e) {
             lookup = lookup.in(owner);
         }
-        StaticObjectFieldSupplier updater = ofLocationUpdater(
-                UpdaterMode.PUBLISH_ONCE,
-                lookup,
-                StaticObjectFieldSupplier.class,
-                owner.getName() + "." + name,
-                (StaticObjectFieldSupplier) computing::get);
+        StaticObjectFieldSupplier updater = ofUpdater(StaticObjectFieldSupplier.class)
+                .withLookup(lookup)
+                .withLocation(owner, name)
+                .build((StaticObjectFieldSupplier) computing::get);
         @SuppressWarnings("unchecked")
         Supplier<T> result = (Supplier<T>) (Supplier<?>) updater;
         return result;
@@ -1321,12 +1370,13 @@ public final class Lazy {
      * supplies the helper's access privileges. Once the updater is created,
      * calling its {@code apply} method does not repeat the caller access
      * check. A caller needing another mode or explicit lookup authority can
-     * use {@link #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class,
-     * String, Object)} with a concrete functional-interface type.
+     * use {@link #ofUpdater(Class)} with the desired mode, lookup, and field
+     * location. A specialized functional interface can preserve the receiver
+     * and result types at the source level.
      * A method-handle invocation may use a VM-generated nestmate as its
      * caller; that class need not inherit protected access held by the class
-     * that created the method handle. For such access, use the general
-     * factory with an explicit lookup.
+     * that created the method handle. For such access, use an updater builder
+     * with {@code withLookup} and {@code withLocation}.
      *
      * <p>For example:
      * {@snippet lang=java :
@@ -1355,8 +1405,9 @@ public final class Lazy {
      * @implSpec This method obtains a lookup for its caller, retaining it
      *           when it resolves {@code owner} to the supplied {@code Class}
      *           and otherwise using {@code callerLookup.in(owner)}. It
-     *           delegates to the instance-field updater implementation with
-     *           {@link UpdaterMode#PUBLISH_ONCE} and an explicit owner type.
+     *           delegates to an {@code ofUpdater(Function.class)} builder
+     *           configured with that lookup and the supplied field, using
+     *           {@link UpdaterMode#PUBLISH_ONCE}.
      *
      * @param owner the type through which the instance field is selected
      * @param name the simple name of the field
@@ -1370,7 +1421,7 @@ public final class Lazy {
      *         dot, the field cannot be accessed, is not a suitable mutable
      *         instance location, or the required access mode is unsupported
      * @see #ofStaticFieldUpdater(Class, String, Supplier)
-     * @see #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String, Object)
+     * @see #ofUpdater(Class)
      * @since 29
      */
     @CallerSensitive
@@ -1397,8 +1448,12 @@ public final class Lazy {
         } catch (ClassNotFoundException | IllegalAccessException e) {
             lookup = lookup.in(owner);
         }
-        return LazyUpdaterSupport.ofInstanceField(
-                UpdaterMode.PUBLISH_ONCE, lookup, owner, name, computing);
+        @SuppressWarnings("unchecked")
+        Function<R, T> updater = (Function<R, T>) ofUpdater(Function.class)
+                .withLookup(lookup)
+                .withLocation(owner, name)
+                .build(computing);
+        return updater;
     }
 
     /**
@@ -1410,8 +1465,8 @@ public final class Lazy {
      * different elements have independent storage. The supplied
      * {@code elementType} identifies the required array and result types;
      * primitive and {@code void} element types are not supported by this
-     * overload. Use {@link #ofArrayUpdater(UpdaterMode, Class, Object)} with a
-     * concrete primitive-array interface for primitive elements.
+     * overload. Use {@link #ofUpdater(Class)} with a concrete primitive-array
+     * computation interface for primitive elements.
      *
      * <p>For example:
      * {@snippet lang=java :
@@ -1438,7 +1493,7 @@ public final class Lazy {
      * @throws NullPointerException if either argument is {@code null}
      * @throws IllegalArgumentException if {@code elementType} is primitive or
      *         {@code void}, or the required access mode is unsupported
-     * @see #ofArrayUpdater(UpdaterMode, Class, Object)
+     * @see #ofUpdater(Class)
      * @since 29
      */
     public static <T> ReferenceArrayAccessor.Computer<T> ofArrayUpdater(
@@ -1450,381 +1505,272 @@ public final class Lazy {
     }
 
     /**
-     * Returns a declaration-site updater for a named field or array-field
-     * element using the specified mode. The returned updater retains
-     * {@code computingFunction}. The class documentation specifies the
+     * Starts configuring a lazy updater with the specified computation shape.
+     * The shape is a functional interface whose abstract method receives the
+     * storage coordinates and returns the value to compute when the selected
+     * location is uninitialized. A terminal
+     * {@link UpdaterBuilder#build(Object) build} operation retains a function
+     * implementing this interface. A terminal
+     * {@link UpdaterBuilder#buildUseSite(Class) buildUseSite} operation instead
+     * creates an accessor that accepts such a function on each invocation.
+     *
+     * <p>The returned builder is immutable. Its default mode is
+     * {@link UpdaterMode#PUBLISH_ONCE}; its default field-access authority is
+     * {@link MethodHandles#publicLookup() publicLookup()}. With no
+     * {@code withLocation} call, it selects an element of an array supplied as
+     * the first storage coordinate. A field or array-valued field is selected
+     * by {@link UpdaterBuilder#withLocation(Class, String)}; a memory-segment
+     * value is selected by {@link UpdaterBuilder#withLocation(MemoryLayout,
+     * MemoryLayout.PathElement...)}. The class documentation specifies the
      * {@linkplain ##access-shapes access shapes},
      * {@linkplain ##computing-functions computing-function rules},
      * {@linkplain ##uninitialized-locations reserved values}, and
      * {@linkplain ##updater-modes mode semantics}.
      *
-     * <p>For example, an instance field can use a concrete receiver type:
-     * {@snippet lang=java :
-     * import java.lang.util.Lazy;
-     * import java.lang.invoke.MethodHandles;
-     *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
-     *
-     * class Point {
-     *     private final double x, y;
-     *     private Double radius;
-     *
-     *     Point(double x, double y) { this.x = x; this.y = y; }
-     *
-     *     interface Radius { Double getOrCompute(Point point); }
-     *
-     *     private static final Radius LAZY_RADIUS = Lazy.ofLocationUpdater(
-     *             PUBLISH_ONCE, MethodHandles.lookup(),
-     *             Radius.class, "radius",
-     *             point -> Math.hypot(point.x, point.y));
-     *
-     *     double radius() { return LAZY_RADIUS.getOrCompute(this); }
-     * }
-     * }
-     * The boxed result permits a computed radius of positive zero, because
-     * {@code null}, rather than zero, is the reserved uninitialized value.
-     * The {@linkplain #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup,
-     * Class, String) use-site overload} can instead use a concrete
-     * {@link ReferenceFieldAccessor} subinterface that fixes both the receiver
-     * and the value type, as shown in the next factory's example.
-     *
-     * <p>For a static field, the updater has no receiver:
-     * {@snippet lang=java :
-     * import java.lang.util.Lazy;
-     * import java.lang.invoke.MethodHandles;
-     * import java.util.function.IntSupplier;
-     *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
-     *
-     * class Answer {
-     *     private static int value;
-     *
-     *     private static final IntSupplier LAZY_VALUE =
-     *             Lazy.ofLocationUpdater(PUBLISH_ONCE, MethodHandles.lookup(),
-     *                     IntSupplier.class, Answer.class.getName() + ".value",
-     *                     () -> 42);
-     *
-     *     static int value() { return LAZY_VALUE.getAsInt(); }
-     * }
-     * }
-     *
-     * <p>For an element of a static {@code int[]} field, the updater takes
-     * only the index. The standard {@link java.util.function.IntUnaryOperator}
-     * has the required shape:
-     * {@snippet lang=java :
-     * import java.lang.util.Lazy;
-     * import java.lang.invoke.MethodHandles;
-     * import java.util.function.IntUnaryOperator;
-     *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
-     *
-     * class Values {
-     *     private static final int[] entries = new int[8];
-     *
-     *     private static final IntUnaryOperator LAZY_ENTRY =
-     *             Lazy.ofLocationUpdater(PUBLISH_ONCE, MethodHandles.lookup(),
-     *                     IntUnaryOperator.class, Values.class.getName() + ".entries",
-     *                     index -> index + 1);
-     *
-     *     static int entry(int index) { return LAZY_ENTRY.applyAsInt(index); }
-     * }
-     * }
-     * An element of an instance array field instead requires an interface
-     * with an owner and an index parameter.
-     *
-     * @param mode the updater mode
-     * @param lookup the lookup used to authorize field and interface access
-     * @param type the functional interface implemented by the computing
-     *             function and returned updater
-     * @param fieldSelector the instance field's simple name or the static
-     *                      field's binary owner name followed by a dot and
-     *                      the field name
-     * @param computingFunction the computation for an uninitialized location
-     * @param <T> the functional interface type
-     * @return a lazy updater implementing {@code type}
-     * @throws NullPointerException if any argument is {@code null}
-     * @throws IllegalArgumentException if the selector or interface is invalid,
-     *         the selected storage is inaccessible or unsuitable, the
-     *         required access mode is unsupported, or the computing function
-     *         is incompatible
-     * @since 29
-     * @see #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String)
-     * @see #ofArrayUpdater(UpdaterMode, Class, Object)
-     */
-    public static <T> T ofLocationUpdater(UpdaterMode mode,
-            MethodHandles.Lookup lookup,
-            Class<T> type,
-            String fieldSelector,
-            T computingFunction) {
-        Objects.requireNonNull(mode);
-        Objects.requireNonNull(lookup);
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(fieldSelector);
-        Objects.requireNonNull(computingFunction);
-        return LazyUpdaterSupport.ofLocation(mode, lookup, type,
-                fieldSelector, computingFunction);
-    }
-
-    /**
-     * Returns a use-site updater for a named field or array-field element
-     * using the specified mode. Its functional method accepts the
-     * computing function first, followed by the location's coordinates. The
-     * class documentation specifies the {@linkplain ##access-shapes access
-     * shapes}, {@linkplain ##computing-functions computing-function rules},
-     * {@linkplain ##uninitialized-locations reserved values}, and
-     * {@linkplain ##updater-modes mode semantics}.
-     *
-     * <p>For example, an instance field can specialize the ready-made
-     * {@link ReferenceFieldAccessor} and supply its computing function on each
-     * access:
-     * {@snippet lang=java :
-     * import java.lang.util.Lazy;
-     * import java.lang.invoke.MethodHandles;
-     *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
-     *
-     * class Point {
-     *     private final double x, y;
-     *     private Double radius;
-     *
-     *     Point(double x, double y) { this.x = x; this.y = y; }
-     *
-     *     interface Radius extends Lazy.ReferenceFieldAccessor<Point, Double> { }
-     *
-     *     private static final Radius LAZY_RADIUS =
-     *             Lazy.ofLocationUpdater(PUBLISH_ONCE, MethodHandles.lookup(),
-     *                     Radius.class, "radius");
-     *
-     *     double radius() {
-     *         return LAZY_RADIUS.getOrCompute(point -> Math.hypot(point.x, point.y), this);
-     *     }
-     * }
-     * }
-     * The concrete {@code Radius} subinterface fixes the receiver and value
-     * types required by the factory.
-     * As in the declaration-site form, boxing the result lets a computed
-     * radius be positive zero, since {@code null} is the reserved value.
-     *
-     * <p>For a static field, the updater has no receiver. A primitive field
-     * can use a ready-made accessor:
-     * {@snippet lang=java :
-     * import java.lang.util.Lazy;
-     * import java.lang.invoke.MethodHandles;
-     *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
-     *
-     * class Answer {
-     *     private static int value;
-     *
-     *     private static final Lazy.StaticIntFieldAccessor LAZY_VALUE =
-     *             Lazy.ofLocationUpdater(PUBLISH_ONCE, MethodHandles.lookup(),
-     *                     Lazy.StaticIntFieldAccessor.class, Answer.class.getName() + ".value");
-     *
-     *     static int value() { return LAZY_VALUE.getOrCompute(() -> 42); }
-     * }
-     * }
-     *
-     * <p>For an element of an instance array field, the updater takes the
-     * owner followed by the index:
-     * {@snippet lang=java :
-     * import java.lang.util.Lazy;
-     * import java.lang.invoke.MethodHandles;
-     *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
-     *
-     * class Names {
-     *     private final String[] entries = new String[8];
-     *
-     *     interface Entry {
-     *         interface Computer { String apply(Names owner, int index); }
-     *         String getOrCompute(Computer computingFunction, Names owner, int index);
-     *     }
-     *
-     *     private static final Entry LAZY_ENTRY =
-     *             Lazy.ofLocationUpdater(PUBLISH_ONCE, MethodHandles.lookup(),
-     *                     Entry.class, "entries");
-     *
-     *     String entry(int index) {
-     *         return LAZY_ENTRY.getOrCompute((owner, i) -> "entry-" + i, this, index);
-     *     }
-     * }
-     * }
-     * This owner-plus-index shape has no ready-made accessor.
-     * An element of a static array field can similarly use an index-only
-     * accessor with the array owner's binary name in the selector.
-     *
-     * @param mode the updater mode
-     * @param lookup the lookup used to authorize field and interface access
-     * @param type the functional interface implemented by the returned updater
-     * @param fieldSelector the instance field's simple name or the static
-     *                      field's binary owner name followed by a dot and
-     *                      the field name
-     * @param <T> the functional interface type
-     * @return a lazy updater implementing {@code type}
-     * @throws NullPointerException if any argument is {@code null}
-     * @throws IllegalArgumentException if the selector or interface is invalid,
-     *         the selected storage is inaccessible or unsuitable, or the
-     *         required access mode is unsupported
-     * @since 29
-     * @see #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String, Object)
-     */
-    public static <T> T ofLocationUpdater(UpdaterMode mode,
-            MethodHandles.Lookup lookup,
-            Class<T> type,
-            String fieldSelector) {
-        Objects.requireNonNull(mode);
-        Objects.requireNonNull(lookup);
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(fieldSelector);
-        return LazyUpdaterSupport.ofLocation(mode, lookup, type, fieldSelector);
-    }
-
-    /**
-     * Returns a declaration-site updater for an element of a directly
-     * supplied array using the specified mode. The updater retains
-     * {@code computingFunction}; it does not itself retain an array passed
-     * to the updater, although the computing function may capture one. The
-     * class documentation specifies the
-     * {@linkplain ##access-shapes access shapes},
-     * {@linkplain ##computing-functions computing-function rules},
-     * {@linkplain ##uninitialized-locations reserved values}, and
-     * {@linkplain ##updater-modes mode semantics}.
-     *
-     * <p>For example:
+     * <p>For a direct {@code int[]} element:
      * {@snippet lang=java :
      * import java.lang.util.Lazy;
      * import java.lang.util.Lazy.IntArrayAccessor;
      *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
+     * class Entries {
+     *     private static final IntArrayAccessor.Computer ENTRY =
+     *             Lazy.ofUpdater(IntArrayAccessor.Computer.class)
+     *                     .build((array, index) -> index + 1);
      *
-     * class Values {
-     *     private final int[] entries = new int[8];
-     *
-     *     private static final IntArrayAccessor.Computer LAZY_ENTRY =
-     *             Lazy.ofArrayUpdater(PUBLISH_ONCE,
-     *                     IntArrayAccessor.Computer.class,
-     *                     (array, index) -> index + 1);
-     *
-     *     int entry(int index) { return LAZY_ENTRY.apply(entries, index); }
-     * }
-     * }
-     * The ready-made {@link IntArrayAccessor.Computer} is specialized for
-     * {@code int[]} elements and has the coordinate-only shape required by
-     * this declaration-site form.
-     *
-     * <p>A custom interface can also select an element with two indices:
-     * {@snippet lang=java :
-     * import java.lang.util.Lazy;
-     *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
-     *
-     * class Matrix {
-     *     private final int[][] entries = new int[2][3];
-     *
-     *     interface Cell { int getOrCompute(int[][] array, int row, int column); }
-     *
-     *     private static final Cell LAZY_CELL =
-     *             Lazy.ofArrayUpdater(PUBLISH_ONCE,
-     *                     Cell.class,
-     *                     (array, row, column) -> row * array[row].length + column + 1);
-     *
-     *     int cell(int row, int column) {
-     *         return LAZY_CELL.getOrCompute(entries, row, column);
+     *     int get(int[] array, int index) {
+     *         return ENTRY.apply(array, index);
      *     }
      * }
      * }
      *
-     * @param mode the updater mode
-     * @param type the functional interface implemented by the computing
-     *             function and returned updater
-     * @param computingFunction the computation for an uninitialized element
-     * @param <T> the functional interface type
-     * @return a lazy array-element updater implementing {@code type}
-     * @throws NullPointerException if any argument is {@code null}
-     * @throws IllegalArgumentException if the interface or array shape is
-     *         invalid, the required access mode is unsupported, or the
-     *         computing function is incompatible
+     * @param computationShape the functional interface for the computation
+     * @param <C> the computation's functional-interface type
+     * @return a new immutable updater builder
+     * @throws NullPointerException if {@code computationShape} is {@code null}
      * @since 29
-     * @see #ofArrayUpdater(UpdaterMode, Class)
      */
-    public static <T> T ofArrayUpdater(UpdaterMode mode, Class<T> type, T computingFunction) {
-        Objects.requireNonNull(mode);
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(computingFunction);
-        return LazyUpdaterSupport.ofArray(mode, type, computingFunction);
+    public static <C> UpdaterBuilder<C> ofUpdater(Class<C> computationShape) {
+        Objects.requireNonNull(computationShape);
+        return LazyUpdaterSupport.newBuilder(computationShape);
     }
 
     /**
-     * Returns a use-site updater for elements of a directly supplied array
-     * using the specified mode. Its functional method accepts the
-     * computing function first, followed by the array and indices. The class
-     * documentation specifies the {@linkplain ##access-shapes access shapes},
-     * {@linkplain ##computing-functions computing-function rules},
-     * {@linkplain ##uninitialized-locations reserved values}, and
-     * {@linkplain ##updater-modes mode semantics}.
+     * A builder for a lazy updater. Builders returned by
+     * {@link #ofUpdater(Class)} are immutable: each {@code with} method returns
+     * a new builder and leaves the original unchanged. Configuration methods
+     * record the selection; the terminal methods validate the
+     * functional-interface shapes, storage, access privileges, and mode before
+     * creating an updater. Multiple updaters built from the same selection
+     * may access the same caller-owned location when invoked with coordinates
+     * selecting it. The builder does not retain a computing function; each
+     * declaration-site updater retains the function supplied to its build.
      *
-     * <p>For example:
-     * {@snippet lang=java :
-     * import java.lang.util.Lazy;
-     * import java.lang.util.Lazy.IntArrayAccessor;
+     * <p>The builder has three location forms:
+     * <ul>
+     * <li>No explicit location selects an element of a directly supplied
+     *     array. The computation shape starts with the array type and has one
+     *     or more following {@code int} indices.</li>
+     * <li>A named field selects the field itself, or an element reached
+     *     through an array-valued field when index coordinates follow the
+     *     receiver. A static field has no receiver; an instance field has a
+     *     receiver first. The field's owner is a {@code Class} token, preserving
+     *     its identity across class loaders.</li>
+     * <li>A memory-layout path selects a value in a supplied
+     *     {@link java.lang.foreign.MemorySegment}. Coordinates are the segment,
+     *     a {@code long} base offset, and one {@code long} index for each open
+     *     sequence element in the path, in path order.</li>
+     * </ul>
      *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
+     * <p>A computation shape can be a raw generic functional interface when
+     * the named field's explicit owner supplies the missing receiver identity.
+     * This does not recover erased value type arguments: values are then
+     * checked against the field's erased type at run time. A specialized
+     * ready-made reference-field use-site accessor additionally validates
+     * the field's generic value type. A direct-array declaration-site
+     * computation shape must identify a concrete array
+     * coordinate. A specialized use-site accessor may provide that
+     * information even when its computing-function interface is generic.
      *
-     * class Values {
-     *     private final int[] entries = new int[8];
-     *
-     *     private static final IntArrayAccessor LAZY_ENTRY =
-     *             Lazy.ofArrayUpdater(PUBLISH_ONCE, IntArrayAccessor.class);
-     *
-     *     int entry(int index) {
-     *         return LAZY_ENTRY.getOrCompute((array, i) -> i + 1, entries, index);
-     *     }
-     * }
-     * }
-     *
-     * <p>The ready-made {@link IntArrayAccessor} covers an {@code int[]} element
-     * with one index. A custom callback-first interface supports two indices:
-     * {@snippet lang=java :
-     * import java.lang.util.Lazy;
-     *
-     * import static java.lang.util.Lazy.UpdaterMode.PUBLISH_ONCE;
-     *
-     * class Matrix {
-     *     private final int[][] entries = new int[2][3];
-     *
-     *     interface Cell {
-     *
-     *         interface Computer { int apply(int[][] array, int row, int column); }
-     *
-     *         int getOrCompute(Computer computingFunction, int[][] array, int row, int column);
-     *     }
-     *
-     *     private static final Cell LAZY_CELL =
-     *             Lazy.ofArrayUpdater(PUBLISH_ONCE, Cell.class);
-     *
-     *     int cell(int row, int column) {
-     *         return LAZY_CELL.getOrCompute(
-     *                 (array, r, c) -> r * array[r].length + c + 1,
-     *                 entries, row, column);
-     *     }
-     * }
-     * }
-     *
-     * @param mode the updater mode
-     * @param type the functional interface implemented by the returned updater
-     * @param <T> the functional interface type
-     * @return a lazy array-element updater implementing {@code type}
-     * @throws NullPointerException if any argument is {@code null}
-     * @throws IllegalArgumentException if either functional-interface shape
-     *         or the array shape is invalid, or the required access mode is
-     *         unsupported
+     * @param <C> the computation's functional-interface type
+     * @see Lazy##access-shapes Locations and access shapes
+     * @see Lazy##updater-modes Updater modes
      * @since 29
-     * @see #ofArrayUpdater(UpdaterMode, Class, Object)
-     */
-    public static <T> T ofArrayUpdater(UpdaterMode mode, Class<T> type) {
-        Objects.requireNonNull(mode);
-        Objects.requireNonNull(type);
-        return LazyUpdaterSupport.ofArray(mode, type);
+    */
+    @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
+    public interface UpdaterBuilder<C> {
+
+        /**
+         * Returns a builder using the specified coordination mode. The
+         * initial mode is {@link UpdaterMode#PUBLISH_ONCE}. A mode unsupported
+         * by the selected location is rejected by a terminal operation.
+         *
+         * @param mode the updater mode
+         * @return a new builder using {@code mode}
+         * @throws NullPointerException if {@code mode} is {@code null}
+         */
+        UpdaterBuilder<C> withMode(UpdaterMode mode);
+
+        /**
+         * Returns a builder using the specified lookup to access a named
+         * field and the functional interfaces. The initial lookup is
+         * {@link MethodHandles#publicLookup() publicLookup()}. A lookup is
+         * applicable only to a named-field location; explicitly supplying one
+         * for a direct array or memory segment is rejected by a terminal
+         * operation. Access is checked when the updater is built, not each
+         * time it is used. A receiver restriction imposed by the lookup is
+         * preserved.
+         *
+         * @param lookup the access authority for a named field
+         * @return a new builder using {@code lookup}
+         * @throws NullPointerException if {@code lookup} is {@code null}
+         */
+        UpdaterBuilder<C> withLookup(MethodHandles.Lookup lookup);
+
+        /**
+         * Returns a builder selecting a named field, or an element of an
+         * array held in that field. The {@code ownerClass} is the type through
+         * which the field is selected; an inherited field may be selected
+         * through a subclass. The field name is simple, without a class
+         * prefix. The field may be static or an instance field, as determined
+         * by its declaration and the computation shape's coordinates. A
+         * receiver is required for an instance field. One or more trailing
+         * {@code int} coordinates select array elements, including elements of
+         * multidimensional arrays.
+         *
+         * <p>For a private instance field:
+         * {@snippet lang=java :
+         * import java.lang.invoke.MethodHandles;
+         * import java.lang.util.Lazy;
+         *
+         * class Counter {
+         *     private final int seed;
+         *     private int count;
+         *     interface Count { int getOrCompute(Counter receiver); }
+         *
+         *     private static final Count COUNT = Lazy.ofUpdater(Count.class)
+         *             .withLookup(MethodHandles.lookup())
+         *             .withLocation(Counter.class, "count")
+         *             .build(c -> Math.max(1, c.seed));
+         *
+         *     Counter(int seed) { this.seed = seed; }
+         *     int count() { return COUNT.getOrCompute(this); }
+         * }
+         * }
+         *
+         * @param ownerClass the type through which the field is selected
+         * @param fieldName the simple field name
+         * @return a new builder selecting the field
+         * @throws NullPointerException if an argument is {@code null}
+         * @throws IllegalArgumentException if {@code fieldName} is empty or
+         *         contains a dot
+         * @throws IllegalStateException if a location has already been
+         *         selected
+         */
+        UpdaterBuilder<C> withLocation(Class<?> ownerClass, String fieldName);
+
+        /**
+         * Returns a builder selecting a value in a memory segment through a
+         * structured memory layout. The path must select a
+         * {@link java.lang.foreign.ValueLayout}; it may contain group elements
+         * and open sequence elements, but not a dereference element.
+         * The computation shape receives a
+         * {@link java.lang.foreign.MemorySegment}, a {@code long} base offset,
+         * and one {@code long} index for each open sequence element, in path
+         * order. An empty path selects the layout itself when it is a value
+         * layout. The path array is copied.
+         *
+         * <p>{@link UpdaterMode#SERIALIZED} is not supported for segment
+         * locations. {@link UpdaterMode#PUBLISH_ONCE} requires the selected
+         * layout's var handle to support an aligned atomic
+         * compare-and-exchange operation; {@link UpdaterMode#PLAIN} can be used
+         * when that operation is unavailable. The terminal operation checks
+         * these requirements.
+         *
+         * <p>For a structured segment:
+         * {@snippet lang=java :
+         * import java.lang.foreign.MemoryLayout;
+         * import java.lang.foreign.MemorySegment;
+         * import java.lang.foreign.ValueLayout;
+         * import java.lang.util.Lazy;
+         *
+         * class SegmentCounter {
+         *     static final MemoryLayout LAYOUT =
+         *             MemoryLayout.structLayout(ValueLayout.JAVA_INT.withName("count"));
+         *     interface Count { int getOrCompute(MemorySegment segment, long baseOffset); }
+         *     static final Count COUNT = Lazy.ofUpdater(Count.class)
+         *             .withLocation(LAYOUT, MemoryLayout.PathElement.groupElement("count"))
+         *             .build((segment, offset) -> 42);
+         *
+         *     static int count(MemorySegment segment) {
+         *         return COUNT.getOrCompute(segment, 0L);
+         *     }
+         * }
+         * }
+         *
+         * @param layout the layout containing the selected value
+         * @param pathElements the path from the layout to the value
+         * @return a new builder selecting the segment value
+         * @throws NullPointerException if any argument or path element is
+         *         {@code null}
+         * @throws IllegalStateException if a location has already been
+         *         selected
+         */
+        UpdaterBuilder<C> withLocation(
+                MemoryLayout layout, MemoryLayout.PathElement... pathElements);
+
+        /**
+         * Builds a declaration-site updater. The returned updater implements
+         * the computation shape and retains {@code computingFunction}. Its
+         * functional method reads the selected location and computes a value
+         * only if the location contains its reserved default value.
+         * For a direct array, the first coordinate is the array and subsequent
+         * coordinates are its indices. For a named field, the field may be
+         * static or instance. For a segment, coordinates follow the layout
+         * path specified by {@link #withLocation(MemoryLayout,
+         * MemoryLayout.PathElement...)}.
+         *
+         * @param computingFunction the computation retained by the updater
+         * @return an updater implementing the computation shape
+         * @throws NullPointerException if {@code computingFunction} is
+         *         {@code null}
+         * @throws IllegalArgumentException if the shape, location, mode,
+         *         access, or computing function is incompatible
+         */
+        C build(C computingFunction);
+
+        /**
+         * Builds a use-site updater implementing {@code useSiteShape}.
+         * Its functional method accepts a computing function first, followed
+         * by the storage coordinates. The computing function's functional
+         * method must have the same erased parameter and return types as the
+         * builder's computation shape; it need not be the same nominal
+         * interface. A non-null computing function is required on every
+         * invocation, even when the location is already initialized.
+         *
+         * <p>For a direct {@code int[]} element:
+         * {@snippet lang=java :
+         * import java.lang.util.Lazy;
+         * import java.lang.util.Lazy.IntArrayAccessor;
+         *
+         * class Entries {
+         *     private static final IntArrayAccessor ENTRY =
+         *             Lazy.ofUpdater(IntArrayAccessor.Computer.class)
+         *                     .buildUseSite(IntArrayAccessor.class);
+         *
+         *     int get(int[] array, int index) {
+         *         return ENTRY.getOrCompute((a, i) -> i + 1, array, index);
+         *     }
+         * }
+         * }
+         *
+         * @param useSiteShape the functional interface of the returned updater
+         * @param <U> the use-site updater's functional-interface type
+         * @return a use-site updater implementing {@code useSiteShape}
+         * @throws NullPointerException if {@code useSiteShape} is {@code null}
+         * @throws IllegalArgumentException if the shapes, location, mode, or
+         *         access are incompatible
+         */
+        <U> U buildUseSite(Class<U> useSiteShape);
     }
 
     // Ready-made interfaces
@@ -1832,9 +1778,10 @@ public final class Lazy {
     /**
      * A non-generic supplier shape for a static field value. This interface
      * provides the concrete functional-interface token used by
-     * {@link #ofStaticFieldUpdater(Class, String, Supplier)} when it delegates to
-     * {@code ofLocationUpdater}. It can also be supplied directly to that
-     * factory when an {@code Object}-valued result is appropriate.
+     * {@link #ofStaticFieldUpdater(Class, String, Supplier)} when it delegates
+     * to an {@link #ofUpdater(Class) updater builder}. It can also be used
+     * directly with that builder when an {@code Object}-valued result is
+     * appropriate.
      *
      * @see Lazy##uninitialized-locations Uninitialized locations
      * @see Lazy##updater-modes Updater modes
@@ -1889,14 +1836,15 @@ public final class Lazy {
 
     /**
      * An updater for a named static reference field. The computing function
-     * is supplied at each access. Clients declare a non-generic subinterface,
-     * such as {@code NameAccessor extends StaticReferenceFieldAccessor<String>},
-     * and pass its {@code Class} token to
-     * {@link #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String)}. The
-     * field's erased type must be a reference type assignable to {@code V}.
-     * A parameterized or generic-array value type must match the field's
-     * declared generic type. A computed {@code null} is rejected because it
-     * denotes an uninitialized field.
+     * is supplied at each access. A non-generic subinterface, such as
+     * {@code NameAccessor extends StaticReferenceFieldAccessor<String>},
+     * retains its value type when passed to
+     * {@link UpdaterBuilder#buildUseSite(Class)}. The explicit field owner
+     * also permits the raw interface token, with checks only at its erased
+     * value type. For a specialized token, the field's erased type must be a
+     * reference type assignable to {@code V}; a parameterized or generic-array
+     * value type must match the field's declared generic type. A computed
+     * {@code null} is rejected because it denotes an uninitialized field.
      *
      * @param <V> the field value type or a reference supertype, subject to the
      *            generic-type matching rule above
@@ -1919,12 +1867,11 @@ public final class Lazy {
 
     /**
      * An updater for a named instance {@code int} field. The computing
-     * function is supplied at each access. Clients declare a non-generic
-     * subinterface, such as {@code CountAccessor extends
-     * IntFieldAccessor<Counter>}, and pass that subinterface to
-     * {@link #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String)}. The generic
-     * receiver type must resolve to a class; the raw base interface cannot
-     * identify a field owner.
+     * function is supplied at each access. A non-generic subinterface, such
+     * as {@code CountAccessor extends IntFieldAccessor<Counter>}, retains the
+     * receiver type when passed to {@link UpdaterBuilder#buildUseSite(Class)}.
+     * The explicit field owner also permits the raw interface token, whose
+     * receiver is then checked only at its erased type.
      *
      * @param <R> the receiver type
      * @see Lazy##computing-functions Computing functions
@@ -1948,12 +1895,11 @@ public final class Lazy {
 
     /**
      * An updater for a named instance {@code long} field. The computing
-     * function is supplied at each access. Clients declare a non-generic
-     * subinterface, such as {@code CountAccessor extends
-     * LongFieldAccessor<Counter>}, and pass that subinterface to
-     * {@link #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String)}. The generic
-     * receiver type must resolve to a class; the raw base interface cannot
-     * identify a field owner.
+     * function is supplied at each access. A non-generic subinterface, such
+     * as {@code TotalAccessor extends LongFieldAccessor<Counter>}, retains the
+     * receiver type when passed to {@link UpdaterBuilder#buildUseSite(Class)}.
+     * The explicit field owner also permits the raw interface token, whose
+     * receiver is then checked only at its erased type.
      *
      * @param <R> the receiver type
      * @see Lazy##computing-functions Computing functions
@@ -1977,16 +1923,15 @@ public final class Lazy {
 
     /**
      * An updater for a named instance reference field. The computing function
-     * is supplied at each access. Clients declare a non-generic subinterface,
-     * such as {@code NameAccessor extends ReferenceFieldAccessor<Holder, String>},
-     * and pass its {@code Class} token to
-     * {@link #ofLocationUpdater(UpdaterMode, MethodHandles.Lookup, Class, String)}. The
-     * receiver must resolve to a specific owner class and the value must
-     * resolve to a reference type, which may be parameterized. The field's
-     * erased type must be assignable to {@code V}; a parameterized or
-     * generic-array value type must match the field's declared generic type.
-     * A computed {@code null} is rejected because it denotes an uninitialized
-     * field.
+     * is supplied at each access. A non-generic subinterface, such as
+     * {@code NameAccessor extends ReferenceFieldAccessor<Holder, String>},
+     * retains its receiver and result types when passed to
+     * {@link UpdaterBuilder#buildUseSite(Class)}. The explicit field owner
+     * also permits the raw interface token, with checks only at its erased
+     * types. For a specialized token, the field's erased type must be
+     * assignable to {@code V}; a parameterized or generic-array value type
+     * must match the field's declared generic type. A computed {@code null}
+     * is rejected because it denotes an uninitialized field.
      *
      * @param <R> the receiver type
      * @param <V> the field value type or a reference supertype, subject to the
@@ -2096,8 +2041,10 @@ public final class Lazy {
      * element may itself be an array. The computing function is supplied at
      * each access. Clients declare a non-generic subinterface, such as
      * {@code Names extends ReferenceArrayAccessor<String>}, and pass its
-     * {@code Class} token to {@link #ofArrayUpdater(UpdaterMode, Class)}. A computed
-     * {@code null} is rejected because it denotes an uninitialized element.
+     * {@code Class} token to {@link UpdaterBuilder#buildUseSite(Class)}. The
+     * builder has no explicit location for a directly supplied array. A
+     * computed {@code null} is rejected because it denotes an uninitialized
+     * element.
      *
      * @param <E> the array element type
      * @see Lazy##computing-functions Computing functions

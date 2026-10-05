@@ -44,6 +44,7 @@ import java.lang.util.Lazy.LongFieldAccessor;
 import java.lang.util.Lazy.ReferenceArrayAccessor;
 import java.lang.util.Lazy.ReferenceFieldAccessor;
 import java.lang.util.Lazy.StaticReferenceFieldAccessor;
+import java.lang.util.Lazy.UpdaterBuilder;
 import java.lang.util.Lazy.UpdaterMode;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -53,7 +54,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.value.ValueClass;
@@ -67,85 +67,12 @@ import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 public final class LazyUpdaterSupport {
     private LazyUpdaterSupport() { }
 
-    public static <T> T ofLocation(UpdaterMode mode,
-                                   MethodHandles.Lookup lookup,
-                                   Class<T> type,
-                                   String fieldSelector,
-                                   T computingFunction) {
-        Objects.requireNonNull(mode);
-        Objects.requireNonNull(lookup);
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(fieldSelector);
-        Objects.requireNonNull(computingFunction);
-        Method method = accessorMethod(type);
-        requireConcreteCoordinates(type, method, 0, null);
-        if (!type.isInstance(computingFunction)) {
-            throw new IllegalArgumentException("Function must implement " + type.getTypeName());
-        }
-        try {
-            lookup.accessClass(type);
-            StorageAccess access = selectField(lookup, method.getParameterTypes(), fieldSelector);
-            return createUpdater(mode, type, method, method, access,
-                    computingFunction, false);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalArgumentException("Cannot access the lazy location or functional interface", e);
-        }
-    }
-
-    public static <T> T ofLocation(UpdaterMode mode,
-                                   MethodHandles.Lookup lookup,
-                                   Class<T> type,
-                                   String fieldSelector) {
-        Objects.requireNonNull(mode);
-        Objects.requireNonNull(lookup);
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(fieldSelector);
-        Method accessor = accessorMethod(type);
-        Class<?> specializedOwner = specializedFieldOwner(type);
-        ReferenceValueType specializedValue = specializedReferenceFieldValue(type);
-        requireConcreteCoordinates(type, accessor, 1, specializedOwner);
-        Method computer = computerMethod(type, accessor);
-        try {
-            lookup.accessClass(type);
-            lookup.accessClass(accessor.getParameterTypes()[0]);
-            if (specializedOwner != null) {
-                lookup.accessClass(specializedOwner);
-            }
-            StorageAccess access = selectField(lookup,
-                    accessorCoordinates(accessor), fieldSelector,
-                    specializedOwner);
-            validateReferenceFieldValue(access, specializedValue);
-            return createUpdater(mode, type, accessor, computer, access,
-                    null, true);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalArgumentException("Cannot access the lazy location or functional interface", e);
-        }
-    }
-
     /**
-     * The explicit owner supplies the receiver type erased from Function's
-     * method descriptor. All storage selection and mode handling still use
-     * the same path as a declaration-site location updater.
+     * Starts an updater builder while keeping its state and storage-selection
+     * machinery outside the public API class.
      */
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public static <R, T> Function<R, T> ofInstanceField(UpdaterMode mode,
-            MethodHandles.Lookup lookup, Class<R> owner, String fieldName,
-            Function<R, T> computingFunction) {
-        Objects.requireNonNull(mode);
-        Objects.requireNonNull(lookup);
-        Objects.requireNonNull(owner);
-        Objects.requireNonNull(fieldName);
-        Objects.requireNonNull(computingFunction);
-        Method method = LazyUpdaterFactory.functionalMethod(Function.class);
-        try {
-            lookup.accessClass(owner);
-            StorageAccess access = selectField(lookup, method.getParameterTypes(),
-                    fieldName, owner);
-            return (Function<R, T>) createUpdater(mode, Function.class, method,
-                    method, access, computingFunction, false);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalArgumentException("Cannot access the lazy location", e);
-        }
+    public static <C> UpdaterBuilder<C> newBuilder(Class<C> computationShape) {
+        return LazyUpdaterBuilderImpl.initial(computationShape);
     }
 
     @FunctionalInterface
@@ -211,6 +138,135 @@ public final class LazyUpdaterSupport {
                     null, true);
         } catch (ReflectiveOperationException e) {
             throw new IllegalArgumentException("Cannot create the lazy array updater", e);
+        }
+    }
+
+    /**
+     * Creates a declaration-site updater for a field selected through an
+     * explicit owner class. Unlike the older string selector, this preserves
+     * the identity of classes in different loaders, including hidden classes.
+     * The owner may also be a public subclass through which an inherited
+     * field is accessible.
+     */
+    public static <C> C ofField(UpdaterMode mode, MethodHandles.Lookup lookup,
+                                Class<C> computationShape, Class<?> ownerClass,
+                                String fieldName, C computingFunction) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(lookup);
+        Objects.requireNonNull(computationShape);
+        Objects.requireNonNull(ownerClass);
+        Objects.requireNonNull(fieldName);
+        Objects.requireNonNull(computingFunction);
+        Method method = fieldShapeMethod(computationShape);
+        if (!computationShape.isInstance(computingFunction)) {
+            throw new IllegalArgumentException("Function must implement "
+                    + computationShape.getTypeName());
+        }
+        try {
+            lookup.accessClass(computationShape);
+            StorageAccess access = selectField(mode, lookup, method.getParameterTypes(),
+                    ownerClass, fieldName);
+            return createUpdater(mode, computationShape, method, method, access,
+                    computingFunction, false);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Cannot access the lazy location or functional interface", e);
+        }
+    }
+
+    /**
+     * Creates a use-site field updater. The first parameter of the returned
+     * accessor is a callback with the computation shape chosen at the start
+     * of the builder chain. Generic functional interfaces may be used raw;
+     * the explicit owner identifies the field but cannot restore erased Java
+     * type arguments to a Class token.
+     */
+    public static <C, U> U ofFieldUseSite(UpdaterMode mode,
+                                          MethodHandles.Lookup lookup,
+                                          Class<C> computationShape,
+                                          Class<U> useSiteShape,
+                                          Class<?> ownerClass,
+                                          String fieldName) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(lookup);
+        Objects.requireNonNull(computationShape);
+        Objects.requireNonNull(useSiteShape);
+        Objects.requireNonNull(ownerClass);
+        Objects.requireNonNull(fieldName);
+        Method declaredComputer = fieldShapeMethod(computationShape);
+        Method accessor = fieldShapeMethod(useSiteShape);
+        Method callback = fieldComputerMethod(useSiteShape, accessor);
+        requireSameComputerShape(declaredComputer, callback);
+        boolean concreteGenericShape = useSiteShape.getTypeParameters().length == 0
+                && !hasUnresolvedFieldAccessorArguments(useSiteShape);
+        Class<?> specializedOwner = concreteGenericShape
+                ? specializedFieldOwner(useSiteShape) : null;
+        ReferenceValueType specializedValue = concreteGenericShape
+                ? specializedReferenceFieldValue(useSiteShape) : null;
+        try {
+            lookup.accessClass(computationShape);
+            lookup.accessClass(useSiteShape);
+            lookup.accessClass(accessor.getParameterTypes()[0]);
+            StorageAccess access = selectField(mode, lookup,
+                    accessorCoordinates(accessor), ownerClass, fieldName,
+                    specializedOwner);
+            validateReferenceFieldValue(access, specializedValue);
+            return createUpdater(mode, useSiteShape, accessor, callback, access,
+                    null, true);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Cannot access the lazy location or functional interface", e);
+        }
+    }
+
+    /**
+     * The use-site array accessor can identify a more specific reference
+     * array type than the computation Class token (for example a concrete
+     * subinterface of ReferenceArrayAccessor<String>).
+     */
+    public static <C, U> U ofArrayUseSite(UpdaterMode mode,
+                                          Class<C> computationShape,
+                                          Class<U> useSiteShape) {
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(computationShape);
+        Objects.requireNonNull(useSiteShape);
+        Method declaredComputer = fieldShapeMethod(computationShape);
+        Method accessor = accessorMethod(useSiteShape);
+        Method callback = computerMethod(useSiteShape, accessor);
+        requireSameComputerShape(declaredComputer, callback);
+        return ofArray(mode, useSiteShape);
+    }
+
+    private static Method fieldShapeMethod(Class<?> type) {
+        Method method = LazyUpdaterFactory.functionalMethod(type);
+        if (method.getTypeParameters().length != 0) {
+            throw erasedTypeVariables(type, "declares a method type variable "
+                    + "erased in its functional-method descriptor");
+        }
+        return method;
+    }
+
+    private static Method fieldComputerMethod(Class<?> type, Method accessor) {
+        if (accessor.getParameterCount() == 0) {
+            throw new IllegalArgumentException("A use-site updater requires a computing-function parameter");
+        }
+        Method computer = fieldShapeMethod(accessor.getParameterTypes()[0]);
+        Class<?>[] coordinates = accessorCoordinates(accessor);
+        Class<?>[] accepted = computer.getParameterTypes();
+        if (accepted.length != coordinates.length) {
+            throw new IllegalArgumentException("Computing function coordinates do not match the updater");
+        }
+        for (int i = 0; i < coordinates.length; i++) {
+            if (!accepted[i].isAssignableFrom(coordinates[i])) {
+                throw new IllegalArgumentException(
+                        "Computing function coordinate " + i + " does not accept the updater coordinate");
+            }
+        }
+        return computer;
+    }
+
+    private static void requireSameComputerShape(Method expected, Method actual) {
+        if (expected.getReturnType() != actual.getReturnType()
+                || !Arrays.equals(expected.getParameterTypes(), actual.getParameterTypes())) {
+            throw new IllegalArgumentException("Use-site computing function does not match the builder's computation shape");
         }
     }
 
@@ -376,6 +432,28 @@ public final class LazyUpdaterSupport {
                             + type.getTypeName());
         }
         return owner;
+    }
+
+    private static boolean hasUnresolvedFieldAccessorArguments(Class<?> type) {
+        if (IntFieldAccessor.class.isAssignableFrom(type)) {
+            return hasUnresolvedTypeVariables(typeArgument(type,
+                    IntFieldAccessor.class, 0, new HashMap<>()));
+        }
+        if (LongFieldAccessor.class.isAssignableFrom(type)) {
+            return hasUnresolvedTypeVariables(typeArgument(type,
+                    LongFieldAccessor.class, 0, new HashMap<>()));
+        }
+        if (ReferenceFieldAccessor.class.isAssignableFrom(type)) {
+            return hasUnresolvedTypeVariables(typeArgument(type,
+                    ReferenceFieldAccessor.class, 0, new HashMap<>()))
+                    || hasUnresolvedTypeVariables(typeArgument(type,
+                    ReferenceFieldAccessor.class, 1, new HashMap<>()));
+        }
+        if (StaticReferenceFieldAccessor.class.isAssignableFrom(type)) {
+            return hasUnresolvedTypeVariables(typeArgument(type,
+                    StaticReferenceFieldAccessor.class, 0, new HashMap<>()));
+        }
+        return false;
     }
 
     private record ReferenceValueType(Class<?> erasedType, Type genericType) { }
@@ -633,76 +711,77 @@ public final class LazyUpdaterSupport {
                                Class<?> receiverType, Class<?> arrayType,
                                int rank) implements StorageAccess { }
 
-    private static StorageAccess selectField(MethodHandles.Lookup lookup,
+    private static StorageAccess selectField(UpdaterMode mode,
+                                             MethodHandles.Lookup lookup,
                                              Class<?>[] coordinates,
-                                             String fieldSelector)
+                                             Class<?> ownerClass,
+                                             String fieldName)
             throws ReflectiveOperationException {
-        return selectField(lookup, coordinates, fieldSelector, null);
+        return selectField(mode, lookup, coordinates, ownerClass, fieldName, null);
     }
 
-    private static StorageAccess selectField(MethodHandles.Lookup lookup,
+    private static StorageAccess selectField(UpdaterMode mode,
+                                             MethodHandles.Lookup lookup,
                                              Class<?>[] coordinates,
-                                             String fieldSelector,
-                                             Class<?> ownerOverride)
+                                             Class<?> ownerClass,
+                                             String fieldName,
+                                             Class<?> specializedReceiver)
             throws ReflectiveOperationException {
-        int separator = fieldSelector.lastIndexOf('.');
-        boolean isStatic = separator >= 0;
-        Class<?> owner;
-        Class<?> receiverType;
-        String fieldName;
-        if (isStatic) {
-            if (ownerOverride != null) {
-                throw new IllegalArgumentException(
-                        "An instance field accessor requires a simple field name");
-            }
-            if (separator == 0 || separator == fieldSelector.length() - 1) {
-                throw new IllegalArgumentException("Expected a binary owner name followed by a field name");
-            }
-            // Lookup.findClass uses the lookup class's loader and enforces
-            // class accessibility. A name alone never bypasses loader identity.
-            owner = lookup.findClass(fieldSelector.substring(0, separator));
-            receiverType = null;
-            fieldName = fieldSelector.substring(separator + 1);
-        } else {
-            if (fieldSelector.isEmpty() || coordinates.length == 0
-                    || coordinates[0].isPrimitive()) {
+        if (fieldName.isEmpty() || fieldName.indexOf('.') >= 0) {
+            throw new IllegalArgumentException("Expected a simple field name: " + fieldName);
+        }
+        lookup.accessClass(ownerClass);
+        Field field = findField(ownerClass, fieldName);
+        Class<?> receiverType = null;
+        if (!Modifier.isStatic(field.getModifiers())) {
+            if (coordinates.length == 0 || coordinates[0].isPrimitive()) {
                 throw new IllegalArgumentException("An instance field requires a reference receiver");
             }
             receiverType = coordinates[0];
-            owner = ownerOverride == null ? receiverType : ownerOverride;
-            if (!receiverType.isAssignableFrom(owner)) {
-                throw new IllegalArgumentException(
-                        "The accessor receiver does not accept the field owner");
+            if (!receiverType.isAssignableFrom(ownerClass)
+                    && !ownerClass.isAssignableFrom(receiverType)) {
+                throw new IllegalArgumentException("The accessor receiver does not match the field owner");
             }
-            fieldName = fieldSelector;
         }
+        return fieldAccess(mode, lookup, coordinates, ownerClass, fieldName, field,
+                receiverType, specializedReceiver);
+    }
 
-        Field field = findField(owner, fieldName);
-        if (Modifier.isStatic(field.getModifiers()) != isStatic) {
-            throw new IllegalArgumentException("Field kind does not match the updater shape: " + field);
-        }
+    private static StorageAccess fieldAccess(UpdaterMode mode,
+                                             MethodHandles.Lookup lookup,
+                                             Class<?>[] coordinates,
+                                             Class<?> owner,
+                                             String fieldName,
+                                             Field field,
+                                             Class<?> receiverType,
+                                             Class<?> specializedReceiver)
+            throws ReflectiveOperationException {
+        boolean isStatic = Modifier.isStatic(field.getModifiers());
         // Preserve access through the supplied owner. An inherited public
         // field may be accessible through a public subclass even when its
         // declaring superclass is not accessible to the lookup.
         VarHandle fieldHandle = isStatic
                 ? lookup.findStaticVarHandle(owner, fieldName, field.getType())
                 : lookup.findVarHandle(owner, fieldName, field.getType());
+        if (receiverType != null) {
+            Class<?> handleReceiver = fieldHandle.coordinateTypes().getFirst();
+            Class<?> checkedReceiver = specializedReceiver == null
+                    ? receiverType : specializedReceiver;
+            if ((specializedReceiver != null || checkedReceiver != Object.class)
+                    && !handleReceiver.isAssignableFrom(checkedReceiver)) {
+                throw new IllegalArgumentException(
+                        "The accessor receiver is broader than the field handle's receiver");
+            }
+        }
         int rank = coordinates.length - (isStatic ? 0 : 1);
         if (rank == 0) {
             return new FieldAccess(fieldHandle, field, receiverType);
         }
-        if (receiverType != null) {
-            Class<?> coordinate = fieldHandle.coordinateTypes().getFirst();
-            if (!coordinate.isAssignableFrom(receiverType)
-                    && !receiverType.isAssignableFrom(coordinate)) {
-                throw new IllegalArgumentException(
-                        "Lookup receiver restriction does not match the updater");
-            }
-        }
         // The field supplies an array reference; the selected storage is an
-        // element, so the field itself may be final.
+        // element, so the field itself may be final. Coordinated modes must
+        // acquire a release-published array before traversing its elements.
         lookup.accessClass(field.getType());
-        return arrayAccess(fieldHandle.toMethodHandle(VarHandle.AccessMode.GET),
+        return arrayAccess(fieldHandle.toMethodHandle(readMode(mode)),
                 receiverType, field.getType(), rank);
     }
 
