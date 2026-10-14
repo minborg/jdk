@@ -35,6 +35,7 @@ import java.util.Objects;
  * Immutable configuration for the public lazy-updater builder. No selected
  * storage is accessed until an updater returned by a terminal method is used.
  */
+// Todo: Turn this class into a record
 final class LazyUpdaterBuilderImpl<C> implements UpdaterBuilder<C> {
     private final Class<C> computationShape;
     private final UpdaterMode mode;

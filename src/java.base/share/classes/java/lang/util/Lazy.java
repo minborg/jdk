@@ -25,8 +25,11 @@
 
 package java.lang.util;
 
+import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
+import java.io.UncheckedIOException;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -40,14 +43,8 @@ import java.util.Optional;
 import java.util.RandomAccess;
 import java.util.Set;
 import java.util.Spliterator;
-import java.util.function.Function;
-import java.util.function.IntFunction;
-import java.util.function.IntSupplier;
-import java.util.function.LongSupplier;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.function.ToIntFunction;
-import java.util.function.ToLongFunction;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.*;
 
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.invoke.LazyUpdaterSupport;
@@ -55,6 +52,7 @@ import jdk.internal.javac.PreviewFeature;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.util.LazySupport;
+import jdk.internal.vm.annotation.Stable;
 
 /**
  * Factory methods for lazy caches and lazy updaters.
@@ -1596,6 +1594,7 @@ public final class Lazy {
      * @see Lazy##updater-modes Updater modes
      * @since 29
     */
+    // Todo: Make this interface sealed
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
     public interface UpdaterBuilder<C> {
 
@@ -2091,4 +2090,337 @@ public final class Lazy {
          */
         E getOrCompute(Computer<E> computingFunction, E[] array, int index);
     }
+
+/*    private interface Closer<R extends AutoCloseable> {
+        Consumer<R> closer();
+    }*/
+
+
+    static final class CancellableSupplier<T> implements Supplier<Optional<T>> {
+        private static final VarHandle STATE;
+        static {
+            try {
+                STATE = MethodHandles.lookup()
+                        .findVarHandle(CancellableSupplier.class, "status", int.class);
+            } catch (ReflectiveOperationException e) {
+                throw new InternalError(e);
+            }
+        }
+        private static int UNSET = 0;
+        private static int COMPUTED = 1;
+        private static int CANCELLED = 2;
+
+        private final Supplier<T> computingFunction;
+        @Stable
+        private int status;
+
+        public CancellableSupplier(Supplier<T> computingFunction) {
+            this.computingFunction = computingFunction;
+        }
+
+        @Override
+        public Optional<T> get() {
+            if ((int) STATE.compareAndExchangeRelease(this, UNSET, COMPUTED) == UNSET) {
+                try {
+                    return Optional.of(computingFunction.get());
+                } catch (Throwable _) {
+                    return Optional.empty();
+                }
+            }
+            return Optional.empty();
+        }
+
+        // Todo: Should this be idemoptent or not?
+        public boolean cancel() {
+            return (int) STATE.compareAndExchangeRelease(this, UNSET, CANCELLED) == UNSET;
+        }
+    }
+
+    void c() {
+        CancellableSupplier<Arena> cancellableFunction = new CancellableSupplier<>(Arena::ofShared);
+        var la = Lazy.ofScalarCache(CacheMode.COMPUTE_ONCE, cancellableFunction);
+
+        // ...
+
+        if (!cancellableFunction.cancel()) {
+            // Always present
+            la.get().ifPresent(Arena::close);
+        }
+    }
+
+    static class ThrowingResource implements AutoCloseable {
+        @Override
+        public void close() throws IOException {}
+    }
+
+    void cc() {
+        CancellableSupplier<ThrowingResource> cancellableFunction = new CancellableSupplier<>(ThrowingResource::new);
+        var la = Lazy.ofScalarCache(CacheMode.COMPUTE_ONCE, cancellableFunction);
+
+        // ...
+
+        if (!cancellableFunction.cancel()) {
+            var r = la.get();
+            if (r.isPresent()) {
+                try {
+                    r.orElseThrow().close();
+                } catch (IOException t) {
+                    throw new UncheckedIOException(t);
+                }
+            }
+        }
+    }
+/*
+    static final class CancellableFunction<T, R> implements Function<T, Optional<R>> {
+        private static final VarHandle STATE;
+        static {
+            try {
+                STATE = MethodHandles.lookup()
+                        .findVarHandle(CancellableFunction.class, "status", int.class);
+            } catch (ReflectiveOperationException e) {
+                throw new InternalError(e);
+            }
+        }
+        private static int UNSET = 0;
+        private static int COMPUTED = 1;
+        private static int CANCELLED = 2;
+
+        private final Function<T, R> computingFunction;
+        private int status;
+
+        public CancellableFunction(Function<T, R> computingFunction) {
+            this.computingFunction = computingFunction;
+        }
+
+        @Override
+        public Optional<R> apply(T t) {
+            // Todo: Use release semantics
+            return STATE.compareAndSet(this, UNSET, COMPUTED)
+                    ? Optional.empty()
+                    : Optional.of(computingFunction.apply(t));
+        }
+
+        public boolean cancel() {
+            // Todo: Use release semantics
+            return STATE.compareAndSet(this, UNSET, CANCELLED);
+        }
+    }
+
+    void c(int state) {
+        CancellableFunction<Integer, Arena> cancellableFunction = new CancellableFunction<>(s -> Arena.ofConfined());
+        var la = Lazy.ofScalarCache(CacheMode.COMPUTE_ONCE, cancellableFunction);
+
+        if (ThreadLocalRandom.current().nextBoolean()) {
+            if (cancellableFunction.cancel()) {
+                return;
+            }
+        }
+
+        la.apply(state).ifPresent(Arena::close);
+    }*/
+
+
+    private interface ThrowingConsumer<T, X extends Exception> {
+        void accept(T t) throws X;
+    }
+
+    interface RH<R, X extends Exception> extends AutoCloseable {
+
+        interface OfSupplier<R, X extends Exception> extends RH<R, X>, Supplier<Optional<R>> {}
+        interface OfFunction<T, R, X extends Exception> extends RH<R, X>, Function<T, Optional<R>> {}
+
+        @Override
+        void close() throws X;
+
+        static <R extends AutoCloseable> RH.OfSupplier<R, Exception> of(
+                Supplier<? extends R> computingFunction
+        ) {
+            return ofThrowing(computingFunction, R::close);
+        }
+
+        static <R, X extends Exception> RH.OfSupplier<R, RuntimeException> of(
+                Supplier<? extends R> computingFunction,
+                Consumer<? extends R> closer
+        ) {
+            return null;
+        }
+
+        static <R, X extends Exception> RH.OfSupplier<R, X> ofThrowing(
+                Supplier<? extends R> computingFunction,
+                ThrowingConsumer<? extends R, X> closer
+        ) {
+            return null;
+        }
+
+        static <T, R extends AutoCloseable> RH.OfFunction<T, R, Exception> of(
+                Function<? super T, ? extends R> computingFunction
+        ) {
+            return ofThrowing(computingFunction, R::close);
+        }
+
+        static <T, R, X extends Exception> RH.OfFunction<T, R, X> of(
+                Function<? super T, ? extends R> computingFunction,
+                Consumer<? extends R> closer
+        ) {
+            return null;
+        }
+
+
+        static <T, R, X extends Exception> RH.OfFunction<T, R, X> ofThrowing(
+                Function<? super T, ? extends R> computingFunction,
+                ThrowingConsumer<? extends R, X> closer
+        ) {
+            return null;
+        }
+
+    }
+/*
+    interface ResourceHolder<R, X extends Exception> extends AutoCloseable {
+
+        interface OfNonThrowing<R> extends ResourceHolder<R, RuntimeException> {
+            @Override
+            void close();
+        }
+
+        Optional<R> resource();
+
+        void close() throws X;
+
+        static <R extends AutoCloseable> ResourceHolder.OfNonThrowing<R> of(
+                Supplier<? extends R> computingFunction
+        ) {
+            return null;
+        }
+
+        static <R> ResourceHolder.OfNonThrowing<R> of(
+                Supplier<? extends R> computingFunction,
+                Consumer<? extends R> closer
+        ) {
+            return null;
+        }
+
+        static <T, R> ResourceHolder.OfNonThrowing<R> of(
+                Function<? super T, ? extends R> computingFunction,
+                Consumer<? extends R> closer
+        ) {
+            return null;
+        }
+
+        static <T, R, X extends Exception> ResourceHolder<R, X> ofThrowing(
+                Function<? super T, ? extends R> computingFunction,
+                ThrowingConsumer<? extends R, X> closer
+        ) {
+            return null;
+        }
+
+    }*/
+
+/*    interface NonThrowingResourceHolder<R, C> extends ThrowingResourceHolder<R, C, RuntimeException> {
+        @Override
+        void close();
+    }*/
+
+/*    interface ResourceHolder<R, C> {
+
+        R resource();
+
+        C closer();
+
+        static <R, C> ResourceHolder<R, C> of(
+                Supplier<? extends R> resourceFactory,
+                Consumer<R> closer
+        ) {
+            return null;
+        }
+
+        static <T, R, C> ResourceHolder<R, C> of(
+                Function<? super T, ? extends R> resourceFactory,
+                Class<? super C> closerType
+        ) {
+            return null;
+        }
+    }
+
+    interface NonThrowingCloser<R extends AutoCloseable> {
+        void close(R resource);
+    }
+
+    interface ArenaCloser {
+        void close(Arena arena);
+    }*/
+
+    private static final RH.OfSupplier<Arena, Exception> ARH = RH.of(
+            Arena::ofConfined
+    );
+
+    void a() {
+        try {
+            ARH.close();
+        } catch (Exception x) {}
+    }
+
+    private static final RH.OfSupplier<Arena, RuntimeException> ARH2 = RH.of(
+            Arena::ofConfined,
+            Arena::close
+    );
+
+    void a2() {
+        ARH2.close();
+    }
+/*
+
+
+    private static <T, R extends AutoCloseable> Object ofResourceCache(Function<T, R> computingFunction) {
+
+    }
+
+
+    private static final Supplier<ResourceSupplier<Arena>> ARENA_RESOURCE =
+          ofScalarCache(() -> new ResourceSupplier<Arena>(Arena::ofConfined));
+
+    public static class ResourceSupplier<R extends AutoCloseable> implements Supplier<R> {
+
+        public interface Resource<R extends AutoCloseable> {
+
+            private final Supplier<R> computer;
+            private final Object lock = new Object();
+            private R value;
+            private boolean closed;
+
+            public ResourceSupplier(Supplier<R> computer) {
+                this.computer = Objects.requireNonNull(computer);
+            }
+
+            @Override
+            public R get() {
+                synchronized (lock) {
+                    checkAllreadyClosed();
+                    return value = computer.get();
+                }
+            }
+
+            public void closeIfcomputed() throws Exception {
+                synchronized (lock) {
+                    checkAllreadyClosed();
+                    if (value != null) {
+                        value.close();
+                    }
+                    closed = true;
+                }
+            }
+
+            private void checkAllreadyClosed() {
+                if (closed) {
+                    throw new IllegalStateException("Already closed");
+                }
+            }
+        }
+
+        static <T, R extends AutoCloseable> ResourceSupplier<T, R> of() {
+
+        }
+
+    }
+*/
+
 }
