@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,42 +25,31 @@
 
 package java.util;
 
-import java.util.function.Supplier;
+import java.lang.invoke.Lazy;
 
-// Methods and suppliers for producing ISO 639/3166 resources used by Locale.
+// Methods and updaters for producing ISO 639/3166 resources used by Locale.
 class LocaleISOData {
 
-    static final LazyConstant<String[]> ISO_639 =
-            LazyConstant.of(new Supplier<>() {
-                @Override
-                public String[] get() {
-                    return getISO2Table(isoLanguageTable);
-                }
-            });
+    private static String[] iso639;
+    private static String[] iso3166_1Alpha2;
+    private static Set<String> iso3166_1Alpha3;
+    private static Set<String> iso3166_3;
 
-    static final LazyConstant<String[]> ISO_3166_1_ALPHA2 =
-            LazyConstant.of(new Supplier<>() {
-                @Override
-                public String[] get() {
-                    return getISO2Table(isoCountryTable);
-                }
-            });
+    static final Lazy.StaticReferenceFieldAccessor<String[]> ISO_639_UPDATER =
+            Lazy.ofStaticField(LocaleISOData.class, "iso639",
+                    () -> getISO2Table(LocaleISOData.isoLanguageTable));
 
-    static final LazyConstant<Set<String>> ISO_3166_1_ALPHA3 =
-            LazyConstant.of(new Supplier<>() {
-                @Override
-                public Set<String> get() {
-                    return computeISO3166_1Alpha3Countries();
-                }
-            });
+    static final Lazy.StaticReferenceFieldAccessor<String[]> ISO_3166_1_ALPHA2_UPDATER =
+            Lazy.ofStaticField(LocaleISOData.class, "iso3166_1Alpha2",
+                    () -> getISO2Table(LocaleISOData.isoCountryTable));
 
-    static final LazyConstant<Set<String>> ISO_3166_3 =
-            LazyConstant.of(new Supplier<>() {
-                @Override
-                public Set<String> get() {
-                    return Set.of(ISO3166_3);
-                }
-            });
+    static final Lazy.StaticReferenceFieldAccessor<Set<String>> ISO_3166_1_ALPHA3_UPDATER =
+            Lazy.ofStaticField(LocaleISOData.class, "iso3166_1Alpha3",
+                    LocaleISOData::computeISO3166_1Alpha3Countries);
+
+    static final Lazy.StaticReferenceFieldAccessor<Set<String>> ISO_3166_3_UPDATER =
+            Lazy.ofStaticField(LocaleISOData.class, "iso3166_3",
+                    () -> Set.of(LocaleISOData.ISO3166_3));
 
     /**
      * The 2- and 3-letter ISO 639 language codes.

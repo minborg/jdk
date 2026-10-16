@@ -39,6 +39,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import jdk.test.lib.helpers.StrictInit;
 
 import org.junit.jupiter.api.function.ThrowingConsumer;
@@ -72,7 +73,7 @@ class AccessStrictInitInClinit {
         /**
          * The class bytes for this class.
          */
-        private final static LazyConstant<byte[]> CLASS_BYTES = LazyConstant.of(() -> {
+        private final static Supplier<byte[]> CLASS_BYTES = Supplier.ofLazy(() -> {
             String rn = TestClass.class.getName() + ".class";
             InputStream in = TestClass.class.getResourceAsStream(rn);
             assertNotNull(in);

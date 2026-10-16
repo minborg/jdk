@@ -816,13 +816,13 @@ final class LazyMapTest {
     // Javadoc equivalent
     class LazyMap<K, V> extends AbstractMap<K, V> {
 
-        private final Map<K, LazyConstant<V>> backingMap;
+        private final Map<K, Supplier<V>> backingMap;
 
         public LazyMap(Set<K> keys, Function<K, V> computingFunction) {
             this.backingMap = keys.stream()
                     .collect(Collectors.toUnmodifiableMap(
                             Function.identity(),
-                            k -> LazyConstant.of(() -> computingFunction.apply(k))));
+                            k -> Supplier.ofLazy(() -> computingFunction.apply(k))));
         }
 
         @Override

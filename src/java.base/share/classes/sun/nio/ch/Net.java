@@ -27,6 +27,7 @@ package sun.nio.ch;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.lang.invoke.Lazy;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -48,8 +49,6 @@ import java.nio.channels.UnresolvedAddressException;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Enumeration;
 import java.util.Objects;
-import java.lang.LazyConstant;
-import java.util.function.Supplier;
 
 import sun.net.ext.ExtendedSocketOptions;
 import sun.net.util.IPAddressUtil;
@@ -96,14 +95,19 @@ public class Net {
         return EXCLUSIVE_BIND;
     }
 
-    private static final LazyConstant<Boolean> SHUTDOWN_WRITE_BEFORE_CLOSE = LazyConstant.of(new Supplier<Boolean>() {
-        @Override  public Boolean get() { return shouldShutdownWriteBeforeClose0(); }});
+    private static Boolean shutdownWriteBeforeClose;
+
+    private static final class ShutdownWriteBeforeCloseUpdater {
+        private static final Lazy.StaticReferenceFieldAccessor<Boolean> UPDATER =
+                Lazy.ofStaticField(Net.class, "shutdownWriteBeforeClose",
+                        Net::shouldShutdownWriteBeforeClose0);
+    }
 
     /**
      * Tells whether a TCP connection should be shutdown for writing before closing.
      */
     static boolean shouldShutdownWriteBeforeClose() {
-        return SHUTDOWN_WRITE_BEFORE_CLOSE.get();
+        return ShutdownWriteBeforeCloseUpdater.UPDATER.getOrCompute();
     }
 
     /**

@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -560,13 +561,13 @@ final class LazySetTest {
     // Javadoc equivalent
     class LazySet<E> extends AbstractCollection<E> implements Set<E> {
 
-        private final Map<E, LazyConstant<Boolean>> backingMap;
+        private final Map<E, Supplier<Boolean>> backingMap;
 
         public LazySet(Set<E> elementCandidates, Predicate<E> computingFunction) {
             this.backingMap = elementCandidates.stream()
                     .collect(Collectors.toUnmodifiableMap(
                             Function.identity(),
-                            k -> LazyConstant.of(() -> computingFunction.test(k))));
+                            k -> Supplier.ofLazy(() -> computingFunction.test(k))));
         }
 
         @Override

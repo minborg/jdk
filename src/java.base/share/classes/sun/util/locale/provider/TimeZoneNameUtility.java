@@ -25,6 +25,7 @@
 
 package sun.util.locale.provider;
 
+import java.lang.invoke.Lazy;
 import java.lang.ref.SoftReference;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -65,8 +66,13 @@ public final class TimeZoneNameUtility {
     /**
      * Explicit DST offset map
      */
-    private static final LazyConstant<Map<String, ZoneOffset>> explicitDstOffsets =
-        LazyConstant.of(TimeZoneNameUtility::initExplicitDstOffsets);
+    private static Map<String, ZoneOffset> explicitDstOffsets;
+
+    private static final class ExplicitDstOffsetsUpdater {
+        static final Lazy.StaticReferenceFieldAccessor<Map<String, ZoneOffset>> INSTANCE =
+                Lazy.ofStaticField(TimeZoneNameUtility.class, "explicitDstOffsets",
+                        TimeZoneNameUtility::initExplicitDstOffsets);
+    }
 
     /**
      * get time zone localized strings. Enumerate all keys.
@@ -185,7 +191,7 @@ public final class TimeZoneNameUtility {
      * @param tzid the time zone ID
      */
     public static ZoneOffset explicitDstOffset(String tzid) {
-        return explicitDstOffsets.get().get(canonicalTZID(tzid).orElse(tzid));
+        return ExplicitDstOffsetsUpdater.INSTANCE.getOrCompute().get(canonicalTZID(tzid).orElse(tzid));
     }
 
     private static Map<String, ZoneOffset> initExplicitDstOffsets() {

@@ -22,7 +22,7 @@
  */
 
 /* @test
- * @summary Basic tests for making sure ComputedConstant publishes values safely
+ * @summary Basic tests for making sure LazyConstantImpl publishes values safely
  * @modules java.base/jdk.internal.misc
  * @modules java.base/jdk.internal.lang
  * @library /test/lib
@@ -41,7 +41,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.lang.LazyConstant;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;

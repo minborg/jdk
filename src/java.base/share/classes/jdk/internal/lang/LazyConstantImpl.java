@@ -36,16 +36,16 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
- * The sole implementation of the LazyConstant interface.
+ * The implementation of suppliers returned by {@code Supplier.ofLazy}.
  *
  * @param <T> type of the constant
  * @implNote This implementation can be used early in the boot sequence as it does not
  * rely on reflection, MethodHandles, Streams etc.
  */
 @AOTSafeClassInitializer
-public final class LazyConstantImpl<T> implements LazyConstant<T> {
+public final class LazyConstantImpl<T> implements Supplier<T> {
 
-    // Unsafe allows `LazyConstant` instances to be used early in the boot sequence
+    // Unsafe allows lazy supplier instances to be used early in the boot sequence
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     // Unsafe offset for access of the `constant` field
@@ -140,7 +140,7 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
     private String toStringSuffix() {
         final T t = getAcquire();
         if (t == this) {
-            return "(this LazyConstant)";
+            return "(this lazy supplier)";
         } else if (t != null) {
             return t.toString();
         } else {
@@ -163,8 +163,8 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
     // ----------------------------------------
     // Using acquire/release semantics on the `constant` field is the cheapest way to
     // establish a happens-before (HB) relation between load and store operations. Every
-    // implementation of a method defined in the interface `LazyConstant` except
-    // `equals()` starts with a load of the `constant` field using acquire semantics.
+    // implementation of an operation on a lazy supplier except `equals()`
+    // starts with a load of the `constant` field using acquire semantics.
     //
     // If the underlying supplier was guaranteed to always create a new object,
     // a fence after creation and subsequent plain loads would suffice to ensure
@@ -185,7 +185,8 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
 
     private void preventReentry() {
         if (Thread.holdsLock(this)) {
-            throw new IllegalStateException("Recursive invocation of a LazyConstant's computing function: " + isolateToString(computingFunctionOrExceptionType));
+            throw new IllegalStateException("Recursive invocation of a lazy supplier's computing function: " +
+                    isolateToString(computingFunctionOrExceptionType));
         }
     }
 

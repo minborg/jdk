@@ -25,6 +25,7 @@
 
 package jdk.incubator.json.impl;
 
+import java.lang.invoke.Lazy;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -45,10 +46,13 @@ import jdk.incubator.json.JsonValue;
  */
 public final class JsonParser {
 
+    private static final Lazy.ReferenceFieldAccessor<JsonParser, StringBuilder> SB_UPDATER =
+            Lazy.ofField(JsonParser.class, "sb", parser -> new StringBuilder());
+
     // Access to the underlying JSON contents
     private final char[] doc;
     // Lazily initialized for member names with escape sequences
-    private final LazyConstant<StringBuilder> sb = LazyConstant.of(StringBuilder::new);
+    private StringBuilder sb;
     // Current cursor position during parsing
     private int cursorPos;
     // For exception message on failure
@@ -277,7 +281,7 @@ public final class JsonParser {
             throw structureFailure(objStart, "Expecting a JSON Object member name");
         }
         var escape = false;
-        boolean useBldr = false;
+        StringBuilder builder = null;
         var start = cursorPos;
 
         for (; hasInput(); cursorPos++) {
@@ -299,10 +303,10 @@ public final class JsonParser {
                     default -> throw structureFailure(objStart,
                         UNRECOGNIZED_ESCAPE_SEQUENCE.formatted(formatChar(c)));
                 }
-                if (!useBldr) {
+                if (builder == null) {
                     // Append everything up to the first escape sequence
-                    sb.get().append(doc, start, cursorPos - escapeLength - 1 - start);
-                    useBldr = true;
+                    builder = SB_UPDATER.getOrCompute(this);
+                    builder.append(doc, start, cursorPos - escapeLength - 1 - start);
                 }
                 escape = false;
             } else if (c == '\\') {
@@ -310,9 +314,9 @@ public final class JsonParser {
                 continue;
             } else if (c == '"') {
                 cursorPos++;
-                if (useBldr) {
-                    var name = sb.get().toString();
-                    sb.get().setLength(0);
+                if (builder != null) {
+                    var name = builder.toString();
+                    builder.setLength(0);
                     return name;
                 } else {
                     return new String(doc, start, cursorPos - start - 1);
@@ -320,8 +324,8 @@ public final class JsonParser {
             } else if (c < ' ') {
                 throw structureFailure(objStart, UNESCAPED_CONTROL_CODE);
             }
-            if (useBldr) {
-                sb.get().append(c);
+            if (builder != null) {
+                builder.append(c);
             }
         }
         throw structureFailure(objStart, UNCLOSED_STRING.formatted("JSON Object member name"));

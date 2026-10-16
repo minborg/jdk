@@ -45,6 +45,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamField;
 import java.io.Serializable;
+import java.lang.invoke.Lazy;
 import java.text.NumberFormat;
 import java.text.MessageFormat;
 import java.text.ParsePosition;
@@ -982,8 +983,8 @@ public final class Locale implements Cloneable, Serializable {
         }
     }
 
-    private static final LazyConstant<ReferencedKeyMap<Object, Locale>> LOCALE_CACHE =
-            LazyConstant.of(new Supplier<>() {
+    private static final Supplier<ReferencedKeyMap<Object, Locale>> LOCALE_CACHE =
+            Supplier.ofLazy(new Supplier<>() {
                 @Override
                 public ReferencedKeyMap<Object, Locale> get() {
                     return ReferencedKeyMap.create(true, ReferencedKeyMap.concurrentHashMapSupplier());
@@ -1264,7 +1265,7 @@ public final class Locale implements Cloneable, Serializable {
      * @return An array of ISO 3166 two-letter country codes.
      */
     public static String[] getISOCountries() {
-        String[] countries = LocaleISOData.ISO_3166_1_ALPHA2.get();
+        String[] countries = LocaleISOData.ISO_3166_1_ALPHA2_UPDATER.getOrCompute();
         return Arrays.copyOf(countries, countries.length);
     }
 
@@ -1279,9 +1280,9 @@ public final class Locale implements Cloneable, Serializable {
     public static Set<String> getISOCountries(IsoCountryCode type) {
         Objects.requireNonNull(type);
         return switch (type) {
-            case PART1_ALPHA2 -> Set.of(LocaleISOData.ISO_3166_1_ALPHA2.get());
-            case PART1_ALPHA3 -> LocaleISOData.ISO_3166_1_ALPHA3.get();
-            case PART3 -> LocaleISOData.ISO_3166_3.get();
+            case PART1_ALPHA2 -> Set.of(LocaleISOData.ISO_3166_1_ALPHA2_UPDATER.getOrCompute());
+            case PART1_ALPHA3 -> LocaleISOData.ISO_3166_1_ALPHA3_UPDATER.getOrCompute();
+            case PART3 -> LocaleISOData.ISO_3166_3_UPDATER.getOrCompute();
         };
     }
 
@@ -1302,7 +1303,7 @@ public final class Locale implements Cloneable, Serializable {
      * @return An array of ISO 639 two-letter language codes.
      */
     public static String[] getISOLanguages() {
-        String[] languages = LocaleISOData.ISO_639.get();
+        String[] languages = LocaleISOData.ISO_639_UPDATER.getOrCompute();
         return Arrays.copyOf(languages, languages.length);
     }
 
@@ -1632,7 +1633,7 @@ public final class Locale implements Cloneable, Serializable {
      * @since 1.7
      */
     public String toLanguageTag() {
-        return languageTag.get();
+        return LanguageTagUpdater.UPDATER.getOrCompute(this);
     }
 
     private String computeLanguageTag() {
@@ -2323,13 +2324,12 @@ public final class Locale implements Cloneable, Serializable {
     private static volatile Locale defaultDisplayLocale;
     private static volatile Locale defaultFormatLocale;
 
-    private final transient LazyConstant<String> languageTag =
-            LazyConstant.of(new Supplier<>() {
-                @Override
-                public String get() {
-                    return computeLanguageTag();
-                }
-            });
+    private transient @Stable String languageTag;
+
+    private static final class LanguageTagUpdater {
+        private static final Lazy.ReferenceFieldAccessor<Locale, String> UPDATER =
+                Lazy.ofField(Locale.class, "languageTag", Locale::computeLanguageTag);
+    }
 
     /**
      * Return an array of the display names of the variant.

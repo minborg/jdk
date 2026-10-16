@@ -25,6 +25,7 @@
 
 package jdk.incubator.json.impl;
 
+import java.lang.invoke.Lazy;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
@@ -51,6 +52,15 @@ import jdk.incubator.json.JsonNumber;
  */
 public final class JsonNumberImpl implements JsonNumber, JsonValueSupport {
 
+    private static final Lazy.ReferenceFieldAccessor<JsonNumberImpl, String> NUM_STRING_UPDATER =
+            Lazy.ofField(JsonNumberImpl.class, "numString", JsonNumberImpl::initNumString);
+    private static final Lazy.ReferenceFieldAccessor<JsonNumberImpl, OptionalInt> NUM_INTEGER_UPDATER =
+            Lazy.ofField(JsonNumberImpl.class, "numInteger", JsonNumberImpl::initNumInteger);
+    private static final Lazy.ReferenceFieldAccessor<JsonNumberImpl, OptionalLong> NUM_LONG_UPDATER =
+            Lazy.ofField(JsonNumberImpl.class, "numLong", JsonNumberImpl::initNumLong);
+    private static final Lazy.ReferenceFieldAccessor<JsonNumberImpl, OptionalDouble> NUM_DOUBLE_UPDATER =
+            Lazy.ofField(JsonNumberImpl.class, "numDouble", JsonNumberImpl::initNumDouble);
+
     private final char[] doc;
     private final int startOffset;
     private final int endOffset;
@@ -58,10 +68,10 @@ public final class JsonNumberImpl implements JsonNumber, JsonValueSupport {
     private final int exponentOffset;
     private final boolean fromFactory;
 
-    private final LazyConstant<String> numString = LazyConstant.of(this::initNumString);
-    private final LazyConstant<OptionalInt> numInteger = LazyConstant.of(this::initNumInteger);
-    private final LazyConstant<OptionalLong> numLong = LazyConstant.of(this::initNumLong);
-    private final LazyConstant<OptionalDouble> numDouble = LazyConstant.of(this::initNumDouble);
+    private String numString;
+    private OptionalInt numInteger;
+    private OptionalLong numLong;
+    private OptionalDouble numDouble;
 
     public JsonNumberImpl(char[] doc, boolean factory, int start, int end, int dec, int exp) {
         this.doc = doc;
@@ -74,19 +84,19 @@ public final class JsonNumberImpl implements JsonNumber, JsonValueSupport {
 
     @Override
     public int asInt() {
-        return numInteger.get().orElseThrow(() ->
+        return NUM_INTEGER_UPDATER.getOrCompute(this).orElseThrow(() ->
             Utils.composeError(this, this + " cannot be represented as an int."));
     }
 
     @Override
     public long asLong() {
-        return numLong.get().orElseThrow(() ->
+        return NUM_LONG_UPDATER.getOrCompute(this).orElseThrow(() ->
                 Utils.composeError(this, this + " cannot be represented as a long."));
     }
 
     @Override
     public double asDouble() {
-        return numDouble.get().orElseThrow(() ->
+        return NUM_DOUBLE_UPDATER.getOrCompute(this).orElseThrow(() ->
                 Utils.composeError(this, this + " cannot be represented as a double."));
     }
 
@@ -102,17 +112,17 @@ public final class JsonNumberImpl implements JsonNumber, JsonValueSupport {
 
     @Override
     public String toString() {
-        return numString.get();
+        return NUM_STRING_UPDATER.getOrCompute(this);
     }
 
-    // LazyConstants initializers
+    // Lazy updater initializers
     private String initNumString() {
         return new String(doc, startOffset, endOffset - startOffset);
     }
 
     private OptionalInt initNumInteger() {
         try {
-            var value = numLong.get();
+            var value = NUM_LONG_UPDATER.getOrCompute(this);
             return value.isPresent()
                 ? OptionalInt.of(Math.toIntExact(value.getAsLong()))
                 : OptionalInt.empty();
@@ -125,7 +135,7 @@ public final class JsonNumberImpl implements JsonNumber, JsonValueSupport {
         try {
             if (decimalOffset == -1 && exponentOffset == -1) {
                 // Fast-path immediate parseable Long format
-                return OptionalLong.of(Long.parseLong(numString.get()));
+                return OptionalLong.of(Long.parseLong(NUM_STRING_UPDATER.getOrCompute(this)));
             } else {
                 // Decimal or exponent exists, derive value from
                 // following format -> sig * 10^power
@@ -185,7 +195,7 @@ public final class JsonNumberImpl implements JsonNumber, JsonValueSupport {
     }
 
     private OptionalDouble initNumDouble() {
-        var db = Double.parseDouble(numString.get());
+        var db = Double.parseDouble(NUM_STRING_UPDATER.getOrCompute(this));
         if (Double.isFinite(db)) {
             return OptionalDouble.of(db);
         }

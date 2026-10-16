@@ -25,6 +25,8 @@
 
 package jdk.incubator.json.impl;
 
+import java.lang.invoke.Lazy;
+
 import jdk.incubator.json.JsonString;
 
 /**
@@ -46,6 +48,11 @@ import jdk.incubator.json.JsonString;
  */
 public final class JsonStringImpl implements JsonString, JsonValueSupport {
 
+    private static final Lazy.ReferenceFieldAccessor<JsonStringImpl, String> JSON_STR_UPDATER =
+            Lazy.ofField(JsonStringImpl.class, "jsonStr", JsonStringImpl::initJsonStr);
+    private static final Lazy.ReferenceFieldAccessor<JsonStringImpl, String> VALUE_UPDATER =
+            Lazy.ofField(JsonStringImpl.class, "value", JsonStringImpl::unescape);
+
     private final char[] doc;
     private final int startOffset;
     private final int endOffset;
@@ -56,12 +63,12 @@ public final class JsonStringImpl implements JsonString, JsonValueSupport {
     // It always conforms to JSON syntax. If created by parsing a JSON text,
     // it matches the original text exactly. If created via the factory method,
     // non-conformant characters are properly escaped.
-    private final LazyConstant<String> jsonStr = LazyConstant.of(this::initJsonStr);
+    private String jsonStr;
 
     // The String instance returned by `asString()`. Escaped characters are unescaped.
-    private final LazyConstant<String> value = LazyConstant.of(this::unescape);
+    private String value;
 
-    // LazyConstants initializers
+    // Lazy updater initializer
     private String initJsonStr() {
         return new String(doc, startOffset, endOffset - startOffset);
     }
@@ -76,7 +83,7 @@ public final class JsonStringImpl implements JsonString, JsonValueSupport {
 
     @Override
     public String asString() {
-        return value.get();
+        return VALUE_UPDATER.getOrCompute(this);
     }
 
     @Override
@@ -91,7 +98,7 @@ public final class JsonStringImpl implements JsonString, JsonValueSupport {
 
     @Override
     public String toString() {
-        return jsonStr.get();
+        return JSON_STR_UPDATER.getOrCompute(this);
     }
 
     /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.ByteOrder;
 import java.util.List;
 import java.util.Map;
@@ -134,6 +135,20 @@ public interface JavaLangInvokeAccess {
      * the trusted lookup
      */
     MethodHandle unreflectField(Field field, boolean isSetter) throws IllegalAccessException;
+
+    /**
+     * Produces a method handle unreflecting from a {@code Method} with
+     * the trusted lookup.
+     */
+    MethodHandle unreflectMethod(Method method) throws IllegalAccessException;
+
+    /**
+     * Defines a hidden class in the given host's nest and returns a
+     * handle to its constructor.
+     */
+    MethodHandle defineHiddenClassConstructor(Class<?> host, byte[] bytes,
+                                              MethodType constructorType)
+            throws ReflectiveOperationException;
 
     /**
      * Produces a method handle of a virtual method with the trusted lookup.

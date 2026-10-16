@@ -73,6 +73,7 @@ import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
+import java.lang.invoke.Lazy;
 import java.time.temporal.ChronoField;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
@@ -87,7 +88,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.function.Supplier;
 
 import jdk.internal.util.DecimalDigits;
 
@@ -178,13 +178,12 @@ public final class ZoneOffset
     /**
      * The zone rules for an offset will always return this offset. Cache it for efficiency.
      */
-    private final transient LazyConstant<ZoneRules> rules =
-        LazyConstant.of(new Supplier<ZoneRules>() {
-            @Override
-            public ZoneRules get() {
-                return ZoneRules.of(ZoneOffset.this);
-            }
-        });
+    private transient ZoneRules rules;
+
+    private static final class RulesUpdater {
+        private static final Lazy.ReferenceFieldAccessor<ZoneOffset, ZoneRules> UPDATER =
+                Lazy.ofField(ZoneOffset.class, "rules", ZoneRules::of);
+    }
 
     //-----------------------------------------------------------------------
     /**
@@ -526,7 +525,7 @@ public final class ZoneOffset
      */
     @Override
     public ZoneRules getRules() {
-        return rules.get();
+        return RulesUpdater.UPDATER.getOrCompute(this);
     }
 
     @Override

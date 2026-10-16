@@ -91,6 +91,14 @@ public class TestJsonObject {
         }
 
         @Test
+        void escapedMemberNamesReuseBuilder() {
+            var object = (JsonObject) Json.parse("{\"a\\u0062\":1,\"c\\t\":2}");
+            assertEquals(1, ((JsonNumber) object.asMap().get("ab")).asInt());
+            assertEquals(2, ((JsonNumber) object.asMap().get("c\t")).asInt());
+            assertEquals(2, object.asMap().size());
+        }
+
+        @Test
         void toStringTest() {
             // 2 char sequence first
             var key = "\" \\t \\u0021 \\u0022 \\u005c \\u0008 test \"";

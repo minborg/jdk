@@ -43,7 +43,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.lang.LazyConstant;
+import java.util.function.Supplier;
 
 /**
  * Benchmark measuring lazy value performance
@@ -60,7 +60,7 @@ import java.lang.LazyConstant;
 public class StableMethodHandleBenchmark {
 
     private static final MethodHandle FINAL_MH = identityHandle();
-    private static final LazyConstant<MethodHandle> STABLE_MH = LazyConstant.of(StableMethodHandleBenchmark::identityHandle);
+    private static final Supplier<MethodHandle> STABLE_MH = Supplier.ofLazy(StableMethodHandleBenchmark::identityHandle);
 
     private static /* intentionally not final */ MethodHandle mh = identityHandle();
     private static final Dcl<MethodHandle> DCL = new Dcl<>(StableMethodHandleBenchmark::identityHandle);

@@ -31,6 +31,7 @@ import java.security.*;
 import java.security.cert.*;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.net.ssl.*;
 import sun.security.provider.certpath.AlgorithmChecker;
@@ -597,11 +598,11 @@ public abstract class SSLContextImpl extends SSLContextSpi {
             });
         }
 
-        private static final LazyConstant<List<CipherSuite>>
-                supportedCipherSuites = LazyConstant.of(() ->
+        private static final Supplier<List<CipherSuite>>
+                supportedCipherSuites = Supplier.ofLazy(() ->
                 getApplicableSupportedCipherSuites(supportedProtocols));
-        private static final LazyConstant<List<CipherSuite>>
-                serverDefaultCipherSuites = LazyConstant.of(() ->
+        private static final Supplier<List<CipherSuite>>
+                serverDefaultCipherSuites = Supplier.ofLazy(() ->
                 getApplicableEnabledCipherSuites(serverDefaultProtocols, false));
 
         @Override

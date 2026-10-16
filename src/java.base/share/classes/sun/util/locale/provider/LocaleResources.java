@@ -40,6 +40,7 @@
 
 package sun.util.locale.provider;
 
+import java.lang.invoke.Lazy;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.text.ListFormat;
@@ -132,12 +133,22 @@ public class LocaleResources {
 
     // Input Skeleton map for "preferred" and "allowed"
     // Map<"preferred"/"allowed", Map<"region", "skeleton">>
-    private static final LazyConstant<Map<String, Map<String, String>>> INPUT_SKELETONS =
-        LazyConstant.of(LocaleResources::initSkeletons);
+    private static Map<String, Map<String, String>> inputSkeletons;
 
     // Skeletons for "j" and "C" input skeleton symbols for this locale
-    private final LazyConstant<String> jPattern = LazyConstant.of(() -> resolveInputSkeleton("preferred"));
-    private final LazyConstant<String> CPattern = LazyConstant.of(this::initCPattern);
+    private String jPattern;
+    private String CPattern;
+
+    private static final class SkeletonUpdaters {
+        static final Lazy.StaticReferenceFieldAccessor<Map<String, Map<String, String>>> INPUT_SKELETONS =
+                Lazy.ofStaticField(LocaleResources.class, "inputSkeletons",
+                        LocaleResources::initSkeletons);
+        static final Lazy.ReferenceFieldAccessor<LocaleResources, String> J_PATTERN =
+                Lazy.ofField(LocaleResources.class, "jPattern",
+                        resources -> resources.resolveInputSkeleton("preferred"));
+        static final Lazy.ReferenceFieldAccessor<LocaleResources, String> C_PATTERN =
+                Lazy.ofField(LocaleResources.class, "CPattern", LocaleResources::initCPattern);
+    }
 
     LocaleResources(ResourceBundleBasedAdapter adapter, Locale locale) {
         this.locale = locale;
@@ -361,8 +372,8 @@ public class LocaleResources {
         return val;
     }
 
-    // Returns explicit DST offset map solely for TimeZoneNameUtility.
-    // No need to be cached, as it is only invoked once.
+    // Returns the explicit DST offset map for TimeZoneNameUtility,
+    // which caches the result.
     public Map<String, ZoneOffset> getExplicitDstOffsets() {
         TimeZoneNamesBundle tznb = localeData.getTimeZoneNames(locale);
         if (tznb.containsKey("metazone.dstoffsets")) {
@@ -713,7 +724,7 @@ public class LocaleResources {
      * @return resolved skeletons for this locale, defaults to "h" if none found.
      */
     private String resolveInputSkeleton(String type) {
-        var regionToSkeletonMap = INPUT_SKELETONS.get().get(type);
+        var regionToSkeletonMap = SkeletonUpdaters.INPUT_SKELETONS.getOrCompute().get(type);
 
         if (regionToSkeletonMap != null) {
             for (var region: new String[] {
@@ -740,8 +751,9 @@ public class LocaleResources {
      */
     private String substituteInputSkeletons(String requestedTemplate) {
         var cCount = requestedTemplate.chars().filter(c -> c == 'C').count();
-        return requestedTemplate.replaceAll("j", jPattern.get())
-                .replaceFirst("C+", CPattern.get().replaceAll("([hkHK])", "$1".repeat((int)cCount)));
+        return requestedTemplate.replaceAll("j", SkeletonUpdaters.J_PATTERN.getOrCompute(this))
+                .replaceFirst("C+", SkeletonUpdaters.C_PATTERN.getOrCompute(this)
+                        .replaceAll("([hkHK])", "$1".repeat((int)cCount)));
     }
 
     /**

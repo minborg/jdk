@@ -166,7 +166,7 @@ final class LazyConstantTestUtil {
         }
     }
 
-    static Object computingFunction(LazyConstant<?> o) {
+    static Object computingFunction(Supplier<?> o) {
         try {
             final Field field = field(o.getClass(), "computingFunctionOrExceptionType");
             field.setAccessible(true);
