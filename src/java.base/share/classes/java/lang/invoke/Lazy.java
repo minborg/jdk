@@ -71,7 +71,7 @@ import jdk.internal.reflect.Reflection;
  * on each access. The
  * {@linkplain #ofStaticField(Class, String, Supplier) static-field},
  * {@linkplain #ofField(Class, String, Function) instance-field}, and
- * {@linkplain #ofArray(Class, ReferenceArrayAccessor.Computer)
+ * {@linkplain #ofArray(Class, ReferenceArrayAccessor)
  * reference-array} conveniences use {@code PUBLISH_ONCE} with fixed,
  * common shapes. {@link Mode#SERIALIZED} retries after failure.
  *
@@ -244,28 +244,32 @@ import jdk.internal.reflect.Reflection;
  *     ReferenceFieldAccessor.Computer<Holder, String> { }}</td>
  * </tr>
  * <tr>
- * <th scope="row">{@link IntArrayAccessor IntArrayAccessor}</th>
+ * <th scope="row">{@link IntArrayAccessor.Computer
+ *     IntArrayAccessor.Computer}</th>
  * <td>Element of a directly supplied {@code int[]}</td>
  * <td>{@code int[] array, int index}</td>
- * <td>{@code IntArrayAccessor.Computer}<br>
+ * <td>{@code IntArrayAccessor}<br>
  *     {@code (array, index) -> array.length - index}</td>
- * <td>No; use {@code IntArrayAccessor.class}</td>
+ * <td>No; use {@code IntArrayAccessor.Computer.class}</td>
  * </tr>
  * <tr>
- * <th scope="row">{@link LongArrayAccessor LongArrayAccessor}</th>
+ * <th scope="row">{@link LongArrayAccessor.Computer
+ *     LongArrayAccessor.Computer}</th>
  * <td>Element of a directly supplied {@code long[]}</td>
  * <td>{@code long[] array, int index}</td>
- * <td>{@code LongArrayAccessor.Computer}<br>
+ * <td>{@code LongArrayAccessor}<br>
  *     {@code (array, index) -> (long) array.length - index}</td>
- * <td>No; use {@code LongArrayAccessor.class}</td>
+ * <td>No; use {@code LongArrayAccessor.Computer.class}</td>
  * </tr>
  * <tr>
- * <th scope="row">{@link ReferenceArrayAccessor ReferenceArrayAccessor}</th>
+ * <th scope="row">{@link ReferenceArrayAccessor.Computer
+ *     ReferenceArrayAccessor.Computer}</th>
  * <td>Element of a directly supplied {@code E[]}</td>
  * <td>{@code E[] array, int index}</td>
- * <td>{@code ReferenceArrayAccessor.Computer<E>}<br>
+ * <td>{@code ReferenceArrayAccessor<E>}<br>
  *     {@code (array, index) -> "name-" + (array.length - index)}</td>
- * <td>Yes; {@code interface Names extends ReferenceArrayAccessor<String> { }}</td>
+ * <td>Yes; {@code interface Names extends
+ *     ReferenceArrayAccessor.Computer<String> { }}</td>
  * </tr>
  * </tbody>
  * </table>
@@ -591,6 +595,7 @@ import jdk.internal.reflect.Reflection;
  *           {@linkplain ##updater-modes updater mode} guarantee.
  *
  * @since 28
+ * @see Supplier
  * @jls 17.4.5 Happens-before Order
  */
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
@@ -846,8 +851,8 @@ public final class Lazy {
     /**
      * Returns a lazy updater for elements of a directly supplied reference
      * array. This convenience method uses {@link Mode#PUBLISH_ONCE} and
-     * returns a function whose {@link ReferenceArrayAccessor.Computer#apply(Object[], int)
-     * apply} method selects an element by index. The computing function is
+     * returns an accessor whose {@link ReferenceArrayAccessor#getOrCompute(Object[], int)
+     * getOrCompute} method selects an element by index. The computing function is
      * invoked only when that element is {@code null}. Different arrays and
      * different elements have independent storage. The supplied
      * {@code elementType} identifies the required array and result types;
@@ -861,13 +866,13 @@ public final class Lazy {
      *
      * class Names {
      *
-     *     private static final Lazy.ReferenceArrayAccessor.Computer<String> ENTRY =
+     *     private static final Lazy.ReferenceArrayAccessor<String> ENTRY =
      *             Lazy.ofArray(String.class,
      *                     (array, index) -> "entry-" + index);
      *
      *     private final String[] entries = new String[8];
      *
-     *     String entry(int index) { return ENTRY.apply(entries, index); }
+     *     String entry(int index) { return ENTRY.getOrCompute(entries, index); }
      * }
      * }
      *
@@ -879,7 +884,7 @@ public final class Lazy {
      * @param elementType the reference array's element type
      * @param computing the function that computes a non-null element value
      * @param <T> the array element type
-     * @return a function backed by elements of arrays supplied on access
+     * @return an accessor backed by elements of arrays supplied on access
      * @throws NullPointerException if either argument is {@code null}
      * @throws IllegalArgumentException if {@code elementType} is primitive or
      *         {@code void}, or the required access mode is unsupported
@@ -887,8 +892,8 @@ public final class Lazy {
      * @since 28
      */
     @SuppressWarnings("unchecked")
-    public static <T> ReferenceArrayAccessor.Computer<T> ofArray(Class<T> elementType,
-                                                                 ReferenceArrayAccessor.Computer<T> computing) {
+    public static <T> ReferenceArrayAccessor<T> ofArray(Class<T> elementType,
+                                                       ReferenceArrayAccessor<T> computing) {
         Objects.requireNonNull(elementType);
         Objects.requireNonNull(computing);
         if (elementType.isPrimitive() || elementType == void.class) {
@@ -896,7 +901,7 @@ public final class Lazy {
         }
         Class<?> arrayType = elementType.arrayType();
         ObjectArrayElementFunction computer = (array, index) ->
-                elementType.cast(computing.apply(
+                elementType.cast(computing.getOrCompute(
                         (T[]) arrayType.cast(array), index));
         ObjectArrayElementFunction updater = of(ObjectArrayElementFunction.class)
                 .build(computer);
@@ -939,12 +944,12 @@ public final class Lazy {
      *
      * class Entries {
      *
-     *     private static final IntArrayAccessor.Computer ENTRY =
-     *             Lazy.of(IntArrayAccessor.Computer.class)
+     *     private static final IntArrayAccessor ENTRY =
+     *             Lazy.of(IntArrayAccessor.class)
      *                     .build((array, index) -> index + 1);
      *
      *     int get(int[] array, int index) {
-     *         return ENTRY.apply(array, index);
+     *         return ENTRY.getOrCompute(array, index);
      *     }
      * }
      * }
@@ -1193,9 +1198,9 @@ public final class Lazy {
          *
          * class Entries {
          *
-         *     private static final IntArrayAccessor ENTRY =
-         *             Lazy.of(IntArrayAccessor.Computer.class)
-         *                     .buildUseSite(IntArrayAccessor.class);
+         *     private static final IntArrayAccessor.Computer ENTRY =
+         *             Lazy.of(IntArrayAccessor.class)
+         *                     .buildUseSite(IntArrayAccessor.Computer.class);
          *
          *     int get(int[] array, int index) {
          *         return ENTRY.getOrCompute((a, i) -> i + 1, array, index);
@@ -1539,7 +1544,9 @@ public final class Lazy {
 
     /**
      * An updater for elements of a directly supplied {@code int[]}.
-     * The computing function is supplied at each access.
+     * The computing function is retained when the updater is created. The
+     * nested {@link Computer} interface accepts a computing function on each
+     * access.
      *
      * @see Lazy##computing-functions Computing functions
      * @see Lazy##uninitialized-locations Uninitialized locations
@@ -1551,17 +1558,18 @@ public final class Lazy {
     public interface IntArrayAccessor {
 
         /**
-         * Returns the selected element, computing it when uninitialized.
+         * Returns the selected element, computing it when uninitialized using
+         * the function retained by this updater.
          *
-         * @param computingFunction the computation for an uninitialized element
          * @param array the array
          * @param index the selected index
          * @return the selected value
          */
-        int getOrCompute(Computer computingFunction, int[] array, int index);
+        int getOrCompute(int[] array, int index);
 
         /**
-         * Computes an {@code int} element from its array and index.
+         * An updater for elements of a directly supplied {@code int[]}.
+         * The computing function is supplied at each access.
          *
          * @since 28
          */
@@ -1570,19 +1578,22 @@ public final class Lazy {
         interface Computer {
 
             /**
-             * Computes an element value.
+             * Returns the selected element, computing it when uninitialized.
              *
+             * @param computingFunction the computation for an uninitialized element
              * @param array the array
              * @param index the selected index
-             * @return the computed value
+             * @return the selected value
              */
-            int apply(int[] array, int index);
+            int getOrCompute(IntArrayAccessor computingFunction, int[] array, int index);
         }
     }
 
     /**
      * An updater for elements of a directly supplied {@code long[]}.
-     * The computing function is supplied at each access.
+     * The computing function is retained when the updater is created. The
+     * nested {@link Computer} interface accepts a computing function on each
+     * access.
      *
      * @see Lazy##computing-functions Computing functions
      * @see Lazy##uninitialized-locations Uninitialized locations
@@ -1594,17 +1605,18 @@ public final class Lazy {
     public interface LongArrayAccessor {
 
         /**
-         * Returns the selected element, computing it when uninitialized.
+         * Returns the selected element, computing it when uninitialized using
+         * the function retained by this updater.
          *
-         * @param computingFunction the computation for an uninitialized element
          * @param array the array
          * @param index the selected index
          * @return the selected value
          */
-        long getOrCompute(Computer computingFunction, long[] array, int index);
+        long getOrCompute(long[] array, int index);
 
         /**
-         * Computes a {@code long} element from its array and index.
+         * An updater for elements of a directly supplied {@code long[]}.
+         * The computing function is supplied at each access.
          *
          * @since 28
          */
@@ -1613,25 +1625,27 @@ public final class Lazy {
         interface Computer {
 
             /**
-             * Computes an element value.
+             * Returns the selected element, computing it when uninitialized.
              *
+             * @param computingFunction the computation for an uninitialized element
              * @param array the array
              * @param index the selected index
-             * @return the computed value
+             * @return the selected value
              */
-            long apply(long[] array, int index);
+            long getOrCompute(LongArrayAccessor computingFunction, long[] array, int index);
         }
     }
 
     /**
      * An updater for elements of a directly supplied {@code E[]} array. An
-     * element may itself be an array. The computing function is supplied at
-     * each access. Clients declare a non-generic subinterface, such as
+     * element may itself be an array. The computing function is retained when
+     * the updater is created. The nested {@link Computer} interface accepts a
+     * computing function on each access. Clients building a declaration-site
+     * updater declare a non-generic subinterface, such as
      * {@code Names extends ReferenceArrayAccessor<String>}, and pass its
-     * {@code Class} token to {@link Builder#buildUseSite(Class)}. The
-     * builder has no explicit location for a directly supplied array. A
-     * computed {@code null} is rejected because it denotes an uninitialized
-     * element.
+     * {@code Class} token to {@link Lazy#of(Class)}. The builder has no explicit
+     * location for a directly supplied array. A computed {@code null} is
+     * rejected because it denotes an uninitialized element.
      *
      * @param <E> the array element type
      * @see Lazy##computing-functions Computing functions
@@ -1644,20 +1658,23 @@ public final class Lazy {
     public interface ReferenceArrayAccessor<E> {
 
         /**
-         * Returns the selected element, computing it when uninitialized.
+         * Returns the selected element, computing it when uninitialized using
+         * the function retained by this updater.
          *
-         * @param computingFunction the computation for an uninitialized element
          * @param array the array
          * @param index the selected index
          * @return the selected value
          */
-        E getOrCompute(Computer<E> computingFunction, E[] array, int index);
+        E getOrCompute(E[] array, int index);
 
         /**
-         * A function of a reference array and index. It can supply the
-         * computation to a use-site {@code ReferenceArrayAccessor}, or serve
-         * as the updater returned by {@link Lazy#ofArray(Class,
-         * ReferenceArrayAccessor.Computer) ofArray}.
+         * An updater for elements of a directly supplied {@code E[]} array.
+         * The computing function is supplied at each access. Clients declare a
+         * non-generic subinterface, such as
+         * {@code Names extends ReferenceArrayAccessor.Computer<String>}, and
+         * pass its {@code Class} token to {@link Builder#buildUseSite(Class)}.
+         * A computed {@code null} is rejected because it denotes an
+         * uninitialized element.
          *
          * @param <E> the array element type
          * @since 28
@@ -1667,17 +1684,14 @@ public final class Lazy {
         interface Computer<E> {
 
             /**
-             * Applies this function to the array and index. A computation
-             * supplied to a use-site accessor computes an element value;
-             * a function returned by {@link Lazy#ofArray(Class,
-             * ReferenceArrayAccessor.Computer) ofArray} returns the
-             * selected element, computing it when uninitialized.
+             * Returns the selected element, computing it when uninitialized.
              *
+             * @param computingFunction the computation for an uninitialized element
              * @param array the array
              * @param index the selected index
-             * @return the computed or selected value
+             * @return the selected value
              */
-            E apply(E[] array, int index);
+            E getOrCompute(ReferenceArrayAccessor<E> computingFunction, E[] array, int index);
         }
     }
 

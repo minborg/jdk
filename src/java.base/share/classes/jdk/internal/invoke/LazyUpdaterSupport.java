@@ -82,12 +82,15 @@ public final class LazyUpdaterSupport {
         Objects.requireNonNull(type);
         Objects.requireNonNull(computingFunction);
         Method method = accessorMethod(type);
-        requireConcreteCoordinates(type, method, 0, null);
+        Class<?> specializedArrayType = specializedReferenceArrayType(type,
+                ReferenceArrayAccessor.class);
+        requireConcreteCoordinates(type, method, 0, specializedArrayType);
         if (!type.isInstance(computingFunction)) {
             throw new IllegalArgumentException("Function must implement " + type.getTypeName());
         }
         try {
-            StorageAccess access = selectArray(method.getParameterTypes());
+            StorageAccess access = selectArray(method.getParameterTypes(),
+                    specializedArrayType);
             return createUpdater(mode, type, method, method, access,
                     computingFunction, false);
         } catch (ReflectiveOperationException e) {
@@ -99,7 +102,8 @@ public final class LazyUpdaterSupport {
         Objects.requireNonNull(mode);
         Objects.requireNonNull(type);
         Method accessor = accessorMethod(type);
-        Class<?> specializedArrayType = specializedReferenceArrayType(type);
+        Class<?> specializedArrayType = specializedReferenceArrayType(type,
+                ReferenceArrayAccessor.Computer.class);
         requireConcreteCoordinates(type, accessor, 1, specializedArrayType);
         Method computer = computerMethod(type, accessor);
         try {
@@ -198,7 +202,7 @@ public final class LazyUpdaterSupport {
     /**
      * The use-site array accessor can identify a more specific reference
      * array type than the computation Class token (for example a concrete
-     * subinterface of ReferenceArrayAccessor<String>).
+     * subinterface of ReferenceArrayAccessor.Computer<String>).
      */
     public static <C, U> U ofArrayUseSite(Mode mode,
                                           Class<C> computationShape,
@@ -341,6 +345,10 @@ public final class LazyUpdaterSupport {
             remedy = "Declare a concrete subinterface, for example "
                     + "interface HolderAccessor extends LongFieldAccessor<Holder> {}, "
                     + "and pass HolderAccessor.class.";
+        } else if (ReferenceArrayAccessor.Computer.class.isAssignableFrom(type)) {
+            remedy = "Declare a concrete subinterface, for example "
+                    + "interface Names extends ReferenceArrayAccessor.Computer<String> {}, "
+                    + "and pass Names.class.";
         } else if (ReferenceArrayAccessor.class.isAssignableFrom(type)) {
             remedy = "Declare a concrete subinterface, for example "
                     + "interface Names extends ReferenceArrayAccessor<String> {}, "
@@ -561,12 +569,13 @@ public final class LazyUpdaterSupport {
         }
     }
 
-    private static Class<?> specializedReferenceArrayType(Class<?> type) {
-        if (!ReferenceArrayAccessor.class.isAssignableFrom(type)) {
+    private static Class<?> specializedReferenceArrayType(Class<?> type,
+                                                          Class<?> accessorType) {
+        if (!accessorType.isAssignableFrom(type)) {
             return null;
         }
         Class<?> elementType = specializedReferenceType(type,
-                ReferenceArrayAccessor.class, 0);
+                accessorType, 0);
         if (elementType == null) {
             throw new IllegalArgumentException("A reference array accessor requires a "
                     + "concrete reference element type: " + type.getTypeName());
@@ -908,10 +917,6 @@ public final class LazyUpdaterSupport {
         for (Class<?> parent : iface.getInterfaces()) {
             collectInterfaceFields(parent, name, visited, fields);
         }
-    }
-
-    private static StorageAccess selectArray(Class<?>[] coordinates) {
-        return selectArray(coordinates, null);
     }
 
     private static StorageAccess selectArray(Class<?>[] coordinates,

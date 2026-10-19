@@ -1139,7 +1139,7 @@ public class OfLocationTest {
     @Test
     public void convenienceArrayUpdaterComputesPerElementAndArray() {
         AtomicInteger computations = new AtomicInteger();
-        Lazy.ReferenceArrayAccessor.Computer<String> updater = Lazy.ofArray(String.class,
+        Lazy.ReferenceArrayAccessor<String> updater = Lazy.ofArray(String.class,
                 (array, index) -> {
                     computations.incrementAndGet();
                     return new String("element " + index);
@@ -1149,59 +1149,59 @@ public class OfLocationTest {
         String[] second = new String[1];
 
         assertEquals(0, computations.get());
-        assertSame(existing, updater.apply(first, 1));
+        assertSame(existing, updater.getOrCompute(first, 1));
         assertEquals(0, computations.get());
-        String firstResult = updater.apply(first, 0);
+        String firstResult = updater.getOrCompute(first, 0);
         assertSame(firstResult, first[0]);
-        assertSame(firstResult, updater.apply(first, 0));
-        String secondResult = updater.apply(second, 0);
+        assertSame(firstResult, updater.getOrCompute(first, 0));
+        String secondResult = updater.getOrCompute(second, 0);
         assertSame(secondResult, second[0]);
-        assertSame(secondResult, updater.apply(second, 0));
+        assertSame(secondResult, updater.getOrCompute(second, 0));
         assertEquals(2, computations.get());
     }
 
     @Test
     public void convenienceArrayUpdaterSupportsPrivateComponents() {
         PrivateElement result = new PrivateElement(7);
-        Lazy.ReferenceArrayAccessor.Computer<PrivateElement> updater =
+        Lazy.ReferenceArrayAccessor<PrivateElement> updater =
                 Lazy.ofArray(PrivateElement.class, (array, index) -> result);
         PrivateElement[] array = new PrivateElement[1];
 
-        assertSame(result, updater.apply(array, 0));
-        assertSame(result, updater.apply(array, 0));
+        assertSame(result, updater.getOrCompute(array, 0));
+        assertSame(result, updater.getOrCompute(array, 0));
         assertSame(result, array[0]);
     }
 
     @Test
     public void convenienceArrayUpdaterCanInitializeAnArrayValuedElement() {
-        Lazy.ReferenceArrayAccessor.Computer<int[]> updater = Lazy.ofArray(
+        Lazy.ReferenceArrayAccessor<int[]> updater = Lazy.ofArray(
                 int[].class, (array, index) -> new int[] { index + 1 });
         int[][] matrix = new int[2][];
 
-        int[] row = updater.apply(matrix, 1);
+        int[] row = updater.getOrCompute(matrix, 1);
         assertSame(row, matrix[1]);
-        assertSame(row, updater.apply(matrix, 1));
+        assertSame(row, updater.getOrCompute(matrix, 1));
         assertEquals(2, row[0]);
     }
 
     @Test
     public void convenienceArrayUpdaterChecksDefaultBoundsAndArguments() {
         AtomicInteger computations = new AtomicInteger();
-        Lazy.ReferenceArrayAccessor.Computer<String> updater = Lazy.ofArray(String.class,
+        Lazy.ReferenceArrayAccessor<String> updater = Lazy.ofArray(String.class,
                 (array, index) -> computations.incrementAndGet() == 1 ? null : "recovered");
         String[] array = new String[1];
 
-        assertThrows(NullPointerException.class, () -> updater.apply(null, 0));
-        assertThrows(ArrayIndexOutOfBoundsException.class, () -> updater.apply(array, 1));
+        assertThrows(NullPointerException.class, () -> updater.getOrCompute(null, 0));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> updater.getOrCompute(array, 1));
         assertEquals(0, computations.get());
-        assertThrows(IllegalArgumentException.class, () -> updater.apply(array, 0));
+        assertThrows(IllegalArgumentException.class, () -> updater.getOrCompute(array, 0));
         assertNull(array[0]);
-        assertEquals("recovered", updater.apply(array, 0));
+        assertEquals("recovered", updater.getOrCompute(array, 0));
         assertEquals(2, computations.get());
 
         assertThrows(NullPointerException.class,
                 () -> Lazy.ofArray(null,
-                        (Lazy.ReferenceArrayAccessor.Computer<String>) (a, i) -> "unused"));
+                        (Lazy.ReferenceArrayAccessor<String>) (a, i) -> "unused"));
         assertThrows(NullPointerException.class,
                 () -> Lazy.ofArray(String.class, null));
         assertThrows(IllegalArgumentException.class,

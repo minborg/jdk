@@ -130,7 +130,9 @@ public class BuilderTest {
                 int[] array, int index);
     }
 
-    private interface Names extends Lazy.ReferenceArrayAccessor<String> { }
+    private interface Names extends Lazy.ReferenceArrayAccessor.Computer<String> { }
+
+    private interface DeclaredNames extends Lazy.ReferenceArrayAccessor<String> { }
 
     private interface WrongIntComputer {
         int apply(int[] array, long index);
@@ -352,18 +354,28 @@ public class BuilderTest {
     @Test
     @SuppressWarnings("rawtypes")
     public void concreteUseSiteResolvesRawReferenceArrayComputer() {
-        Names names = Lazy.of(Lazy.ReferenceArrayAccessor.Computer.class)
+        Names names = Lazy.of(Lazy.ReferenceArrayAccessor.class)
                 .buildUseSite(Names.class);
         String[] values = new String[1];
         assertEquals("name", names.getOrCompute(
                 (array, index) -> "name", values, 0));
         assertEquals("name", values[0]);
 
-        Lazy.ReferenceArrayAccessor.Computer rawComputer =
+        Lazy.ReferenceArrayAccessor rawComputer =
                 (array, index) -> "not selected";
         assertThrows(IllegalArgumentException.class,
-                () -> Lazy.of(Lazy.ReferenceArrayAccessor.Computer.class)
+                () -> Lazy.of(Lazy.ReferenceArrayAccessor.class)
                         .build(rawComputer));
+    }
+
+    @Test
+    public void concreteDeclarationSiteResolvesReferenceArrayType() {
+        DeclaredNames names = Lazy.of(DeclaredNames.class)
+                .build((array, index) -> "name-" + index);
+        String[] values = new String[1];
+
+        assertEquals("name-0", names.getOrCompute(values, 0));
+        assertEquals("name-0", values[0]);
     }
 
     @Test

@@ -221,6 +221,7 @@ public interface Supplier<T> {
      * @see Set#ofLazy(Set, Predicate)
      * @see Map#ofLazy(Set, Function)
      * @see Optional
+     * @see java.lang.invoke.Lazy
      * @jls 12.4 Initialization of Classes and Interfaces
      * @jls 17.4.5 Happens-before Order
      */

@@ -136,8 +136,6 @@ public class UseSiteAccessorTest {
         long get(Computer computer, Holder holder);
     }
 
-    private interface DeclaredIntElement { int get(int[] array, int index); }
-
     private interface HolderIntAccessor extends Lazy.IntFieldAccessor.Computer<Holder> { }
 
     private interface HolderLongAccessor extends Lazy.LongFieldAccessor.Computer<Holder> { }
@@ -149,10 +147,10 @@ public class UseSiteAccessorTest {
     private interface HolderLongDeclaredAccessor extends Lazy.LongFieldAccessor<Holder> { }
 
     private interface StringArrayAccessor
-            extends Lazy.ReferenceArrayAccessor<String> { }
+            extends Lazy.ReferenceArrayAccessor.Computer<String> { }
 
     private interface NumberArrayAccessor
-            extends Lazy.ReferenceArrayAccessor<Number> { }
+            extends Lazy.ReferenceArrayAccessor.Computer<Number> { }
 
     private interface StaticStringAccessor
             extends Lazy.StaticReferenceFieldAccessor.Computer<String> { }
@@ -411,10 +409,10 @@ public class UseSiteAccessorTest {
     @Test
     public void builtInIntAndLongArrayAccessors() {
         for (Lazy.Mode mode : Lazy.Mode.values()) {
-            Lazy.IntArrayAccessor ints = arrayUpdater(mode,
-                    Lazy.IntArrayAccessor.class);
-            Lazy.LongArrayAccessor longs = arrayUpdater(mode,
-                    Lazy.LongArrayAccessor.class);
+            Lazy.IntArrayAccessor.Computer ints = arrayUpdater(mode,
+                    Lazy.IntArrayAccessor.Computer.class);
+            Lazy.LongArrayAccessor.Computer longs = arrayUpdater(mode,
+                    Lazy.LongArrayAccessor.Computer.class);
             int[] intArray = new int[2];
             long[] longArray = new long[2];
             AtomicInteger computations = new AtomicInteger();
@@ -435,9 +433,25 @@ public class UseSiteAccessorTest {
             assertEquals(1L << 40, longs.getOrCompute((array, index) -> {
                 throw new AssertionError("cached long element was recomputed");
             }, longArray, 0));
-            assertEquals(2, computations.get());
+            Lazy.IntArrayAccessor declaredInts = arrayUpdater(mode,
+                    Lazy.IntArrayAccessor.class, (array, index) -> {
+                        computations.incrementAndGet();
+                        return 7;
+                    });
+            Lazy.LongArrayAccessor declaredLongs = arrayUpdater(mode,
+                    Lazy.LongArrayAccessor.class, (array, index) -> {
+                        computations.incrementAndGet();
+                        return 99L;
+                    });
+            assertEquals(7, declaredInts.getOrCompute(intArray, 0));
+            assertEquals(7, declaredInts.getOrCompute(intArray, 0));
+            assertEquals(99L, declaredLongs.getOrCompute(longArray, 1));
+            assertEquals(99L, declaredLongs.getOrCompute(longArray, 1));
+            assertEquals(4, computations.get());
             assertEquals(4, intArray[1]);
+            assertEquals(7, intArray[0]);
             assertEquals(1L << 40, longArray[0]);
+            assertEquals(99L, longArray[1]);
         }
     }
 
@@ -490,11 +504,11 @@ public class UseSiteAccessorTest {
 
     @Test
     public void declarationAndUseSiteAccessorsShareArrayElements() {
-        Lazy.IntArrayAccessor useSite = arrayUpdater(
-                Lazy.Mode.SERIALIZED, Lazy.IntArrayAccessor.class);
+        Lazy.IntArrayAccessor.Computer useSite = arrayUpdater(
+                Lazy.Mode.SERIALIZED, Lazy.IntArrayAccessor.Computer.class);
         AtomicInteger declarationComputations = new AtomicInteger();
-        DeclaredIntElement declarationSite = arrayUpdater(
-                Lazy.Mode.SERIALIZED, DeclaredIntElement.class,
+        Lazy.IntArrayAccessor declarationSite = arrayUpdater(
+                Lazy.Mode.SERIALIZED, Lazy.IntArrayAccessor.class,
                 (array, index) -> {
                     declarationComputations.incrementAndGet();
                     return 19;
@@ -502,8 +516,8 @@ public class UseSiteAccessorTest {
         int[] array = new int[2];
 
         assertEquals(13, useSite.getOrCompute((a, i) -> 13, array, 0));
-        assertEquals(13, declarationSite.get(array, 0));
-        assertEquals(19, declarationSite.get(array, 1));
+        assertEquals(13, declarationSite.getOrCompute(array, 0));
+        assertEquals(19, declarationSite.getOrCompute(array, 1));
         assertEquals(19, useSite.getOrCompute((a, i) -> {
             throw new AssertionError("cached element was recomputed");
         }, array, 1));
@@ -991,9 +1005,9 @@ public class UseSiteAccessorTest {
         String referenceArray = assertErasureDiagnostic(
                 () -> arrayUpdater(
                         Lazy.Mode.PUBLISH_ONCE,
-                        Lazy.ReferenceArrayAccessor.class),
-                Lazy.ReferenceArrayAccessor.class);
-        assertTrue(referenceArray.contains("extends referencearrayaccessor<"),
+                        Lazy.ReferenceArrayAccessor.Computer.class),
+                Lazy.ReferenceArrayAccessor.Computer.class);
+        assertTrue(referenceArray.contains("extends referencearrayaccessor.computer<"),
                 () -> referenceArray);
 
         String genericUseSiteArray = assertErasureDiagnostic(
