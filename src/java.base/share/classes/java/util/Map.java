@@ -30,6 +30,7 @@ import jdk.internal.javac.PreviewFeature;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.io.Serializable;
 
 /**
@@ -1763,6 +1764,25 @@ public interface Map<K, V> {
      * at most once per key, even in a multi-threaded environment. Competing
      * threads accessing a value already under computation will block until a value
      * is computed or the computing function completes abnormally.
+     * Computation runs on the thread accessing that value. Computations for different
+     * keys may proceed concurrently, so the computing function must support concurrent
+     * invocation when the map is accessed concurrently.
+     * <p>
+     * For a given key, actions in the computing thread before publication of a
+     * successfully computed value
+     * {@linkplain java.util.concurrent##MemoryVisibility happen-before} actions
+     * following an access in another thread that observes that initialized value
+     * for that key. This guarantee does not impose a total order on accesses to the
+     * map. Subsequent accesses provide no additional memory ordering or visibility
+     * guarantees for actions performed after that publication.
+     * <p>
+     * The lazy computation machinery does not cancel computation or clear interruption
+     * status. The computing function may respond to interruption according to its own
+     * behavior. An indefinitely blocked computation may indefinitely block access to
+     * the same key; no timeout or cancellation is provided. See
+     * {@linkplain Supplier##ofLazy-thread-safety lazy supplier thread safety} and
+     * {@linkplain Supplier##ofLazy-dependencies dependency composition} for further
+     * guidance, including dependencies used during class initialization.
      * <p>
      * If evaluation of the provided computing function throws an unchecked exception (for
      * a key), the lazy value is not initialized but instead transitions to an error
@@ -1782,9 +1802,10 @@ public interface Map<K, V> {
      * Clients that want to use nullable values can wrap elements into an
      * {@linkplain Optional} holder.
      * <p>
-     * If the computing function recursively invokes itself (for the same key) via the
-     * returned lazy map, a {@linkplain NoSuchElementException}
-     * (with an {@linkplain IllegalStateException} as a cause) will be thrown.
+     * A recursive access to the same key via the returned map is rejected with
+     * {@linkplain IllegalStateException}. If that exception escapes the computing
+     * function, the initiating access records the failure and throws
+     * {@linkplain NoSuchElementException} with that exception as its cause.
      * <p>
      * The values of any {@link Map#values()} or {@link Map#entrySet()} views of
      * the returned map are also lazily computed.
@@ -1796,13 +1817,15 @@ public interface Map<K, V> {
      * one or more lazy values. If initialization fails for at least one value,
      * the {@linkplain Object#hashCode() hashCode()} and
      * {@linkplain Object#toString() toString()} methods throw
-     * {@linkplain NoSuchElementException}, and the {@linkplain Object#equals(Object)}
-     * throw {@linkplain NoSuchElementException} if attempting to compare a value that
+     * {@linkplain NoSuchElementException}, and {@linkplain Object#equals(Object) equals()}
+     * throws {@linkplain NoSuchElementException} if attempting to compare a value that
      * could not be computed.
      * <p>
      * The returned lazy map strongly references its underlying
      * computing function used to compute values at least as long as there are
      * uncomputed values.
+     * The map strongly references its initialized values. Its unmodifiability does not
+     * make those values immutable or make subsequent mutations thread-safe.
      * <p>
      * The returned Map is <em>not</em> {@linkplain Serializable}.
      * <p>
@@ -1819,6 +1842,10 @@ public interface Map<K, V> {
      * called at most once per distinct input parameter. Once created, the retrieval of
      * values is eligible for constant folding by the JVM:
      * {@snippet lang = java:
+     * import java.util.Map;
+     * import java.util.Optional;
+     * import java.util.Set;
+     *
      * class Application {
      *
      *     private static final Map<Integer, Double> CACHE
@@ -1829,7 +1856,8 @@ public interface Map<K, V> {
      *     }
      *
      *     private static double expensiveOperation(int param) {
-     *       // Calculate the value ...
+     *         // Replace with the application's expensive computation.
+     *         return Math.sqrt(param);
      *     }
      *
      *      // Eligible for constant folding
@@ -1839,38 +1867,48 @@ public interface Map<K, V> {
      * }
      * <p>
      * The returned {@code Map<K, V>} can be thought of as a map backed by a
-     * {@code Map<K, LazyConstant<V>>} field and where the {@linkplain Map#get(Object)}
-     * operation is equivalent to:
+     * {@code Map<K, Supplier<V>>} field, where each supplier is created by
+     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The following partial model
+     * illustrates the {@linkplain Map#get(Object) get()} operation:
      * {@snippet lang = java:
-     * class LazyMap<K, V> extends AbstractMap<K, V> {
+     * import java.util.AbstractMap;
+     * import java.util.Map;
+     * import java.util.Set;
+     * import java.util.function.Function;
+     * import java.util.function.Supplier;
+     * import java.util.stream.Collectors;
      *
-     *     private final Map<K, LazyConstant<V>> backingMap;
+     * abstract class LazyMap<K, V> extends AbstractMap<K, V> {
+     *
+     *     private final Map<K, Supplier<V>> backingMap;
      *
      *     public LazyMap(Set<K> keys, Function<K, V> computingFunction) {
      *         this.backingMap = keys.stream()
      *                 .collect(Collectors.toUnmodifiableMap(
      *                         Function.identity(),
-     *                         k -> LazyConstant.of(() -> computingFunction.apply(k))));
+     *                         k -> Supplier.ofLazy(() -> computingFunction.apply(k))));
      *     }
      *
      *     @Override
      *     public V get(Object key) {
-     *         var lazyConstant = backingMap.get(key);
-     *         return lazyConstant == null
+     *         var supplier = backingMap.get(key);
+     *         return supplier == null
      *                 ? null
-     *                 : lazyConstant.get();
+     *                 : supplier.get();
      *     }
      * }
      *}
-     * Except, performance and storage efficiency might be better.
+     * The factory implementation may provide better performance and storage efficiency
+     * than this model.
      * <p>
      * Values in the returned map are eligible for certain performance optimizations
      * such as <em>constant folding</em> as described in
-     * {@linkplain LazyConstant##performance LazyConstant}.
+     * {@linkplain java.lang.invoke.LazyInitializers##performance LazyInitializers}.
      *
-     * @implNote  after all values have been initialized successfully or transitioned to
-     *            an error state, the computing function is no longer strongly referenced
-     *            and becomes eligible for garbage collection.
+     * @implNote After all values have been initialized successfully or transitioned to
+     *           an error state, the implementation releases its reference to the computing
+     *           function. The function becomes eligible for garbage collection if it is
+     *           not otherwise strongly reachable.
      *
      * @param keys              the (non-null) keys in the returned computed map
      * @param computingFunction to invoke whenever an associated value is first accessed
@@ -1880,7 +1918,7 @@ public interface Map<K, V> {
      *         if the set of {@code keys} contains a {@code null} element, or
      *         if the provided {@code computingFunction} is {@code null}
      *
-     * @see LazyConstant
+     * @see Supplier#ofLazy(Supplier) lazy supplier
      * @since 26
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)

@@ -31,14 +31,14 @@ import java.lang.reflect.Modifier;
 import sun.invoke.util.VerifyAccess;
 import sun.invoke.util.Wrapper;
 
-/** Helpers for lazy updater factories. */
-public final class LazyUpdatersUtil {
+/** Helpers for lazy initializer factories. */
+public final class LazyInitializersUtil {
 
     private static final int CALLER_ACCESS_MODES = MethodHandles.Lookup.PUBLIC
             | MethodHandles.Lookup.PRIVATE | MethodHandles.Lookup.PROTECTED
             | MethodHandles.Lookup.PACKAGE | MethodHandles.Lookup.MODULE;
 
-    private LazyUpdatersUtil() {}
+    private LazyInitializersUtil() {}
 
     public static void checkName(String name) {
         // Implicit null checking

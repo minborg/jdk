@@ -30,6 +30,7 @@ import jdk.internal.javac.PreviewFeature;
 
 import java.io.Serializable;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 /**
@@ -1208,6 +1209,25 @@ public interface List<E> extends SequencedCollection<E> {
      * invoked at most once per list index, even in a multi-threaded environment.
      * Competing threads accessing an element already under computation will block until
      * an element is computed or the computing function completes abnormally.
+     * Computation runs on the thread accessing that element. Computations for different
+     * indices may proceed concurrently, so the computing function must support concurrent
+     * invocation when the list is accessed concurrently.
+     * <p>
+     * For a given index, actions in the computing thread before publication of a
+     * successfully computed element
+     * {@linkplain java.util.concurrent##MemoryVisibility happen-before} actions
+     * following an access in another thread that observes that initialized element
+     * at that index. This guarantee does not impose a total order on accesses to the
+     * list. Subsequent accesses provide no additional memory ordering or visibility
+     * guarantees for actions performed after that publication.
+     * <p>
+     * The lazy computation machinery does not cancel computation or clear interruption
+     * status. The computing function may respond to interruption according to its own
+     * behavior. An indefinitely blocked computation may indefinitely block access to
+     * the same index; no timeout or cancellation is provided. See
+     * {@linkplain Supplier##ofLazy-thread-safety lazy supplier thread safety} and
+     * {@linkplain Supplier##ofLazy-dependencies dependency composition} for further
+     * guidance, including dependencies used during class initialization.
      * <p>
      * If evaluation of the provided computing function throws an unchecked exception (for
      * an index), the lazy element is not initialized but instead transitions to an error
@@ -1227,9 +1247,10 @@ public interface List<E> extends SequencedCollection<E> {
      * elements. Clients that want to use nullable elements can wrap elements into an
      * {@linkplain Optional} holder.
      * <p>
-     * If the computing function recursively invokes itself (for the same index) via the
-     * returned lazy list, a {@linkplain NoSuchElementException}
-     * (with an {@linkplain IllegalStateException} as a cause) will be thrown.
+     * A recursive access to the same index via the returned list is rejected with
+     * {@linkplain IllegalStateException}. If that exception escapes the computing
+     * function, the initiating access records the failure and throws
+     * {@linkplain NoSuchElementException} with that exception as its cause.
      * <p>
      * The elements of any {@link List#subList(int, int) subList()} or
      * {@link List#reversed()} views of the returned list are also lazily computed.
@@ -1244,13 +1265,15 @@ public interface List<E> extends SequencedCollection<E> {
      * one or more lazy elements. If initialization fails for at least one element,
      * the {@linkplain Object#hashCode() hashCode()} and
      * {@linkplain Object#toString() toString()} methods throw
-     * {@linkplain NoSuchElementException}, and the {@linkplain Object#equals(Object)}
-     * throw {@linkplain NoSuchElementException} if attempting to compare an element that
+     * {@linkplain NoSuchElementException}, and {@linkplain Object#equals(Object) equals()}
+     * throws {@linkplain NoSuchElementException} if attempting to compare an element that
      * could not be computed.
      * <p>
      * The returned lazy list strongly references its computing
      * function used to compute elements at least as long as there are uninitialized
      * elements.
+     * The list strongly references its initialized elements. Its unmodifiability does
+     * not make those elements immutable or make subsequent mutations thread-safe.
      * <p>
      * The returned List is <em>not</em> {@linkplain Serializable}.
      * <p>
@@ -1260,7 +1283,13 @@ public interface List<E> extends SequencedCollection<E> {
      * we ensure that at most three {@code OrderController} instances are created. Once
      * created, the component retrieval is eligible for constant folding by the JVM:
      * {@snippet lang = java:
+     * import java.util.List;
+     *
      * class Application {
+     *
+     *     static final class OrderController {
+     *         // Application-specific state and behavior.
+     *     }
      *
      *     private static final int POOL_SIZE = 3;
      *
@@ -1278,16 +1307,24 @@ public interface List<E> extends SequencedCollection<E> {
      * }
      * <p>
      * The returned {@code List<E>} can be thought of as a list backed by a
-     * {@code List<LazyConstant<E>>} field and where the {@linkplain List#get(int)}
-     * operation is equivalent to:
+     * {@code List<Supplier<E>>} field, where each supplier is created by
+     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The following simplified
+     * model illustrates the {@linkplain List#get(int) get()} operation:
      * {@snippet lang = java:
-     * class LazyList<E> extends AbstractList<E> {
+     * import java.util.AbstractList;
+     * import java.util.List;
+     * import java.util.RandomAccess;
+     * import java.util.function.IntFunction;
+     * import java.util.function.Supplier;
+     * import java.util.stream.IntStream;
      *
-     *     private final List<LazyConstant<E>> backingList;
+     * class LazyList<E> extends AbstractList<E> implements RandomAccess {
+     *
+     *     private final List<Supplier<E>> backingList;
      *
      *     public LazyList(int size, IntFunction<E> computingFunction) {
      *         this.backingList = IntStream.range(0, size)
-     *                 .mapToObj(i -> LazyConstant.of(() -> computingFunction.apply(i)))
+     *                 .mapToObj(i -> Supplier.ofLazy(() -> computingFunction.apply(i)))
      *                 .toList();
      *     }
      *
@@ -1295,17 +1332,24 @@ public interface List<E> extends SequencedCollection<E> {
      *     public E get(int index) {
      *         return backingList.get(index).get();
      *     }
+     *
+     *     @Override
+     *     public int size() {
+     *         return backingList.size();
+     *     }
      * }
      *}
-     * Except, performance and storage efficiency might be better.
+     * The factory implementation may provide better performance and storage efficiency
+     * than this model.
      * <p>
      * Elements in the returned list are eligible for certain performance optimizations
      * such as <em>constant folding</em> as described in
-     * {@linkplain LazyConstant##performance LazyConstant}.
+     * {@linkplain java.lang.invoke.LazyInitializers##performance LazyInitializers}.
      *
-     * @implNote  after all elements have been initialized successfully or transitioned to
-     *            an error state, the computing function is no longer strongly referenced
-     *            and becomes eligible for garbage collection.
+     * @implNote After all elements have been initialized successfully or transitioned to
+     *           an error state, the implementation releases its reference to the computing
+     *           function. The function becomes eligible for garbage collection if it is
+     *           not otherwise strongly reachable.
      *
      * @param size              the size of the returned lazy list
      * @param computingFunction to invoke whenever an element is first accessed
@@ -1314,7 +1358,7 @@ public interface List<E> extends SequencedCollection<E> {
      * @throws IllegalArgumentException if the provided {@code size} is negative.
      * @throws NullPointerException     if the provided {@code computingFunction} is {@code null}
      *
-     * @see LazyConstant
+     * @see Supplier#ofLazy(Supplier) lazy supplier
      * @since 26
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)

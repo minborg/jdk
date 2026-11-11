@@ -30,7 +30,7 @@ import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import sun.invoke.util.VerifyAccess;
 
-import static jdk.internal.invoke.LazyUpdatersUtil.*;
+import static jdk.internal.invoke.LazyInitializersUtil.*;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -38,19 +38,27 @@ import java.util.*;
 import java.util.function.*;
 
 /**
- * Factory methods for lazy updaters.
+ * Factory methods for lazy field initializers.
  *
- * <h2 id="updaters">Updaters</h2>
- * Lazy updaters use caller-owned storage. An invocation returns a non-default value
+ * <h2 id="initializers">Initializers</h2>
+ * Lazy initializers use caller-owned storage. An invocation returns a non-default value
  * already in the selected location without computing. If no non-default value exists,
- * an updater tries to compute a value and install it in the selected location.
+ * an initializer tries to compute a value and install it in the selected location.
  * <p>
- * The factories do not read that storage or invoke the computing function when an updater
- * is created.
+ * The factories do not read that storage or invoke the computing function when an
+ * initializer is created.
+ * <p>
+ * For a ready-made supplier that caches one reference, use
+ * {@link Supplier#ofLazy(Supplier) Supplier.ofLazy}. The
+ * {@link List#ofLazy(int, IntFunction)}, {@link Set#ofLazy(Set, Predicate)}, and
+ * {@link Map#ofLazy(Set, Function)} factories cache list elements, membership decisions,
+ * and map values, respectively. Those factories compute each result at most once and
+ * remember computation failures. The initializers in this class provide the underlying
+ * storage operations: computations may race, and failed computations may be retried.
  *
  * <h3 id="access-shapes">Locations and access shapes</h3>
  * The computing function receives the storage coordinates (if any) and, for arrays,
- * an additional index coordinate, and returns a candidate value. An updater's
+ * an additional index coordinate, and returns a candidate value. An initializer's
  * {@code getOrCompute} method takes the same coordinates:
  * <ul>
  * <li>For a named static field, there are no coordinates.</li>
@@ -72,13 +80,13 @@ import java.util.function.*;
  * superclass declaration is selected.
  * <p>
  * The computing function must return a non-default result compatible with the selected
- * storage type. The updater's result type may be that type or a reference supertype of
+ * storage type. The initializer's result type may be that type or a reference supertype of
  * the selected value, boxed if necessary. The explicit owner type token permits a raw
  * generic computing function to select a named field even if its receiver type erases to
  * {@code Object}; erased value type arguments remain the caller's responsibility.
  *
  * <h3 id="computing-functions">Computing functions</h3>
- * An updater retains its computing function and invokes it on the thread calling
+ * An initializer retains its computing function and invokes it on the thread calling
  * {@code getOrCompute}. A reference parameter of a field or array computing function may
  * be a supertype of its corresponding coordinate type. Its result may be a subtype of
  * reference storage or use boxing, unboxing, or widening primitive conversion; a broader
@@ -95,36 +103,37 @@ import java.util.function.*;
  * A computation producing this reserved value throws {@code IllegalArgumentException}
  * without publishing it. Negative floating-point zero and {@code NaN} are permitted.
  * A null-restricted reference field cannot use the {@code null} sentinel and is
- * rejected when an updater selecting that field is created. A null-restricted
+ * rejected when an initializer selecting that field is created. A null-restricted
  * reference array likewise cannot use the {@code null} sentinel; accessing one of its
- * elements through an updater throws {@code IllegalArgumentException} before computation
- * or return, even if the element already has a value.
+ * elements through an initializer throws {@code IllegalArgumentException} before
+ * computation or return, even if the element already has a value.
  * <p>
  * A nullable wrapper field or array element can distinguish a computed zero or
  * {@code false} from uninitialized storage. If {@code null} is a logical result,
  * a non-null container such as {@link java.util.Optional} can represent it.
  *
  * <h3 id="publish-once">Publish once</h3>
- * The updaters always use a <em>publish once</em> initialization scheme where
+ * The initializers always use a <em>publish once</em> installation scheme where
  * an invocation reads the selected location with acquire semantics. If it is
- * uninitialized, the updater computes a candidate and attempts to install it atomically
- * with release effects. Computations may race, but every invocation that returns normally
- * returns the value installed in the location, including an invocation whose result
- * was discarded.
+ * uninitialized, the initializer computes a candidate and attempts to install it
+ * atomically with release effects. Computations may race, but every invocation that
+ * returns normally returns the value installed in the location, including an invocation
+ * whose result was discarded.
+ * <p>
  * A losing invocation observes the installed value with acquire effects before
  * returning it. Actions preceding the winner's publication
  * {@linkplain java.util.concurrent##MemoryVisibility happen-before} actions
  * following an invocation that observes it. A computation that throws or produces
  * the reserved value fails even if another invocation has installed a value in
- * the meantime; that updater does not attempt its own installation. A throwable from
+ * the meantime; that initializer does not attempt its own installation. A throwable from
  * the computation propagates unchanged. If the location remains uninitialized, a later
  * invocation can retry. A losing compare-and-exchange does not install its candidate.
  * Neither failure nor loss by itself publishes the computing function's actions through
  * the selected location; a computing function can publish through other actions,
- * including another updater. Recursive access to the same uninitialized location is not
- * detected and may recurse without bound.
+ * including another initialization. Recursive access to the same uninitialized location
+ * is not detected and may recurse without bound.
  * <p>
- * Updaters do not provide a <em>plain</em> access mode. Clients that need plain
+ * Initializers do not provide a <em>plain</em> access mode. Clients that need plain
  * access would have to resort to conditional assignment such as
  * {@code if (x == 0) x = computeX();}. Without external synchronization, this
  * pattern can return different values to different callers, expose
@@ -133,33 +142,34 @@ import java.util.function.*;
  *
  * <h3 id="access-and-storage-ownership">Access and storage ownership</h3>
  * The caller must safely publish any receiver or array and any preexisting
- * values to threads that use an updater. The selected storage must be reserved
- * exclusively for lazy updater use: it must not be reset or otherwise written directly
- * while an updater is in use. However, multiple updaters may share a storage location.
- * Other non-updater writes can defeat the updaters' guarantees. An updater does not
- * retain a receiver passed to {@code getOrCompute}, though it may retain objects captured
- * by its computing function. Publishing a computed reference does not make later
- * mutations of that object thread-safe, and accesses to different locations have no total
- * order.
+ * values to threads that use an initializer. The selected storage must be reserved
+ * exclusively for lazy initialization use: it must not be reset or otherwise written
+ * directly while an initializer is in use. However, multiple initializers may share
+ * a storage location. Other non-initializer writes can defeat the initializers'
+ * guarantees. An initializer does not retain a receiver passed to {@code getOrCompute},
+ * though it may retain objects captured by its computing function. Publishing a computed
+ * reference does not make later mutations of that object thread-safe, and accesses to
+ * different locations have no total order.
  * <p>
  * For all factories, the caller must have access to the selected owner and field and any
- * selected array type. Accessing a static field through the updater initializes its
+ * selected array type. Accessing a static field through the initializer initializes its
  * declaring class if necessary, following normal var-handle semantics. A field used
  * directly as storage must be non-final; an array field must be final although its
  * elements remain mutable.
  *
  * <h2 id="caching-suppliers">Caching suppliers</h2>
- * Lazy updaters can be used to create different flavors of <em>caching suppliers</em>
- * that internalize the result from its {@linkplain Supplier#get() get()} operation and
- * only returns the internalized value. The following flavors are exemplified below:
+ * Lazy initializers can be used to create different flavors of <em>caching suppliers</em>.
+ * A caching supplier internalizes the result of its {@linkplain Supplier#get() get()}
+ * operation and returns the installed value on subsequent calls. The following
+ * flavors are exemplified below:
  *
  * <table class="striped">
  * <caption>Caching supplier examples</caption>
  * <thead>
  * <tr>
- *     <th scope="col">Supplier</th>
- *     <th scope="col">Race or serialized</th>
- *     <th scope="col">Retry or at most once</th>
+ *     <th scope="col">Type</th>
+ *     <th scope="col">Threads may run</th>
+ *     <th scope="col">Computing function</th>
  *     <th scope="col">Internalize errors</th>
  *     <th scope="col">Protect against recursion</th>
  * </tr>
@@ -167,11 +177,11 @@ import java.util.function.*;
  * <tbody>
  * <tr>
  *     <th scope="row">{@code MemoizedSupplier}</th>
- *     <td>Race</td><td>Retry</td><td>No</td><td>No</td>
+ *     <td>Concurrently</td><td>Race and retry on error</td><td>No</td><td>No</td>
  * </tr>
  * <tr>
  *     <th scope="row">{@code SerializedSupplier}</th>
- *     <td>Serialized</td><td>Retry</td><td>No</td><td>No</td>
+ *     <td>Serialized</td><td>Retry on error only</td><td>No</td><td>No</td>
  * </tr>
  * <tr>
  *     <th scope="row">{@code LazySupplier}</th>
@@ -182,49 +192,52 @@ import java.util.function.*;
  *
  * <h3 id="memoized-suppliers">Memoized suppliers</h3>
  * A <em>memoized supplier</em> can reserve a field for lazy values and
- * share one static updater across all instances. Each getter supplies the storage
- * coordinates. The updater invokes its computing function when the selected location is
- * uninitialized, then returns the value stored there.
+ * share one static initializer across all instances. Each getter supplies the storage
+ * coordinates. The initializer invokes its computing function when the selected location
+ * is uninitialized, then returns the value stored there.
  * <p>
  * There are no pre-defined memoized suppliers provided by this class, but a
- * reference-valued memoized cache can use {@link #ofField(Class, Class, String, FieldUpdater.Computer)}:
+ * reference-valued memoized cache can use a
+ * {@link #ofField(Class, Class, String, OfField.Computer)} initializer:
  * {@snippet lang = java:
- * import java.lang.invoke.LazyUpdaters;
+ * import java.lang.invoke.LazyInitializers;
+ * import java.lang.invoke.LazyInitializers.OfField;
  * import java.util.function.Supplier;
  *
- * class MemoizedSupplier<T> implements Supplier<T> {
+ * class MemoizedSupplier<V> implements Supplier<V> {
  *
- *     // T erases to Object, so this updater can serve every cache instance.
- *     private static final LazyUpdaters.FieldUpdater<MemoizedSupplier<?>, Object> UPDATER =
- *             LazyUpdaters.ofField(MemoizedSupplier.class, Object.class, "value",
+ *     // V erases to Object, so this initializer can serve every cache instance.
+ *     private static final OfField<MemoizedSupplier<?>, Object> INITIALIZER =
+ *             LazyInitializers.ofField(MemoizedSupplier.class, Object.class, "value",
  *                     cache -> cache.valueComputer.get());
  *
- *     private final Supplier<? extends T> valueComputer;
- *     private T value;
+ *     private final Supplier<? extends V> valueComputer;
+ *     private V value;
  *
- *     MemoizedSupplier(Supplier<? extends T> valueComputer) {
+ *     MemoizedSupplier(Supplier<? extends V> valueComputer) {
  *         this.valueComputer = valueComputer;
  *     }
  *
  *     @Override
  *     @SuppressWarnings("unchecked")
- *     public T get() {
- *         // Only this instance's supplier can populate value, so the result is T.
- *         return (T) UPDATER.getOrCompute(this);
+ *     public V get() {
+ *         // Only this instance's supplier can populate value, so the result is V.
+ *         return (V) INITIALIZER.getOrCompute(this);
  *     }
  * }
- * }
+ *}
  * <p>
  * For a primitive {@code int} value, a similar approach can use automatic boxing and
  * unboxing:
  * {@snippet lang = java:
- * import java.lang.invoke.LazyUpdaters;
+ * import java.lang.invoke.LazyInitializers;
+ * import java.lang.invoke.LazyInitializers.OfField;
  * import java.util.function.IntSupplier;
  *
  * class MemoizedIntCache {
  *
- *     private static final LazyUpdaters.FieldUpdater<MemoizedIntCache, Integer> UPDATER =
- *             LazyUpdaters.ofField(MemoizedIntCache.class, int.class, "value",
+ *     private static final OfField<MemoizedIntCache, Integer> INITIALIZER =
+ *             LazyInitializers.ofField(MemoizedIntCache.class, int.class, "value",
  *                     cache -> cache.valueComputer.getAsInt());
  *
  *     private final IntSupplier valueComputer;
@@ -235,82 +248,78 @@ import java.util.function.*;
  *     }
  *
  *     int getAsInt() {
- *         return UPDATER.getOrCompute(this);
+ *         return INITIALIZER.getOrCompute(this);
  *     }
  * }
- * }
+ *}
  * <p>
  * The primitive {@code int} field above cannot cache a computed zero, because zero
  * marks an uninitialized location. To cache zero, declare {@code value} as
  * {@code Integer} and pass {@code Integer.class} to {@code ofField}; {@code null}
  * then marks uninitialized storage. To cache a logical {@code null} result,
- * store a non-null {@code Optional<T>} and use {@code Optional.empty()} for absence.
+ * store a non-null {@code Optional<V>} and use {@code Optional.empty()} for absence.
  *
  * <h3 id="serialized-suppliers">Serialized suppliers</h3>
- * Clients that need to prevent overlapping calls across threads to a caching supplier
- * can have an updater's computing function call a second updater while holding
- * a monitor. The second updater publishes before the monitor is released.
+ * Clients that need to prevent overlapping computations across threads to a caching
+ * supplier can have an initializer's computing function call a second initializer while
+ * holding a monitor. The second initializer publishes before the monitor is released.
  * <p>
  * There are no pre-defined serialized suppliers provided by this class, but
- * a reference-valued serialized cache can use
- * {@link #ofField(Class, Class, String, FieldUpdater.Computer)}:
+ * a reference-valued serialized cache can use two
+ * {@link #ofField(Class, Class, String, OfField.Computer)} initializers:
  * {@snippet lang = java:
- * import java.lang.invoke.LazyUpdaters;
+ * import java.lang.invoke.LazyInitializers;
+ * import java.lang.invoke.LazyInitializers.OfField;
  * import java.util.function.Supplier;
  *
- * class SerializedSupplier<T> implements Supplier<T> {
+ * class SerializedSupplier<V> implements Supplier<V> {
  *
- *     // T erases to Object, so both updaters can serve every cache instance.
+ *     // V erases to Object, so both initializers can serve every cache instance.
+ *
  *     // To be used indirectly within a synchronization block only
- *     private static final LazyUpdaters.FieldUpdater<SerializedSupplier<?>, Object> INSTALLER =
- *             LazyUpdaters.ofField(SerializedSupplier.class, Object.class, "value",
+ *     private static final OfField<SerializedSupplier<?>, Object> INSTALLER =
+ *             LazyInitializers.ofField(SerializedSupplier.class, Object.class, "value",
  *                     // Uses the valueComputer directly
  *                     cache -> cache.valueComputer.get());
  *
  *     // To be used directly by the get() operations
- *     private static final LazyUpdaters.FieldUpdater<SerializedSupplier<?>, Object> UPDATER =
- *             LazyUpdaters.ofField(SerializedSupplier.class, Object.class, "value",
+ *     private static final OfField<SerializedSupplier<?>, Object> INITIALIZER =
+ *             LazyInitializers.ofField(SerializedSupplier.class, Object.class, "value",
  *                      // Uses synchronization when computing
  *                     cache -> cache.computeCandidate());
  *
- *     private final Supplier<? extends T> valueComputer;
+ *     private final Supplier<? extends V> valueComputer;
  *     private final Object computeLock = new Object();
- *     private T value;
- *     private boolean published; // accessed only under computeLock
+ *     private V value;
  *
- *     SerializedSupplier(Supplier<? extends T> valueComputer) {
+ *     SerializedSupplier(Supplier<? extends V> valueComputer) {
  *         this.valueComputer = valueComputer;
  *     }
  *
  *     @Override
  *     @SuppressWarnings("unchecked")
- *     public T get() {
+ *     public V get() {
  *         // A published value returns without invoking `computeCandidate()`.
- *         return (T) UPDATER.getOrCompute(this);
+ *         return (V) INITIALIZER.getOrCompute(this);
  *     }
  *
  *     private Object computeCandidate() {
  *         synchronized (computeLock) {
- *             if (published) {
- *                 return UPDATER.getOrCompute(this);
- *             }
- *             // Publishes the value while holding computeLock.
- *             Object result = INSTALLER.getOrCompute(this);
- *             published = true;
- *             return result;
+ *             // A waiting thread rechecks the published value.
+ *             return INSTALLER.getOrCompute(this);
  *         }
  *     }
  * }
- * }
+ *}
  * {@code INSTALLER} publishes while the monitor is held. A later callback can therefore
- * use {@code UPDATER} to read the published value. Published hits take neither the
- * monitor nor an extra field read. The tradeoff is a second updater.
+ * use {@code INITIALIZER} to read the published value. Published hits take neither the
+ * monitor nor an extra field read. The tradeoff is a second initializer.
+ * Computations that wait on one another while holding these monitors can deadlock.
  *
- * Simply synchronizing only the computing function prevents overlapping computations
- * across threads but can still compute a value more than once. Computations that wait on
- * one another while holding these monitors can deadlock.
+ * Merly synchronizing the computing function iself prevents overlapping computations
+ * across threads but can still compute a valid value more than once.
  *
- * <h3 id="lazy-supplier">Lazy suppliers</h3>
+ * <h3 id="lazy-suppliers">Lazy suppliers</h3>
  * Unlike the {@linkplain ##memoized-suppliers memoized supplier} and the
  * {@linkplain ##serialized-suppliers serialized supplier} above,
  * a <em>lazy supplier</em> invokes its wrapped supplier <em>at most once</em>. It
@@ -318,18 +327,18 @@ import java.util.function.*;
  * protects against recursive invocation of the computing function via its public access
  * operation.
  * <p>
- * There are no pre-defined lazy caches provided by this class but instead, this is
- * provided via {@linkplain LazyConstant#of(Supplier) LazyConstant.of}. Here is how a
- * similar reference-valued lazy cache can use two
- * {@link #ofField(Class, Class, String, FieldUpdater.Computer)} updaters as shown in
- * this example:
+ * For a ready-made lazy supplier with at-most-once computation and persistent failure
+ * handling, use {@link Supplier#ofLazy(Supplier) Supplier.ofLazy}. The following example
+ * illustrates how similar behavior can be built using two
+ * {@link #ofField(Class, Class, String, OfField.Computer)} initializers:
  * {@snippet lang = java:
- * import java.lang.invoke.LazyUpdaters;
+ * import java.lang.invoke.LazyInitializers;
+ * import java.lang.invoke.LazyInitializers.OfField;
  * import java.util.NoSuchElementException;
  * import java.util.Objects;
  * import java.util.function.Supplier;
  *
- * class LazySupplier<T> implements Supplier<T> {
+ * class LazySupplier<V> implements Supplier<V> {
  *
  *     // value holds either a result or a class-name marker for a failure.
  *     private record Either<V>(V result, String exceptionType) {
@@ -352,35 +361,34 @@ import java.util.function.*;
  *     // A generic marker used if the specific outcome cannot be recorded.
  *     private static final Either<?> FALLBACK_FAILURE = Either.failure("java.lang.Error");
  *
- *     private final Supplier<? extends T> computingFunction;
- *     private Either<T> value;
+ *     private final Supplier<? extends V> computingFunction;
+ *     private Either<V> value;
  *
- *     // Guarded by this monitor. A fallback is saved before the supplier runs,
- *     // so a later call can publish without invoking the supplier again.
- *     private boolean published; // INSTALLER has returned a value
+ *     // Guarded by this monitor. The candidate is retained after publication
+ *     // to prevent another computation by a delayed callback.
  *     private boolean computing; // detects recursive get() calls
- *     private Either<?> pending;
+ *     private Either<?> candidate;
  *
- *     // getOrCompute is called under the monitor of `this` to install pending or read an
+ *     // getOrCompute is called under the monitor of `this` to install candidate or read an
  *     // existing value with acquire effects.
- *     private static final LazyUpdaters.FieldUpdater<LazySupplier<?>, Either<?>> INSTALLER =
- *             LazyUpdaters.ofField(LazySupplier.class, Either.class, "value",
- *                     LazySupplier::pendingCandidate);
+ *     private static final OfField<LazySupplier<?>, Either<?>> INSTALLER =
+ *             LazyInitializers.ofField(LazySupplier.class, Either.class, "value",
+ *                     LazySupplier::savedCandidate);
  *
  *     // getOrCompute reads a published value without entering the monitor of `this`;
  *     // only a `null` read invokes `computeCandidate`.
- *     private static final LazyUpdaters.FieldUpdater<LazySupplier<?>, Either<?>> UPDATER =
- *             LazyUpdaters.ofField(LazySupplier.class, Either.class, "value",
+ *     private static final OfField<LazySupplier<?>, Either<?>> INITIALIZER =
+ *             LazyInitializers.ofField(LazySupplier.class, Either.class, "value",
  *                     LazySupplier::computeCandidate);
  *
- *     LazySupplier(Supplier<? extends T> computingFunction) {
+ *     LazySupplier(Supplier<? extends V> computingFunction) {
  *         this.computingFunction = Objects.requireNonNull(computingFunction);
  *     }
  *
  *     @Override
  *     @SuppressWarnings("unchecked")
- *     public T get() {
- *         Either<T> outcome = (Either<T>) UPDATER.getOrCompute(this);
+ *     public V get() {
+ *         Either<V> outcome = (Either<V>) INITIALIZER.getOrCompute(this);
  *         if (outcome.exceptionType() != null) {
  *             // Recreate the exception from the marker, without its original cause.
  *             throw unableToAccessConstant(outcome.exceptionType(), null);
@@ -389,43 +397,36 @@ import java.util.function.*;
  *     }
  *
  *     // INSTALLER invokes this on the current thread while the monitor is held.
- *     private Either<?> pendingCandidate() {
- *         return Objects.requireNonNull(pending);
+ *     private Either<?> savedCandidate() {
+ *         return Objects.requireNonNull(candidate);
  *     }
  *
- *     // UPDATER invokes this only after observing null in value.
+ *     // INITIALIZER invokes this only after observing null in value.
  *     private Either<?> computeCandidate() {
  *         synchronized (this) {
  *             // The monitor is reentrant, so it cannot detect recursion by itself.
  *             if (computing) {
  *                 throw new IllegalStateException("Recursive computation");
  *             }
- *             // Another call may have published after UPDATER read null.
- *             // A saved candidate needs only an installation retry.
- *             if (published || pending != null) {
- *                 Either<?> outcome = INSTALLER.getOrCompute(this);
- *                 published = true;
- *                 pending = null;
- *                 return outcome;
+ *             // A previous call already computed or saved a fallback. INSTALLER
+ *             // reads the published value or retries installation under the monitor.
+ *             if (candidate != null) {
+ *                 return INSTALLER.getOrCompute(this);
  *             }
  *
  *             computing = true;
  *             try {
- *                 pending = FALLBACK_FAILURE;
  *                 Throwable failure = null;
- *                 Either<T> candidate;
  *                 try {
  *                     candidate = Either.success(computingFunction.get());
  *                 } catch (Throwable ex) {
+ *                     // Keep a fallback if recording the specific failure also throws.
+ *                     candidate = FALLBACK_FAILURE;
  *                     failure = ex;
- *                     // Replace the fallback with the specific exception class.
  *                     candidate = Either.failure(ex.getClass().getName().intern());
  *                 }
  *
- *                 pending = candidate;
  *                 Either<?> outcome = INSTALLER.getOrCompute(this);
- *                 published = true;
- *                 pending = null;
  *                 if (failure != null) {
  *                     // The computing caller can also report the original cause.
  *                     throw unableToAccessConstant(candidate.exceptionType(), failure);
@@ -442,14 +443,19 @@ import java.util.function.*;
  *                 + type + " was thrown during computation", cause);
  *     }
  * }
- * }
+ *}
+ * This illustrative supplier retains its computing function in a final field. The
+ * supplier returned by {@link Supplier#ofLazy(Supplier) Supplier.ofLazy} releases its
+ * reference used to retain the computing function for evaluation after computation
+ * completes.
  *
  * <h2 id="indexed-caches">Indexed caches</h2>
- * An array field updater can compute and cache a separate value at each index.
+ * An array field initializer can compute and cache a separate value at each index.
  * The following example compiles patterns on demand and stores them in a static
  * final array field:
  * {@snippet lang = java:
- * import java.lang.invoke.LazyUpdaters;
+ * import java.lang.invoke.LazyInitializers;
+ * import java.lang.invoke.LazyInitializers.OfStaticArrayField;
  * import java.util.regex.Pattern;
  *
  * class CompiledPatterns {
@@ -457,21 +463,21 @@ import java.util.function.*;
  *     private static final String[] EXPRESSIONS = {"[a-z]+", "[0-9]+"};
  *     private static final Pattern[] CACHE = new Pattern[EXPRESSIONS.length];
  *
- *     private static final LazyUpdaters.StaticArrayFieldUpdater<Pattern> UPDATER =
- *             LazyUpdaters.ofStaticArrayField(CompiledPatterns.class, Pattern.class,
+ *     private static final OfStaticArrayField<Pattern> INITIALIZER =
+ *             LazyInitializers.ofStaticArrayField(CompiledPatterns.class, Pattern.class,
  *                     "CACHE",
  *                     index -> Pattern.compile(EXPRESSIONS[index]));
  *
  *     static Pattern get(int index) {
- *         return UPDATER.getOrCompute(index);
+ *         return INITIALIZER.getOrCompute(index);
  *     }
  * }
- * }
+ *}
  * Each index is initialized independently. Compilations for the same index may
  * race, but every normally returning call receives the installed pattern.
  *
  * <h2 id="caching-closeable-resources">Caching closeable resources</h2>
- * Lazy updaters can also cache an {@link AutoCloseable} resource. Closing the cache
+ * Lazy initializers can also cache an {@link AutoCloseable} resource. Closing the cache
  * attempts to close an initialized resource; closing it before the first {@code get()} installs
  * a no-op marker without invoking the factory. Like
  * {@linkplain ##caching-suppliers caching suppliers}, resource caches can vary in
@@ -479,29 +485,30 @@ import java.util.function.*;
  *
  * <p>
  * There are no pre-defined resource caches provided by this class, but a
- * reference-valued memoized resource cache can use
- * {@link #ofField(Class, Class, String, FieldUpdater.Computer)}:
+ * reference-valued memoized resource cache can use two
+ * {@link #ofField(Class, Class, String, OfField.Computer)} initializers:
  * {@snippet lang = java:
- * import java.lang.invoke.LazyUpdaters;
+ * import java.lang.invoke.LazyInitializers;
+ * import java.lang.invoke.LazyInitializers.OfField;
  * import java.util.Objects;
  * import java.util.function.Supplier;
  *
- * public final class LazyResource<T extends AutoCloseable>
- *         implements Supplier<T>, AutoCloseable {
+ * public final class LazyResource<V extends AutoCloseable>
+ *         implements Supplier<V>, AutoCloseable {
  *
  *     private static final AutoCloseable NO_OP = () -> {};
  *
  *     // Publishes a factory result or NO_OP while the instance lock is held.
- *     private static final LazyUpdaters.FieldUpdater<LazyResource<?>, AutoCloseable> INSTALLER =
- *             LazyUpdaters.ofField(LazyResource.class, AutoCloseable.class, "resource",
+ *     private static final OfField<LazyResource<?>, AutoCloseable> INSTALLER =
+ *             LazyInitializers.ofField(LazyResource.class, AutoCloseable.class, "resource",
  *                     LazyResource::createCandidate);
  *
  *     // Reads a published value, or handles an uninitialized field.
- *     private static final LazyUpdaters.FieldUpdater<LazyResource<?>, AutoCloseable> ACCESSOR =
- *             LazyUpdaters.ofField(LazyResource.class, AutoCloseable.class, "resource",
+ *     private static final OfField<LazyResource<?>, AutoCloseable> ACCESSOR =
+ *             LazyInitializers.ofField(LazyResource.class, AutoCloseable.class, "resource",
  *                     LazyResource::computeCandidate);
  *
- *     private final Supplier<? extends T> factory;
+ *     private final Supplier<? extends V> factory;
  *     private final Object lock = new Object();
  *     private AutoCloseable resource;
  *     private volatile boolean closeRequested;
@@ -510,26 +517,23 @@ import java.util.function.*;
  *     private AutoCloseable pendingClose; // guarded by lock
  *     private Throwable closeFailure; // guarded by lock
  *
- *     public LazyResource(Supplier<? extends T> factory) {
+ *     public LazyResource(Supplier<? extends V> factory) {
  *         this.factory = Objects.requireNonNull(factory);
  *     }
  *
  *     @Override
  *     @SuppressWarnings("unchecked")
- *     public T get() {
+ *     public V get() {
  *         AutoCloseable result = ACCESSOR.getOrCompute(this);
  *         if (result == NO_OP || closeRequested) {
  *             throw new IllegalStateException(closeFinished
  *                     ? "Resource is unavailable" : "Resource is closing");
  *         }
- *         return (T) result;
+ *         return (V) result;
  *     }
  *
  *     private AutoCloseable computeCandidate() {
  *         synchronized (lock) {
- *             if (closeRequested) {
- *                 return NO_OP;
- *             }
  *             return INSTALLER.getOrCompute(this);
  *         }
  *     }
@@ -539,7 +543,7 @@ import java.util.function.*;
  *             return NO_OP;
  *         }
  *
- *         T candidate = Objects.requireNonNull(factory.get());
+ *         V candidate = Objects.requireNonNull(factory.get());
  *
  *         // Give a candidate produced after close() started to the closing thread.
  *         if (closeRequested) {
@@ -565,17 +569,16 @@ import java.util.function.*;
  *                 return;
  *             }
  *             try {
- *                 AutoCloseable result = ACCESSOR.getOrCompute(this);
+ *                 // The lock is already held; a missing resource publishes NO_OP.
+ *                 AutoCloseable result = INSTALLER.getOrCompute(this);
  *                 AutoCloseable toClose = pendingClose != null ? pendingClose : result;
  *                 pendingClose = null;
  *                 closeHandled = true;
- *                 if (toClose != NO_OP) {
- *                     try {
- *                         toClose.close();
- *                     } catch (Exception | Error failure) {
- *                         closeFailure = failure;
- *                         throw failure;
- *                     }
+ *                 try {
+ *                     toClose.close(); // NO_OP needs no special handling.
+ *                 } catch (Exception | Error failure) {
+ *                     closeFailure = failure;
+ *                     throw failure;
  *                 }
  *             } finally {
  *                 closeFinished = true;
@@ -583,7 +586,7 @@ import java.util.function.*;
  *         }
  *     }
  * }
- * }
+ *}
  *
  * The field {@code closeRequested} signals a factory already in progress. If that factory
  * returns a candidate after the request, the installer publishes {@code NO_OP}
@@ -595,7 +598,7 @@ import java.util.function.*;
  * necessarily mean the underlying resource closed successfully.
  * <p>
  * This variant is similar to a {@linkplain ##serialized-suppliers serialized supplier} in
- * the sense that it uses two updaters, serializes creation under a lock, returns
+ * the sense that it uses two initializers, serializes creation under a lock, returns
  * an already published value without taking that lock, and retries if the factory throws.
  * Similar resource caches can use the other
  * {@linkplain ##caching-suppliers supplier policies} described above.
@@ -608,25 +611,102 @@ import java.util.function.*;
  * gets an {@code IllegalStateException}. It must also avoid recursive {@code get()}
  * calls, which can discard a resource.
  *
- * @implNote The updater factories' implementations install a field or element candidate
- *           as if using
+ * <h2 id="serialized-composition">Serialized Composition</h2>
+ * Several of the above examples use a synchronized wrapper around the computing function
+ * to serialize computations. This wrapper can be expressed as a reusable decorator that
+ * accepts a receiver and a monitor. Every computation for the same storage location must
+ * use the same monitor. In the following example, each supplier has its own final monitor,
+ * so computations for different suppliers can proceed concurrently:
+ * {@snippet lang = java:
+ * import java.lang.invoke.LazyInitializers;
+ * import java.lang.invoke.LazyInitializers.OfField;
+ * import java.util.Objects;
+ * import java.util.function.BiFunction;
+ * import java.util.function.Supplier;
+ *
+ * final class SerializedSupplier<V> implements Supplier<V> {
+ *
+ *     // Reusable decorator
+ *     private static <R, V> BiFunction<R, Object, V> serialized(OfField<R, V> initializer) {
+ *         Objects.requireNonNull(initializer);
+ *         return (receiver, monitor) -> {
+ *             synchronized (monitor) {
+ *                 return initializer.getOrCompute(receiver);
+ *             }
+ *         };
+ *     }
+ *
+ *     // Reads published values directly and serializes computation on misses.
+ *     private static final OfField<SerializedSupplier<?>, Object> INITIALIZER;
+ *
+ *     static {
+ *         // Rechecks the field and publishes while the monitor is held.
+ *         OfField<SerializedSupplier<?>, Object> installer =
+ *                 LazyInitializers.ofField(
+ *                         SerializedSupplier.class, Object.class, "value",
+ *                         cache -> cache.computingFunction.get());
+ *
+ *         var synchronizedAccess = serialized(installer);
+ *
+ *         INITIALIZER = LazyInitializers.ofField(
+ *                 SerializedSupplier.class, Object.class, "value",
+ *                 // Reuse the decorator only when the field is uninitialized.
+ *                 cache -> synchronizedAccess.apply(cache, cache.monitor));
+ *     }
+ *
+ *     private final Supplier<? extends V> computingFunction;
+ *     private final Object monitor = new Object();
+ *     private V value;
+ *
+ *     SerializedSupplier(Supplier<? extends V> computingFunction) {
+ *         this.computingFunction = Objects.requireNonNull(computingFunction);
+ *     }
+ *
+ *     @Override
+ *     @SuppressWarnings("unchecked")
+ *     public V get() {
+ *         return (V) INITIALIZER.getOrCompute(this);
+ *     }
+ * }
+ *}
+ * Computing functions may depend on other lazily computed values. Cyclic dependencies
+ * can cause unbounded recursion or, when computations wait for one another, deadlock.
+ * Dependencies used during class initialization also follow the initialization ordering
+ * and synchronization rules in {@jls 12.4}. See
+ * {@linkplain Supplier##ofLazy-dependencies Usage and dependencies} for an example
+ * using the ready-made supplier factory {@linkplain Supplier#ofLazy(Supplier)}.
+ *
+ * <h2 id="performance">Performance</h2>
+ * A field managed by one or more lazy initializers can never change after the field has
+ * been initialized. Therefore, a JVM implementation may, for an initialized field,
+ * elide all future reads of that field and instead use the content that has been
+ * previously observed. We call this optimization <em>constant folding</em>. This is only
+ * possible if there is a direct reference from a {@code static final} field to a managed
+ * field or if there is a chain from a {@code static final} field -- via one or more
+ * <em>trusted fields</em> (i.e., {@code static final} fields, {@linkplain Record record}
+ * fields, or final instance fields in hidden classes) -- to a lazily initialized field.
+ * Whether and when this optimization occurs is implementation-dependent. Eliding
+ * a storage read preserves the applicable {@linkplain ##publish-once publish once}
+ * guarantees.
+ * <p>
+ * For array-field initializers, these optimizations apply independently to each
+ * initialized element. Initializing one element does not initialize the other elements.
+ *
+ * @implNote The initializer factories' implementations install a field or element
+ *           candidate as if using
  *           {@link VarHandle#compareAndExchangeRelease VarHandle.compareAndExchangeRelease( ... )}.
  *           The exchange's witness has plain-read effects, so a losing invocation
  *           performs a separate acquire read before returning the winner.
- *           <p>
- *           An updater's published result is not replaced through an updater. This may
- *           permit an implementation to constant-fold repeated accesses when it can
- *           determine a stable path to the storage and its result, perhaps from
- *           a {@code static final} field. Whether and when this optimization occurs is
- *           implementation-dependent. Eliding a storage read must preserve the applicable
- *           {@linkplain ##publish-once publish once} guarantees.
- *           Updaters should generally be declared {@code static final} in order to
+ *           Lazily initialized fields may be eligible for constant folding as described
+ *           in the {@linkplain ##performance performance section}.
+ *           Initializers should generally be declared {@code static final} in order to
  *           present the best performance optimization opportunities for the VM.
  *
  * @since 29
  *
  * @see Optional
  * @see Supplier
+ * @see Supplier#ofLazy(Supplier)
  * @see List#ofLazy(int, IntFunction)
  * @see Set#ofLazy(java.util.Set, Predicate)
  * @see Map#ofLazy(java.util.Set, Function)
@@ -634,24 +714,24 @@ import java.util.function.*;
  * @jls 17.4.5 Happens-before Order
  */
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
-public final class LazyUpdaters {
+public final class LazyInitializers {
 
     // Suppresses default constructor, ensuring non-instantiability.
-    private LazyUpdaters() {}
+    private LazyInitializers() {}
 
     /**
-     * {@return a lazy updater for a static field accessible to the caller}
+     * {@return a lazy initializer for a static field accessible to the caller}
      * <p>
      * This method uses {@linkplain ##publish-once publish once} and the supplied field
-     * as storage. Its result is a {@link StaticFieldUpdater} whose
-     * {@linkplain StaticFieldUpdater#getOrCompute() getOrCompute()} method accesses that
+     * as storage. Its result is a {@link OfStaticField} whose
+     * {@linkplain OfStaticField#getOrCompute() getOrCompute()} method accesses that
      * field; the computing function is invoked only when the field has its reserved Java
      * default value. The field must be static and non-final. Access is checked with
      * the caller's privileges.
      * <p>
      * This method is caller-sensitive: a helper that invokes it supplies the helper's
-     * access privileges. Once the updater is created, calling its
-     * {@linkplain StaticFieldUpdater#getOrCompute() getOrCompute()} method does not
+     * access privileges. Once the initializer is created, calling its
+     * {@linkplain OfStaticField#getOrCompute() getOrCompute()} method does not
      * repeat the caller access check. A caller may select its own private static field
      * or one in a nestmate. Access to an unrelated private field is denied.
      * <p>
@@ -674,10 +754,10 @@ public final class LazyUpdaters {
      * @since 29
      */
     @CallerSensitive
-    public static <V> StaticFieldUpdater<V> ofStaticField(Class<?> owner,
-                                                          Class<? super V> fieldType,
-                                                          String name,
-                                                          StaticFieldUpdater.Computer<? extends V> computingFunction) {
+    public static <V> OfStaticField<V> ofStaticField(Class<?> owner,
+                                                     Class<? super V> fieldType,
+                                                     String name,
+                                                     OfStaticField.Computer<? extends V> computingFunction) {
         // Keep caller identification in this entry point. A helper accepting
         // a caller Class could be invoked reflectively with a forged argument.
         final Class<?> caller = Reflection.getCallerClass();
@@ -691,25 +771,24 @@ public final class LazyUpdaters {
         throw new UnsupportedOperationException();
     }
 
-
     /**
-     * {@return a lazy updater for an instance field accessible to the caller}
+     * {@return a lazy initializer for an instance field accessible to the caller}
      * <p>
      * This method uses {@linkplain ##publish-once publish once} and the supplied field
-     * as storage. Its result is a {@link FieldUpdater} whose
-     * {@linkplain FieldUpdater#getOrCompute(Object) getOrCompute()} method accesses that
+     * as storage. Its result is a {@link OfField} whose
+     * {@linkplain OfField#getOrCompute(Object) getOrCompute()} method accesses that
      * field; the computing function is invoked only when the field has its reserved Java
      * default value. The field must be neither static nor final. Access is checked with
      * the caller's privileges.
      * <p>
      * This method is caller-sensitive: a helper that invokes it supplies the helper's
-     * access privileges. Once the updater is created, calling its
-     * {@linkplain FieldUpdater#getOrCompute(Object) getOrCompute()} method does not
+     * access privileges. Once the initializer is created, calling its
+     * {@linkplain OfField#getOrCompute(Object) getOrCompute()} method does not
      * repeat the caller access check. A caller may select its own private non-static
      * field or one in a nestmate. Access to an unrelated private field is denied.
      * <p>
      * If the field is protected and declared in a different runtime package from
-     * the caller, the updater accepts only receivers that are instances of the
+     * the caller, the initializer accepts only receivers that are instances of the
      * caller class or its subclasses, even if {@code T} is broader. This
      * restriction is checked when {@code getOrCompute} is invoked.
      * <p>
@@ -733,10 +812,10 @@ public final class LazyUpdaters {
      * @since 29
      */
     @CallerSensitive
-    public static <T, V> FieldUpdater<T, V> ofField(Class<? super T> receiverType,
-                                                    Class<?> fieldType,
-                                                    String name,
-                                                    FieldUpdater.Computer<? super T, ? extends V> computingFunction) {
+    public static <T, V> OfField<T, V> ofField(Class<? super T> receiverType,
+                                               Class<?> fieldType,
+                                               String name,
+                                               OfField.Computer<? super T, ? extends V> computingFunction) {
         // Keep caller identification in this entry point. A helper accepting
         // a caller Class could be invoked reflectively with a forged argument.
         final Class<?> caller = Reflection.getCallerClass();
@@ -757,19 +836,19 @@ public final class LazyUpdaters {
     }
 
     /**
-     * {@return a lazy updater for a static array field accessible to the caller}
+     * {@return a lazy initializer for a static array field accessible to the caller}
      * <p>
      * This method uses {@linkplain ##publish-once publish once} and the supplied array
-     * field and index as storage. Its result is a {@link StaticArrayFieldUpdater} whose
-     * {@linkplain StaticArrayFieldUpdater#getOrCompute(int) getOrCompute()} method
+     * field and index as storage. Its result is a {@link OfStaticArrayField} whose
+     * {@linkplain OfStaticArrayField#getOrCompute(int) getOrCompute()} method
      * accesses that array field's element;
      * the computing function is invoked only when the field's element has its reserved Java
      * default value. The array field must be static and final. Access is checked with
      * the caller's privileges.
      * <p>
      * This method is caller-sensitive: a helper that invokes it supplies the helper's
-     * access privileges. Once the updater is created, calling its
-     * {@linkplain StaticArrayFieldUpdater#getOrCompute(int) getOrCompute()} method does
+     * access privileges. Once the initializer is created, calling its
+     * {@linkplain OfStaticArrayField#getOrCompute(int) getOrCompute()} method does
      * not repeat the caller access check. A caller may select its own private static
      * final array field or one in a nestmate. Access to an unrelated private field is
      * denied.
@@ -793,10 +872,10 @@ public final class LazyUpdaters {
      * @since 29
      */
     @CallerSensitive
-    public static <V> StaticArrayFieldUpdater<V> ofStaticArrayField(Class<?> owner,
-                                                                    Class<? super V> arrayComponentType,
-                                                                    String name,
-                                                                    StaticArrayFieldUpdater.Computer<? extends V> computingFunction) {
+    public static <V> OfStaticArrayField<V> ofStaticArrayField(Class<?> owner,
+                                                               Class<? super V> arrayComponentType,
+                                                               String name,
+                                                               OfStaticArrayField.Computer<? extends V> computingFunction) {
         // Keep caller identification in this entry point. A helper accepting
         // a caller Class could be invoked reflectively with a forged argument.
         final Class<?> caller = Reflection.getCallerClass();
@@ -813,25 +892,25 @@ public final class LazyUpdaters {
     }
 
     /**
-     * {@return a lazy updater for an instance array field accessible to the caller}
+     * {@return a lazy initializer for an instance array field accessible to the caller}
      * <p>
      * This method uses {@linkplain ##publish-once publish once} and the supplied array
-     * field and index as storage. Its result is an {@link ArrayFieldUpdater} whose
-     * {@linkplain ArrayFieldUpdater#getOrCompute(Object, int) getOrCompute()} method
+     * field and index as storage. Its result is an {@link OfArrayField} whose
+     * {@linkplain OfArrayField#getOrCompute(Object, int) getOrCompute()} method
      * accesses that array field's element;
      * the computing function is invoked only when the field's element has its reserved Java
      * default value. The array field must be non-static and final. Access is checked with
      * the caller's privileges.
      * <p>
      * This method is caller-sensitive: a helper that invokes it supplies the helper's
-     * access privileges. Once the updater is created, calling its
-     * {@linkplain ArrayFieldUpdater#getOrCompute(Object, int) getOrCompute()} method does
+     * access privileges. Once the initializer is created, calling its
+     * {@linkplain OfArrayField#getOrCompute(Object, int) getOrCompute()} method does
      * not repeat the caller access check. A caller may select its own private final
      * non-static array field or one in a nestmate. Access to an unrelated private field
      * is denied.
      * <p>
      * If the field is protected and declared in a different runtime package from
-     * the caller, the updater accepts only receivers that are instances of the
+     * the caller, the initializer accepts only receivers that are instances of the
      * caller class or its subclasses, even if {@code T} is broader. This
      * restriction is checked when {@code getOrCompute} is invoked.
      * <p>
@@ -855,10 +934,10 @@ public final class LazyUpdaters {
      * @since 29
      */
     @CallerSensitive
-    public static <T, V> ArrayFieldUpdater<T, V> ofArrayField(Class<? super T> receiverType,
-                                                              Class<? super V> arrayComponentType,
-                                                              String name,
-                                                              ArrayFieldUpdater.Computer<? super T, ? extends V> computingFunction) {
+    public static <T, V> OfArrayField<T, V> ofArrayField(Class<? super T> receiverType,
+                                                         Class<? super V> arrayComponentType,
+                                                         String name,
+                                                         OfArrayField.Computer<? super T, ? extends V> computingFunction) {
         // Keep caller identification in this entry point. A helper accepting
         // a caller Class could be invoked reflectively with a forged argument.
         final Class<?> caller = Reflection.getCallerClass();
@@ -891,7 +970,7 @@ public final class LazyUpdaters {
      * @since 29
      */
     @FunctionalInterface
-    public interface StaticFieldUpdater<V> {
+    public interface OfStaticField<V> {
 
         /**
          * {@return a non-default memoized result, otherwise computes and tries to install
@@ -936,7 +1015,7 @@ public final class LazyUpdaters {
      * @since 29
      */
     @FunctionalInterface
-    public interface FieldUpdater<T, V> {
+    public interface OfField<T, V> {
 
         /**
          * {@return a non-default memoized result, otherwise computes and tries to install
@@ -987,7 +1066,7 @@ public final class LazyUpdaters {
      * @since 29
      */
     @FunctionalInterface
-    public interface StaticArrayFieldUpdater<V> {
+    public interface OfStaticArrayField<V> {
 
         /**
          * {@return the non-default value installed at the selected index}
@@ -1033,7 +1112,7 @@ public final class LazyUpdaters {
      * @since 29
      */
     @FunctionalInterface
-    public interface ArrayFieldUpdater<T, V> {
+    public interface OfArrayField<T, V> {
 
         /**
          * {@return the non-default value installed at the selected array element}
