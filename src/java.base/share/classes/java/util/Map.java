@@ -1760,74 +1760,29 @@ public interface Map<K, V> {
      * provided {@code computingFunction} when they are first accessed
      * (e.g., via {@linkplain Map#get(Object) Map::get}).
      * <p>
-     * The provided computing function is guaranteed to be invoked
-     * at most once per key, even in a multi-threaded environment. Competing
-     * threads accessing a value already under computation will block until a value
-     * is computed or the computing function completes abnormally.
-     * Computation runs on the thread accessing that value. Computations for different
-     * keys may proceed concurrently, so the computing function must support concurrent
-     * invocation when the map is accessed concurrently.
+     * The returned map follows the
+     * <a href="doc-files/coll-reference.html#lazy-collections">shared specification
+     * for lazy collections</a>,
+     * with one independently cached value per key.
      * <p>
-     * For a given key, actions in the computing thread before publication of a
-     * successfully computed value
-     * {@linkplain java.util.concurrent##MemoryVisibility happen-before} actions
-     * following an access in another thread that observes that initialized value
-     * for that key. This guarantee does not impose a total order on accesses to the
-     * map. Subsequent accesses provide no additional memory ordering or visibility
-     * guarantees for actions performed after that publication.
+     * The returned {@code Map<K, V>} can be thought of as a map backed by a
+     * {@code Map<K, Supplier<V>>} field, where each supplier is created by
+     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The factory implementation
+     * may provide better performance and storage efficiency than this model.
      * <p>
-     * The lazy computation machinery does not cancel computation or clear interruption
-     * status. The computing function may respond to interruption according to its own
-     * behavior. An indefinitely blocked computation may indefinitely block access to
-     * the same key; no timeout or cancellation is provided. See
-     * {@linkplain Supplier##ofLazy-thread-safety lazy supplier thread safety} and
-     * {@linkplain Supplier##ofLazy-dependencies dependency composition} for further
-     * guidance, including dependencies used during class initialization.
-     * <p>
-     * If evaluation of the provided computing function throws an unchecked exception (for
-     * a key), the lazy value is not initialized but instead transitions to an error
-     * state whereafter a {@linkplain NoSuchElementException} is thrown with the unchecked
-     * exception as a cause. Subsequent {@linkplain Map#get(Object) Map::get} calls for
-     * the same key throw {@linkplain NoSuchElementException} (without ever invoking the
-     * computing function again) with no cause and with a message that includes the name
-     * of the original unchecked exception's class.
-     * <p>
-     * All failures are handled in this way. There are two special cases that cause
-     * unchecked exceptions to be thrown:
-     * <p>
-     * If the computing function returns {@code null},
-     * a {@linkplain NoSuchElementException} (with a {@linkplain NullPointerException} as
-     * a cause) will be thrown. Hence, just like other unmodifiable maps created via the
+     * If the computing function returns {@code null}, this is recorded as a computation
+     * failure and the access that performed the computation throws
+     * {@linkplain NoSuchElementException} with a {@linkplain NullPointerException} as
+     * its cause. Hence, just like other unmodifiable maps created via the
      * {@code Map::of} factories, a lazy map can never contain {@code null} values.
      * Clients that want to use nullable values can wrap elements into an
      * {@linkplain Optional} holder.
      * <p>
-     * A recursive access to the same key via the returned map is rejected with
-     * {@linkplain IllegalStateException}. If that exception escapes the computing
-     * function, the initiating access records the failure and throws
-     * {@linkplain NoSuchElementException} with that exception as its cause.
-     * <p>
      * The values of any {@link Map#values()} or {@link Map#entrySet()} views of
      * the returned map are also lazily computed.
      * <p>
-     * The returned map's {@linkplain Object Object methods};
-     * {@linkplain Object#equals(Object) equals()},
-     * {@linkplain Object#hashCode() hashCode()}, and
-     * {@linkplain Object#toString() toString()} methods may trigger initialization of
-     * one or more lazy values. If initialization fails for at least one value,
-     * the {@linkplain Object#hashCode() hashCode()} and
-     * {@linkplain Object#toString() toString()} methods throw
-     * {@linkplain NoSuchElementException}, and {@linkplain Object#equals(Object) equals()}
-     * throws {@linkplain NoSuchElementException} if attempting to compare a value that
-     * could not be computed.
-     * <p>
-     * The returned lazy map strongly references its underlying
-     * computing function used to compute values at least as long as there are
-     * uncomputed values.
      * The map strongly references its initialized values. Its unmodifiability does not
      * make those values immutable or make subsequent mutations thread-safe.
-     * <p>
-     * The returned Map is <em>not</em> {@linkplain Serializable}.
      * <p>
      * If the provided {@code Set} of {@code keys} is subsequently modified, the returned
      * {@code Map} will not reflect such modifications.
@@ -1865,50 +1820,6 @@ public interface Map<K, V> {
      *
      * }
      * }
-     * <p>
-     * The returned {@code Map<K, V>} can be thought of as a map backed by a
-     * {@code Map<K, Supplier<V>>} field, where each supplier is created by
-     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The following partial model
-     * illustrates the {@linkplain Map#get(Object) get()} operation:
-     * {@snippet lang = java:
-     * import java.util.AbstractMap;
-     * import java.util.Map;
-     * import java.util.Set;
-     * import java.util.function.Function;
-     * import java.util.function.Supplier;
-     * import java.util.stream.Collectors;
-     *
-     * abstract class LazyMap<K, V> extends AbstractMap<K, V> {
-     *
-     *     private final Map<K, Supplier<V>> backingMap;
-     *
-     *     public LazyMap(Set<K> keys, Function<K, V> computingFunction) {
-     *         this.backingMap = keys.stream()
-     *                 .collect(Collectors.toUnmodifiableMap(
-     *                         Function.identity(),
-     *                         k -> Supplier.ofLazy(() -> computingFunction.apply(k))));
-     *     }
-     *
-     *     @Override
-     *     public V get(Object key) {
-     *         var supplier = backingMap.get(key);
-     *         return supplier == null
-     *                 ? null
-     *                 : supplier.get();
-     *     }
-     * }
-     *}
-     * The factory implementation may provide better performance and storage efficiency
-     * than this model.
-     * <p>
-     * Values in the returned map are eligible for certain performance optimizations
-     * such as <em>constant folding</em> as described in
-     * {@linkplain java.lang.invoke.LazyInitializers##performance LazyInitializers}.
-     *
-     * @implNote After all values have been initialized successfully or transitioned to
-     *           an error state, the implementation releases its reference to the computing
-     *           function. The function becomes eligible for garbage collection if it is
-     *           not otherwise strongly reachable.
      *
      * @param keys              the (non-null) keys in the returned computed map
      * @param computingFunction to invoke whenever an associated value is first accessed

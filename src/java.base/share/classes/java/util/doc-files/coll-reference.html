@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
- Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
+ Copyright (c) 1998, 2026, Oracle and/or its affiliates. All rights reserved.
  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 
  This code is free software; you can redistribute it and/or modify it
@@ -249,6 +249,102 @@ the specified object (or key-value mapping).</li>
 "../Collections.html#nCopies(int,T)"><strong>
 nCopies</strong></a> - Returns an immutable list consisting of n
 copies of a specified object.</li>
+</ul>
+</li>
+<li id="lazy-collections"><strong>Lazily computed collections</strong> -
+The following factories associate inputs with independently cached
+results:
+<ul>
+<li><a href=
+"../List.html#ofLazy(int,java.util.function.IntFunction)"><strong>
+List.ofLazy</strong></a> - Computes an element for each list index.</li>
+<li><a href=
+"../Map.html#ofLazy(java.util.Set,java.util.function.Function)"><strong>
+Map.ofLazy</strong></a> - Computes a value for each key.</li>
+<li><a href=
+"../Set.html#ofLazy(java.util.Set,java.util.function.Predicate)"><strong>
+Set.ofLazy</strong></a> - Computes membership status for each element
+candidate.</li>
+</ul>
+The returned collections share the following characteristics:
+<ul>
+<li id="lazy-collections-computation"><strong>Computation and thread
+safety</strong> - Each result is computed on demand. The computing
+function is invoked at most once per input, even when the collection is
+accessed concurrently, and runs on the thread accessing that result.
+Competing accesses from other threads to the same input wait until its
+computation completes successfully or with failure. Computations for
+different inputs may proceed concurrently, so the computing function
+must support concurrent invocation when the collection is accessed
+concurrently. Successfully computed results remain cached for the
+lifetime of the collection.
+<p>
+Each successfully computed result is published with the <a href=
+"../../lang/invoke/LazyInitializers.html#memory-effects">memory effects
+described by LazyInitializers</a>. These guarantees apply separately to
+each input; they do not impose a total order on accesses to the
+collection or provide additional visibility guarantees for actions
+performed after publication.
+<p>
+The lazy computation machinery does not cancel computation or clear
+interruption status. The computing function may respond to interruption
+according to its own behavior. An indefinitely blocked computation may
+indefinitely block access to the same input; no timeout or cancellation
+operation is provided.
+<p>
+Computing functions can depend on other lazily computed results. Cyclic
+dependencies can cause recursive access or deadlock between threads
+waiting for one another. Use during static initialization also follows
+the class initialization rules in <a href=
+"../../../../../specs/jls/jls-12.html#jls-12.4">JLS &sect;12.4</a>;
+cycles can cause initialization errors or deadlock.</li>
+<li id="lazy-collections-failures"><strong>Failures</strong> - If the
+computing function throws an unchecked exception (a runtime exception
+or an error), the result for that input is not initialized. Instead,
+the failure is recorded, and the access that performed the computation
+throws <a href="../NoSuchElementException.html"><code>
+NoSuchElementException</code></a> with the original exception as its
+cause. Subsequent accesses requiring that result throw
+<code>NoSuchElementException</code> with no cause and with a message
+containing the name of the original exception's class. The computing
+function is not invoked again for that input.
+<p>
+A recursive access to the same input during its computation is rejected
+with <a href="../../lang/IllegalStateException.html"><code>
+IllegalStateException</code></a>. If that exception escapes the
+computing function, the initiating access records the failure and
+throws <code>NoSuchElementException</code> with that exception as its
+cause.</li>
+<li id="lazy-collections-object-methods"><strong>Object methods</strong> -
+The returned collections' <a href=
+"../../lang/Object.html#equals(java.lang.Object)"><code>equals</code></a>,
+<a href="../../lang/Object.html#hashCode()"><code>hashCode</code></a>,
+and <a href="../../lang/Object.html#toString()"><code>toString</code></a>
+methods may trigger computation of one or more results. If computation
+fails for at least one input, <code>hashCode</code> and
+<code>toString</code> throw <code>NoSuchElementException</code>. The
+<code>equals</code> method throws <code>NoSuchElementException</code>
+if its comparison requires a result that could not be computed.</li>
+<li id="lazy-collections-retention"><strong>Retention and
+serialization</strong> - A returned collection strongly references its
+computing function at least until computation for every input has
+completed, successfully or with failure. Its unmodifiability does not
+make its elements, keys, or values immutable or make subsequent
+mutations thread-safe.
+<p>
+These collections are not <a href="../../io/Serializable.html"><code>
+Serializable</code></a>, even if their contents or computing functions
+are serializable.
+<p>
+<strong>Implementation Note:</strong> For the lazily computed
+collections described above, after computation for every input has
+completed successfully or with failure, the implementation releases
+its reference to the computing function. The function becomes eligible
+for garbage collection if it is not otherwise strongly reachable.</li>
+<li id="lazy-collections-performance"><strong>Performance</strong> -
+Cached results may be eligible for optimizations such as constant
+folding, as described in <a href=
+"../../lang/invoke/LazyInitializers.html#performance">LazyInitializers</a>.</li>
 </ul>
 </li>
 <li><strong>Legacy implementations</strong> - Older collection
@@ -554,7 +650,7 @@ and objects.</li>
 </ul>
 <hr>
 <p style="font-size:smaller">
-Copyright &copy; 1998, 2017, Oracle and/or its affiliates. 500 Oracle Parkway<br>
+Copyright &copy; 1998, 2026, Oracle and/or its affiliates. 500 Oracle Parkway<br>
     Redwood Shores, CA 94065 USA. All rights reserved.</p>
 <!-- Body text ends here -->
 </body>

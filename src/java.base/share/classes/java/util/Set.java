@@ -27,7 +27,6 @@ package java.util;
 
 import jdk.internal.javac.PreviewFeature;
 
-import java.io.Serializable;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -763,67 +762,19 @@ public interface Set<E> extends Collection<E> {
      * status is initialized (i.e., either as <em>a logical member</em> or as
      * <em>a logical non-member</em>).
      * <p>
-     * The provided computing function is guaranteed to be invoked at most once per
-     * element candidate, even in a multi-threaded environment. Competing threads
-     * accessing an element candidate already under membership status computation will
-     * block until the membership status of the element candidate is computed or the
-     * computing function completes abnormally.
-     * Computation runs on the thread accessing that membership status. Computations for
-     * different element candidates may proceed concurrently, so the computing function
-     * must support concurrent invocation when the set is accessed concurrently.
+     * The returned {@code Set<E>} can be thought of as a set backed by a
+     * {@code Map<E, Supplier<Boolean>>} field, where each supplier is created by
+     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The factory implementation
+     * may provide better performance and storage efficiency than this model.
      * <p>
-     * For a given element candidate, actions in the computing thread before publication
-     * of its successfully computed membership status
-     * {@linkplain java.util.concurrent##MemoryVisibility happen-before} actions
-     * following an access in another thread that observes that initialized status
-     * for that candidate. This guarantee does not impose a total order on accesses to
-     * the set. Subsequent accesses provide no additional memory ordering or visibility
-     * guarantees for actions performed after that publication.
+     * The returned set follows the
+     * <a href="doc-files/coll-reference.html#lazy-collections">shared specification
+     * for lazy collections</a>,
+     * with one independently cached membership status per element candidate.
      * <p>
-     * The lazy computation machinery does not cancel computation or clear interruption
-     * status. The computing function may respond to interruption according to its own
-     * behavior. An indefinitely blocked computation may indefinitely block access to
-     * the same element candidate; no timeout or cancellation is provided. See
-     * {@linkplain Supplier##ofLazy-thread-safety lazy supplier thread safety} and
-     * {@linkplain Supplier##ofLazy-dependencies dependency composition} for further
-     * guidance, including dependencies used during class initialization.
-     * <p>
-     * If evaluation of the provided computing function throws an unchecked exception (for
-     * an element candidate), the lazy membership status is not initialized but instead
-     * transitions to an error state whereafter a {@linkplain NoSuchElementException} is
-     * thrown with the unchecked exception as a cause. Subsequent
-     * {@linkplain Set#contains(Object) Set::contains} calls for the same membership
-     * candidate throw {@linkplain NoSuchElementException} (without ever invoking the
-     * computing function again) with no cause and with a message that includes the name
-     * of the original unchecked exception's class.
-     * <p>
-     * All failures are handled in this way. There is a special case that causes
-     * unchecked exceptions to be thrown:
-     * <p>
-     * A recursive access to the same membership candidate via the returned set is
-     * rejected with {@linkplain IllegalStateException}. If that exception escapes the
-     * computing function, the initiating access records the failure and throws
-     * {@linkplain NoSuchElementException} with that exception as its cause.
-     * <p>
-     * The returned set's {@linkplain Object Object methods};
-     * {@linkplain Object#equals(Object) equals()},
-     * {@linkplain Object#hashCode() hashCode()}, and
-     * {@linkplain Object#toString() toString()} methods may trigger initialization of
-     * one or more lazy elements. If initialization fails for at least one element,
-     * the {@linkplain Object#hashCode() hashCode()} and
-     * {@linkplain Object#toString() toString()} methods throw
-     * {@linkplain NoSuchElementException}, and {@linkplain Object#equals(Object) equals()}
-     * throws {@linkplain NoSuchElementException} if attempting to compare an element that
-     * could not be computed.
-     * <p>
-     * The returned lazy set strongly references its underlying
-     * computing function used to compute membership status at least as long as there are
-     * uncomputed element candidates.
      * Computed membership decisions remain cached for the lifetime of the returned set.
      * Its unmodifiability does not make element candidates immutable or make subsequent
      * mutations thread-safe.
-     * <p>
-     * The returned Set is <em>not</em> {@linkplain Serializable}.
      * <p>
      * If the provided {@code Set} of {@code elementCandidates} is subsequently modified,
      * the returned {@code Set} will not reflect such modifications.
@@ -870,49 +821,6 @@ public interface Set<E> extends Collection<E> {
      *
      * }
      * }
-     * <p>
-     * The returned {@code Set<E>} can be thought of as a set backed by a
-     * {@code Map<E, Supplier<Boolean>>} field, where each supplier is created by
-     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The following partial model
-     * illustrates the {@linkplain Set#contains(Object) contains()} operation:
-     * {@snippet lang = java:
-     * import java.util.AbstractSet;
-     * import java.util.Map;
-     * import java.util.Set;
-     * import java.util.function.Function;
-     * import java.util.function.Predicate;
-     * import java.util.function.Supplier;
-     * import java.util.stream.Collectors;
-     *
-     * abstract class LazySet<E> extends AbstractSet<E> {
-     *
-     *     private final Map<E, Supplier<Boolean>> backingMap;
-     *
-     *     public LazySet(Set<E> elementCandidates, Predicate<E> computingFunction) {
-     *         this.backingMap = elementCandidates.stream()
-     *                 .collect(Collectors.toUnmodifiableMap(
-     *                         Function.identity(),
-     *                         k -> Supplier.ofLazy(() -> computingFunction.test(k))));
-     *     }
-     *
-     *     @Override
-     *     public boolean contains(Object o) {
-     *         var supplier = backingMap.get(o);
-     *         return supplier != null && supplier.get();
-     *     }
-     * }
-     *}
-     * The factory implementation may provide better performance and storage efficiency
-     * than this model.
-     * <p>
-     * Elements in the returned set are eligible for certain performance optimizations
-     * such as <em>constant folding</em> as described in
-     * {@linkplain java.lang.invoke.LazyInitializers##performance LazyInitializers}.
-     *
-     * @implNote After all element membership statuses have been initialized successfully
-     *           or transitioned to an error state, the implementation releases its reference
-     *           to the computing function. The function becomes eligible for garbage
-     *           collection if it is not otherwise strongly reachable.
      *
      * @param elementCandidates the (non-null) element candidates to be evaluated
      * @param computingFunction to invoke whenever the membership status of an element

@@ -28,7 +28,6 @@ package java.util;
 import jdk.internal.foreign.Utils;
 import jdk.internal.javac.PreviewFeature;
 
-import java.io.Serializable;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -1205,52 +1204,23 @@ public interface List<E> extends SequencedCollection<E> {
      * {@code computingFunction} when they are first accessed
      * (e.g., via {@linkplain List#get(int) List::get}).
      * <p>
-     * The provided computing function is guaranteed to be
-     * invoked at most once per list index, even in a multi-threaded environment.
-     * Competing threads accessing an element already under computation will block until
-     * an element is computed or the computing function completes abnormally.
-     * Computation runs on the thread accessing that element. Computations for different
-     * indices may proceed concurrently, so the computing function must support concurrent
-     * invocation when the list is accessed concurrently.
+     * The returned {@code List<E>} can be thought of as a list backed by a
+     * {@code List<Supplier<E>>} field, where each supplier is created by
+     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The factory implementation
+     * may provide better performance and storage efficiency than this model.
      * <p>
-     * For a given index, actions in the computing thread before publication of a
-     * successfully computed element
-     * {@linkplain java.util.concurrent##MemoryVisibility happen-before} actions
-     * following an access in another thread that observes that initialized element
-     * at that index. This guarantee does not impose a total order on accesses to the
-     * list. Subsequent accesses provide no additional memory ordering or visibility
-     * guarantees for actions performed after that publication.
+     * The returned list follows the
+     * <a href="doc-files/coll-reference.html#lazy-collections">shared specification
+     * for lazy collections</a>,
+     * with one independently cached element per index.
      * <p>
-     * The lazy computation machinery does not cancel computation or clear interruption
-     * status. The computing function may respond to interruption according to its own
-     * behavior. An indefinitely blocked computation may indefinitely block access to
-     * the same index; no timeout or cancellation is provided. See
-     * {@linkplain Supplier##ofLazy-thread-safety lazy supplier thread safety} and
-     * {@linkplain Supplier##ofLazy-dependencies dependency composition} for further
-     * guidance, including dependencies used during class initialization.
-     * <p>
-     * If evaluation of the provided computing function throws an unchecked exception (for
-     * an index), the lazy element is not initialized but instead transitions to an error
-     * state whereafter a {@linkplain NoSuchElementException} is thrown with the unchecked
-     * exception as a cause. Subsequent {@linkplain List#get(int) List::get} calls for the
-     * same index throw {@linkplain NoSuchElementException} (without ever invoking the
-     * computing function again) with no cause and with a message that includes the name
-     * of the original unchecked exception's class.
-     * <p>
-     * All failures are handled in this way. There are two special cases that cause
-     * unchecked exceptions to be thrown:
-     * <p>
-     * If the computing function returns {@code null},
-     * a {@linkplain NoSuchElementException} (with a {@linkplain NullPointerException} as
-     * a cause) will be thrown. Hence, just like other unmodifiable lists created via the
+     * If the computing function returns {@code null}, this is recorded as a computation
+     * failure and the access that performed the computation throws
+     * {@linkplain NoSuchElementException} with a {@linkplain NullPointerException} as
+     * its cause. Hence, just like other unmodifiable lists created via the
      * {@code List::of} factories, a lazy list can never contain {@code null}
      * elements. Clients that want to use nullable elements can wrap elements into an
      * {@linkplain Optional} holder.
-     * <p>
-     * A recursive access to the same index via the returned list is rejected with
-     * {@linkplain IllegalStateException}. If that exception escapes the computing
-     * function, the initiating access records the failure and throws
-     * {@linkplain NoSuchElementException} with that exception as its cause.
      * <p>
      * The elements of any {@link List#subList(int, int) subList()} or
      * {@link List#reversed()} views of the returned list are also lazily computed.
@@ -1258,24 +1228,8 @@ public interface List<E> extends SequencedCollection<E> {
      * The returned list and its {@link List#subList(int, int) subList()} or
      * {@link List#reversed()} views implement the {@link RandomAccess} interface.
      * <p>
-     * The returned list's {@linkplain Object Object methods};
-     * {@linkplain Object#equals(Object) equals()},
-     * {@linkplain Object#hashCode() hashCode()}, and
-     * {@linkplain Object#toString() toString()} methods may trigger initialization of
-     * one or more lazy elements. If initialization fails for at least one element,
-     * the {@linkplain Object#hashCode() hashCode()} and
-     * {@linkplain Object#toString() toString()} methods throw
-     * {@linkplain NoSuchElementException}, and {@linkplain Object#equals(Object) equals()}
-     * throws {@linkplain NoSuchElementException} if attempting to compare an element that
-     * could not be computed.
-     * <p>
-     * The returned lazy list strongly references its computing
-     * function used to compute elements at least as long as there are uninitialized
-     * elements.
      * The list strongly references its initialized elements. Its unmodifiability does
      * not make those elements immutable or make subsequent mutations thread-safe.
-     * <p>
-     * The returned List is <em>not</em> {@linkplain Serializable}.
      * <p>
      * Here is an example involving an application that maintains three separate
      * {@code OrderController} components. Depending on a thread's id, one of the
@@ -1305,51 +1259,6 @@ public interface List<E> extends SequencedCollection<E> {
      *      OrderController orders = orders();
      * }
      * }
-     * <p>
-     * The returned {@code List<E>} can be thought of as a list backed by a
-     * {@code List<Supplier<E>>} field, where each supplier is created by
-     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The following simplified
-     * model illustrates the {@linkplain List#get(int) get()} operation:
-     * {@snippet lang = java:
-     * import java.util.AbstractList;
-     * import java.util.List;
-     * import java.util.RandomAccess;
-     * import java.util.function.IntFunction;
-     * import java.util.function.Supplier;
-     * import java.util.stream.IntStream;
-     *
-     * class LazyList<E> extends AbstractList<E> implements RandomAccess {
-     *
-     *     private final List<Supplier<E>> backingList;
-     *
-     *     public LazyList(int size, IntFunction<E> computingFunction) {
-     *         this.backingList = IntStream.range(0, size)
-     *                 .mapToObj(i -> Supplier.ofLazy(() -> computingFunction.apply(i)))
-     *                 .toList();
-     *     }
-     *
-     *     @Override
-     *     public E get(int index) {
-     *         return backingList.get(index).get();
-     *     }
-     *
-     *     @Override
-     *     public int size() {
-     *         return backingList.size();
-     *     }
-     * }
-     *}
-     * The factory implementation may provide better performance and storage efficiency
-     * than this model.
-     * <p>
-     * Elements in the returned list are eligible for certain performance optimizations
-     * such as <em>constant folding</em> as described in
-     * {@linkplain java.lang.invoke.LazyInitializers##performance LazyInitializers}.
-     *
-     * @implNote After all elements have been initialized successfully or transitioned to
-     *           an error state, the implementation releases its reference to the computing
-     *           function. The function becomes eligible for garbage collection if it is
-     *           not otherwise strongly reachable.
      *
      * @param size              the size of the returned lazy list
      * @param computingFunction to invoke whenever an element is first accessed
