@@ -27,8 +27,7 @@ package java.util.function;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.lang.LazyConstantImpl;
 
-import java.io.Serializable;
-import java.lang.invoke.LazyInitializers;
+import java.lang.invoke.StableAccessors;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -85,7 +84,7 @@ public interface Supplier<T> {
      * }
      * }
      * The cached result may be eligible for optimizations such as constant folding,
-     * as described in {@linkplain LazyInitializers##performance LazyInitializers}.
+     * as described in {@linkplain StableAccessors##performance StableAccessors}.
      * <p>
      * This method always returns a new supplier, even if {@code computingFunction}
      * is itself a supplier returned by an earlier invocation of this method.
@@ -110,8 +109,8 @@ public interface Supplier<T> {
      * The computing function runs on the thread that starts computation. Competing
      * calls from other threads wait for that computation to complete and then observe
      * the cached result or recorded failure. Successful results have the
-     * {@linkplain LazyInitializers##memory-effects memory effects described by
-     * LazyInitializers}.
+     * {@linkplain StableAccessors##memory-effects memory effects described by
+     * StableAccessors}.
      * <p>
      * The supplier's coordination does not cancel computation, clear a thread's
      * interruption status, or throw {@link InterruptedException}. The computing
@@ -146,7 +145,7 @@ public interface Supplier<T> {
      * @see List#ofLazy(int, IntFunction)
      * @see Map#ofLazy(Set, Function)
      * @see Set#ofLazy(Set, Predicate)
-     * @see LazyInitializers##encapsulating-lazy-initializers LazyInitializers: encapsulating lazy initializers
+     * @see StableAccessors##encapsulating-stable-accessors StableAccessors: encapsulating stable accessors
      * @since 29
      */
     @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)

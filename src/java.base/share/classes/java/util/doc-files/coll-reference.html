@@ -280,8 +280,8 @@ concurrently. Successfully computed results remain cached for the
 lifetime of the collection.
 <p>
 Each successfully computed result is published with the <a href=
-"../../lang/invoke/LazyInitializers.html#memory-effects">memory effects
-described by LazyInitializers</a>. These guarantees apply separately to
+"../../lang/invoke/StableAccessors.html#memory-effects">memory effects
+described by StableAccessors</a>. These guarantees apply separately to
 each input; they do not impose a total order on accesses to the
 collection or provide additional visibility guarantees for actions
 performed after publication.
@@ -344,7 +344,7 @@ for garbage collection if it is not otherwise strongly reachable.</li>
 <li id="lazy-collections-performance"><strong>Performance</strong> -
 Cached results may be eligible for optimizations such as constant
 folding, as described in <a href=
-"../../lang/invoke/LazyInitializers.html#performance">LazyInitializers</a>.</li>
+"../../lang/invoke/StableAccessors.html#performance">StableAccessors</a>.</li>
 </ul>
 </li>
 <li><strong>Legacy implementations</strong> - Older collection

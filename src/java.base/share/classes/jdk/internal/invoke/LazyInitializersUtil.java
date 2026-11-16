@@ -26,12 +26,13 @@
 package jdk.internal.invoke;
 
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.ReflectiveAccessOnly;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import sun.invoke.util.VerifyAccess;
 import sun.invoke.util.Wrapper;
 
-/** Helpers for lazy initializer factories. */
+/** Helpers for stable accessor factories. */
 public final class LazyInitializersUtil {
 
     private static final int CALLER_ACCESS_MODES = MethodHandles.Lookup.PUBLIC
@@ -53,24 +54,35 @@ public final class LazyInitializersUtil {
         }
     }
 
-    public static void checkArrayType(Class<?> caller, Class<?> arrayFieldType) {
-        if (!arrayFieldType.isArray() || arrayFieldType.getComponentType().isArray()) {
-            throw new IllegalArgumentException("Expected a one-dimensional array: " + arrayFieldType);
+    public static void checkArrayTypes(Class<?> caller, Class<?> arrayType,
+                                       Class<?> arrayComponentType) {
+        if (!arrayType.isArray() || arrayType.getComponentType().isArray()) {
+            throw new IllegalArgumentException("Unsupported array type: " + arrayType);
         }
-        checkClassAccess(caller, arrayFieldType.getComponentType());
-    }
-
-    public static void checkArrayComponentType(Field field, Class<?> arrayComponentType) {
-        Class<?> componentType = Wrapper.asWrapperType(field.getType().getComponentType());
-        Class<?> resultType = Wrapper.asWrapperType(arrayComponentType);
-        if (!resultType.isAssignableFrom(componentType)) {
-            throw new IllegalArgumentException("Incompatible array component type: " + arrayComponentType);
+        if (arrayComponentType == void.class || arrayComponentType.isArray()) {
+            throw new IllegalArgumentException("Unsupported array component type: " + arrayComponentType);
+        }
+        Class<?> componentType = Wrapper.asWrapperType(arrayType.getComponentType());
+        Class<?> valueType = Wrapper.asWrapperType(arrayComponentType);
+        checkClassAccess(caller, componentType);
+        checkClassAccess(caller, valueType);
+        if (!valueType.isAssignableFrom(componentType)) {
+            throw new IllegalArgumentException("Array component type " + componentType.getName()
+                    + " is not assignable to " + valueType.getName());
         }
     }
 
     public static void checkFieldFinalState(Field field, boolean isFinal) {
         if (Modifier.isFinal(field.getModifiers()) != isFinal) {
             throw new IllegalArgumentException("Field " + field.getName() + " is " + (isFinal ? "not " : "") + "final");
+        }
+    }
+
+    public static void checkFieldReflectiveAccessOnly(Field field) {
+        ReflectiveAccessOnly annotation = field.getDeclaredAnnotation(ReflectiveAccessOnly.class);
+        if (annotation == null || annotation.arrayElements()) {
+            throw new IllegalArgumentException("Field " + field.getName()
+                    + " must be annotated with @ReflectiveAccessOnly in field mode");
         }
     }
 
