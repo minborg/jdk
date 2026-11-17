@@ -34,6 +34,7 @@ package compiler.stable;
 
 import compiler.lib.ir_framework.*;
 
+import java.util.Lazy;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,9 +56,9 @@ public class LazyConstantsIrTest {
     static final int THE_VALUE = 42;
 
     static final LazyConstant<Integer> LAZY_CONSTANT = LazyConstant.of(() -> THE_VALUE);
-    static final List<Integer> LAZY_LIST = List.ofLazy(1, _ -> THE_VALUE);
-    static final Set<Integer> LAZY_SET = Set.ofLazy(Set.of(THE_VALUE), _ -> true);
-    static final Map<Integer, Integer> LAZY_MAP = Map.ofLazy(Set.of(0), _ -> THE_VALUE);
+    static final List<Integer> LAZY_LIST = Lazy.ofList(Lazy.Mode.ONCE, 1, _ -> THE_VALUE);
+    static final Set<Integer> LAZY_SET = Lazy.ofSet(Lazy.Mode.ONCE, Set.of(THE_VALUE), _ -> true);
+    static final Map<Integer, Integer> LAZY_MAP = Lazy.ofMap(Lazy.Mode.ONCE, Set.of(0), _ -> THE_VALUE);
 
 
     // For all tests:

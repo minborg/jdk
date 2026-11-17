@@ -224,15 +224,15 @@ public class MOAT {
         // Immutable List
         testEmptyList(List.of());
         testEmptyList(List.of().subList(0,0));
-        testEmptyList(List.ofLazy(0, i -> i));
-        testEmptyList(List.ofLazy(3, i -> i).subList(0, 0));
+        testEmptyList(Lazy.ofList(Lazy.Mode.ONCE, 0, i -> i));
+        testEmptyList(Lazy.ofList(Lazy.Mode.ONCE, 3, i -> i).subList(0, 0));
         testListMutatorsAlwaysThrow(List.of());
         testListMutatorsAlwaysThrow(List.<Integer>of().subList(0,0));
-        testListMutatorsAlwaysThrow(List.ofLazy(0, i -> i));
+        testListMutatorsAlwaysThrow(Lazy.ofList(Lazy.Mode.ONCE, 0, i -> i));
         testEmptyListMutatorsAlwaysThrow(List.of());
         testEmptyListMutatorsAlwaysThrow(List.<Integer>of().subList(0,0));
-        testEmptyListMutatorsAlwaysThrow(List.ofLazy(0, i -> i));
-        testEmptyListMutatorsAlwaysThrow(List.ofLazy(3, i -> i).subList(0, 0));
+        testEmptyListMutatorsAlwaysThrow(Lazy.ofList(Lazy.Mode.ONCE, 0, i -> i));
+        testEmptyListMutatorsAlwaysThrow(Lazy.ofList(Lazy.Mode.ONCE, 3, i -> i).subList(0, 0));
         for (List<Integer> list : Arrays.asList(
                 List.<Integer>of(),
                 List.of(1),
@@ -255,9 +255,9 @@ public class MOAT {
                 Stream.of(1, null).toList(),
                 Stream.of(1, null, 3).toList(),
                 Stream.of(1, null, 3, 4).toList(),
-                List.ofLazy(0, i -> i),
-                List.ofLazy(3, i -> i),
-                List.ofLazy(10, i -> i))) {
+                Lazy.ofList(Lazy.Mode.ONCE, 0, i -> i),
+                Lazy.ofList(Lazy.Mode.ONCE, 3, i -> i),
+                Lazy.ofList(Lazy.Mode.ONCE, 10, i -> i))) {
             testCollection(list);
             testImmutableList(list);
             testListMutatorsAlwaysThrow(list);
@@ -326,11 +326,11 @@ public class MOAT {
 
         // Immutable Set
         testEmptySet(Set.of());
-        testEmptySet(Set.ofLazy(Set.of(), _ -> true));
+        testEmptySet(Lazy.ofSet(Lazy.Mode.ONCE, Set.of(), _ -> true));
         testCollMutatorsAlwaysThrow(Set.of());
-        testCollMutatorsAlwaysThrow(Set.ofLazy(Set.of(1), _ -> true));
+        testCollMutatorsAlwaysThrow(Lazy.ofSet(Lazy.Mode.ONCE, Set.of(1), _ -> true));
         testEmptyCollMutatorsAlwaysThrow(Set.of());
-        testEmptyCollMutatorsAlwaysThrow(Set.ofLazy(Set.of(), _ -> false));
+        testEmptyCollMutatorsAlwaysThrow(Lazy.ofSet(Lazy.Mode.ONCE, Set.of(), _ -> false));
         for (Set<Integer> set : Arrays.asList(
                 Set.<Integer>of(),
                 Set.of(1),
@@ -344,9 +344,9 @@ public class MOAT {
                 Set.of(1, 2, 3, 4, 5, 6, 7, 8, 9),
                 Set.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
                 Set.of(integerArray),
-                Set.ofLazy(Set.<Integer>of(), _ -> true),
-                Set.ofLazy(Set.of(1), _ -> true),
-                Set.ofLazy(Set.of(1, 2, 3), _ -> true))) {
+                Lazy.ofSet(Lazy.Mode.ONCE, Set.<Integer>of(), _ -> true),
+                Lazy.ofSet(Lazy.Mode.ONCE, Set.of(1), _ -> true),
+                Lazy.ofSet(Lazy.Mode.ONCE, Set.of(1, 2, 3), _ -> true))) {
             testCollection(set);
             testImmutableSet(set, 99);
             testCollMutatorsAlwaysThrow(set);
@@ -375,9 +375,9 @@ public class MOAT {
         testEmptyMap(Map.of());
         testMapMutatorsAlwaysThrow(Map.of());
         testEmptyMapMutatorsAlwaysThrow(Map.of());
-        testEmptyMap(Map.ofLazy(Set.of(), k -> k));
-        testMapMutatorsAlwaysThrow(Map.ofLazy(Set.of(), k -> k));
-        testEmptyMapMutatorsAlwaysThrow(Map.ofLazy(Set.of(), k -> k));
+        testEmptyMap(Lazy.ofMap(Lazy.Mode.ONCE, Set.of(), k -> k));
+        testMapMutatorsAlwaysThrow(Lazy.ofMap(Lazy.Mode.ONCE, Set.of(), k -> k));
+        testEmptyMapMutatorsAlwaysThrow(Lazy.ofMap(Lazy.Mode.ONCE, Set.of(), k -> k));
         for (Map<Integer,Integer> map : Arrays.asList(
                 Map.<Integer,Integer>of(),
                 Map.of(1, 101),
@@ -391,9 +391,9 @@ public class MOAT {
                 Map.of(1, 101, 2, 202, 3, 303, 4, 404, 5, 505, 6, 606, 7, 707, 8, 808, 9, 909),
                 Map.of(1, 101, 2, 202, 3, 303, 4, 404, 5, 505, 6, 606, 7, 707, 8, 808, 9, 909, 10, 1010),
                 Map.ofEntries(ea),
-                Map.ofLazy(Set.<Integer>of(), k -> k),
-                Map.ofLazy(Set.of(1), k -> k),
-                Map.ofLazy(Set.of(1, 2, 3), k -> k))) {
+                Lazy.ofMap(Lazy.Mode.ONCE, Set.<Integer>of(), k -> k),
+                Lazy.ofMap(Lazy.Mode.ONCE, Set.of(1), k -> k),
+                Lazy.ofMap(Lazy.Mode.ONCE, Set.of(1, 2, 3), k -> k))) {
             testMap(map);
             testImmutableMap(map);
             testMapMutatorsAlwaysThrow(map);

@@ -473,7 +473,7 @@ final class LazyCollections {
 
         public LazySet(Set<? extends E> elementCandidates,
                        Predicate<? super E> computingFunction) {
-            this.map = Map.ofLazy(elementCandidates, computingFunction::test);
+            this.map = Lazy.ofMap(Lazy.Mode.ONCE, elementCandidates, computingFunction::test);
             super();
         }
 

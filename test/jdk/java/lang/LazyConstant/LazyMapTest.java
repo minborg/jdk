@@ -101,12 +101,12 @@ final class LazyMapTest {
     @ParameterizedTest
     @MethodSource("allSets")
     void factoryInvariants(Set<Value> set) {
-        assertThrows(NullPointerException.class, () -> Map.ofLazy(set, null), set.getClass().getSimpleName());
-        assertThrows(NullPointerException.class, () -> Map.ofLazy(null, MAPPER));
+        assertThrows(NullPointerException.class, () -> Lazy.ofMap(Lazy.Mode.ONCE, set, null), set.getClass().getSimpleName());
+        assertThrows(NullPointerException.class, () -> Lazy.ofMap(Lazy.Mode.ONCE, null, MAPPER));
         Set<Value> setWithNull = new HashSet<>();
         setWithNull.add(KEY);
         setWithNull.add(null);
-        assertThrows(NullPointerException.class, () -> Map.ofLazy(setWithNull, MAPPER));
+        assertThrows(NullPointerException.class, () -> Lazy.ofMap(Lazy.Mode.ONCE, setWithNull, MAPPER));
     }
 
     @ParameterizedTest
@@ -129,7 +129,7 @@ final class LazyMapTest {
     @MethodSource("nonEmptySets")
     void get(Set<Value> set) {
         LazyConstantTestUtil.CountingFunction<Value, Integer> cf = new LazyConstantTestUtil.CountingFunction<>(MAPPER);
-        var lazy = Map.ofLazy(set, cf);
+        var lazy = Lazy.ofMap(Lazy.Mode.ONCE, set, cf);
         int cnt = 1;
         for (Value v : set) {
             assertEquals(MAPPER.apply(v), lazy.get(v));
@@ -144,7 +144,7 @@ final class LazyMapTest {
     @MethodSource("nonEmptySets")
     void getOrDefault(Set<Value> set) {
         LazyConstantTestUtil.CountingFunction<Value, Integer> cf = new LazyConstantTestUtil.CountingFunction<>(MAPPER);
-        var lazy = Map.ofLazy(set, cf);
+        var lazy = Lazy.ofMap(Lazy.Mode.ONCE, set, cf);
         int cnt = 1;
         for (Value v : set) {
             assertEquals(MAPPER.apply(v), lazy.getOrDefault(v, Integer.MIN_VALUE));
@@ -169,7 +169,7 @@ final class LazyMapTest {
                 LazyConstantTestUtil.sneakyThrow(t);
                 return 42; // Unreachable
             });
-            var lazy = Map.ofLazy(set, cif);
+            var lazy = Lazy.ofMap(Lazy.Mode.ONCE, set, cif);
             var x = assertThrows(NoSuchElementException.class, () -> lazy.get(KEY));
             assertEquals(LazyConstantTestUtil.expectedMessage(exceptionThrown.get().getClass(), KEY), x.getMessage());
             assertEquals(exceptionThrown.get().getClass(), x.getCause().getClass());
@@ -274,7 +274,7 @@ final class LazyMapTest {
     @MethodSource("nonEmptySets")
     void circular(Set<Value> set) {
         final AtomicReference<Map<?, ?>> ref = new AtomicReference<>();
-        Map<Value, Map<?, ?>> lazy = Map.ofLazy(set, _ -> ref.get());
+        Map<Value, Map<?, ?>> lazy = Lazy.ofMap(Lazy.Mode.ONCE, set, _ -> ref.get());
         ref.set(lazy);
         lazy.get(KEY);
         var toString = lazy.toString();
@@ -287,7 +287,7 @@ final class LazyMapTest {
     void recursiveCall(Set<Value> set) {
         final AtomicReference<Map<Value, ?>> ref = new AtomicReference<>();
         @SuppressWarnings("unchecked")
-        Map<Value, Map<Value, Object>> lazy = Map.ofLazy(set, k -> (Map<Value, Object>) ref.get().get(k));
+        Map<Value, Map<Value, Object>> lazy = Lazy.ofMap(Lazy.Mode.ONCE, set, k -> (Map<Value, Object>) ref.get().get(k));
         ref.set(lazy);
         var x = assertThrows(NoSuchElementException.class, () -> lazy.get(KEY));
         assertEquals(LazyConstantTestUtil.expectedMessage(IllegalStateException.class, KEY), x.getMessage());
@@ -313,7 +313,7 @@ final class LazyMapTest {
 
         final AtomicReference<Map<NaughtyKey, ?>> ref = new AtomicReference<>();
         @SuppressWarnings("unchecked")
-        Map<NaughtyKey, Map<Value, Object>> lazy = Map.ofLazy(set, k -> (Map<Value, Object>) ref.get().get(k));
+        Map<NaughtyKey, Map<Value, Object>> lazy = Lazy.ofMap(Lazy.Mode.ONCE, set, k -> (Map<Value, Object>) ref.get().get(k));
         ref.set(lazy);
         var x = assertThrows(NoSuchElementException.class, () -> lazy.get(key));
         // We recurse here so `NaughtyKey.toString` is called twice before reentry is prevented
@@ -509,7 +509,7 @@ final class LazyMapTest {
 
     @Test
     void nullResult() {
-        var lazy = Map.ofLazy(Set.of(0), _ -> null);
+        var lazy = Lazy.ofMap(Lazy.Mode.ONCE, Set.of(0), _ -> null);
         var x = assertThrows(NoSuchElementException.class, () -> lazy.getOrDefault(0, 1));
         assertEquals(LazyConstantTestUtil.expectedMessage(NullPointerException.class, 0), x.getMessage());
         assertEquals(NullPointerException.class, x.getCause().getClass());
@@ -520,7 +520,7 @@ final class LazyMapTest {
     @MethodSource("allSets")
     void functionHolder(Set<Value> set) {
         LazyConstantTestUtil.CountingFunction<Value, Integer> cif = new LazyConstantTestUtil.CountingFunction<>(MAPPER);
-        Map<Value, Integer> lazy = Map.ofLazy(set, cif);
+        Map<Value, Integer> lazy = Lazy.ofMap(Lazy.Mode.ONCE, set, cif);
 
         Object holder = LazyConstantTestUtil.functionHolder(lazy);
 
@@ -540,7 +540,7 @@ final class LazyMapTest {
     @MethodSource("allSets")
     void functionHolderViaEntrySet(Set<Value> set) {
         LazyConstantTestUtil.CountingFunction<Value, Integer> cif = new LazyConstantTestUtil.CountingFunction<>(MAPPER);
-        Map<Value, Integer> lazy = Map.ofLazy(set, cif);
+        Map<Value, Integer> lazy = Lazy.ofMap(Lazy.Mode.ONCE, set, cif);
 
         Object holder = LazyConstantTestUtil.functionHolder(lazy);
 
@@ -566,7 +566,7 @@ final class LazyMapTest {
             CountDownLatch release = new CountDownLatch(1);
             CountDownLatch competing = new CountDownLatch(2);
 
-            Map<Value, Integer> constant = Map.ofLazy(set, i -> {
+            Map<Value, Integer> constant = Lazy.ofMap(Lazy.Mode.ONCE, set, i -> {
                 calls.incrementAndGet();
                 entered.countDown();
                 try {
@@ -612,7 +612,7 @@ final class LazyMapTest {
             CountDownLatch release = new CountDownLatch(1);
             CountDownLatch waiting = new CountDownLatch(1);
 
-            Map<Value, Integer> constant = Map.ofLazy(set, i -> {
+            Map<Value, Integer> constant = Lazy.ofMap(Lazy.Mode.ONCE, set, i -> {
                 entered.countDown();
                 try {
                     assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
@@ -651,7 +651,7 @@ final class LazyMapTest {
         CountDownLatch supplierRunning = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
 
-        Map<Value, Integer> constant = Map.ofLazy(set, i -> {
+        Map<Value, Integer> constant = Lazy.ofMap(Lazy.Mode.ONCE, set, i -> {
             supplierRunning.countDown();
             try {
                 assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
@@ -683,7 +683,7 @@ final class LazyMapTest {
     @MethodSource("allSets")
     void underlyingRefViaEntrySetForEach(Set<Value> set) {
         LazyConstantTestUtil.CountingFunction<Value, Integer> cif = new LazyConstantTestUtil.CountingFunction<>(MAPPER);
-        Map<Value, Integer> lazy = Map.ofLazy(set, cif);
+        Map<Value, Integer> lazy = Lazy.ofMap(Lazy.Mode.ONCE, set, cif);
 
         Object holder = LazyConstantTestUtil.functionHolder(lazy);
 
@@ -702,18 +702,18 @@ final class LazyMapTest {
     @Test
     void usesOptimizedVersion() {
         // This test is using name magic but we are in control of the naming.
-        Map<Value, Integer> enumMap = Map.ofLazy(EnumSet.of(KEY), Value::asInt);
+        Map<Value, Integer> enumMap = Lazy.ofMap(Lazy.Mode.ONCE, EnumSet.of(KEY), Value::asInt);
         assertTrue(enumMap.getClass().getName().contains("Enum"), enumMap.getClass().getName());
-        Map<Value, Integer> emptyMap = Map.ofLazy(EnumSet.noneOf(Value.class), Value::asInt);
+        Map<Value, Integer> emptyMap = Lazy.ofMap(Lazy.Mode.ONCE, EnumSet.noneOf(Value.class), Value::asInt);
         assertFalse(emptyMap.getClass().getName().contains("Enum"), emptyMap.getClass().getName());
-        Map<Value, Integer> regularMap = Map.ofLazy(Set.of(KEY), Value::asInt);
+        Map<Value, Integer> regularMap = Lazy.ofMap(Lazy.Mode.ONCE, Set.of(KEY), Value::asInt);
         assertFalse(regularMap.getClass().getName().contains("Enum"), regularMap.getClass().getName());
     }
 
     @Test
     void overriddenEnum() {
         final var overridden = Value.THIRTEEN;
-        Map<Value, Integer> enumMap = Map.ofLazy(EnumSet.of(overridden), MAPPER);
+        Map<Value, Integer> enumMap = Lazy.ofMap(Lazy.Mode.ONCE, EnumSet.of(overridden), MAPPER);
         assertEquals(MAPPER.apply(overridden), enumMap.get(overridden), enumMap.toString());
     }
 
@@ -721,7 +721,7 @@ final class LazyMapTest {
     void enumAliasing() {
         enum MyEnum {FOO, BAR}
         enum MySecondEnum{BAZ, QUX}
-        Map<MyEnum, Integer> mapEnum = Map.ofLazy(EnumSet.allOf(MyEnum.class), MyEnum::ordinal);
+        Map<MyEnum, Integer> mapEnum = Lazy.ofMap(Lazy.Mode.ONCE, EnumSet.allOf(MyEnum.class), MyEnum::ordinal);
         assertEquals(MyEnum.BAR.ordinal(), mapEnum.get(MyEnum.BAR));
         // Make sure class is checked, not just `ordinal()`
         assertNull(mapEnum.get(MySecondEnum.QUX));
@@ -763,7 +763,7 @@ final class LazyMapTest {
 
 
     static Map<Value, Integer> newLazyMap(Set<Value> set) {
-        return Map.ofLazy(set, MAPPER);
+        return Lazy.ofMap(Lazy.Mode.ONCE, set, MAPPER);
     }
     static Map<Value, Integer> newRegularMap(Set<Value> set) {
         return set.stream()

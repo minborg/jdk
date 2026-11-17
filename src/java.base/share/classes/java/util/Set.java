@@ -25,11 +25,6 @@
 
 package java.util;
 
-import jdk.internal.javac.PreviewFeature;
-
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-
 /**
  * A collection that contains no duplicate elements.  More formally, sets
  * contain no pair of elements {@code e1} and {@code e2} such that
@@ -69,8 +64,8 @@ import java.util.function.Supplier;
  * interface.
  *
  * <h2><a id="unmodifiable">Unmodifiable Sets</a></h2>
- * <p>The {@link Set#of(Object...) Set.of},
- * {@link Set#copyOf Set.copyOf}, and {@link Set#ofLazy(Set, Predicate) Set.ofLazy}
+ * <p>The {@link Set#of(Object...) Set.of} and
+ * {@link Set#copyOf Set.copyOf}
  * static factory methods
  * provide a convenient way to create unmodifiable sets. The {@code Set}
  * instances created by these methods have the following characteristics:
@@ -98,6 +93,9 @@ import java.util.function.Supplier;
  * <a href="{@docRoot}/serialized-form.html#java.util.CollSer">Serialized Form</a>
  * page.
  * </ul>
+ *
+ * <p>For unmodifiable sets with lazily computed membership, see
+ * {@link Lazy#ofSet(Lazy.Mode, Set, java.util.function.Predicate) Lazy.ofSet}.
  *
  * <p>This interface is a member of the
  * <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">
@@ -225,7 +223,6 @@ public interface Set<E> extends Collection<E> {
      */
     <T> T[] toArray(T[] a);
 
-
     // Modification Operations
 
     /**
@@ -260,7 +257,6 @@ public interface Set<E> extends Collection<E> {
      */
     boolean add(E e);
 
-
     /**
      * Removes the specified element from this set if it is present
      * (optional operation).  More formally, removes an element {@code e}
@@ -283,7 +279,6 @@ public interface Set<E> extends Collection<E> {
      *         is not supported by this set
      */
     boolean remove(Object o);
-
 
     // Bulk Operations
 
@@ -386,7 +381,6 @@ public interface Set<E> extends Collection<E> {
      *         is not supported by this set
      */
     void clear();
-
 
     // Comparison and hashing
 
@@ -740,106 +734,4 @@ public interface Set<E> extends Collection<E> {
             return (Set<E>)Set.of(new HashSet<>(coll).toArray());
         }
     }
-
-    /**
-     * {@return a new lazily computed set whose logical membership for each distinct
-     *          element candidate in the set of {@code elementCandidates} is
-     *          computed via the provided {@code computingFunction} on demand}
-     * <p>
-     * In the following, the term <em>membership status</em> is used to indicate whether
-     * an element belongs to the returned set or not. That is, if the membership status
-     * for element {@code E} is {@code true}, then {@code E} <em>is</em> a member of the
-     * returned set. Conversely, if the membership status for element {@code E} is
-     * {@code false}, then {@code E} <em>is not</em> a member of the returned set.
-     * <p>
-     * The returned set is an {@linkplain Collection##unmodifiable unmodifiable} set. The
-     * elements in the returned set are derived from the element candidates given at
-     * construction in combination with evaluating each element's membership status. The
-     * set's element membership statuses are lazily computed via the provided
-     * {@code computingFunction} when first accessed (e.g., via
-     * {@linkplain Set#contains(Object) Set::contains}). Once the membership status has
-     * been successfully computed for an element candidate, the associated membership
-     * status is initialized (i.e., either as <em>a logical member</em> or as
-     * <em>a logical non-member</em>).
-     * <p>
-     * The returned {@code Set<E>} can be thought of as a set backed by a
-     * {@code Map<E, Supplier<Boolean>>} field, where each supplier is created by
-     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The factory implementation
-     * may provide better performance and storage efficiency than this model.
-     * <p>
-     * The returned set follows the
-     * <a href="doc-files/coll-reference.html#lazy-collections">shared specification
-     * for lazy collections</a>,
-     * with one independently cached membership status per element candidate.
-     * <p>
-     * Computed membership decisions remain cached for the lifetime of the returned set.
-     * Its unmodifiability does not make element candidates immutable or make subsequent
-     * mutations thread-safe.
-     * <p>
-     * If the provided {@code Set} of {@code elementCandidates} is subsequently modified,
-     * the returned {@code Set} will not reflect such modifications.
-     * <p>
-     * The {@code Set} of {@code elementCandidates} must use
-     * {@linkplain Set#equals(Object) equals()} as its equivalence relation, or its
-     * comparison method must be consistent with {@code equals()}, otherwise the behavior
-     * is unspecified.
-     * <p>
-     * Here is an example involving an application that manages various configurable
-     * options -- commonly referred to as "switches" -- that control its behavior. The
-     * state of these switches can be determined through the command line, a configuration
-     * file, or even a database connection. By using a lazy set, we ensure that the states
-     * of these switches are evaluated only once. Once computed, the results are eligible
-     * for constant folding by the JVM:
-     * {@snippet lang = java:
-     * import java.util.EnumSet;
-     * import java.util.Locale;
-     * import java.util.Set;
-     *
-     * class Application {
-     *
-     *     enum Option {VERBOSE, DRY_RUN, STRICT}
-     *
-     *     // Lazily initialized Set of Options
-     *     static final Set<Option> OPTIONS =
-     *             Set.ofLazy(EnumSet.allOf(Option.class), Application::isEnabled);
-     *
-     *     // Return true when the given Option is enabled
-     *     private static boolean isEnabled(Option option) {
-     *         // Read the corresponding command-line system property.
-     *         return Boolean.getBoolean(option.name().toLowerCase(Locale.ROOT));
-     *     }
-     *
-     *     public static void process() {
-     *         // The if condition (and subsequent eliminated branch) is
-     *         // eligible for constant folding (and code elimination).
-     *         if (OPTIONS.contains(Option.DRY_RUN)) {
-     *             // Skip processing in DRY_RUN mode
-     *             return;
-     *         }
-     *         // Actual processing logic
-     *     }
-     *
-     * }
-     * }
-     *
-     * @param elementCandidates the (non-null) element candidates to be evaluated
-     * @param computingFunction to invoke whenever the membership status of an element
-     *                          candidate is first computed
-     * @param <E>               the type of elements maintained by the returned set
-     * @throws NullPointerException if the provided set of {@code elementCandidates} is
-     *                              {@code null}, if the set of {@code elementCandidates}
-     *                              contains a {@code null} element, or if the provided
-     *                              {@code computingFunction} is {@code null}
-     *
-     * @see Supplier#ofLazy(Supplier) lazy supplier
-     * @since 27
-     */
-    @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
-    static <E> Set<E> ofLazy(Set<? extends E> elementCandidates,
-                             Predicate<? super E> computingFunction) {
-        Objects.requireNonNull(elementCandidates);
-        Objects.requireNonNull(computingFunction);
-        return LazyCollections.ofLazySet(elementCandidates, computingFunction);
-    }
-
 }

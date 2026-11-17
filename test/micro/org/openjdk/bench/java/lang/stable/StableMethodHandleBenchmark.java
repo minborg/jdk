@@ -38,6 +38,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.Lazy;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,7 +67,7 @@ public class StableMethodHandleBenchmark {
     private static final Dcl<MethodHandle> DCL = new Dcl<>(StableMethodHandleBenchmark::identityHandle);
     private static final AtomicReference<MethodHandle> ATOMIC_REFERENCE = new AtomicReference<>(identityHandle());
     private static final Map<String, MethodHandle> MAP = new ConcurrentHashMap<>();
-    private static final Map<String, MethodHandle> STABLE_MAP = Map.ofLazy(Set.of("identityHandle"), _ -> identityHandle());
+    private static final Map<String, MethodHandle> STABLE_MAP = Lazy.ofMap(Lazy.Mode.ONCE, Set.of("identityHandle"), _ -> identityHandle());
 
     static {
         MAP.put("identityHandle", identityHandle());

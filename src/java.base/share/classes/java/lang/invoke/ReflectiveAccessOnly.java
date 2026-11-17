@@ -66,7 +66,7 @@ import jdk.internal.javac.PreviewFeature;
  * @since 29
  */
 @Documented
-@Target({ElementType.FIELD, ElementType.METHOD, ElementType.CONSTRUCTOR})
+@Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
 public @interface ReflectiveAccessOnly {

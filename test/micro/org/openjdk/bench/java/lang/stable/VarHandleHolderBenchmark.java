@@ -38,6 +38,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.VarHandle;
+import java.util.Lazy;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -85,7 +86,7 @@ public class VarHandleHolderBenchmark {
             "x", LAYOUT.varHandle(groupElement("x")),
             "y", LAYOUT.varHandle(groupElement("y")));
 
-    private static final Map<String, VarHandle> S_MAP = Map.ofLazy(
+    private static final Map<String, VarHandle> S_MAP = Lazy.ofMap(Lazy.Mode.ONCE,
             Set.of("x", "y"),
             VAR_HANDLE_FUNCTION);
 

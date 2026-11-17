@@ -35,6 +35,7 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 import java.util.EnumSet;
+import java.util.Lazy;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -60,12 +61,12 @@ public class StableMapSingleBenchmark {
     private static final int SIZE = 100;
     private static final Set<Integer> SET = IntStream.range(0, SIZE).boxed().collect(Collectors.toSet());
 
-    private static final Map<Integer, Integer> MAP = Map.ofLazy(SET, Function.identity());
-    private static final Map<MyEnum, Integer> MAP_ENUM = Map.ofLazy(EnumSet.allOf(MyEnum.class), MyEnum::ordinal);
-    private static final Map<MyEnum, Optional<Integer>> MAP_ENUM_OPTIONAL = Map.ofLazy(EnumSet.allOf(MyEnum.class), e -> Optional.of(e.ordinal()));
+    private static final Map<Integer, Integer> MAP = Lazy.ofMap(Lazy.Mode.ONCE, SET, Function.identity());
+    private static final Map<MyEnum, Integer> MAP_ENUM = Lazy.ofMap(Lazy.Mode.ONCE, EnumSet.allOf(MyEnum.class), MyEnum::ordinal);
+    private static final Map<MyEnum, Optional<Integer>> MAP_ENUM_OPTIONAL = Lazy.ofMap(Lazy.Mode.ONCE, EnumSet.allOf(MyEnum.class), e -> Optional.of(e.ordinal()));
 
-    private final Map<Integer, Integer> map = Map.ofLazy(SET, Function.identity());
-    private final Map<MyEnum, Integer> mapEnum = Map.ofLazy(EnumSet.allOf(MyEnum.class), MyEnum::ordinal);
+    private final Map<Integer, Integer> map = Lazy.ofMap(Lazy.Mode.ONCE, SET, Function.identity());
+    private final Map<MyEnum, Integer> mapEnum = Lazy.ofMap(Lazy.Mode.ONCE, EnumSet.allOf(MyEnum.class), MyEnum::ordinal);
 
     @Benchmark
     public int map() {

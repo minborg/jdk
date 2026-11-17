@@ -29,6 +29,7 @@
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Lazy;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -92,7 +93,7 @@ final class DemoContainerInjectionTest {
         }
 
         static Container of(Set<Class<?>> components, Function<Class<?>, ?> mapper) {
-            return new ComputedContainer(Map.ofLazy(components, mapper));
+            return new ComputedContainer(Lazy.ofMap(Lazy.Mode.ONCE, components, mapper));
         }
 
     }
@@ -106,7 +107,7 @@ final class DemoContainerInjectionTest {
         }
 
         static Container of(Map<Class<?>, Supplier<?>> components) {
-            var map = Map.ofLazy(components.keySet(), t -> components.get(t).get());
+            var map = Lazy.ofMap(Lazy.Mode.ONCE, components.keySet(), t -> components.get(t).get());
             return new ProviderContainer(map);
         }
 

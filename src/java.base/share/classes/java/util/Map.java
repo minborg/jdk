@@ -25,12 +25,9 @@
 
 package java.util;
 
-import jdk.internal.javac.PreviewFeature;
-
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.io.Serializable;
 
 /**
@@ -117,9 +114,8 @@ import java.io.Serializable;
  *
  * <h2><a id="unmodifiable">Unmodifiable Maps</a></h2>
  * <p>The {@link Map#of() Map.of},
- * {@link Map#ofEntries(Map.Entry...) Map.ofEntries},
- * {@link Map#copyOf Map.copyOf}, and
- * {@link Map#ofLazy(Set, Function)}
+ * {@link Map#ofEntries(Map.Entry...) Map.ofEntries}, and
+ * {@link Map#copyOf Map.copyOf}
  * static factory methods provide a convenient way to create unmodifiable maps.
  * The {@code Map}
  * instances created by these methods have the following characteristics:
@@ -148,6 +144,9 @@ import java.io.Serializable;
  * <a href="{@docRoot}/serialized-form.html#java.util.CollSer">Serialized Form</a>
  * page.
  * </ul>
+ *
+ * <p>For unmodifiable maps with lazily computed values, see
+ * {@link Lazy#ofMap(Lazy.Mode, Set, Function) Lazy.ofMap}.
  *
  * <p>This interface is a member of the
  * <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">
@@ -303,7 +302,6 @@ public interface Map<K, V> {
      */
     V remove(Object key);
 
-
     // Bulk Operations
 
     /**
@@ -337,7 +335,6 @@ public interface Map<K, V> {
      *         is not supported by this map
      */
     void clear();
-
 
     // Views
 
@@ -1751,103 +1748,4 @@ public interface Map<K, V> {
             return (Map<K,V>)Map.ofEntries(map.entrySet().toArray(new Entry[0]));
         }
     }
-
-    /**
-     * {@return a new lazily computed map with the provided {@code keys}}
-     * <p>
-     * The returned map is an {@linkplain Collection##unmodifiable unmodifiable} map whose
-     * keys are known at construction. The map's values are lazily computed via the
-     * provided {@code computingFunction} when they are first accessed
-     * (e.g., via {@linkplain Map#get(Object) Map::get}).
-     * <p>
-     * The returned map follows the
-     * <a href="doc-files/coll-reference.html#lazy-collections">shared specification
-     * for lazy collections</a>,
-     * with one independently cached value per key.
-     * <p>
-     * The returned {@code Map<K, V>} can be thought of as a map backed by a
-     * {@code Map<K, Supplier<V>>} field, where each supplier is created by
-     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The factory implementation
-     * may provide better performance and storage efficiency than this model.
-     * <p>
-     * If the computing function returns {@code null}, this is recorded as a computation
-     * failure and the access that performed the computation throws
-     * {@linkplain NoSuchElementException} with a {@linkplain NullPointerException} as
-     * its cause. Hence, just like other unmodifiable maps created via the
-     * {@code Map::of} factories, a lazy map can never contain {@code null} values.
-     * Clients that want to use nullable values can wrap elements into an
-     * {@linkplain Optional} holder.
-     * <p>
-     * The values of any {@link Map#values()} or {@link Map#entrySet()} views of
-     * the returned map are also lazily computed.
-     * <p>
-     * The map strongly references its initialized values. Its unmodifiability does not
-     * make those values immutable or make subsequent mutations thread-safe.
-     * <p>
-     * If the provided {@code Set} of {@code keys} is subsequently modified, the returned
-     * {@code Map} will not reflect such modifications.
-     * <p>
-     * The {@code Set} of {@code keys} must use {@linkplain Set#equals(Object) equals()}
-     * as its equivalence relation, or its comparison method must be consistent with
-     * equals, otherwise the behavior is unspecified.
-     * <p>
-     * Here is an example involving an application that caches the values returned by some
-     * {@code expensiveOperation(int param)} for a given set of input parameters. By
-     * using a lazy map, we ensure that the {@code expensiveOperation(int param)} is
-     * called at most once per distinct input parameter. Once created, the retrieval of
-     * values is eligible for constant folding by the JVM:
-     * {@snippet lang = java:
-     * import java.util.Map;
-     * import java.util.Optional;
-     * import java.util.Set;
-     *
-     * class Application {
-     *
-     *     private static final Map<Integer, Double> CACHE
-     *         = Map.ofLazy(Set.of(0, 1, 3, 42, 97), param -> expensiveOperation(param));
-     *
-     *     public static Optional<Double> cachedExpensiveOperation(int param) {
-     *         return Optional.ofNullable(CACHE.get(param));
-     *     }
-     *
-     *     private static double expensiveOperation(int param) {
-     *         // Replace with the application's expensive computation.
-     *         return Math.sqrt(param);
-     *     }
-     *
-     *      // Eligible for constant folding
-     *      double val = cachedExpensiveOperation(42).orElseThrow();
-     *
-     * }
-     * }
-     *
-     * @param keys              the (non-null) keys in the returned computed map
-     * @param computingFunction to invoke whenever an associated value is first accessed
-     * @param <K>               the type of keys maintained by the returned map
-     * @param <V>               the type of mapped values in the returned map
-     * @throws NullPointerException if the provided set of {@code keys} is {@code null},
-     *         if the set of {@code keys} contains a {@code null} element, or
-     *         if the provided {@code computingFunction} is {@code null}
-     *
-     * @see Supplier#ofLazy(Supplier) lazy supplier
-     * @since 26
-     */
-    @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
-    static <K, V> Map<K, V> ofLazy(Set<? extends K> keys,
-                                   Function<? super K, ? extends V> computingFunction) {
-        // Protect against TOC-TOU attacks.
-        // Also, implicit null check of `keys` and all its elements
-        final Set<K> keyCopies = Set.copyOf(keys);
-        Objects.requireNonNull(computingFunction);
-        // We need to check the instance type using the original `keys` parameter.
-        if (keys instanceof EnumSet<?> && !keyCopies.isEmpty()) {
-            @SuppressWarnings("unchecked")
-            var enumMap = (Map<K, V>) LazyCollections.ofLazyMapWithEnumKeys(keyCopies, computingFunction);
-            return enumMap;
-        } else {
-            // A computed map is not Serializable, so we cannot return `Map.of()` if `keys.isEmpty()`
-            return LazyCollections.ofLazyMap(keyCopies, computingFunction);
-        }
-    }
-
 }

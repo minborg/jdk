@@ -35,6 +35,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
+import java.util.Lazy;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -60,10 +61,10 @@ public class StableMapBenchmark {
     private static final int SIZE = 100;
     private static final Set<Integer> SET = IntStream.range(0, SIZE).boxed().collect(Collectors.toSet());
 
-    private static final Map<Integer, Integer> MAP = Map.ofLazy(SET, Function.identity());
+    private static final Map<Integer, Integer> MAP = Lazy.ofMap(Lazy.Mode.ONCE, SET, Function.identity());
     private static final Function<Integer, Integer> FUNCTION = MAP::get;
 
-    private final Map<Integer, Integer> map = Map.ofLazy(SET, Function.identity());
+    private final Map<Integer, Integer> map = Lazy.ofMap(Lazy.Mode.ONCE, SET, Function.identity());
     private final Function<Integer, Integer> function = map::get;
 
     @Benchmark

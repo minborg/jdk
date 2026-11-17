@@ -25,11 +25,6 @@
 
 package java.util;
 
-import jdk.internal.foreign.Utils;
-import jdk.internal.javac.PreviewFeature;
-
-import java.util.function.IntFunction;
-import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 /**
@@ -92,8 +87,8 @@ import java.util.function.UnaryOperator;
  * interface.
  *
  * <h2><a id="unmodifiable">Unmodifiable Lists</a></h2>
- * <p>The {@link List#of(Object...) List.of},
- * {@link List#copyOf List.copyOf}, and {@link List#ofLazy(int, IntFunction)} static
+ * <p>The {@link List#of(Object...) List.of} and
+ * {@link List#copyOf List.copyOf} static
  * factory methods provide a convenient way to create unmodifiable lists. The {@code List}
  * instances created by these methods have the following characteristics:
  *
@@ -121,6 +116,9 @@ import java.util.function.UnaryOperator;
  * <a href="{@docRoot}/serialized-form.html#java.util.CollSer">Serialized Form</a>
  * page.
  * </ul>
+ *
+ * <p>For unmodifiable lists with lazily computed elements, see
+ * {@link Lazy#ofList(Lazy.Mode, int, java.util.function.IntFunction) Lazy.ofList}.
  *
  * <p>This interface is a member of the
  * <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">
@@ -245,7 +243,6 @@ public interface List<E> extends SequencedCollection<E> {
      */
     <T> T[] toArray(T[] a);
 
-
     // Modification Operations
 
     /**
@@ -294,7 +291,6 @@ public interface List<E> extends SequencedCollection<E> {
      *         is not supported by this list
      */
     boolean remove(Object o);
-
 
     // Bulk Modification Operations
 
@@ -526,7 +522,6 @@ public interface List<E> extends SequencedCollection<E> {
      */
     void clear();
 
-
     // Comparison and hashing
 
     /**
@@ -563,7 +558,6 @@ public interface List<E> extends SequencedCollection<E> {
      * @see #equals(Object)
      */
     int hashCode();
-
 
     // Positional Access Operations
 
@@ -633,7 +627,6 @@ public interface List<E> extends SequencedCollection<E> {
      */
     E remove(int index);
 
-
     // Search Operations
 
     /**
@@ -673,7 +666,6 @@ public interface List<E> extends SequencedCollection<E> {
      *         (<a href="Collection.html#optional-restrictions">optional</a>)
      */
     int lastIndexOf(Object o);
-
 
     // List Iterators
 
@@ -1195,88 +1187,4 @@ public interface List<E> extends SequencedCollection<E> {
     static <E> List<E> copyOf(Collection<? extends E> coll) {
         return ImmutableCollections.listCopy(coll);
     }
-
-    /**
-     * {@return a new lazily computed list of the provided {@code size}}
-     * <p>
-     * The returned list is an {@linkplain Collection##unmodifiable unmodifiable} list
-     * for which the elements are lazily computed via the provided
-     * {@code computingFunction} when they are first accessed
-     * (e.g., via {@linkplain List#get(int) List::get}).
-     * <p>
-     * The returned {@code List<E>} can be thought of as a list backed by a
-     * {@code List<Supplier<E>>} field, where each supplier is created by
-     * {@linkplain Supplier#ofLazy(Supplier) Supplier.ofLazy}. The factory implementation
-     * may provide better performance and storage efficiency than this model.
-     * <p>
-     * The returned list follows the
-     * <a href="doc-files/coll-reference.html#lazy-collections">shared specification
-     * for lazy collections</a>,
-     * with one independently cached element per index.
-     * <p>
-     * If the computing function returns {@code null}, this is recorded as a computation
-     * failure and the access that performed the computation throws
-     * {@linkplain NoSuchElementException} with a {@linkplain NullPointerException} as
-     * its cause. Hence, just like other unmodifiable lists created via the
-     * {@code List::of} factories, a lazy list can never contain {@code null}
-     * elements. Clients that want to use nullable elements can wrap elements into an
-     * {@linkplain Optional} holder.
-     * <p>
-     * The elements of any {@link List#subList(int, int) subList()} or
-     * {@link List#reversed()} views of the returned list are also lazily computed.
-     * <p>
-     * The returned list and its {@link List#subList(int, int) subList()} or
-     * {@link List#reversed()} views implement the {@link RandomAccess} interface.
-     * <p>
-     * The list strongly references its initialized elements. Its unmodifiability does
-     * not make those elements immutable or make subsequent mutations thread-safe.
-     * <p>
-     * Here is an example involving an application that maintains three separate
-     * {@code OrderController} components. Depending on a thread's id, one of the
-     * three {@code OrderController} components will be selected. By using a lazy list,
-     * we ensure that at most three {@code OrderController} instances are created. Once
-     * created, the component retrieval is eligible for constant folding by the JVM:
-     * {@snippet lang = java:
-     * import java.util.List;
-     *
-     * class Application {
-     *
-     *     static final class OrderController {
-     *         // Application-specific state and behavior.
-     *     }
-     *
-     *     private static final int POOL_SIZE = 3;
-     *
-     *     static final List<OrderController> ORDERS
-     *         = List.ofLazy(POOL_SIZE, _ -> new OrderController());
-     *
-     *     public static OrderController orders() {
-     *         long index = Thread.currentThread().threadId() % POOL_SIZE;
-     *         return ORDERS.get((int)index);
-     *     }
-     *
-     *      // Eligible for constant folding
-     *      OrderController orders = orders();
-     * }
-     * }
-     *
-     * @param size              the size of the returned lazy list
-     * @param computingFunction to invoke whenever an element is first accessed
-     *                          (may not return {@code null})
-     * @param <E>               the type of elements in the returned list
-     * @throws IllegalArgumentException if the provided {@code size} is negative.
-     * @throws NullPointerException     if the provided {@code computingFunction} is {@code null}
-     *
-     * @see Supplier#ofLazy(Supplier) lazy supplier
-     * @since 26
-     */
-    @PreviewFeature(feature = PreviewFeature.Feature.LAZY_CONSTANTS)
-    static <E> List<E> ofLazy(int size,
-                              IntFunction<? extends E> computingFunction) {
-        Utils.checkNonNegativeArgument(size, "size");
-        Objects.requireNonNull(computingFunction);
-        // A computed list is not Serializable, so we cannot return `List.of()` if `size == 0`
-        return LazyCollections.ofLazyList(size, computingFunction);
-    }
-
 }

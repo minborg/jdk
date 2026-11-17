@@ -34,6 +34,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
+import java.util.Lazy;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
@@ -55,10 +56,10 @@ public class StableListSingleBenchmark {
     private static final int SIZE = 100;
     private static final IntFunction<Integer> IDENTITY = i -> i;
 
-    private static final List<Integer> STABLE = List.ofLazy(SIZE, IDENTITY);
+    private static final List<Integer> STABLE = Lazy.ofList(Lazy.Mode.ONCE, SIZE, IDENTITY);
     private static final IntFunction<Integer> INT_FUNCTION = STABLE::get;
 
-    private final List<Integer> stable = List.ofLazy(SIZE, IDENTITY);
+    private final List<Integer> stable = Lazy.ofList(Lazy.Mode.ONCE, SIZE, IDENTITY);
     private final IntFunction<Integer> intFunction = stable::get;
 
     @Benchmark

@@ -256,79 +256,76 @@ The following factories associate inputs with independently cached
 results:
 <ul>
 <li><a href=
-"../List.html#ofLazy(int,java.util.function.IntFunction)"><strong>
-List.ofLazy</strong></a> - Computes an element for each list index.</li>
+"../Lazy.html#ofList(java.util.Lazy.Mode,int,java.util.function.IntFunction)"><strong>
+Lazy.ofList</strong></a> - Computes an element for each list index.</li>
 <li><a href=
-"../Map.html#ofLazy(java.util.Set,java.util.function.Function)"><strong>
-Map.ofLazy</strong></a> - Computes a value for each key.</li>
+"../Lazy.html#ofMap(java.util.Lazy.Mode,java.util.Set,java.util.function.Function)"><strong>
+Lazy.ofMap</strong></a> - Computes a value for each key.</li>
 <li><a href=
-"../Set.html#ofLazy(java.util.Set,java.util.function.Predicate)"><strong>
-Set.ofLazy</strong></a> - Computes membership status for each element
+"../Lazy.html#ofSet(java.util.Lazy.Mode,java.util.Set,java.util.function.Predicate)"><strong>
+Lazy.ofSet</strong></a> - Computes membership status for each element
 candidate.</li>
 </ul>
 The returned collections share the following characteristics:
 <ul>
+<li id="lazy-collections-unmodifiable"><strong>Unmodifiability and
+identity</strong> - All mutator methods throw
+<a href="../../lang/UnsupportedOperationException.html"><code>
+UnsupportedOperationException</code></a>, including operations that would
+have no effect. These collections are
+<a href="../../lang/doc-files/ValueBased.html">value-based</a>.
+Equal instances should be treated as interchangeable and should not be
+used for synchronization. Callers should make no assumptions about
+their identity. The iteration order of set elements and map entries
+is unspecified.</li>
 <li id="lazy-collections-computation"><strong>Computation and thread
-safety</strong> - Each result is computed on demand. The computing
-function is invoked at most once per input, even when the collection is
-accessed concurrently, and runs on the thread accessing that result.
-Competing accesses from other threads to the same input wait until its
-computation completes successfully or with failure. Computations for
-different inputs may proceed concurrently, so the computing function
-must support concurrent invocation when the collection is accessed
-concurrently. Successfully computed results remain cached for the
-lifetime of the collection.
+safety</strong> - Each result is computed on demand, on a thread
+accessing that result. The <a href="../Lazy.html#modes">computation
+mode</a> determines whether computations for the same input are
+serialized with failures recorded (<a href="../Lazy.Mode.html#ONCE"><code>
+ONCE</code></a>), or may race with failures left uncached
+(<a href="../Lazy.Mode.html#PUBLISH"><code>PUBLISH</code></a>).
+Each collection factory requires an explicit mode.
+Computations for different inputs may proceed concurrently in either
+mode, so the computing function must support concurrent invocation
+when the collection is accessed concurrently. The installed result
+for each input remains cached for the lifetime of the collection.
 <p>
-Each successfully computed result is published with the <a href=
+Each installed result is published with the <a href=
 "../../lang/invoke/StableAccessors.html#memory-effects">memory effects
 described by StableAccessors</a>. These guarantees apply separately to
 each input; they do not impose a total order on accesses to the
 collection or provide additional visibility guarantees for actions
 performed after publication.
 <p>
-The lazy computation machinery does not cancel computation or clear
-interruption status. The computing function may respond to interruption
-according to its own behavior. An indefinitely blocked computation may
-indefinitely block access to the same input; no timeout or cancellation
-operation is provided.
+The <a href="../Lazy.html#thread-safety">thread-safety and interruption
+rules</a> apply in both modes. In <code>ONCE</code> mode, an indefinitely
+blocked computation may indefinitely block other accesses to the same
+input. In <code>PUBLISH</code> mode, other accesses may compute their own
+candidates; a computation already in progress is not cancelled when
+another invocation publishes a result.
 <p>
-Computing functions can depend on other lazily computed results. Cyclic
-dependencies can cause recursive access or deadlock between threads
-waiting for one another. Use during static initialization also follows
-the class initialization rules in <a href=
-"../../../../../specs/jls/jls-12.html#jls-12.4">JLS &sect;12.4</a>;
-cycles can cause initialization errors or deadlock.</li>
-<li id="lazy-collections-failures"><strong>Failures</strong> - If the
-computing function throws an unchecked exception (a runtime exception
-or an error), the result for that input is not initialized. Instead,
-the failure is recorded, and the access that performed the computation
-throws <a href="../NoSuchElementException.html"><code>
-NoSuchElementException</code></a> with the original exception as its
-cause. Subsequent accesses requiring that result throw
-<code>NoSuchElementException</code> with no cause and with a message
-containing the name of the original exception's class. The computing
-function is not invoked again for that input.
-<p>
-A recursive access to the same input during its computation is rejected
-with <a href="../../lang/IllegalStateException.html"><code>
-IllegalStateException</code></a>. If that exception escapes the
-computing function, the initiating access records the failure and
-throws <code>NoSuchElementException</code> with that exception as its
-cause.</li>
+Computing functions can depend on other lazily computed results, subject
+to the <a href="../Lazy.html#dependencies">dependency and recursion
+rules</a>.</li>
+<li id="lazy-collections-failures"><strong>Failures</strong> - The
+<a href="../Lazy.html#failures">failure policy</a> is applied separately
+to each input. <code>ONCE</code> records failures and reports them through
+<a href="../NoSuchElementException.html"><code>NoSuchElementException</code></a>.
+<code>PUBLISH</code> propagates failures unchanged and permits later
+attempts if no result has been installed.</li>
 <li id="lazy-collections-object-methods"><strong>Object methods</strong> -
 The returned collections' <a href=
 "../../lang/Object.html#equals(java.lang.Object)"><code>equals</code></a>,
 <a href="../../lang/Object.html#hashCode()"><code>hashCode</code></a>,
 and <a href="../../lang/Object.html#toString()"><code>toString</code></a>
-methods may trigger computation of one or more results. If computation
-fails for at least one input, <code>hashCode</code> and
-<code>toString</code> throw <code>NoSuchElementException</code>. The
-<code>equals</code> method throws <code>NoSuchElementException</code>
-if its comparison requires a result that could not be computed.</li>
+methods may trigger computation of one or more results. If such a method
+requires a result whose computation fails, the failure is reported
+according to the selected mode.</li>
 <li id="lazy-collections-retention"><strong>Retention and
 serialization</strong> - A returned collection strongly references its
-computing function at least until computation for every input has
-completed, successfully or with failure. Its unmodifiability does not
+computing function at least until every input has an installed result
+or, in <code>ONCE</code> mode, a recorded failure. Its unmodifiability does not
 make its elements, keys, or values immutable or make subsequent
 mutations thread-safe.
 <p>
@@ -337,7 +334,7 @@ Serializable</code></a>, even if their contents or computing functions
 are serializable.
 <p>
 <strong>Implementation Note:</strong> For the lazily computed
-collections described above, after computation for every input has
+collections using <code>ONCE</code>, after computation for every input has
 completed successfully or with failure, the implementation releases
 its reference to the computing function. The function becomes eligible
 for garbage collection if it is not otherwise strongly reachable.</li>

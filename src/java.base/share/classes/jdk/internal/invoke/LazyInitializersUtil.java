@@ -29,6 +29,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.ReflectiveAccessOnly;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import jdk.internal.value.ValueClass;
 import sun.invoke.util.VerifyAccess;
 import sun.invoke.util.Wrapper;
 
@@ -75,6 +76,12 @@ public final class LazyInitializersUtil {
     public static void checkFieldFinalState(Field field, boolean isFinal) {
         if (Modifier.isFinal(field.getModifiers()) != isFinal) {
             throw new IllegalArgumentException("Field " + field.getName() + " is " + (isFinal ? "not " : "") + "final");
+        }
+    }
+
+    public static void checkFieldNotNullRestricted(Field field) {
+        if (ValueClass.isNullRestrictedField(field)) {
+            throw new IllegalArgumentException("Field " + field.getName() + " is null-restricted");
         }
     }
 

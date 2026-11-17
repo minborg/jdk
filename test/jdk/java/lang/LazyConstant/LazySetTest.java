@@ -97,12 +97,12 @@ final class LazySetTest {
     @ParameterizedTest
     @MethodSource("allSets")
     void factoryInvariants(Set<Value> set) {
-        assertThrows(NullPointerException.class, () -> Set.ofLazy(set, null), set.getClass().getSimpleName());
-        assertThrows(NullPointerException.class, () -> Set.ofLazy(null, PREDICATE));
+        assertThrows(NullPointerException.class, () -> Lazy.ofSet(Lazy.Mode.ONCE, set, null), set.getClass().getSimpleName());
+        assertThrows(NullPointerException.class, () -> Lazy.ofSet(Lazy.Mode.ONCE, null, PREDICATE));
         Set<Value> setWithNull = new HashSet<>();
         setWithNull.add(MEMBER);
         setWithNull.add(null);
-        assertThrows(NullPointerException.class, () -> Set.ofLazy(setWithNull, PREDICATE));
+        assertThrows(NullPointerException.class, () -> Lazy.ofSet(Lazy.Mode.ONCE, setWithNull, PREDICATE));
     }
 
     @ParameterizedTest
@@ -125,7 +125,7 @@ final class LazySetTest {
         LazyConstantTestUtil.CountingPredicate<Value> cif = new LazyConstantTestUtil.CountingPredicate<>(_ -> {
             throw new UnsupportedOperationException("Initial exception");
         });
-        var lazy = Set.ofLazy(set, cif);
+        var lazy = Lazy.ofSet(Lazy.Mode.ONCE, set, cif);
         var x = assertThrows(NoSuchElementException.class, () -> lazy.contains(MEMBER));
         assertEquals(LazyConstantTestUtil.expectedMessage(UnsupportedOperationException.class, MEMBER), x.getMessage());
         assertEquals(UnsupportedOperationException.class, x.getCause().getClass());
@@ -231,7 +231,7 @@ final class LazySetTest {
             }
         }
 
-        var lazy = Set.ofLazy(Set.of(new ZeroHashCode()), e -> true);
+        var lazy = Lazy.ofSet(Lazy.Mode.ONCE, Set.of(new ZeroHashCode()), e -> true);
         assertEquals(hc, lazy.hashCode());
     }
 
@@ -250,7 +250,7 @@ final class LazySetTest {
     void recursiveCall(Set<Value> set) {
         final AtomicReference<Set<Value>> ref = new AtomicReference<>();
         @SuppressWarnings("unchecked")
-        Set<Value> lazy = Set.ofLazy(set, k -> ref.get().contains(k));
+        Set<Value> lazy = Lazy.ofSet(Lazy.Mode.ONCE, set, k -> ref.get().contains(k));
         ref.set(lazy);
         var x = assertThrows(NoSuchElementException.class, () -> lazy.contains(MEMBER));
         assertEquals(LazyConstantTestUtil.expectedMessage(java.lang.IllegalStateException.class, MEMBER), x.getMessage());
@@ -296,7 +296,7 @@ final class LazySetTest {
                 CountDownLatch release = new CountDownLatch(1);
                 CountDownLatch competing = new CountDownLatch(2);
 
-                Set<Value> constant = Set.ofLazy(set, i -> {
+                Set<Value> constant = Lazy.ofSet(Lazy.Mode.ONCE, set, i -> {
                     calls.incrementAndGet();
                     entered.countDown();
                     try {
@@ -345,7 +345,7 @@ final class LazySetTest {
                 CountDownLatch release = new CountDownLatch(1);
                 CountDownLatch waiting = new CountDownLatch(1);
 
-                Set<Value> constant = Set.ofLazy(set, i -> {
+                Set<Value> constant = Lazy.ofSet(Lazy.Mode.ONCE, set, i -> {
                     entered.countDown();
                     try {
                         assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
@@ -387,7 +387,7 @@ final class LazySetTest {
             CountDownLatch supplierRunning = new CountDownLatch(1);
             CountDownLatch release = new CountDownLatch(1);
 
-            Set<Value> constant = Set.ofLazy(set, i -> {
+            Set<Value> constant = Lazy.ofSet(Lazy.Mode.ONCE, set, i -> {
                 supplierRunning.countDown();
                 try {
                     assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
@@ -450,7 +450,7 @@ final class LazySetTest {
     @Test
     void overriddenEnum() {
         final var overridden = Value.THIRTEEN;
-        Set<Value> enumMap = Set.ofLazy(EnumSet.of(overridden), PREDICATE);
+        Set<Value> enumMap = Lazy.ofSet(Lazy.Mode.ONCE, EnumSet.of(overridden), PREDICATE);
         assertEquals(PREDICATE.test(overridden), enumMap.contains(overridden), enumMap.toString());
     }
 
@@ -485,7 +485,7 @@ final class LazySetTest {
     }
 
     static Set<Value> newLazySet(Set<Value> set) {
-        return Set.ofLazy(set, PREDICATE);
+        return Lazy.ofSet(Lazy.Mode.ONCE, set, PREDICATE);
     }
 
     static Set<Value> newRegularSet(Set<Value> set) {
@@ -545,7 +545,7 @@ final class LazySetTest {
 
         // Lazily initialized Set of Options
         static final Set<Option> OPTIONS =
-                Set.ofLazy(EnumSet.allOf(Option.class), Application::isEnabled);
+                Lazy.ofSet(Lazy.Mode.ONCE, EnumSet.allOf(Option.class), Application::isEnabled);
 
         public static void process() {
             if (OPTIONS.contains(Option.DRY_RUN)) {

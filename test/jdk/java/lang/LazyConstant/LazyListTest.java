@@ -59,8 +59,8 @@ final class LazyListTest {
 
     @Test
     void factoryInvariants() {
-        assertThrows(NullPointerException.class, () -> List.ofLazy(SIZE, null));
-        assertThrows(IllegalArgumentException.class, () -> List.ofLazy(-1, IDENTITY));
+        assertThrows(NullPointerException.class, () -> Lazy.ofList(Lazy.Mode.ONCE, SIZE, null));
+        assertThrows(IllegalArgumentException.class, () -> Lazy.ofList(Lazy.Mode.ONCE, -1, IDENTITY));
     }
 
     @Test
@@ -78,7 +78,7 @@ final class LazyListTest {
     @Test
     void get() {
         LazyConstantTestUtil.CountingIntFunction<Integer> cif = new LazyConstantTestUtil.CountingIntFunction<Integer>(IDENTITY);
-        var lazy = List.ofLazy(SIZE, cif);
+        var lazy = Lazy.ofList(Lazy.Mode.ONCE, SIZE, cif);
         for (int i = 0; i < SIZE; i++) {
             assertEquals(i, lazy.get(i));
             assertEquals(i + 1, cif.cnt());
@@ -105,7 +105,7 @@ final class LazyListTest {
 
     void exceptionInComputingFunction(LazyConstantTestUtil.CountingIntFunction<Integer> cif,
                                       Class<? extends Throwable> causeType) {
-        var lazy = List.ofLazy(SIZE, cif);
+        var lazy = Lazy.ofList(Lazy.Mode.ONCE, SIZE, cif);
         var x = assertThrows(NoSuchElementException.class, () -> lazy.get(INDEX));
         assertEquals(LazyConstantTestUtil.expectedMessage(causeType, INDEX), x.getMessage());
         assertEquals(causeType, x.getCause().getClass());
@@ -140,7 +140,7 @@ final class LazyListTest {
         for (int i = 0; i < SIZE; i++) {
             actual[i] = 100 + i;
         }
-        var lazy = List.ofLazy(INDEX, IDENTITY);
+        var lazy = Lazy.ofList(Lazy.Mode.ONCE, INDEX, IDENTITY);
         assertSame(actual, lazy.toArray(actual));
         for (int i = 0; i < INDEX; i++) {
             assertEquals(i, actual[i]);
@@ -194,7 +194,7 @@ final class LazyListTest {
     @Test
     void toStringTest() {
         assertEquals("[]", newEmptyLazyList().toString());
-        assertEquals("[0, 1]", List.ofLazy(2, IDENTITY).toString());
+        assertEquals("[0, 1]", Lazy.ofList(Lazy.Mode.ONCE, 2, IDENTITY).toString());
     }
 
     @Test
@@ -281,7 +281,7 @@ final class LazyListTest {
 
     @Test
     void sublistReversedToString() {
-        var actual = List.ofLazy(4, IDENTITY);
+        var actual = Lazy.ofList(Lazy.Mode.ONCE, 4, IDENTITY);
         var expected = List.of(0, 1, 2, 3);
         for (UnaryOperation op : List.of(
                 new UnaryOperation("subList", l -> l.subList(1, 3)),
@@ -300,7 +300,7 @@ final class LazyListTest {
     @Test
     void recursiveCall() {
         AtomicReference<IntFunction<Integer>> ref = new AtomicReference<>();
-        var lazy = List.ofLazy(SIZE, i -> ref.get().apply(i));
+        var lazy = Lazy.ofList(Lazy.Mode.ONCE, SIZE, i -> ref.get().apply(i));
         ref.set(lazy::get);
         var x = assertThrows(NoSuchElementException.class, () -> lazy.get(INDEX));
         assertEquals(LazyConstantTestUtil.expectedMessage(IllegalStateException.class, INDEX), x.getMessage());
@@ -320,7 +320,7 @@ final class LazyListTest {
             CountDownLatch competing = new CountDownLatch(2);
 
             List<Integer> ref = viewOp.apply(newRegularList());
-            List<Integer> constant = viewOp.apply(List.ofLazy(SIZE, i -> {
+            List<Integer> constant = viewOp.apply(Lazy.ofList(Lazy.Mode.ONCE, SIZE, i -> {
                 calls.incrementAndGet();
                 entered.countDown();
                 try {
@@ -368,7 +368,7 @@ final class LazyListTest {
             CountDownLatch waiting = new CountDownLatch(1);
 
             List<Integer> ref = viewOp.apply(newRegularList());
-            List<Integer> constant = viewOp.apply(List.ofLazy(SIZE, i -> {
+            List<Integer> constant = viewOp.apply(Lazy.ofList(Lazy.Mode.ONCE, SIZE, i -> {
                 entered.countDown();
                 try {
                     assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
@@ -408,7 +408,7 @@ final class LazyListTest {
         CountDownLatch supplierRunning = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
 
-        List<Integer> constant = viewOp.apply(List.ofLazy(SIZE, i -> {
+        List<Integer> constant = viewOp.apply(Lazy.ofList(Lazy.Mode.ONCE, SIZE, i -> {
             supplierRunning.countDown();
             try {
                 assertTrue(release.await(TIME_OUT_S, TimeUnit.SECONDS));
@@ -505,7 +505,7 @@ final class LazyListTest {
     @Test
     void functionHolder() {
         LazyConstantTestUtil.CountingIntFunction<Integer> cif = new LazyConstantTestUtil.CountingIntFunction<>(IDENTITY);
-        List<Integer> f1 = List.ofLazy(SIZE, cif);
+        List<Integer> f1 = Lazy.ofList(Lazy.Mode.ONCE, SIZE, cif);
 
         Object holder = LazyConstantTestUtil.functionHolder(f1);
         for (int i = 0; i < SIZE; i++) {
@@ -606,15 +606,15 @@ final class LazyListTest {
 
     static Stream<List> lazyLists() {
         return IntStream.rangeClosed(0, SIZE)
-                .mapToObj(i -> List.ofLazy(i, IDENTITY));
+                .mapToObj(i -> Lazy.ofList(Lazy.Mode.ONCE, i, IDENTITY));
     }
 
     static List<Integer> newLazyList() {
-        return List.ofLazy(SIZE, IDENTITY);
+        return Lazy.ofList(Lazy.Mode.ONCE, SIZE, IDENTITY);
     }
 
     static List<Integer> newEmptyLazyList() {
-        return List.ofLazy(ZERO, IDENTITY);
+        return Lazy.ofList(Lazy.Mode.ONCE, ZERO, IDENTITY);
     }
 
     static List<Integer> newRegularList() {

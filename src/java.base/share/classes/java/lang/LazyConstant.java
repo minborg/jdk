@@ -31,8 +31,7 @@ import jdk.internal.lang.LazyConstantImpl;
 import java.io.Serializable;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.Lazy;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
@@ -186,7 +185,7 @@ import java.util.function.Supplier;
  *          <p>
  *          While it's possible to store an array inside a lazy constant, doing so will
  *          not result in improved access performance of the array elements. Instead, a
- *          {@linkplain List#ofLazy(int, IntFunction) lazy list} of arbitrary depth can
+ *          {@linkplain Lazy#ofList(Lazy.Mode, int, IntFunction) lazy list} of arbitrary depth can
  *          be used, which provides constant components.
  *          <p>
  *          The {@code LazyConstant} type is not {@link Serializable}.
@@ -207,8 +206,8 @@ import java.util.function.Supplier;
  *
  * @see Optional
  * @see Supplier
- * @see List#ofLazy(int, IntFunction)
- * @see Map#ofLazy(Set, Function)
+ * @see Lazy#ofList(Lazy.Mode, int, IntFunction)
+ * @see Lazy#ofMap(Lazy.Mode, Set, Function)
  * @jls 12.4 Initialization of Classes and Interfaces
  * @jls 17.4.5 Happens-before Order
  */

@@ -32,6 +32,7 @@ import org.junit.jupiter.api.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Lazy;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,7 +44,7 @@ final class DemoMapTest {
 
     // NEW:
     static final Map<String, OrderController> ORDERS
-            = Map.ofLazy(
+            = Lazy.ofMap(Lazy.Mode.ONCE,
                     Set.of("Customers", "Internal", "Testing"),
                     _ -> new OrderController()
     );
@@ -65,7 +66,7 @@ final class DemoMapTest {
         t.join();
     }
 
-    private static final Map<Integer, String> SERVER_ERROR_PAGES = Map.ofLazy(
+    private static final Map<Integer, String> SERVER_ERROR_PAGES = Lazy.ofMap(Lazy.Mode.ONCE,
             Set.of(500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511),
             e -> {
                 try {

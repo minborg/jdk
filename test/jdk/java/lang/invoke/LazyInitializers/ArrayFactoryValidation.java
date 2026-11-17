@@ -82,18 +82,18 @@ public class ArrayFactoryValidation {
     void nullArguments() {
         assertThrows(NullPointerException.class, () ->
                 StableAccessors.ofArray(null, String.class, "strings",
-                        (length, index) -> unexpectedComputation()));
+                        index -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
                 StableAccessors.ofArray(Fields.class, null, "strings",
-                        (length, index) -> unexpectedComputation()));
+                        index -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
                 StableAccessors.ofArray(Fields.class, String.class, null,
-                        (length, index) -> unexpectedComputation()));
+                        index -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
                 StableAccessors.ofArray(Fields.class, String.class, "strings", null));
         assertThrows(NullPointerException.class, () ->
                 StableAccessors.ofArray(Fields.class, String.class, "strings", null,
-                        (length, index, context) -> unexpectedComputation()));
+                        (index, context) -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
                 StableAccessors.ofArray(Fields.class, String.class, "strings", Object.class, null));
     }
@@ -156,19 +156,19 @@ public class ArrayFactoryValidation {
     private static <T, V> void rejects(Class<T> owner, Class<V> type, String name) {
         assertThrows(IllegalArgumentException.class, () ->
                 StableAccessors.ofArray(owner, type, name,
-                        (length, index) -> unexpectedComputation()));
+                        index -> unexpectedComputation()));
         assertThrows(IllegalArgumentException.class, () ->
                 StableAccessors.ofArray(owner, type, name, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
+                        (index, context) -> unexpectedComputation()));
     }
 
     private static <T, V> void accepts(Class<T> owner, Class<V> type, String name) {
         assertThrows(UnsupportedOperationException.class, () ->
                 StableAccessors.ofArray(owner, type, name,
-                        (length, index) -> unexpectedComputation()));
+                        index -> unexpectedComputation()));
         assertThrows(UnsupportedOperationException.class, () ->
                 StableAccessors.ofArray(owner, type, name, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
+                        (index, context) -> unexpectedComputation()));
     }
 
     private static <V> V unexpectedComputation() {
