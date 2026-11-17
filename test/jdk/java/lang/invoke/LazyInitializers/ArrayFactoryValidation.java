@@ -28,6 +28,7 @@
  * @run junit ArrayFactoryValidation
  */
 
+import java.lang.invoke.ReflectiveAccessOnly;
 import java.lang.invoke.StableAccessors;
 
 import org.junit.jupiter.api.Test;
@@ -35,101 +36,138 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ArrayFactoryValidation {
-    @Test
-    void nullArguments() {
-        assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(null, String.class, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
-        assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(String[].class, null, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
-        assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(String[].class, String.class, null,
-                        (length, index, context) -> unexpectedComputation()));
-        assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(String[].class, String.class, Object.class, null));
+    private static class Fields {
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final String[] strings = new String[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private int[] ints = new int[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final boolean[] booleans = new boolean[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final byte[] bytes = new byte[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final short[] shorts = new short[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final char[] chars = new char[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final long[] longs = new long[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final float[] floats = new float[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final double[] doubles = new double[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final Void[] voids = new Void[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final String[][] multidimensional = new String[1][];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private static final int[] staticArray = new int[3];
+        @ReflectiveAccessOnly
+        private final int[] fieldMode = new int[3];
+        private final int[] unmarked = new int[3];
+        private final int scalar = 1;
+    }
+
+    private static class Parent {
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final int[] inherited = new int[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private final int[] hidden = new int[3];
+    }
+
+    private static class Child extends Parent {
+        private final int[] hidden = new int[3];
     }
 
     @Test
-    void unsupportedArrayTypes() {
-        rejectArrayType(String.class);
-        rejectArrayType(int.class);
-        rejectArrayType(void.class);
-        rejectArrayType(String[][].class);
-        rejectArrayType(int[][].class);
+    void nullArguments() {
+        assertThrows(NullPointerException.class, () ->
+                StableAccessors.ofArray(null, String.class, "strings",
+                        (length, index) -> unexpectedComputation()));
+        assertThrows(NullPointerException.class, () ->
+                StableAccessors.ofArray(Fields.class, null, "strings",
+                        (length, index) -> unexpectedComputation()));
+        assertThrows(NullPointerException.class, () ->
+                StableAccessors.ofArray(Fields.class, String.class, null,
+                        (length, index) -> unexpectedComputation()));
+        assertThrows(NullPointerException.class, () ->
+                StableAccessors.ofArray(Fields.class, String.class, "strings", null));
+        assertThrows(NullPointerException.class, () ->
+                StableAccessors.ofArray(Fields.class, String.class, "strings", null,
+                        (length, index, context) -> unexpectedComputation()));
+        assertThrows(NullPointerException.class, () ->
+                StableAccessors.ofArray(Fields.class, String.class, "strings", Object.class, null));
+    }
+
+    @Test
+    void unsupportedArrayFields() {
+        rejects(Fields.class, Object.class, "scalar");
+        rejects(Fields.class, Object.class, "multidimensional");
+        rejects(Fields.class, Integer.class, "staticArray");
+        rejects(Fields.class, Integer.class, "missing");
     }
 
     @Test
     void unsupportedElementTypes() {
-        rejectElementType(void.class);
-        rejectElementType(String[].class);
-        rejectElementType(int[].class);
-        rejectElementType(Object[][].class);
+        rejects(Fields.class, void.class, "strings");
+        rejects(Fields.class, String[].class, "strings");
+        rejects(Fields.class, int[].class, "ints");
+        rejects(Fields.class, Object[][].class, "strings");
     }
 
     @Test
     void incompatibleElementTypes() {
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArray(String[].class, Integer.class, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArray(int[].class, Long.class, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArray(Object[].class, String.class, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
+        rejects(Fields.class, Integer.class, "strings");
+        rejects(Fields.class, Long.class, "ints");
     }
 
     @Test
     void inaccessibleElementTypes() throws ClassNotFoundException {
-        rejectInaccessibleType(Class.forName("java.util.Collections$EmptyList"));
-        rejectInaccessibleType(Class.forName("jdk.internal.misc.Unsafe"));
+        rejects(Fields.class, Class.forName("java.util.Collections$EmptyList"), "strings");
+        rejects(Fields.class, Class.forName("jdk.internal.misc.Unsafe"), "strings");
+    }
+
+    @Test
+    void annotationAndResolution() {
+        rejects(Fields.class, Integer.class, "fieldMode");
+        rejects(Fields.class, Integer.class, "unmarked");
+        rejects(Child.class, Integer.class, "hidden");
+        accepts(Child.class, Integer.class, "inherited");
     }
 
     @Test
     void validTypesReachPrototypeStub() {
         // A valid factory call reaches the unimplemented prototype, without
-        // invoking the computing function.
-        acceptsTypes(String[].class, String.class);
-        acceptsTypes(String[].class, CharSequence.class);
-        acceptsTypes(Void[].class, Void.class);
-        acceptsTypes(boolean[].class, Boolean.class);
-        acceptsTypes(byte[].class, Byte.class);
-        acceptsTypes(short[].class, Short.class);
-        acceptsTypes(char[].class, Character.class);
-        acceptsTypes(int[].class, Integer.class);
-        acceptsTypes(int[].class, int.class);
-        acceptsTypes(int[].class, Number.class);
-        acceptsTypes(long[].class, Long.class);
-        acceptsTypes(float[].class, Float.class);
-        acceptsTypes(double[].class, Double.class);
+        // invoking the computing function. Both final and mutable fields work.
+        accepts(Fields.class, String.class, "strings");
+        accepts(Fields.class, CharSequence.class, "strings");
+        accepts(Fields.class, Void.class, "voids");
+        accepts(Fields.class, Boolean.class, "booleans");
+        accepts(Fields.class, Byte.class, "bytes");
+        accepts(Fields.class, Short.class, "shorts");
+        accepts(Fields.class, Character.class, "chars");
+        accepts(Fields.class, Integer.class, "ints");
+        accepts(Fields.class, int.class, "ints");
+        accepts(Fields.class, Number.class, "ints");
+        accepts(Fields.class, Long.class, "longs");
+        accepts(Fields.class, Float.class, "floats");
+        accepts(Fields.class, Double.class, "doubles");
     }
 
-    private static <A> void rejectArrayType(Class<A> type) {
+    private static <T, V> void rejects(Class<T> owner, Class<V> type, String name) {
         assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArray(type, Object.class, Object.class,
+                StableAccessors.ofArray(owner, type, name,
+                        (length, index) -> unexpectedComputation()));
+        assertThrows(IllegalArgumentException.class, () ->
+                StableAccessors.ofArray(owner, type, name, Object.class,
                         (length, index, context) -> unexpectedComputation()));
     }
 
-    private static <V> void rejectElementType(Class<V> type) {
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArray(Object[].class, type, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
-    }
-
-    private static <V> void rejectInaccessibleType(Class<V> type) {
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArray(Object[].class, type, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
-        Class<?> arrayType = java.lang.reflect.Array.newInstance(type, 0).getClass();
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArray(arrayType, Object.class, Object.class,
-                        (length, index, context) -> unexpectedComputation()));
-    }
-
-    private static <A, V> void acceptsTypes(Class<A> arrayType, Class<V> elementType) {
+    private static <T, V> void accepts(Class<T> owner, Class<V> type, String name) {
         assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofArray(arrayType, elementType, Object.class,
+                StableAccessors.ofArray(owner, type, name,
+                        (length, index) -> unexpectedComputation()));
+        assertThrows(UnsupportedOperationException.class, () ->
+                StableAccessors.ofArray(owner, type, name, Object.class,
                         (length, index, context) -> unexpectedComputation()));
     }
 

@@ -86,6 +86,14 @@ public final class LazyInitializersUtil {
         }
     }
 
+    public static void checkArrayFieldReflectiveAccessOnly(Field field) {
+        ReflectiveAccessOnly annotation = field.getDeclaredAnnotation(ReflectiveAccessOnly.class);
+        if (annotation == null || !annotation.arrayElements()) {
+            throw new IllegalArgumentException("Field " + field.getName()
+                    + " must be annotated with @ReflectiveAccessOnly(arrayElements = true)");
+        }
+    }
+
     private static void checkClassAccess(Class<?> caller, Class<?> type) {
         if (!VerifyAccess.isClassAccessible(type, caller, null, CALLER_ACCESS_MODES)) {
             throw new IllegalArgumentException("Access not allowed to type " + type.getName()

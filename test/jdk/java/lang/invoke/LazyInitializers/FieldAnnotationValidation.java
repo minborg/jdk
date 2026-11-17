@@ -95,24 +95,36 @@ public class FieldAnnotationValidation {
         assertThrows(UnsupportedOperationException.class, () ->
                 StableAccessors.ofField(owner, type, name, Object.class,
                         context -> unexpectedComputation()));
+        assertThrows(UnsupportedOperationException.class, () ->
+                StableAccessors.ofField(owner, type, name,
+                        () -> unexpectedComputation()));
     }
 
     private static void acceptsStatic(Class<?> owner, Class<?> type, String name) {
         assertThrows(UnsupportedOperationException.class, () ->
                 StableAccessors.ofStaticField(owner, type, name, Object.class,
                         context -> unexpectedComputation()));
+        assertThrows(UnsupportedOperationException.class, () ->
+                StableAccessors.ofStaticField(owner, type, name,
+                        () -> unexpectedComputation()));
     }
 
     private static <T> void rejectsInstance(Class<T> owner, Class<?> type, String name) {
         assertThrows(IllegalArgumentException.class, () ->
                 StableAccessors.ofField(owner, type, name, Object.class,
                         context -> unexpectedComputation()));
+        assertThrows(IllegalArgumentException.class, () ->
+                StableAccessors.ofField(owner, type, name,
+                        () -> unexpectedComputation()));
     }
 
     private static <V> void rejectsStatic(Class<?> owner, Class<V> type, String name) {
         assertThrows(IllegalArgumentException.class, () ->
                 StableAccessors.ofStaticField(owner, type, name, Object.class,
                         context -> unexpectedComputation()));
+        assertThrows(IllegalArgumentException.class, () ->
+                StableAccessors.ofStaticField(owner, type, name,
+                        () -> unexpectedComputation()));
     }
 
     private static <V> V unexpectedComputation() {
