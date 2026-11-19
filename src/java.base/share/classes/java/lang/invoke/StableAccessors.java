@@ -47,47 +47,112 @@ import java.util.function.*;
  * The {@code get} methods observe a location without computing or installing a value,
  * returning an empty {@code Optional} if the read observes the reserved default value.
  * <p>
- * The factories do not read that storage or invoke the computing function when an
- * accessor is created.
+ * Merely creating a stable accessor neither reads that storage nor invokes its computing
+ * function.
  * <p>
- * For a ready-made supplier that caches one reference, use
- * {@link Lazy#ofSupplier(Supplier) Lazy.ofSupplier}. The
+ * For ready-made suppliers that caches one reference, use
+ * {@link Lazy#ofSupplier(Supplier) Lazy.ofSupplier} and overloads thereof. The
  * {@link Lazy#ofList(Lazy.Mode, int, IntFunction)},
  * {@link Lazy#ofSet(Lazy.Mode, Set, Predicate)}, and
  * {@link Lazy#ofMap(Lazy.Mode, Set, Function)} factories cache list elements,
- * membership decisions, and map values, respectively. These factories own their storage and offer
- * {@link Lazy.Mode#ONCE at-most-once} and {@link Lazy.Mode#PUBLISH publish-once} modes.
- * The accessors in this class operate on caller-owned storage: computations may race,
- * and failed computations may be retried.
+ * membership decisions, and map values, respectively. These factories manage their
+ * own storage and computation coordination, offering {@link Lazy.Mode#ONCE at-most-once},
+ * {@link Lazy.Mode#SERIALIZED serialized retry}, and
+ * {@link Lazy.Mode#PUBLISH racing publication} modes.
+ * <p>
+ * The accessors in this class operate on caller-owned storage. Computations may race
+ * when using {@code getOrCompute}; the {@code getOrComputeSerialized} methods instead
+ * support {@linkplain ##serialized-computation serialized computation} using a
+ * caller-supplied monitor. Neither form records failures, so failed computations
+ * may be retried.
  *
  * <h2 id="access-shapes">Locations and access shapes</h2>
- * Each factory selects a named field. The accessor's {@code get} and
- * {@code getOrCompute} methods take the coordinates shown below. The computing
- * function receives different arguments:
+ * Each factory selects a named field and returns a distinct implementation of
+ * {@link OfField OfField&lt;T, C, R&gt;} or
+ * {@link OfArrayField OfArrayField&lt;T, C, R&gt;}.
+ * {@code T} is the receiver type, {@code C} is the computation context type, and
+ * {@code R} is the result type, boxed for primitive storage. {@link Void} represents
+ * an absent receiver or context; callers supply {@code null} for the corresponding argument.
+ * The factory determines the storage shape and the restrictions on the returned
+ * implementation:
  * <table class="striped">
- * <caption>Access coordinates and computing arguments without a context</caption>
+ * <caption>Accessor types and invocations without a computation context</caption>
  * <thead>
- * <tr><th scope="col">Storage</th><th scope="col">Access coordinates</th>
- *     <th scope="col">Computing arguments</th></tr>
+ * <tr><th scope="col">Storage</th><th scope="col">Accessor type</th>
+ *     <th scope="col">Invocation</th></tr>
  * </thead>
  * <tbody>
- * <tr><th scope="row">Static field</th><td>None</td><td>None</td></tr>
- * <tr><th scope="row">Instance field</th><td>Receiver</td><td>None</td></tr>
+ * <tr><th scope="row">Static field</th>
+ *     <td>{@link OfField OfField&lt;Void, Void, R&gt;}</td>
+ *     <td>{@link OfField#getOrCompute(Object, Object)
+ *         getOrCompute(null, null)}</td></tr>
+ * <tr><th scope="row">Instance field</th>
+ *     <td>{@link OfField OfField&lt;T, Void, R&gt;}</td>
+ *     <td>{@link OfField#getOrCompute(Object, Object)
+ *         getOrCompute(receiver, null)}</td></tr>
+ * <tr><th scope="row">Element of a static array field</th>
+ *     <td>{@link OfArrayField OfArrayField&lt;Void, Void, R&gt;}</td>
+ *     <td>{@link OfArrayField#getOrCompute(Object, int, Object)
+ *         getOrCompute(null, index, null)}</td></tr>
  * <tr><th scope="row">Element of an instance array field</th>
- *     <td>Receiver, index</td><td>Index</td></tr>
+ *     <td>{@link OfArrayField OfArrayField&lt;T, Void, R&gt;}</td>
+ *     <td>{@link OfArrayField#getOrCompute(Object, int, Object)
+ *         getOrCompute(receiver, index, null)}</td></tr>
  * </tbody>
  * </table>
- * Each factory has a context-free variant and a variant with a computation context;
- * the two variants return different accessor interfaces. The latter adds a context
- * argument to {@code getOrCompute} and to the computing function. The context may be
- * unrelated to the storage owner and is not part of the storage coordinates:
+ * <table class="striped">
+ * <caption>Accessor types and invocations with a computation context</caption>
+ * <thead>
+ * <tr><th scope="col">Storage</th><th scope="col">Accessor type</th>
+ *     <th scope="col">Invocation</th></tr>
+ * </thead>
+ * <tbody>
+ * <tr><th scope="row">Static field</th>
+ *     <td>{@link OfField OfField&lt;Void, C, R&gt;}</td>
+ *     <td>{@link OfField#getOrCompute(Object, Object)
+ *         getOrCompute(null, context)}</td></tr>
+ * <tr><th scope="row">Instance field</th>
+ *     <td>{@link OfField OfField&lt;T, C, R&gt;}</td>
+ *     <td>{@link OfField#getOrCompute(Object, Object)
+ *         getOrCompute(receiver, context)}</td></tr>
+ * <tr><th scope="row">Element of a static array field</th>
+ *     <td>{@link OfArrayField OfArrayField&lt;Void, C, R&gt;}</td>
+ *     <td>{@link OfArrayField#getOrCompute(Object, int, Object)
+ *         getOrCompute(null, index, context)}</td></tr>
+ * <tr><th scope="row">Element of an instance array field</th>
+ *     <td>{@link OfArrayField OfArrayField&lt;T, C, R&gt;}</td>
+ *     <td>{@link OfArrayField#getOrCompute(Object, int, Object)
+ *         getOrCompute(receiver, index, context)}</td></tr>
+ * </tbody>
+ * </table>
+ * Each factory has a context-free variant and a variant with a computation context.
+ * The latter returns the same accessor interface parameterized with {@code C}
+ * instead of {@code Void}; callers supply the context as the last argument to
+ * {@code getOrCompute}. The {@code get} methods take the receiver and, for arrays,
+ * the index, but no context. The context may be unrelated to the storage owner and
+ * is not part of the storage coordinates:
  * invocations selecting the same location share the installed value even if they
  * supply different contexts.
  * <p>
- * Field accessors support reference and primitive fields. Array accessors select an
- * instance field containing a one-dimensional reference or primitive array. The
+ * Sharing an interface does not relax the restrictions imposed by a factory.
+ * An instance-field or instance-array accessor requires a non-null receiver
+ * compatible with the selected field; a null receiver causes
+ * {@link NullPointerException}. An incompatible receiver, including one that
+ * violates a protected access restriction, causes {@link ClassCastException}.
+ * A static-field or static-array accessor requires a null receiver, and a
+ * context-free accessor requires a null context. Supplying a non-null argument
+ * in either of these {@code Void} positions, for example through a raw interface,
+ * causes {@code ClassCastException}. For an accessor created with a context,
+ * a non-null context must be an instance of the type represented by its
+ * {@code contextType} token; otherwise, {@code ClassCastException} is thrown.
+ * These restrictions apply on every invocation,
+ * even if a value has already been installed. Staticness and the presence of a
+ * context are fixed by the factory, not inferred from null arguments at invocation.
+ * <p>
+ * Field accessors support reference and primitive fields. Array accessors select a
+ * static or instance field containing a one-dimensional reference or primitive array. The
  * underlying array's identity and the index identify the cached location; different
- * receivers can share an array and therefore share its cached elements. Values of
+ * fields or receivers can share an array and therefore share its cached elements. Values of
  * primitive fields and array elements are represented by their wrapper types in the
  * accessor API.
  *
@@ -106,17 +171,33 @@ import java.util.function.*;
  * <p>
  * A field used directly as storage must be non-final and annotated with
  * {@link ReflectiveAccessOnly} in field mode ({@code arrayElements = false}).
- * An array factory instead selects a non-static array field annotated with
- * {@code @ReflectiveAccessOnly(arrayElements = true)}; that field may be final.
+ * An array factory instead selects a final static or instance array field annotated
+ * with {@code @ReflectiveAccessOnly(arrayElements = true)}.
  * The annotation declares intent but does not establish exclusive access; the
  * {@linkplain ##access-and-storage-ownership storage-ownership requirements} still apply.
- * Accessing a static field through an accessor initializes its declaring class if necessary.
+ * Creating an accessor for a static field does not initialize its declaring class.
+ * Invoking {@code get} or {@code getOrCompute} on that accessor initializes the
+ * declaring class if necessary, including when the field holds an array.
  *
  * <h2 id="computing-functions">Computing functions</h2>
  * An accessor retains the computing function supplied at creation and invokes it on
  * the thread calling {@code getOrCompute}. A context-aware accessor can use dynamic
  * inputs without requiring a new function at each invocation. A context may be
  * {@code null} if the computing function accepts it.
+ * <p>
+ * Context-free field factories accept a {@link Supplier}; context-free array
+ * factories accept an {@link IntFunction} receiving the element index.
+ * Context-taking factories accept {@link OfField.Computer} or
+ * {@link OfArrayField.Computer}, receiving the context and, for arrays, the index.
+ * The null context placeholder of a context-free accessor is not passed to its
+ * computing function.
+ * <p>
+ * A {@code contextType} token must represent a reference type, including an array
+ * type or a value class. Primitive type tokens, including {@code void.class}, are
+ * rejected with {@link IllegalArgumentException} when the accessor is created.
+ * The token describes the context type or a supertype. The caller must ensure that
+ * contexts are suitable for the computing function; checking the token does not
+ * validate erased type arguments or a more specific type required by that function.
  * <p>
  * Neither the receiver nor the array itself is supplied automatically to the computing
  * function. A receiver-dependent field computation can pass the receiver explicitly
@@ -138,18 +219,21 @@ import java.util.function.*;
  * These token checks do not perform numeric widening. For example, an {@code int}
  * location can use {@code Integer.class} or {@code Number.class}, but not
  * {@code Long.class}. The caller must ensure that both computed and preexisting
- * stored values, boxed if primitive, can be used as {@code V}; erased type arguments
+ * stored values, boxed if primitive, can be used as {@code R}; erased type arguments
  * remain the caller's responsibility.
  * <p>
  * A computed candidate is checked against the storage type before installation.
  * For reference storage, the candidate must be assignable to the field type or the
- * runtime array component type. An incompatible reference-array candidate throws
+ * runtime array component type. An incompatible reference-field candidate throws
+ * {@link ClassCastException}. An incompatible reference-array candidate throws
  * {@link ArrayStoreException}, including when the runtime component type is narrower
  * than the declared one. For primitive storage, the candidate must be a wrapper
  * value that can be unboxed and converted to the storage type by an identity
  * conversion or a widening primitive conversion (section {@jls 5.1.2}).
- * Narrowing conversions and conversions between {@code boolean} and numeric types
- * are not supported, and {@code null} cannot be converted to a primitive value.
+ * A non-null candidate that cannot be converted in this way throws
+ * {@code ClassCastException}. This includes narrowing conversions and conversions
+ * between {@code boolean} and numeric types. A null candidate for primitive storage
+ * throws {@code NullPointerException}.
  * The reserved-default check applies after conversion. Reads return the stored
  * value, boxed using the wrapper for its storage type if primitive.
  *
@@ -187,10 +271,46 @@ import java.util.function.*;
  * If the location remains uninitialized, a later invocation can retry. Recursive
  * access to the same uninitialized location is not detected and may recurse without bound.
  *
+ * <h2 id="serialized-computation">Serialized computation</h2>
+ * The {@link OfField#getOrComputeSerialized(Object, Object, Object)} and
+ * {@link OfArrayField#getOrComputeSerialized(Object, Object, int, Object)} methods
+ * accept a monitor to serialize computation. If an installed value is observed,
+ * they return it without acquiring the monitor. Otherwise, they acquire the monitor
+ * and invoke {@code getOrCompute}, which rechecks the location before computing.
+ * The monitor remains held through computation and publication. A thread that
+ * waited for the monitor therefore returns a value installed by a preceding
+ * invocation without computing another candidate.
+ * <p>
+ * To prevent concurrent computations for a location, every invocation that can
+ * initialize it must use the same monitor, including invocations through other
+ * accessors or aliases of an array. Calls to {@code getOrCompute}, or serialized
+ * calls using a different monitor, can still race with these computations.
+ * Sharing a monitor across different locations also serializes their computations;
+ * separate monitors allow independent locations to be computed concurrently.
+ * Computing functions must not release the monitor, for example by calling
+ * {@link Object#wait() wait} on it.
+ * <p>
+ * A failed computation exits the synchronized block without recording the failure.
+ * A waiting or later invocation may then retry if the location remains uninitialized.
+ * This is also the retry policy of {@link Lazy.Mode#SERIALIZED}, whereas
+ * {@link Lazy.Mode#ONCE} records failures and does not retry. Unlike
+ * {@link Lazy.Mode#SERIALIZED}, these methods do not detect recursive computation
+ * by the same thread. Monitors are reentrant, so such computation may recurse
+ * without bound. Dependencies between computations using different monitors can
+ * deadlock.
+ * <p>
+ * The monitor must be a non-null {@linkplain Objects#hasIdentity(Object) identity
+ * object}, even when the value is already installed. It is independent of the
+ * receiver and computation context and does not change the identity of the cached
+ * location. Passing a monitor does not itself cause the accessor to retain it
+ * after the invocation returns.
+ * Acquiring and releasing the monitor have their usual memory effects; calls that
+ * observe an installed value before locking do not acquire the monitor.
+ *
  * <h2 id="memory-effects">Memory effects</h2>
- * The {@code get} and {@code getOrCompute} methods read the selected location with
- * acquire semantics. A successful installation publishes the candidate with release
- * effects. An invocation that loses an installation race observes the installed value
+ * All access methods, including the serialized variants, read the selected location
+ * with acquire semantics. A successful installation publishes the candidate with
+ * release effects. An invocation that loses an installation race observes the installed value
  * with acquire effects before returning it. These effects are independent of whether
  * a field used directly as storage is declared {@code volatile}.
  * <p>
@@ -199,9 +319,9 @@ import java.util.function.*;
  * {@linkplain java.util.concurrent##MemoryVisibility happen-before} actions
  * following an invocation in another thread that observes that value.
  * These guarantees do not impose a total order on accesses to different locations.
- * Subsequent accesses provide no additional memory ordering or visibility guarantees
- * for actions performed after publication. Publishing a reference does not make
- * later mutations of the referenced object thread-safe.
+ * Subsequent reads of the installed value provide no additional memory ordering or
+ * visibility guarantees for actions performed after publication. Publishing a
+ * reference does not make later mutations of the referenced object thread-safe.
  * Failure or loss of an installation race does not by itself publish the computing
  * function's actions through the selected location. A computing function can publish
  * through other actions, including another initialization.
@@ -218,59 +338,75 @@ import java.util.function.*;
  * plain reads can observe default or stale values and expose incompletely initialized
  * state in referenced objects. Plain reads of non-volatile {@code long} or {@code double}
  * locations may also observe torn values. Direct writes can invalidate the
- * publish-once and stability guarantees. Multiple stable accessors may share a
+ * publish-once and stability guarantees. However, multiple stable accessors may share a
  * storage location.
  * <p>
  * An accessor does not retain a receiver passed to {@code get} or
  * {@code getOrCompute}, though it may retain objects captured by its computing function.
  * <p>
- * For an array accessor, the selected field must contain a non-null array and must
- * not be replaced while its elements are managed by an accessor. The array reference
- * itself may be read normally; all aliases of the array remain subject to the
- * element-access restrictions above.
+ * For an array accessor, the selected {@code final} array field must contain a non-null
+ * array. The array reference itself may be read normally (including reading its
+ * {@code length} value); all aliases of the array remain subject to
+ * the element-access restrictions above.
  *
  * <h2 id="encapsulating-stable-accessors">Encapsulating stable accessors</h2>
  * A class can encapsulate stable accessors to cache values in its own fields and arrays.
  *
  * <h3 id="scalar-caches">Scalar caches</h3>
- * The following small class caches a String in a reserved field. The accessor is
- * shared across all instances, while the computation uses configuration supplied
- * at the invocation:
+ * The following small class caches a String in a reserved field without a
+ * computation context. The accessor is shared across all instances, while each
+ * instance holds its own cached value:
  * {@snippet lang = java:
  * import java.lang.invoke.StableAccessors;
- * import java.lang.invoke.StableAccessors.StableFieldWithContext;
+ * import java.lang.invoke.StableAccessors.OfField;
  * import java.lang.invoke.ReflectiveAccessOnly;
- *
- * record Configuration(String prefix, int number) {}
  *
  * class StringCache {
  *
- *      private static final StableFieldWithContext<StringCache, Configuration, String> ACCESSOR =
+ *     private static final OfField<StringCache, Void, String> ACCESSOR =
  *             StableAccessors.ofField(
- *                     StringCache.class,       // Field owner
- *                     String.class,            // Field type
- *                     "value",                 // Field name
- *                     Configuration.class,     // Extra context
- *                     config -> config.prefix() + config.number()); // Computing function
+ *                     StringCache.class,   // Field owner
+ *                     String.class,        // Field type
+ *                     "value",             // Field name
+ *                     () -> "Some value"); // Computing function
  *
  *     @ReflectiveAccessOnly
  *     private String value;
  *
- *     public String get(Configuration config) {
- *         return ACCESSOR.getOrCompute(this, config);
+ *     public String get() {
+ *         return ACCESSOR.getOrCompute(this, null);
  *     }
+ * }
+ *}
+ * To supply configuration as a computation context, it is possible to add a record and
+ * replace the accessor and {@code get} method with these members:
+ * {@snippet lang = java:
+ * record Configuration(String prefix, int number) {}
+ *
+ * private static final StableAccessors.OfField<StringCache, Configuration, String>
+ *         ACCESSOR = StableAccessors.ofField(
+ *                 StringCache.class,   // Field owner
+ *                 String.class,        // Field type
+ *                 "value",             // Field name
+ *                 Configuration.class, // Context type
+ *                 config -> config.prefix() + config.number()); // Computing function
+ *
+ * public String get(Configuration config) {
+ *     return ACCESSOR.getOrCompute(this, config);
  * }
  *}
  * The first successful installation determines the value for this {@code StringCache}
  * instance; supplying a different configuration does not create a separate cached value.
- * <p>
- * Replacing the field, accessor, and {@code get} method in {@code StringCache} with
+ *
+ * <h3 id="static-scalar-caches">Static scalar caches</h3>
+ * Replacing the field, accessor, and {@code get} method in the context-free
+ * {@code StringCache} with
  * the following members gives a context-free <em>static</em> cache:
  * {@snippet lang = java:
  * @ReflectiveAccessOnly
  * private static String value;
  *
- * private static final StableAccessors.StableStaticField<String> ACCESSOR =
+ * private static final StableAccessors.OfField<Void, Void, String> ACCESSOR =
  *         StableAccessors.ofStaticField(
  *                 StringCache.class,   // Field owner
  *                 String.class,        // Field type
@@ -278,7 +414,7 @@ import java.util.function.*;
  *                 () -> "Some value"); // Computing function
  *
  * public static String get() {
- *     return ACCESSOR.getOrCompute();
+ *     return ACCESSOR.getOrCompute(null, null);
  * }
  *}
  *
@@ -286,13 +422,13 @@ import java.util.function.*;
  * An array accessor caches a separate value at each index:
  * {@snippet lang = java:
  * import java.lang.invoke.StableAccessors;
- * import java.lang.invoke.StableAccessors.StableArray;
+ * import java.lang.invoke.StableAccessors.OfArrayField;
  * import java.lang.invoke.ReflectiveAccessOnly;
  *
  * class ArrayCache {
  *
- *     private static final StableArray<ArrayCache, String> ACCESSOR =
- *             StableAccessors.ofArray(
+ *     private static final OfArrayField<ArrayCache, Void, String> ACCESSOR =
+ *             StableAccessors.ofArrayField(
  *                     ArrayCache.class,   // Field owner
  *                     String.class,       // Element type
  *                     "array",            // Array field name
@@ -302,28 +438,10 @@ import java.util.function.*;
  *     private final String[] array = new String[16];
  *
  *     public String get(int index) {
- *         return ACCESSOR.getOrCompute(this, index);
+ *         return ACCESSOR.getOrCompute(this, index, null);
  *     }
  * }
  *}
- * To supply a prefix as a computation context, replace the accessor and {@code get}
- * method above with these members:
- * {@snippet lang = java:
- * private static final StableAccessors.StableArrayWithContext<ArrayCache, String, String>
- *   ACCESSOR = StableAccessors.ofArray(
- *                  ArrayCache.class, // Field owner
- *                  String.class,     // Element type
- *                  "array",          // Field name
- *                  String.class,     // Context type
- *                  (i, prefix) -> prefix + i); // Computing function
- *
- * public String get(int index, String prefix) {
- *     return ACCESSOR.getOrCompute(this, index, prefix);
- * }
- *}
- * The prefix is supplied at each call without a capturing computing function.
- * The first successfully installed value at an index is retained regardless of later prefixes.
- * <p>
  * To store non-zero {@code int} values instead, replace the array field, accessor,
  * and {@code get} method in the context-free {@code ArrayCache} with these members.
  * The accessor represents primitive results as {@link Integer}:
@@ -331,17 +449,178 @@ import java.util.function.*;
  * @ReflectiveAccessOnly(arrayElements = true)
  * private final int[] array = new int[16];
  *
- * private static final StableAccessors.StableArray<ArrayCache, Integer> ACCESSOR =
- *         StableAccessors.ofArray(
+ * private static final OfArrayField<ArrayCache, Void, Integer> ACCESSOR =
+ *         StableAccessors.ofArrayField(
  *                 ArrayCache.class, // Field owner
  *                 Integer.class,    // Element type
  *                 "array",          // Field name
  *                 i -> i + 1);      // Computing function
  *
  * public int get(int index) {
- *     return ACCESSOR.getOrCompute(this, index);
+ *     return ACCESSOR.getOrCompute(this, index, null);
  * }
  *}
+ * To supply a prefix as a computation context, replace the accessor and {@code get}
+ * method in the original {@code String[]} {@code ArrayCache} example with these members:
+ * {@snippet lang = java:
+ * private static final OfArrayField<ArrayCache, String, String>
+ *         ACCESSOR = StableAccessors.ofArrayField(
+ *                 ArrayCache.class, // Field owner
+ *                 String.class,     // Element type
+ *                 "array",          // Field name
+ *                 String.class,     // Context type
+ *                 (i, prefix) -> prefix + i); // Computing function
+ *
+ * public String get(int index, String prefix) {
+ *     return ACCESSOR.getOrCompute(this, index, prefix);
+ * }
+ *}
+ * The prefix is supplied at each call without a capturing computing function.
+ * The first successfully installed value at an index is retained regardless of later
+ * prefixes.
+ *
+ * <h3 id="static-indexed-caches">Static indexed caches</h3>
+ * A static array accessor selects an array field shared by the class. Access supplies
+ * the index, with null placeholders for the receiver and computation context:
+ * {@snippet lang = java:
+ * import java.lang.invoke.StableAccessors;
+ * import java.lang.invoke.StableAccessors.OfArrayField;
+ * import java.lang.invoke.ReflectiveAccessOnly;
+ *
+ * class StaticArrayCache {
+ *
+ *     @ReflectiveAccessOnly(arrayElements = true)
+ *     private static final String[] VALUES = new String[16];
+ *
+ *     private static final OfArrayField<Void, Void, String> ACCESSOR =
+ *             StableAccessors.ofStaticArrayField(
+ *                     StaticArrayCache.class, // Field owner
+ *                     String.class,           // Element type
+ *                     "VALUES",               // Array field name
+ *                     i -> "Value " + i);     // Computing function
+ *
+ *     public static String get(int index) {
+ *         return ACCESSOR.getOrCompute(null, index, null);
+ *     }
+ * }
+ *}
+ * The context-taking overload of {@code ofStaticArrayField} also accepts a context type
+ * token and a computing function taking the index and context. Its accessor takes
+ * those arguments in {@code getOrCompute(null, index, context)}; the first successfully
+ * installed value at an index is retained regardless of later contexts.
+ *
+ * <h3 id="serialized-caches">Serialized caches</h3>
+ * A configuration file can be read on first access and its contents cached. A private
+ * monitor prevents concurrent reads during initialization; an I/O failure propagates
+ * as {@code UncheckedIOException} and can be retried by a waiting or later caller:
+ * {@snippet lang = java:
+ * import java.io.IOException;
+ * import java.io.UncheckedIOException;
+ * import java.lang.invoke.ReflectiveAccessOnly;
+ * import java.lang.invoke.StableAccessors;
+ * import java.lang.invoke.StableAccessors.OfField;
+ * import java.nio.file.Files;
+ * import java.nio.file.Path;
+ * import java.util.Objects;
+ *
+ * class ConfigurationText {
+ *
+ *     private static final OfField<ConfigurationText, Path, String> CONTENTS =
+ *             StableAccessors.ofField(
+ *                     ConfigurationText.class,  // Field owner
+ *                     String.class,             // Field type
+ *                     "contents",               // Field name
+ *                     Path.class,               // Context type
+ *                     ConfigurationText::read); // Computing function
+ *
+ *     private final Path source;
+ *     private final Object monitor = new Object();
+ *
+ *     @ReflectiveAccessOnly
+ *     private String contents;
+ *
+ *     ConfigurationText(Path source) {
+ *         this.source = Objects.requireNonNull(source);
+ *     }
+ *
+ *     public String contents() {
+ *         return CONTENTS.getOrComputeSerialized(monitor, this, source);
+ *     }
+ *
+ *     private static String read(Path source) {
+ *         try {
+ *             return Files.readString(source);
+ *         } catch (IOException e) {
+ *             throw new UncheckedIOException(e);
+ *         }
+ *     }
+ * }
+ * }
+ * Each instance owns its storage and monitor; the path is the computation context.
+ * After a successful read, the contents remain cached even if the file changes,
+ * and subsequent accesses can return without acquiring the monitor.
+ * <p>
+ * Finally, here is how a lazy supplier similar to the one provided via
+ * {@linkplain Lazy#ofSupplier(Supplier)} can be implemented using stable accessors:
+ *
+ * {@snippet lang = java:
+ * private static final class LazySupplier<V> implements Supplier<V> {
+ *
+ *     // Singleton sentinel for errors
+ *     private static final Object FAILED = new Object();
+ *
+ *     private static final StableAccessors.OfField<
+ *             LazySupplier<?>, LazySupplier<?>, Object> VALUE =
+ *             StableAccessors.ofField(
+ *                     LazySupplier.class,     // Owner type
+ *                     Object.class,           // Field type
+ *                     "value",                // Field name
+ *                     LazySupplier.class,     // Context type
+ *                     LazySupplier::compute); // Computing function
+ *
+ *     @ReflectiveAccessOnly
+ *     private Object value;
+ *
+ *     // Volatile makes it thread safe
+ *     private volatile Supplier<? extends V> computingFunction;
+ *
+ *     LazySupplier(Supplier<? extends V> computingFunction) {
+ *         this.computingFunction = Objects.requireNonNull(computingFunction);
+ *     }
+ *
+ *     @Override
+ *     @SuppressWarnings("unchecked")
+ *     public V get() {
+ *         // This call supplies the monitor, receiver, and context which are all the same
+ *         Object result = VALUE.getOrComputeSerialized(this, this, this);
+ *
+ *         if (result == FAILED) {
+ *             throw new NoSuchElementException("Lazy initialization failed");
+ *         }
+ *         return (V) result;
+ *     }
+ *
+ *     private Object compute() {
+ *         Supplier<? extends V> function = computingFunction;
+ *
+ *         // Outside the catch: recursive access must not install a candidate.
+ *         if (function == null) {
+ *             throw new IllegalStateException("Recursive lazy initialization");
+ *         }
+ *
+ *         // The local variable retains the function during its invocation.
+ *         // Clearing this field also detects recursive computation.
+ *         computingFunction = null;
+ *
+ *         try {
+ *             return Objects.requireNonNull(function.get());
+ *         } catch (Throwable ignored) {
+ *             // Published like a successful result, before releasing the monitor.
+ *             return FAILED;
+ *         }
+ *     }
+ * }
+ * }
  *
  * <h2 id="performance">Performance</h2>
  * A field managed by one or more stable accessors can never change after the field has
@@ -350,14 +629,15 @@ import java.util.function.*;
  * previously observed. We call this optimization <em>constant folding</em>. This is only
  * possible if there is a direct reference from a {@code static final} field to a managed
  * field or if there is a chain from a {@code static final} field -- via one or more
- * <em>trusted fields</em> (i.e., {@code static final} fields, {@linkplain Record record}
- * fields, or final instance fields in hidden classes) -- to a lazily initialized field.
+ * <em>trusted fields</em> (e.g., {@code static final} fields, {@linkplain Record record}
+ * fields, {@link Lazy} elements, stable-accessor managed fields, or final instance fields
+ * in hidden classes) -- to a managed field.
  * Whether and when this optimization occurs is implementation-dependent. Eliding
  * a storage read preserves the guarantees described under
  * {@linkplain ##memory-effects Memory effects}.
  * <p>
- * For array accessors, these optimizations apply independently to each
- * initialized element. Initializing one element does not initialize the other elements.
+ * For array accessors, these optimizations apply independently to each initialized
+ * element.
  *
  * @implNote The accessor factories' implementations install a field or element
  *           candidate as if using
@@ -366,6 +646,8 @@ import java.util.function.*;
  *           performs a separate acquire read before returning the winner.
  *           Accessors should generally be declared {@code static final} in order to
  *           present the best performance optimization opportunities for the VM.
+ *           The implementation of the accessors allows them to be used early in the
+ *           VM boot sequence.
  *
  * @since 29
  *
@@ -392,13 +674,16 @@ public final class StableAccessors {
      * {@linkplain ##type-compatibility type compatibility rules} apply.
      * The computing function takes no arguments.
      * <p>
-     * The accessor uses {@linkplain ##publish-once publish once}.
+     * The returned accessor requires a null receiver and
+     * a null context argument to {@code getOrCompute}.
+     * The {@linkplain ##access-shapes factory-specific argument restrictions}
+     * apply on every accessor invocation.
      *
      * @param owner the type through which the field is selected
      * @param fieldType the expected field type
      * @param name the simple field name
      * @param computingFunction the function computing a non-default value
-     * @param <V> the result type expected by the caller
+     * @param <R> the result type expected by the caller
      * @throws IllegalCallerException if there is no caller frame
      * @throws IllegalArgumentException if the field cannot be found or accessed, is
      *         incompatible, is not static or is final, lacks the required annotation,
@@ -407,11 +692,11 @@ public final class StableAccessors {
      * @since 29
      */
     @CallerSensitive
-    public static <V> StableStaticField<V> ofStaticField(
+    public static <R> OfField<Void, Void, R> ofStaticField(
             Class<?> owner,
-            Class<? super V> fieldType,
+            Class<? super R> fieldType,
             String name,
-            StableStaticField.Computer<? extends V> computingFunction) {
+            Supplier<? extends R> computingFunction) {
 
         // Caller identification must occur in the caller-sensitive entry point.
         final Class<?> caller = Reflection.getCallerClass();
@@ -431,40 +716,46 @@ public final class StableAccessors {
      * {@return a stable accessor for a static field, using a computation context}
      * <p>
      * Field selection, access checks, and type compatibility are as specified for
-     * {@link #ofStaticField(Class, Class, String, StableStaticField.Computer)}.
+     * {@link #ofStaticField(Class, Class, String, Supplier)}.
      * The computing function receives the
      * {@linkplain ##computing-functions computation context} supplied to
      * {@code getOrCompute}; the context is not a
      * {@linkplain ##access-shapes storage coordinate}.
+     * <p>
+     * The returned accessor requires a null receiver. Its
+     * context may be null if the computing function accepts it.
+     * The {@linkplain ##access-shapes factory-specific argument restrictions}
+     * apply on every accessor invocation.
      *
      * @param owner the type through which the field is selected
      * @param fieldType the expected field type
      * @param name the simple field name
-     * @param contextType the type through which the computation context is described
+     * @param contextType a reference type token for the context type or a supertype
      * @param computingFunction the function computing a non-default value
      * @param <C> the computation context type
-     * @param <V> the result type expected by the caller
+     * @param <R> the result type expected by the caller
      * @throws IllegalCallerException if there is no caller frame
      * @throws IllegalArgumentException if the field cannot be found or accessed, is
      *         incompatible, is not static or is final, lacks the required annotation,
-     *         is null-restricted, or if {@code name} is invalid
+     *         is null-restricted, if {@code name} is invalid, or if {@code contextType}
+     *         is a primitive type, including {@code void.class}
      * @throws NullPointerException if any argument is null
      * @since 29
      */
     @CallerSensitive
-    public static <C, V> StableStaticFieldWithContext<C, V> ofStaticField(
+    public static <C, R> OfField<Void, C, R> ofStaticField(
             Class<?> owner,
-            Class<? super V> fieldType,
+            Class<? super R> fieldType,
             String name,
             Class<? super C> contextType,
-            StableStaticFieldWithContext.Computer<? super C, ? extends V> computingFunction) {
+            OfField.Computer<? super C, ? extends R> computingFunction) {
 
         final Class<?> caller = Reflection.getCallerClass();
         checkCaller(caller);
         Objects.requireNonNull(owner);
         Objects.requireNonNull(fieldType);
         checkName(name);
-        Objects.requireNonNull(contextType);
+        checkContextType(contextType);
         Objects.requireNonNull(computingFunction);
         final Field field = findField(caller, owner, fieldType, name, true);
         checkFieldFinalState(field, false);
@@ -482,14 +773,17 @@ public final class StableAccessors {
      * {@linkplain ##type-compatibility type compatibility rules} apply.
      * The computing function takes no arguments.
      * <p>
-     * The accessor uses {@linkplain ##publish-once publish once}.
+     * The returned accessor requires a non-null, compatible receiver and
+     * a null context argument to {@code getOrCompute}.
+     * The {@linkplain ##access-shapes factory-specific argument restrictions}
+     * apply on every accessor invocation.
      *
      * @param receiverType the type through which the field is selected
      * @param fieldType the expected field type
      * @param name the simple field name
      * @param computingFunction the function computing a non-default value
      * @param <T> the receiver type
-     * @param <V> the result type expected by the caller
+     * @param <R> the result type expected by the caller
      * @throws IllegalCallerException if there is no caller frame
      * @throws IllegalArgumentException if the field cannot be found or accessed, is
      *         incompatible, is static or final, lacks the required annotation,
@@ -498,11 +792,11 @@ public final class StableAccessors {
      * @since 29
      */
     @CallerSensitive
-    public static <T, V> StableField<T, V> ofField(
+    public static <T, R> OfField<T, Void, R> ofField(
             Class<? super T> receiverType,
             Class<?> fieldType,
             String name,
-            StableField.Computer<? extends V> computingFunction) {
+            Supplier<? extends R> computingFunction) {
 
         final Class<?> caller = Reflection.getCallerClass();
         checkCaller(caller);
@@ -524,41 +818,47 @@ public final class StableAccessors {
      * {@return a stable accessor for an instance field, using a computation context}
      * <p>
      * Field selection, access checks, and type compatibility are as specified for
-     * {@link #ofField(Class, Class, String, StableField.Computer)}.
+     * {@link #ofField(Class, Class, String, Supplier)}.
      * The computing function receives the
      * {@linkplain ##computing-functions computation context} supplied to
      * {@code getOrCompute}; the context is not a
      * {@linkplain ##access-shapes storage coordinate}.
+     * <p>
+     * The returned accessor requires a non-null, compatible receiver. Its
+     * context may be null if the computing function accepts it.
+     * The {@linkplain ##access-shapes factory-specific argument restrictions}
+     * apply on every accessor invocation.
      *
      * @param receiverType the type through which the field is selected
      * @param fieldType the expected field type
      * @param name the simple field name
-     * @param contextType the type through which the computation context is described
+     * @param contextType a reference type token for the context type or a supertype
      * @param computingFunction the function computing a non-default value
      * @param <T> the receiver type
      * @param <C> the computation context type
-     * @param <V> the result type expected by the caller
+     * @param <R> the result type expected by the caller
      * @throws IllegalCallerException if there is no caller frame
      * @throws IllegalArgumentException if the field cannot be found or accessed, is
      *         incompatible, is static or final, lacks the required annotation,
-     *         is null-restricted, or if {@code name} is invalid
+     *         is null-restricted, if {@code name} is invalid, or if {@code contextType}
+     *         is a primitive type, including {@code void.class}
      * @throws NullPointerException if any argument is null
      * @since 29
      */
     @CallerSensitive
-    public static <T, C, V> StableFieldWithContext<T, C, V> ofField(
+    public static <T, C, R> OfField<T, C, R> ofField(
             Class<? super T> receiverType,
             Class<?> fieldType,
             String name,
             Class<? super C> contextType,
-            StableFieldWithContext.Computer<? super C, ? extends V> computingFunction) {
+            OfField.Computer<? super C, ? extends R> computingFunction) {
 
         final Class<?> caller = Reflection.getCallerClass();
         checkCaller(caller);
         Objects.requireNonNull(receiverType);
         Objects.requireNonNull(fieldType);
         checkName(name);
-        Objects.requireNonNull(contextType);
+        checkContextType(contextType);
         Objects.requireNonNull(computingFunction);
         final Field field = findField(caller, receiverType, fieldType, name, false);
         checkFieldFinalState(field, false);
@@ -571,40 +871,150 @@ public final class StableAccessors {
     }
 
     /**
+     * {@return a stable accessor for elements of a static array field, without
+     * a computation context}
+     * <p>
+     * The field is selected by {@code owner} and {@code name}. It must be static
+     * and final, have a supported one-dimensional reference or primitive array type,
+     * and be annotated with {@code @ReflectiveAccessOnly(arrayElements = true)}.
+     * The {@linkplain ##field-selection field selection and access rules} and
+     * {@linkplain ##type-compatibility type compatibility rules} apply.
+     * The computing function receives the element index.
+     * <p>
+     * Creating it does not initialize the field's declaring class or read the array
+     * field. Invoking either access method initializes the declaring class if
+     * necessary. See {@linkplain ##access-and-storage-ownership Access and storage
+     * ownership} for the requirements on the array and its elements.
+     * <p>
+     * The returned accessor requires a null receiver and
+     * a null context argument to {@code getOrCompute}.
+     * The {@linkplain ##access-shapes factory-specific argument restrictions}
+     * apply on every accessor invocation.
+     *
+     * @param owner the type through which the array field is selected
+     * @param arrayComponentType the expected element result type
+     * @param name the simple field name
+     * @param computingFunction the function computing a non-default element value
+     * @param <R> the result type, boxed if the array component type is primitive
+     * @throws IllegalCallerException if there is no caller frame
+     * @throws IllegalArgumentException if the field cannot be found or accessed,
+     *         is not static or not final, does not have a supported array type or
+     *         required annotation, or if {@code arrayComponentType} is inaccessible,
+     *         unsupported or incompatible, or if {@code name} is invalid
+     * @throws NullPointerException if any argument is null
+     * @since 29
+     */
+    @CallerSensitive
+    public static <R> OfArrayField<Void, Void, R> ofStaticArrayField(
+            Class<?> owner,
+            Class<? super R> arrayComponentType,
+            String name,
+            IntFunction<? extends R> computingFunction) {
+
+        final Class<?> caller = Reflection.getCallerClass();
+        checkCaller(caller);
+        Objects.requireNonNull(owner);
+        Objects.requireNonNull(arrayComponentType);
+        checkName(name);
+        Objects.requireNonNull(computingFunction);
+        final Field field = findField(caller, owner, Object.class, name, true);
+        checkFieldFinalState(field, true);
+        checkArrayTypes(caller, field.getType(), arrayComponentType);
+        checkArrayFieldReflectiveAccessOnly(field);
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * {@return a stable accessor for elements of a static array field, using a
+     * computation context}
+     * <p>
+     * Field selection, access checks, type compatibility, and class initialization
+     * are as specified for
+     * {@link #ofStaticArrayField(Class, Class, String, IntFunction)}.
+     * The computing function receives the element index and
+     * {@linkplain ##computing-functions computation context} supplied to
+     * {@code getOrCompute}; the context is not a
+     * {@linkplain ##access-shapes storage coordinate}.
+     * <p>
+     * The returned accessor requires a null receiver. Its
+     * context may be null if the computing function accepts it.
+     * The {@linkplain ##access-shapes factory-specific argument restrictions}
+     * apply on every accessor invocation.
+     *
+     * @param owner the type through which the array field is selected
+     * @param arrayComponentType the expected element result type
+     * @param name the simple field name
+     * @param contextType a reference type token for the context type or a supertype
+     * @param computingFunction the function computing a non-default element value
+     * @param <C> the type of computation context
+     * @param <R> the result type, boxed if the array component type is primitive
+     * @throws IllegalCallerException if there is no caller frame
+     * @throws IllegalArgumentException if the field cannot be found or accessed,
+     *         is not static or not final, does not have a supported array type or
+     *         required annotation, or if {@code arrayComponentType} is inaccessible,
+     *         unsupported or incompatible, if {@code name} is invalid, or if
+     *         {@code contextType} is a primitive type, including {@code void.class}
+     * @throws NullPointerException if any argument is null
+     * @since 29
+     */
+    @CallerSensitive
+    public static <C, R> OfArrayField<Void, C, R> ofStaticArrayField(
+            Class<?> owner,
+            Class<? super R> arrayComponentType,
+            String name,
+            Class<? super C> contextType,
+            OfArrayField.Computer<? super C, ? extends R> computingFunction) {
+
+        final Class<?> caller = Reflection.getCallerClass();
+        checkCaller(caller);
+        Objects.requireNonNull(owner);
+        Objects.requireNonNull(arrayComponentType);
+        checkName(name);
+        checkContextType(contextType);
+        Objects.requireNonNull(computingFunction);
+        final Field field = findField(caller, owner, Object.class, name, true);
+        checkFieldFinalState(field, true);
+        checkArrayTypes(caller, field.getType(), arrayComponentType);
+        checkArrayFieldReflectiveAccessOnly(field);
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * {@return a stable accessor for elements of an instance array field, without
      * a computation context}
      * <p>
      * The field is selected by {@code receiverType} and {@code name}. It must be
-     * non-static, have a supported one-dimensional array
+     * non-static and final, have a supported one-dimensional array
      * type, and be annotated with {@code @ReflectiveAccessOnly(arrayElements = true)}.
-     * It may be final. The {@linkplain ##field-selection field selection and access
+     * The {@linkplain ##field-selection field selection and access
      * rules} and {@linkplain ##type-compatibility type compatibility rules} apply.
      * The computing function receives the element index.
      * <p>
-     * The accessor uses {@linkplain ##publish-once publish once}. The field must
-     * continue to refer to the same array while its elements are managed. See
-     * {@linkplain ##access-and-storage-ownership Access and storage ownership}.
+     * The returned accessor requires a non-null, compatible receiver and
+     * a null context argument to {@code getOrCompute}.
+     * The {@linkplain ##access-shapes factory-specific argument restrictions}
+     * apply on every accessor invocation.
      *
      * @param receiverType the type through which the array field is selected
      * @param arrayComponentType the expected element result type
      * @param name the simple field name
      * @param computingFunction the function computing a non-default element value
      * @param <T> the receiver type
-     * @param <V> the result type, boxed if the array component type is primitive
+     * @param <R> the result type, boxed if the array component type is primitive
      * @throws IllegalCallerException if there is no caller frame
      * @throws IllegalArgumentException if the field cannot be found or accessed, is
-     *         static, does not have a supported array type or required annotation,
+     *         static or not final, does not have a supported array type or required annotation,
      *         or if {@code arrayComponentType} is inaccessible, unsupported or
      *         incompatible, or if {@code name} is invalid
      * @throws NullPointerException if any argument is null
      * @since 29
      */
     @CallerSensitive
-    public static <T, V> StableArray<T, V> ofArray(
+    public static <T, R> OfArrayField<T, Void, R> ofArrayField(
             Class<? super T> receiverType,
-            Class<? super V> arrayComponentType,
+            Class<? super R> arrayComponentType,
             String name,
-            StableArray.Computer<? extends V> computingFunction) {
+            IntFunction<? extends R> computingFunction) {
 
         final Class<?> caller = Reflection.getCallerClass();
         checkCaller(caller);
@@ -613,6 +1023,7 @@ public final class StableAccessors {
         checkName(name);
         Objects.requireNonNull(computingFunction);
         final Field field = findField(caller, receiverType, Object.class, name, false);
+        checkFieldFinalState(field, true);
         checkArrayTypes(caller, field.getType(), arrayComponentType);
         checkArrayFieldReflectiveAccessOnly(field);
         final Class<?> protectedReceiver = Modifier.isProtected(field.getModifiers())
@@ -626,44 +1037,51 @@ public final class StableAccessors {
      * computation context}
      * <p>
      * Field selection, access checks, and type compatibility are as specified for
-     * {@link #ofArray(Class, Class, String, StableArray.Computer)}.
+     * {@link #ofArrayField(Class, Class, String, IntFunction)}.
      * The computing function receives the element index and
      * {@linkplain ##computing-functions computation context} supplied to
      * {@code getOrCompute}; the context is not a
      * {@linkplain ##access-shapes storage coordinate}.
+     * <p>
+     * The returned accessor requires a non-null, compatible receiver. Its
+     * context may be null if the computing function accepts it.
+     * The {@linkplain ##access-shapes factory-specific argument restrictions}
+     * apply on every accessor invocation.
      *
      * @param receiverType the type through which the array field is selected
      * @param arrayComponentType the expected element result type
      * @param name the simple field name
-     * @param contextType the type through which the computation context is described
+     * @param contextType a reference type token for the context type or a supertype
      * @param computingFunction the function computing a non-default element value
      * @param <T> the receiver type
      * @param <C> the computation context type
-     * @param <V> the result type, boxed if the array component type is primitive
+     * @param <R> the result type, boxed if the array component type is primitive
      * @throws IllegalCallerException if there is no caller frame
      * @throws IllegalArgumentException if the field cannot be found or accessed, is
-     *         static, does not have a supported array type or required annotation,
+     *         static or not final, does not have a supported array type or required annotation,
      *         or if {@code arrayComponentType} is inaccessible, unsupported or
-     *         incompatible, or if {@code name} is invalid
+     *         incompatible, if {@code name} is invalid, or if {@code contextType}
+     *         is a primitive type, including {@code void.class}
      * @throws NullPointerException if any argument is null
      * @since 29
      */
     @CallerSensitive
-    public static <T, C, V> StableArrayWithContext<T, C, V> ofArray(
+    public static <T, C, R> OfArrayField<T, C, R> ofArrayField(
             Class<? super T> receiverType,
-            Class<? super V> arrayComponentType,
+            Class<? super R> arrayComponentType,
             String name,
             Class<? super C> contextType,
-            StableArrayWithContext.Computer<? super C, ? extends V> computingFunction) {
+            OfArrayField.Computer<? super C, ? extends R> computingFunction) {
 
         final Class<?> caller = Reflection.getCallerClass();
         checkCaller(caller);
         Objects.requireNonNull(receiverType);
         Objects.requireNonNull(arrayComponentType);
         checkName(name);
-        Objects.requireNonNull(contextType);
+        checkContextType(contextType);
         Objects.requireNonNull(computingFunction);
         final Field field = findField(caller, receiverType, Object.class, name, false);
+        checkFieldFinalState(field, true);
         checkArrayTypes(caller, field.getType(), arrayComponentType);
         checkArrayFieldReflectiveAccessOnly(field);
         final Class<?> protectedReceiver = Modifier.isProtected(field.getModifiers())
@@ -673,329 +1091,302 @@ public final class StableAccessors {
     }
 
     /**
-     * A stable accessor for a static field, without a computation context.
-     * All normally returning calls to {@link #getOrCompute()} return the same
-     * installed value. {@link #get()} observes the field without computing.
-     * The {@linkplain StableAccessors##publish-once publish-once},
+     * A stable accessor for a static or instance field, with an optional computation
+     * context. All normally returning calls to {@link #getOrCompute(Object, Object)}
+     * selecting the same field location return the same installed value, regardless
+     * of context. {@link #get(Object)} observes the field without computing.
+     * <p>
+     * The factory selecting the field determines the restrictions on the returned
+     * implementation. An instance-field accessor requires a non-null receiver
+     * compatible with the selected field and any protected access restriction.
+     * A static-field accessor has receiver type {@link Void} and requires a null
+     * receiver; a null receiver does not turn an instance-field accessor into a
+     * static-field accessor. Access to a static field initializes its declaring
+     * class if necessary; creating the accessor does not initialize that class.
+     * <p>
+     * An accessor created without a computation context has context type
+     * {@code Void} and requires a null context. An accessor created with a context
+     * passes that context to the computing function only when computation is needed;
+     * a null context is permitted if the computing function accepts it.
+     * The {@linkplain StableAccessors##access-shapes factory-specific argument
+     * restrictions}, {@linkplain StableAccessors##publish-once publish-once},
      * {@linkplain StableAccessors##uninitialized-locations uninitialized-location}, and
      * {@linkplain StableAccessors##access-and-storage-ownership storage-ownership}
      * rules apply.
      *
-     * @param <V> the result type, boxed if the field is primitive
+     * @param <T> the receiver type, or {@code Void} for a static field
+     * @param <C> the computation context type, or {@code Void} if no context is used
+     * @param <R> the result type, boxed if the field is primitive
      * @since 29
      */
-    public interface StableStaticField<V> {
+    public /* sealed */ interface OfField<T, C, R> {
         /**
-         * {@return an optional containing the observed non-default value, or an
-         * empty optional if the read observes the reserved default value}
+         * {@return an optional containing the observed non-default value, boxed if
+         * primitive, or an empty optional if the read observes the reserved default}
          * The field is read with acquire semantics without computing a value.
+         * @param receiver the object holding the selected instance field, or
+         *        {@code null} for a static field
+         * @throws NullPointerException if the accessor selects an instance field
+         *         and {@code receiver} is null
+         * @throws ClassCastException if the receiver is incompatible with the
+         *         selected instance field or violates a protected access restriction,
+         *         or if the accessor selects a static field and the receiver is non-null
          */
-        Optional<V> get();
+        Optional<R> get(T receiver);
 
         /**
-         * {@return the installed non-default value, computing it if necessary}
+         * {@return the installed non-default value, boxed if primitive, computing
+         * it if necessary}
+         * For an accessor created with a context, the context is supplied to the
+         * computing function only if computation is needed. It is not part of the
+         * storage location.
+         * @param receiver the object holding the selected instance field, or
+         *        {@code null} for a static field
+         * @param context the computation context, possibly {@code null}; must be
+         *        {@code null} if the accessor was created without a context
+         * @throws NullPointerException if the accessor selects an instance field
+         *         and {@code receiver} is null, or if the field is primitive and
+         *         the computed candidate is null
+         * @throws ClassCastException if the receiver is incompatible with the
+         *         selected instance field or violates a protected access restriction,
+         *         if the accessor selects a static field and the receiver is non-null,
+         *         if the accessor was created without a context and the context
+         *         is non-null, if a non-null context is incompatible with the
+         *         accessor's context type token, or if a non-null computed candidate
+         *         cannot be converted to the field type as specified by the
+         *         {@linkplain StableAccessors##type-compatibility type compatibility rules}
          * @throws IllegalArgumentException if the computed candidate is the reserved
          *         default value after conversion to the storage type
          */
-        V getOrCompute();
+        R getOrCompute(T receiver, C context);
 
         /**
-         * Computes a candidate for a static field without a context. It may be
-         * invoked more than once, including concurrently.
-         * @param <V> the type of candidate values
+         * {@return the installed non-default value, computing it under the supplied
+         * monitor if necessary}
+         * This method follows the {@linkplain StableAccessors##serialized-computation
+         * serialized-computation protocol}. All invocations that can initialize the
+         * same location must use the same monitor to prevent concurrent computations.
+         * An observed installed value is returned without acquiring the monitor.
+         * Argument restrictions, candidate checks, and computation failures are as
+         * specified for {@link #getOrCompute(Object, Object)}.
+         *
+         * @implSpec This implementation first checks that {@code monitor} is a
+         *           non-null identity object, then invokes {@link #get(Object)}.
+         *           If a value is observed, it invokes {@code getOrCompute} without
+         *           locking, preserving that method's argument checks. Otherwise,
+         *           it invokes {@code getOrCompute} while synchronized on
+         *           {@code monitor}, holding the monitor through publication or
+         *           exceptional completion.
+         * @param monitor the non-null identity object used to serialize computation
+         * @param receiver the object holding the selected instance field, or
+         *        {@code null} for a static field
+         * @param context the computation context, possibly {@code null}; must be
+         *        {@code null} if the accessor was created without a context
+         * @throws NullPointerException if {@code monitor} is null, or if the accessor
+         *         selects an instance field and {@code receiver} is null, or if the
+         *         field is primitive and the computed candidate is null
+         * @throws IdentityException if {@code monitor} is a value object
+         * @throws ClassCastException if the receiver or context violates the
+         *         restrictions specified by {@code getOrCompute}, or if a non-null
+         *         computed candidate cannot be converted to the field type
+         * @throws IllegalArgumentException if the computed candidate is the reserved
+         *         default value after conversion to the storage type
          * @since 29
          */
-        @FunctionalInterface
-        interface Computer<V> {
-            /** {@return a non-default candidate value} */
-            V compute();
+        default R getOrComputeSerialized(Object monitor, T receiver, C context) {
+            Objects.requireIdentity(monitor);
+            Optional<R> observed = get(receiver);
+            if (observed.isPresent()) {
+                // Preserve context validation even when no computation is needed:
+                //    contextType.cast(context);
+                return observed.get();
+            }
+
+            synchronized (monitor) {
+                // Rechecks the location before computing.
+                // Any successful candidate is published before unlocking.
+                return getOrCompute(receiver, context);
+            }
         }
-    }
-
-    /**
-     * A stable accessor for a static field, with a computation context.
-     * All normally returning calls to {@link #getOrCompute(Object)} return the
-     * same installed value, regardless of context. {@link #get()} observes the
-     * field without computing.
-     * The {@linkplain StableAccessors##publish-once publish-once},
-     * {@linkplain StableAccessors##uninitialized-locations uninitialized-location}, and
-     * {@linkplain StableAccessors##access-and-storage-ownership storage-ownership}
-     * rules apply.
-     *
-     * @param <C> the type of computation context
-     * @param <V> the result type, boxed if the field is primitive
-     * @since 29
-     */
-    public interface StableStaticFieldWithContext<C, V> {
-        /**
-         * {@return an optional containing the observed non-default value, or an
-         * empty optional if the read observes the reserved default value}
-         * The field is read with acquire semantics without computing a value.
-         */
-        Optional<V> get();
 
         /**
-         * {@return the installed non-default value, computing it if necessary}
-         * The context is supplied to the computing function only if computation
-         * is needed; it is not part of the storage location.
-         * @param context the computation context, possibly {@code null}
-         * @throws IllegalArgumentException if the computed candidate is the reserved
-         *         default value after conversion to the storage type
-         */
-        V getOrCompute(C context);
-
-        /**
-         * Computes a candidate for a static field from a context. It may be
-         * invoked more than once, including concurrently.
+         * Computes a candidate field value from a context. It may be invoked more
+         * than once for the same field location, including concurrently. The receiver
+         * is not supplied automatically; it can be passed explicitly as the context.
          * @param <C> the type of computation context
-         * @param <V> the type of candidate values
+         * @param <R> the type of candidate values
          * @since 29
          */
         @FunctionalInterface
-        interface Computer<C, V> {
+        interface Computer<C, R> {
             /**
              * {@return a non-default candidate value}
              * @param context the computation context, possibly {@code null}
              */
-            V compute(C context);
+            R compute(C context);
         }
     }
 
     /**
-     * A stable accessor for an instance field, without a computation context.
-     * All normally returning calls to {@link #getOrCompute(Object)} for a given
-     * receiver return the same installed value. {@link #get(Object)} observes
-     * the field without computing.
-     * The {@linkplain StableAccessors##publish-once publish-once},
+     * A stable accessor for elements of a static or instance array field, with an
+     * optional computation context. The array referenced by the selected field and
+     * the index identify the storage location. All normally returning calls to
+     * {@link #getOrCompute(Object, int, Object)} selecting the same location return
+     * the same installed value, regardless of context. Different fields or receivers
+     * may share an array and thus share its installed element values.
+     * {@link #get(Object, int)} observes the element without computing.
+     * <p>
+     * The factory selecting the array field determines the restrictions on the
+     * returned implementation. An instance-array accessor requires a non-null
+     * receiver compatible with the selected field and any protected access
+     * restriction. A static-array accessor has receiver type {@link Void} and
+     * requires a null receiver; a null receiver does not turn an instance-array
+     * accessor into a static-array accessor. Access to a static array field initializes
+     * its declaring class if necessary; creating the accessor does not initialize
+     * that class.
+     * <p>
+     * An accessor created without a computation context has context type
+     * {@code Void} and requires a null context. An accessor created with a context
+     * passes that context to the computing function only when computation is needed;
+     * a null context is permitted if the computing function accepts it.
+     * The {@linkplain StableAccessors##access-shapes factory-specific argument
+     * restrictions}, {@linkplain StableAccessors##publish-once publish-once},
      * {@linkplain StableAccessors##uninitialized-locations uninitialized-location}, and
      * {@linkplain StableAccessors##access-and-storage-ownership storage-ownership}
      * rules apply.
      *
-     * @param <T> the type of the receiver
-     * @param <V> the result type, boxed if the field is primitive
+     * @param <T> the receiver type, or {@code Void} for a static array field
+     * @param <C> the computation context type, or {@code Void} if no context is used
+     * @param <R> the result type, boxed if the array has a primitive component type
      * @since 29
      */
-    public interface StableField<T, V> {
-        /**
-         * {@return an optional containing the observed non-default value, or an
-         * empty optional if the read observes the reserved default value}
-         * The field is read with acquire semantics without computing a value.
-         * @param receiver the object holding the selected field
-         * @throws NullPointerException if {@code receiver} is null
-         * @throws ClassCastException if the receiver is incompatible with the
-         *         selected field or violates a protected access restriction
-         */
-        Optional<V> get(T receiver);
-
-        /**
-         * {@return the installed non-default value, computing it if necessary}
-         * @param receiver the object holding the selected field
-         * @throws NullPointerException if {@code receiver} is null
-         * @throws ClassCastException if the receiver is incompatible with the
-         *         selected field or violates a protected access restriction
-         * @throws IllegalArgumentException if the computed candidate is the reserved
-         *         default value after conversion to the storage type
-         */
-        V getOrCompute(T receiver);
-
-        /**
-         * Computes a candidate for an instance field without a context. It may be
-         * invoked more than once, including concurrently.
-         * @param <V> the type of candidate values
-         * @since 29
-         */
-        @FunctionalInterface
-        interface Computer<V> {
-            /** {@return a non-default candidate value} */
-            V compute();
-        }
-    }
-
-    /**
-     * A stable accessor for an instance field, with a computation context.
-     * All normally returning calls to {@link #getOrCompute(Object, Object)} for
-     * a given receiver return the same installed value, regardless of context.
-     * {@link #get(Object)} observes the field without computing.
-     * The {@linkplain StableAccessors##publish-once publish-once},
-     * {@linkplain StableAccessors##uninitialized-locations uninitialized-location}, and
-     * {@linkplain StableAccessors##access-and-storage-ownership storage-ownership}
-     * rules apply.
-     *
-     * @param <T> the type of the receiver
-     * @param <C> the type of computation context
-     * @param <V> the result type, boxed if the field is primitive
-     * @since 29
-     */
-    public interface StableFieldWithContext<T, C, V> {
-        /**
-         * {@return an optional containing the observed non-default value, or an
-         * empty optional if the read observes the reserved default value}
-         * The field is read with acquire semantics without computing a value.
-         * @param receiver the object holding the selected field
-         * @throws NullPointerException if {@code receiver} is null
-         * @throws ClassCastException if the receiver is incompatible with the
-         *         selected field or violates a protected access restriction
-         */
-        Optional<V> get(T receiver);
-
-        /**
-         * {@return the installed non-default value, computing it if necessary}
-         * The context is supplied to the computing function only if computation
-         * is needed; it is not part of the storage location.
-         * @param receiver the object holding the selected field
-         * @param context the computation context, possibly {@code null}
-         * @throws NullPointerException if {@code receiver} is null
-         * @throws ClassCastException if the receiver is incompatible with the
-         *         selected field or violates a protected access restriction
-         * @throws IllegalArgumentException if the computed candidate is the reserved
-         *         default value after conversion to the storage type
-         */
-        V getOrCompute(T receiver, C context);
-
-        /**
-         * Computes a candidate for an instance field from a context. It may be
-         * invoked more than once for the same field, including concurrently.
-         * @param <C> the type of computation context
-         * @param <V> the type of candidate values
-         * @since 29
-         */
-        @FunctionalInterface
-        interface Computer<C, V> {
-            /**
-             * {@return a non-default candidate value}
-             * @param context the computation context, possibly {@code null}
-             */
-            V compute(C context);
-        }
-    }
-
-    /**
-     * A stable accessor for elements of an instance array field, without a
-     * computation context. The array referenced by the selected field and the
-     * index identify the storage location. Different receivers may share an array
-     * and thus share its installed element values.
-     * The {@linkplain StableAccessors##publish-once publish-once},
-     * {@linkplain StableAccessors##uninitialized-locations uninitialized-location}, and
-     * {@linkplain StableAccessors##access-and-storage-ownership storage-ownership}
-     * rules apply.
-     *
-     * @param <T> the type of the receiver
-     * @param <V> the result type, boxed if the array has a primitive component type
-     * @since 29
-     */
-    public interface StableArray<T, V> {
+    public /* sealed */ interface OfArrayField<T, C, R> {
         /**
          * {@return an optional containing the observed non-default element value,
          * boxed if primitive, or an empty optional if the read observes the default}
          * The element is read with acquire semantics without computing a value.
-         * @param receiver the object holding the array field
+         * @param receiver the object holding the selected instance array field, or
+         *        {@code null} for a static array field
          * @param index the index of the selected element
-         * @throws NullPointerException if {@code receiver} or its array field is null
+         * @throws NullPointerException if the accessor selects an instance field
+         *         and {@code receiver} is null, or if the selected array field is null
          * @throws IndexOutOfBoundsException if the index is outside the array
-         * @throws IllegalArgumentException if the runtime array type is unsupported
+         * @throws IllegalArgumentException if the runtime array type is unsupported,
+         *         including a {@linkplain StableAccessors##uninitialized-locations
+         *         null-restricted array}
          * @throws ClassCastException if the receiver is incompatible with the
-         *         selected field or violates a protected access restriction
+         *         selected instance field or violates a protected access restriction,
+         *         or if the accessor selects a static field and the receiver is non-null
          */
-        Optional<V> get(T receiver, int index);
+        Optional<R> get(T receiver, int index);
 
         /**
          * {@return the installed non-default element value, boxed if primitive,
          * computing it if necessary}
-         * @param receiver the object holding the array field
+         * The computing function receives the element index and, if the accessor
+         * was created with a context, the context. It is invoked only if computation
+         * is needed. The context is not part of the storage location.
+         * @param receiver the object holding the selected instance array field, or
+         *        {@code null} for a static array field
          * @param index the index of the selected element
-         * @throws NullPointerException if {@code receiver} or its array field is null
+         * @param context the computation context, possibly {@code null}; must be
+         *        {@code null} if the accessor was created without a context
+         * @throws NullPointerException if the accessor selects an instance field
+         *         and {@code receiver} is null, if the selected array field is null,
+         *         or if the array has a primitive component type and the computed
+         *         candidate is null
          * @throws IndexOutOfBoundsException if the index is outside the array
          * @throws IllegalArgumentException if the runtime array type is unsupported,
-         *         or the computed candidate is the reserved default value after
-         *         conversion to the storage type
+         *         including a {@linkplain StableAccessors##uninitialized-locations
+         *         null-restricted array}, or the computed candidate is the reserved
+         *         default value after conversion to the storage type
          * @throws ClassCastException if the receiver is incompatible with the
-         *         selected field or violates a protected access restriction
+         *         selected instance field or violates a protected access restriction,
+         *         if the accessor selects a static field and the receiver is non-null,
+         *         if the accessor was created without a context and the context
+         *         is non-null, if a non-null context is incompatible with the
+         *         accessor's context type token, or if a non-null computed candidate
+         *         cannot be converted to the primitive component type as specified by the
+         *         {@linkplain StableAccessors##type-compatibility type compatibility rules}
          * @throws ArrayStoreException if the computed candidate is incompatible
          *         with the runtime component type of a reference array
          */
-        V getOrCompute(T receiver, int index);
+        R getOrCompute(T receiver, int index, C context);
 
         /**
-         * Computes an array element from its index. It may be invoked more than
-         * once for the same element, including concurrently.
-         * @param <V> the type of candidate values
+         * {@return the installed non-default element value, computing it under the
+         * supplied monitor if necessary}
+         * This method follows the {@linkplain StableAccessors##serialized-computation
+         * serialized-computation protocol}. All invocations that can initialize the
+         * same array element must use the same monitor, including accesses through
+         * aliases of the array. Sharing a monitor across indices also serializes
+         * their computations. An observed installed value is returned without
+         * acquiring the monitor. Argument restrictions, candidate checks, and
+         * computation failures are as specified for
+         * {@link #getOrCompute(Object, int, Object)}.
+         *
+         * @implSpec This implementation first checks that {@code monitor} is a
+         *           non-null identity object, then invokes {@link #get(Object, int)}.
+         *           If a value is observed, it invokes {@code getOrCompute} without
+         *           locking, preserving that method's argument checks. Otherwise,
+         *           it invokes {@code getOrCompute} while synchronized on
+         *           {@code monitor}, holding the monitor through publication or
+         *           exceptional completion.
+         * @param monitor the non-null identity object used to serialize computation
+         * @param receiver the object holding the selected instance array field, or
+         *        {@code null} for a static array field
+         * @param index the index of the selected element
+         * @param context the computation context, possibly {@code null}; must be
+         *        {@code null} if the accessor was created without a context
+         * @throws NullPointerException if {@code monitor} is null, if the accessor
+         *         selects an instance field and {@code receiver} is null, if the
+         *         selected array field is null, or if the array has a primitive
+         *         component type and the computed candidate is null
+         * @throws IdentityException if {@code monitor} is a value object
+         * @throws IndexOutOfBoundsException if the index is outside the array
+         * @throws IllegalArgumentException if the runtime array type is unsupported,
+         *         including a {@linkplain StableAccessors##uninitialized-locations
+         *         null-restricted array}, or the computed candidate is the reserved
+         *         default value after conversion to the storage type
+         * @throws ClassCastException if the receiver or context violates the
+         *         restrictions specified by {@code getOrCompute}, or if a non-null
+         *         computed candidate cannot be converted to the primitive component type
+         * @throws ArrayStoreException if the computed candidate is incompatible
+         *         with the runtime component type of a reference array
          * @since 29
          */
-        @FunctionalInterface
-        interface Computer<V> {
-            /**
-             * {@return a non-default candidate value}
-             * @param index the index of the selected element
-             */
-            V compute(int index);
+        default R getOrComputeSerialized(Object monitor, T receiver, int index, C context) {
+            Objects.requireIdentity(monitor);
+            Optional<R> observed = get(receiver, index);
+            if (observed.isPresent()) {
+                // Preserve context validation even when no computation is needed:
+                //    contextType.cast(context);
+                return observed.get();
+            }
+
+            synchronized (monitor) {
+                // Rechecks the location before computing.
+                // Any successful candidate is published before unlocking.
+                return getOrCompute(receiver, index, context);
+            }
         }
-    }
-
-    /**
-     * A stable accessor for elements of an instance array field, with a
-     * computation context. The array referenced by the selected field and the
-     * index identify the storage location. Different receivers may share an array
-     * and thus share its installed element values, regardless of context.
-     * The {@linkplain StableAccessors##publish-once publish-once},
-     * {@linkplain StableAccessors##uninitialized-locations uninitialized-location}, and
-     * {@linkplain StableAccessors##access-and-storage-ownership storage-ownership}
-     * rules apply.
-     *
-     * @param <T> the type of the receiver
-     * @param <C> the type of computation context
-     * @param <V> the result type, boxed if the array has a primitive component type
-     * @since 29
-     */
-    public interface StableArrayWithContext<T, C, V> {
-        /**
-         * {@return an optional containing the observed non-default element value,
-         * boxed if primitive, or an empty optional if the read observes the default}
-         * The element is read with acquire semantics without computing a value.
-         * @param receiver the object holding the array field
-         * @param index the index of the selected element
-         * @throws NullPointerException if {@code receiver} or its array field is null
-         * @throws IndexOutOfBoundsException if the index is outside the array
-         * @throws IllegalArgumentException if the runtime array type is unsupported
-         * @throws ClassCastException if the receiver is incompatible with the
-         *         selected field or violates a protected access restriction
-         */
-        Optional<V> get(T receiver, int index);
-
-        /**
-         * {@return the installed non-default element value, boxed if primitive,
-         * computing it if necessary}
-         * The context is supplied to the computing function only if computation
-         * is needed; it is not part of the storage location.
-         * @param receiver the object holding the array field
-         * @param index the index of the selected element
-         * @param context the computation context, possibly {@code null}
-         * @throws NullPointerException if {@code receiver} or its array field is null
-         * @throws IndexOutOfBoundsException if the index is outside the array
-         * @throws IllegalArgumentException if the runtime array type is unsupported,
-         *         or the computed candidate is the reserved default value after
-         *         conversion to the storage type
-         * @throws ClassCastException if the receiver is incompatible with the
-         *         selected field or violates a protected access restriction
-         * @throws ArrayStoreException if the computed candidate is incompatible
-         *         with the runtime component type of a reference array
-         */
-        V getOrCompute(T receiver, int index, C context);
 
         /**
          * Computes an array element from its index and context. It may be invoked
-         * more than once for the same element, including concurrently.
+         * more than once for the same element, including concurrently. Neither the
+         * receiver nor the array itself is supplied automatically.
          * @param <C> the type of computation context
-         * @param <V> the type of candidate values
+         * @param <R> the type of candidate values
          * @since 29
          */
         @FunctionalInterface
-        interface Computer<C, V> {
+        interface Computer<C, R> {
             /**
              * {@return a non-default candidate value}
              * @param index the index of the selected element
              * @param context the computation context, possibly {@code null}
              */
-            V compute(int index, C context);
+            R compute(int index, C context);
         }
     }
 }

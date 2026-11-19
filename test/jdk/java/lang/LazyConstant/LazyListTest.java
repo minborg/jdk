@@ -610,11 +610,11 @@ final class LazyListTest {
     }
 
     static List<Integer> newLazyList() {
-        return Lazy.ofList(Lazy.Mode.ONCE, SIZE, IDENTITY);
+        return Lazy.ofList(SIZE, IDENTITY);
     }
 
     static List<Integer> newEmptyLazyList() {
-        return Lazy.ofList(Lazy.Mode.ONCE, ZERO, IDENTITY);
+        return Lazy.ofList(ZERO, IDENTITY);
     }
 
     static List<Integer> newRegularList() {

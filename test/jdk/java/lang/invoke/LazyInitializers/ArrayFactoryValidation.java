@@ -40,7 +40,9 @@ public class ArrayFactoryValidation {
         @ReflectiveAccessOnly(arrayElements = true)
         private final String[] strings = new String[3];
         @ReflectiveAccessOnly(arrayElements = true)
-        private int[] ints = new int[3];
+        private final int[] ints = new int[3];
+        @ReflectiveAccessOnly(arrayElements = true)
+        private int[] mutable = new int[3];
         @ReflectiveAccessOnly(arrayElements = true)
         private final boolean[] booleans = new boolean[3];
         @ReflectiveAccessOnly(arrayElements = true)
@@ -81,21 +83,21 @@ public class ArrayFactoryValidation {
     @Test
     void nullArguments() {
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(null, String.class, "strings",
+                StableAccessors.ofArrayField(null, String.class, "strings",
                         index -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(Fields.class, null, "strings",
+                StableAccessors.ofArrayField(Fields.class, null, "strings",
                         index -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(Fields.class, String.class, null,
+                StableAccessors.ofArrayField(Fields.class, String.class, null,
                         index -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(Fields.class, String.class, "strings", null));
+                StableAccessors.ofArrayField(Fields.class, String.class, "strings", null));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(Fields.class, String.class, "strings", null,
+                StableAccessors.ofArrayField(Fields.class, String.class, "strings", null,
                         (index, context) -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArray(Fields.class, String.class, "strings", Object.class, null));
+                StableAccessors.ofArrayField(Fields.class, String.class, "strings", Object.class, null));
     }
 
     @Test
@@ -103,6 +105,7 @@ public class ArrayFactoryValidation {
         rejects(Fields.class, Object.class, "scalar");
         rejects(Fields.class, Object.class, "multidimensional");
         rejects(Fields.class, Integer.class, "staticArray");
+        rejects(Fields.class, Integer.class, "mutable");
         rejects(Fields.class, Integer.class, "missing");
     }
 
@@ -137,7 +140,7 @@ public class ArrayFactoryValidation {
     @Test
     void validTypesReachPrototypeStub() {
         // A valid factory call reaches the unimplemented prototype, without
-        // invoking the computing function. Both final and mutable fields work.
+        // invoking the computing function.
         accepts(Fields.class, String.class, "strings");
         accepts(Fields.class, CharSequence.class, "strings");
         accepts(Fields.class, Void.class, "voids");
@@ -155,19 +158,19 @@ public class ArrayFactoryValidation {
 
     private static <T, V> void rejects(Class<T> owner, Class<V> type, String name) {
         assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArray(owner, type, name,
+                StableAccessors.ofArrayField(owner, type, name,
                         index -> unexpectedComputation()));
         assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArray(owner, type, name, Object.class,
+                StableAccessors.ofArrayField(owner, type, name, Object.class,
                         (index, context) -> unexpectedComputation()));
     }
 
     private static <T, V> void accepts(Class<T> owner, Class<V> type, String name) {
         assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofArray(owner, type, name,
+                StableAccessors.ofArrayField(owner, type, name,
                         index -> unexpectedComputation()));
         assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofArray(owner, type, name, Object.class,
+                StableAccessors.ofArrayField(owner, type, name, Object.class,
                         (index, context) -> unexpectedComputation()));
     }
 

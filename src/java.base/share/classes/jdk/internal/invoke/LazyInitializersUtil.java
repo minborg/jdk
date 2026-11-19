@@ -55,6 +55,13 @@ public final class LazyInitializersUtil {
         }
     }
 
+    public static void checkContextType(Class<?> contextType) {
+        // Implicit null checking
+        if (contextType.isPrimitive()) {
+            throw new IllegalArgumentException("Expected a reference context type: " + contextType);
+        }
+    }
+
     public static void checkArrayTypes(Class<?> caller, Class<?> arrayType,
                                        Class<?> arrayComponentType) {
         if (!arrayType.isArray() || arrayType.getComponentType().isArray()) {

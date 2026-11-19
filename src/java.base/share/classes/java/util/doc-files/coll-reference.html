@@ -283,10 +283,13 @@ safety</strong> - Each result is computed on demand, on a thread
 accessing that result. The <a href="../Lazy.html#modes">computation
 mode</a> determines whether computations for the same input are
 serialized with failures recorded (<a href="../Lazy.Mode.html#ONCE"><code>
-ONCE</code></a>), or may race with failures left uncached
+ONCE</code></a>), serialized with failures left uncached
+(<a href="../Lazy.Mode.html#SERIALIZED"><code>SERIALIZED</code></a>), or
+may race with failures left uncached
 (<a href="../Lazy.Mode.html#PUBLISH"><code>PUBLISH</code></a>).
-Each collection factory requires an explicit mode.
-Computations for different inputs may proceed concurrently in either
+Each collection factory has a convenience overload that uses
+<code>ONCE</code> when no mode is specified.
+Computations for different inputs may proceed concurrently in every
 mode, so the computing function must support concurrent invocation
 when the collection is accessed concurrently. The installed result
 for each input remains cached for the lifetime of the collection.
@@ -299,9 +302,10 @@ collection or provide additional visibility guarantees for actions
 performed after publication.
 <p>
 The <a href="../Lazy.html#thread-safety">thread-safety and interruption
-rules</a> apply in both modes. In <code>ONCE</code> mode, an indefinitely
-blocked computation may indefinitely block other accesses to the same
-input. In <code>PUBLISH</code> mode, other accesses may compute their own
+rules</a> apply in every mode. In <code>ONCE</code> and
+<code>SERIALIZED</code> modes, an indefinitely blocked computation may
+indefinitely block other accesses to the same input. In
+<code>PUBLISH</code> mode, other accesses may compute their own
 candidates; a computation already in progress is not cancelled when
 another invocation publishes a result.
 <p>
@@ -312,8 +316,10 @@ rules</a>.</li>
 <a href="../Lazy.html#failures">failure policy</a> is applied separately
 to each input. <code>ONCE</code> records failures and reports them through
 <a href="../NoSuchElementException.html"><code>NoSuchElementException</code></a>.
-<code>PUBLISH</code> propagates failures unchanged and permits later
-attempts if no result has been installed.</li>
+<code>SERIALIZED</code> and <code>PUBLISH</code> propagate failures unchanged
+and permit further attempts if no result has been installed. In
+<code>SERIALIZED</code> mode, a waiting access may start another attempt
+after the preceding attempt fails.</li>
 <li id="lazy-collections-object-methods"><strong>Object methods</strong> -
 The returned collections' <a href=
 "../../lang/Object.html#equals(java.lang.Object)"><code>equals</code></a>,
@@ -323,21 +329,14 @@ methods may trigger computation of one or more results. If such a method
 requires a result whose computation fails, the failure is reported
 according to the selected mode.</li>
 <li id="lazy-collections-retention"><strong>Retention and
-serialization</strong> - A returned collection strongly references its
-computing function at least until every input has an installed result
-or, in <code>ONCE</code> mode, a recorded failure. Its unmodifiability does not
-make its elements, keys, or values immutable or make subsequent
-mutations thread-safe.
+serialization</strong> - The <a href="../Lazy.html#computing-function-retention">
+computing-function retention requirements of Lazy</a> apply in every mode.
+A collection's unmodifiability does not make its elements, keys, or values
+immutable or make subsequent mutations thread-safe.
 <p>
 These collections are not <a href="../../io/Serializable.html"><code>
 Serializable</code></a>, even if their contents or computing functions
-are serializable.
-<p>
-<strong>Implementation Note:</strong> For the lazily computed
-collections using <code>ONCE</code>, after computation for every input has
-completed successfully or with failure, the implementation releases
-its reference to the computing function. The function becomes eligible
-for garbage collection if it is not otherwise strongly reachable.</li>
+are serializable.</li>
 <li id="lazy-collections-performance"><strong>Performance</strong> -
 Cached results may be eligible for optimizations such as constant
 folding, as described in <a href=

@@ -763,7 +763,7 @@ final class LazyMapTest {
 
 
     static Map<Value, Integer> newLazyMap(Set<Value> set) {
-        return Lazy.ofMap(Lazy.Mode.ONCE, set, MAPPER);
+        return Lazy.ofMap(set, MAPPER);
     }
     static Map<Value, Integer> newRegularMap(Set<Value> set) {
         return set.stream()

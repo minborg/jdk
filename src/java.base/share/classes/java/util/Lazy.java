@@ -36,25 +36,20 @@ import jdk.internal.javac.PreviewFeature;
 import jdk.internal.lang.LazyConstantImpl;
 
 /**
- * Factory methods for lazy suppliers and unmodifiable collections.
+ * Factory methods for lazy suppliers and lazy unmodifiable collections.
  * <p>
  * These factories defer computation until a result is needed and cache the result
  * for subsequent accesses. A supplier caches one result; a list caches an element
  * per index; a map caches a value per key; and a set caches a membership decision
- * per element candidate. Creating a supplier or collection does not invoke its
+ * per element candidate. Merely creating a supplier or collection does not invoke its
  * computing function.
  * <p>
- * Collection factories and the context-accepting supplier factory require an explicit
- * {@link Mode}. The context-free supplier factory also has a
- * {@linkplain #ofSupplier(Supplier) convenience overload} using {@link Mode#ONCE}.
+ * Each factory has an overload accepting an explicit {@link Mode} and a
+ * convenience overload using {@link Mode#ONCE}.
  * The mode applies independently to each cached result.
- * In either mode, once a result is installed, all normally returning accesses
+ * In every mode, once a result is installed, all normally returning accesses
  * requiring that result use its installed value. The factories manage their own storage.
  * For access to caller-owned fields and array elements, use {@link StableAccessors}.
- * <p>
- * A {@link BoundSupplier} accepts a computation context at each access, allowing its
- * computing function to use inputs supplied after the supplier is created. Each
- * supplier still caches one result: the context is computation input, not a cache key.
  *
  * <h2 id="modes">Computation modes</h2>
  * <table class="striped">
@@ -66,16 +61,26 @@ import jdk.internal.lang.LazyConstantImpl;
  * <tbody>
  * <tr><th scope="row">{@link Mode#ONCE}</th><td>At most one invocation</td>
  *     <td>Recorded; no retry</td><td>Detected</td></tr>
+ * <tr><th scope="row">{@link Mode#SERIALIZED}</th><td>One invocation at a time</td>
+ *     <td>Not recorded; retry permitted</td><td>Detected</td></tr>
  * <tr><th scope="row">{@link Mode#PUBLISH}</th><td>Invocations may race</td>
  *     <td>Not recorded; retry permitted</td><td>Not detected</td></tr>
  * </tbody>
  * </table>
  * In {@code ONCE} mode, competing accesses to the same result wait for its computation
- * to complete successfully or with failure. In {@code PUBLISH} mode, multiple
- * invocations may compute candidates for the same result. One successful candidate
- * is atomically installed; invocations that lose the installation race discard their
- * candidates and return the installed result. Computing functions used with
- * {@code PUBLISH} must tolerate repeated and concurrent execution and discarded results.
+ * to complete successfully or with failure.
+ * <p>
+ * In {@code SERIALIZED} mode, at most one invocation of the computing function for
+ * a result is in progress at a time. Competing accesses wait through computation
+ * and publication, then return the installed result <em>without computing again</em>. If
+ * an attempt fails, a waiting or later access may make another attempt. Once a result
+ * is installed, no further attempt is made for that result.
+ * <p>
+ * In {@code PUBLISH} mode, multiple invocations may compute candidates for the same
+ * result. One successful candidate is atomically installed; invocations that lose
+ * the installation race discard their candidates and return the installed result.
+ * Computing functions used with {@code PUBLISH} must tolerate repeated and
+ * concurrent execution and discarded results.
  *
  * <h2 id="failures">Failures</h2>
  * Suppliers, list elements, and map values cannot have {@code null} as their computed
@@ -94,16 +99,22 @@ import jdk.internal.lang.LazyConstantImpl;
  * computing function, the initiating access records the failure and throws
  * {@code NoSuchElementException} with that exception as its cause.
  * <p>
- * In {@code PUBLISH} mode, a throwable from the computing function propagates
- * unchanged, and a {@code null} result throws {@code NullPointerException} directly.
- * The failure is not cached. The failing access still fails if another invocation
- * installs a result in the meantime. If no result has been installed, a subsequent
- * access can retry. Recursive access to the same uninitialized result is not detected
- * and may recurse without bound.
+ * In {@code SERIALIZED} and {@code PUBLISH} modes, a throwable from the computing
+ * function propagates unchanged, and a {@code null} result throws
+ * {@code NullPointerException} directly. The failure is not cached. The failing
+ * access still fails if another invocation installs a result before the failure
+ * is reported. If no result has been installed, another access may retry, including
+ * an access already waiting in {@code SERIALIZED} mode.
+ * <p>
+ * In {@code SERIALIZED} mode, a recursive access to the same result during its
+ * computation throws {@code IllegalStateException}. If that exception escapes the
+ * computing function, it propagates unchanged and the failure is not recorded;
+ * another access may retry. In {@code PUBLISH} mode, recursive access to the same
+ * uninitialized result is not detected and may recurse without bound.
  *
  * <h2 id="thread-safety">Thread safety and memory effects</h2>
  * A computing function runs on the thread accessing the result. Computations for
- * different collection inputs may proceed concurrently in either mode. In
+ * different collection inputs may proceed concurrently in every mode. In
  * {@code PUBLISH} mode, computations for the same result may also proceed concurrently.
  * Computing functions must support the concurrent invocations permitted by the mode
  * when their supplier or collection is accessed concurrently.
@@ -117,9 +128,9 @@ import jdk.internal.lang.LazyConstantImpl;
  * <p>
  * The lazy computation machinery does not cancel computation, clear interruption
  * status, or throw {@link InterruptedException}. The computing function may itself
- * respond to interruption. In {@code ONCE} mode, an indefinitely blocked computation
- * can indefinitely block competing accesses requiring the same result. No timeout
- * or cancellation operation is provided.
+ * respond to interruption. In {@code ONCE} and {@code SERIALIZED} modes, an
+ * indefinitely blocked computation can indefinitely block competing accesses
+ * requiring the same result. No timeout or cancellation operation is provided.
  *
  * <h2 id="dependencies">Dependencies</h2>
  * A computing function can depend on other lazy suppliers or collections, or return
@@ -128,9 +139,17 @@ import jdk.internal.lang.LazyConstantImpl;
  * for one another. Use during static initialization also follows the class
  * initialization rules in section {@jls 12.4} of <cite>The Java Language
  * Specification</cite>; cycles can cause initialization errors or deadlock.
- * <p>
+ *
+ * <h2 id="performance">Performance</h2>
  * Cached results may be eligible for optimizations such as constant folding, as
  * described in {@linkplain StableAccessors##performance StableAccessors}.
+ *
+ * @implSpec <p id="computing-function-retention">Each supplier or collection returned
+ *           by the factories in this class strongly references its computing function
+ *           until every result has either an installed value or, in {@code ONCE} mode,
+ *           a recorded failure, whereafter said reference is released. Hence,
+ *           the function and captured objects may then be garbage collected if they are
+ *           not otherwise strongly reachable.</p>
  *
  * @see StableAccessors
  * @see Supplier
@@ -161,40 +180,21 @@ public final class Lazy {
         ONCE,
 
         /**
+         * Allows at most one invocation of the computing function per result to be
+         * in progress at a time and does not record failures. Competing accesses
+         * wait through computation and publication; after success, they do not invoke
+         * the computing function; after failure, a waiting or later access may retry.
+         * Recursive access to the result being computed is detected. Once a result is
+         * installed, it is retained without further computation.
+         */
+        SERIALIZED,
+
+        /**
          * Allows competing computations, installs one successful result, and does not
          * record failures. Failed computations may be retried, and recursive access
          * is not detected.
          */
         PUBLISH
-    }
-
-    /**
-     * A supplier whose accessor accepts a computation context.
-     * <p>
-     * Instances returned by {@link Lazy#ofSupplier(Mode, Class, Function)} cache one
-     * result per supplier, regardless of the contexts passed to {@link #get(Object)}.
-     * They follow the shared {@linkplain Lazy##modes computation modes},
-     * {@linkplain Lazy##failures failure policy}, and
-     * {@linkplain Lazy##thread-safety memory effects}.
-     *
-     * @param <C> the computation context type
-     * @param <T> the result type
-     * @since 29
-     */
-    @FunctionalInterface
-    public interface BoundSupplier<C, T> {
-        /**
-         * {@return the cached result, computing it from the context if necessary}
-         * For suppliers created by {@code Lazy}, the context is passed to the computing
-         * function only when computation is needed. Different contexts share the same
-         * installed result or, in {@link Mode#ONCE}, the same recorded failure.
-         * Computation failures are reported according to the
-         * {@linkplain Lazy##failures selected mode}.
-         *
-         * @param context the computation context, possibly {@code null} if the
-         *                computing function accepts it
-         */
-        T get(C context);
     }
 
     /**
@@ -226,6 +226,7 @@ public final class Lazy {
      * import java.util.function.Supplier;
      *
      * class Component {
+     *
      *     private final Supplier<System.Logger> logger = Lazy.ofSupplier(
      *             () -> System.getLogger(Component.class.getName()));
      *
@@ -235,16 +236,11 @@ public final class Lazy {
      * }
      * }
      *
-     * @implNote In {@code ONCE} mode, after computation completes successfully or
-     *           with failure, the implementation releases its reference to the
-     *           computing function. The function and captured objects may then be
-     *           garbage collected if they are not otherwise strongly reachable.
-     *           <p>
-     *           An implementation of {@code ONCE} may synchronize on the returned
-     *           supplier and use monitor ownership to detect recursive access. If no
-     *           result is cached, calling {@code get()} while holding that monitor
-     *           may throw {@link IllegalStateException}, even if no computation is
-     *           in progress. This rejection does not invoke the computing function
+     * @implNote An implementation of {@code ONCE} and {@code SERIALIZED} may synchronize
+     *           on the returned supplier and use monitor ownership to detect recursive
+     *           access. If no result is cached, calling {@code get()} while holding that
+     *           monitor may throw {@link IllegalStateException}, even if no computation
+     *           is in progress. This rejection does not invoke the computing function
      *           or record a failure.
      * @param mode the computation and failure policy
      * @param computingFunction the function computing a non-null result
@@ -254,83 +250,32 @@ public final class Lazy {
      */
     public static <T> Supplier<T> ofSupplier(Mode mode,
                                              Supplier<? extends T> computingFunction) {
+
         Objects.requireNonNull(mode);
         Objects.requireNonNull(computingFunction);
-        if (mode == Mode.PUBLISH) {
-            // The publishing implementation is not yet provided by this prototype.
+        if (mode != Mode.ONCE) {
+            // Implementations for SERIALIZED and PUBLISH are not yet provided.
             throw new UnsupportedOperationException();
         }
         return LazyConstantImpl.ofLazy(computingFunction);
     }
 
     /**
-     * {@return a new supplier that lazily computes and caches a non-null result
-     * using a computation context}
-     * The returned supplier uses the specified {@linkplain ##modes mode} and follows
-     * the shared {@linkplain ##failures failure} and
-     * {@linkplain ##thread-safety thread-safety} contracts. Its
-     * {@link BoundSupplier#get(Object) get(context)} method supplies the context to
-     * the computing function when computation is needed.
-     * <p>
-     * The supplier owns one cached result, not one result per context. In
-     * {@code ONCE} mode, the invocation that starts computation supplies its context;
-     * subsequent accesses share the result or recorded failure. In {@code PUBLISH}
-     * mode, computations using different contexts may race, and the successful
-     * installation determines the cached result. A {@code null} context is permitted
-     * if the computing function accepts it.
-     * <p>
-     * The {@code contextType} token describes the context's reference type or a
-     * supertype; value classes are supported. Primitive type tokens, including
-     * {@code void.class}, are not supported. The caller must ensure that contexts
-     * are suitable for the computing function; erased type arguments remain the
-     * caller's responsibility.
-     * <p>
-     * A value class can create a supplier without capturing {@code this} during
-     * construction, then pass {@code this} as its context when the result is needed:
-     * {@snippet lang = java:
-     * import java.util.Lazy;
-     * import java.util.Objects;
+     * {@return a new lazily computed list of the provided {@code size} using
+     * {@link Mode#ONCE}}
+     * Equivalent to {@link #ofList(Mode, int, IntFunction)
+     * ofList(Mode.ONCE, size, computingFunction)}.
      *
-     * value class StringHolder {
-     *     private final String value;
-     *     private final Lazy.BoundSupplier<StringHolder, Integer> length =
-     *             Lazy.ofSupplier(Lazy.Mode.ONCE, StringHolder.class,
-     *                     holder -> holder.value.length());
-     *
-     *     StringHolder(String value) {
-     *         this.value = Objects.requireNonNull(value);
-     *     }
-     *
-     *     int length() {
-     *         return length.get(this);
-     *     }
-     * }
-     * }
-     * The supplier is an instance field so that each constructed holder has its own
-     * cache; a static supplier would share one result across all holders.
-     *
-     * @param mode the computation and failure policy
-     * @param contextType a reference type token for the context type or a supertype
-     * @param computingFunction the function computing a non-null result from a context
-     * @param <C> the computation context type
-     * @param <T> the result type
-     * @throws IllegalArgumentException if {@code contextType} is a primitive type,
-     *         including {@code void.class}
-     * @throws NullPointerException if any argument is null
+     * @param size the size of the returned list
+     * @param computingFunction the function computing a non-null element for an index
+     * @param <E> the element type
+     * @throws IllegalArgumentException if {@code size} is negative
+     * @throws NullPointerException if {@code computingFunction} is null
      * @since 29
      */
-    public static <C, T> BoundSupplier<C, T> ofSupplier(
-            Mode mode,
-            Class<? super C> contextType,
-            Function<? super C, ? extends T> computingFunction) {
-        Objects.requireNonNull(mode);
-        Objects.requireNonNull(contextType);
-        Objects.requireNonNull(computingFunction);
-        if (contextType.isPrimitive()) {
-            throw new IllegalArgumentException("Expected a reference context type: " + contextType);
-        }
-        // The context-accepting implementation is not yet provided by this prototype.
-        throw new UnsupportedOperationException();
+    public static <E> List<E> ofList(int size,
+                                    IntFunction<? extends E> computingFunction) {
+        return ofList(Mode.ONCE, size, computingFunction);
     }
 
     /**
@@ -360,7 +305,7 @@ public final class Lazy {
      * class Application {
      *     static final class OrderController { }
      *     private static final List<OrderController> ORDERS =
-     *             Lazy.ofList(Lazy.Mode.ONCE, 3, _ -> new OrderController());
+     *             Lazy.ofList(3, _ -> new OrderController());
      *
      *     static OrderController orders() {
      *         return ORDERS.get((int) (Thread.currentThread().threadId() % ORDERS.size()));
@@ -379,15 +324,34 @@ public final class Lazy {
     public static <E> List<E> ofList(Mode mode,
                                      int size,
                                      IntFunction<? extends E> computingFunction) {
+
         Objects.requireNonNull(mode);
         Utils.checkNonNegativeArgument(size, "size");
         Objects.requireNonNull(computingFunction);
-        if (mode == Mode.PUBLISH) {
-            // The publishing implementation is not yet provided by this prototype.
+        if (mode != Mode.ONCE) {
+            // Implementations for SERIALIZED and PUBLISH are not yet provided.
             throw new UnsupportedOperationException();
         }
         // A computed list is not Serializable, even when empty.
         return LazyCollections.ofLazyList(size, computingFunction);
+    }
+
+    /**
+     * {@return a new lazily computed map with the provided {@code keys} using
+     * {@link Mode#ONCE}}
+     * Equivalent to {@link #ofMap(Mode, Set, Function)
+     * ofMap(Mode.ONCE, keys, computingFunction)}.
+     *
+     * @param keys the non-null keys of the returned map
+     * @param computingFunction the function computing a non-null value for a key
+     * @param <K> the key type
+     * @param <V> the value type
+     * @throws NullPointerException if either argument is null or {@code keys} contains null
+     * @since 29
+     */
+    public static <K, V> Map<K, V> ofMap(Set<? extends K> keys,
+                                        Function<? super K, ? extends V> computingFunction) {
+        return ofMap(Mode.ONCE, keys, computingFunction);
     }
 
     /**
@@ -421,8 +385,9 @@ public final class Lazy {
      * import java.util.Set;
      *
      * class Application {
+     *
      *     private static final Map<Integer, Double> CACHE =
-     *             Lazy.ofMap(Lazy.Mode.ONCE, Set.of(0, 1, 3, 42, 97),
+     *             Lazy.ofMap(Set.of(0, 1, 3, 42, 97),
      *                     input -> Math.sqrt(input));
      *
      *     static Optional<Double> cachedSquareRoot(int input) {
@@ -442,12 +407,13 @@ public final class Lazy {
     public static <K, V> Map<K, V> ofMap(Mode mode,
                                          Set<? extends K> keys,
                                          Function<? super K, ? extends V> computingFunction) {
+
         Objects.requireNonNull(mode);
         // Protect against TOC-TOU attacks; also checks keys and their elements for null.
         final Set<K> keyCopies = Set.copyOf(keys);
         Objects.requireNonNull(computingFunction);
-        if (mode == Mode.PUBLISH) {
-            // The publishing implementation is not yet provided by this prototype.
+        if (mode != Mode.ONCE) {
+            // Implementations for SERIALIZED and PUBLISH are not yet provided.
             throw new UnsupportedOperationException();
         }
         // Test the original set to retain the enum-key specialization.
@@ -459,6 +425,24 @@ public final class Lazy {
             // A computed map is not Serializable, even when empty.
             return LazyCollections.ofLazyMap(keyCopies, computingFunction);
         }
+    }
+
+    /**
+     * {@return a new lazily computed set drawn from {@code elementCandidates}
+     * using {@link Mode#ONCE}}
+     * Equivalent to {@link #ofSet(Mode, Set, Predicate)
+     * ofSet(Mode.ONCE, elementCandidates, computingFunction)}.
+     *
+     * @param elementCandidates the non-null candidates for membership
+     * @param computingFunction the predicate computing a candidate's membership
+     * @param <E> the element type
+     * @throws NullPointerException if either argument is null or
+     *         {@code elementCandidates} contains null
+     * @since 29
+     */
+    public static <E> Set<E> ofSet(Set<? extends E> elementCandidates,
+                                  Predicate<? super E> computingFunction) {
+        return ofSet(Mode.ONCE, elementCandidates, computingFunction);
     }
 
     /**
@@ -493,7 +477,7 @@ public final class Lazy {
      *     enum Option { VERBOSE, DRY_RUN, STRICT }
      *
      *     static final Set<Option> OPTIONS =
-     *             Lazy.ofSet(Lazy.Mode.ONCE, EnumSet.allOf(Option.class),
+     *             Lazy.ofSet(EnumSet.allOf(Option.class),
      *                     option -> Boolean.getBoolean(option.name().toLowerCase(Locale.ROOT)));
      *
      *     static boolean dryRun() {
@@ -513,13 +497,14 @@ public final class Lazy {
     public static <E> Set<E> ofSet(Mode mode,
                                    Set<? extends E> elementCandidates,
                                    Predicate<? super E> computingFunction) {
+
         Objects.requireNonNull(mode);
         Objects.requireNonNull(elementCandidates);
         Objects.requireNonNull(computingFunction);
-        if (mode == Mode.PUBLISH) {
-            // Validate the candidates without constructing a publishing implementation.
+        if (mode != Mode.ONCE) {
+            // Validate the candidates before reporting an unsupported mode.
             Set.copyOf(elementCandidates);
-            // The publishing implementation is not yet provided by this prototype.
+            // Implementations for SERIALIZED and PUBLISH are not yet provided.
             throw new UnsupportedOperationException();
         }
         return LazyCollections.ofLazySet(elementCandidates, computingFunction);

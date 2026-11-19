@@ -485,7 +485,7 @@ final class LazySetTest {
     }
 
     static Set<Value> newLazySet(Set<Value> set) {
-        return Lazy.ofSet(Lazy.Mode.ONCE, set, PREDICATE);
+        return Lazy.ofSet(set, PREDICATE);
     }
 
     static Set<Value> newRegularSet(Set<Value> set) {
