@@ -254,7 +254,7 @@ public class HKSCS {
         public int encodeSupp(int cp) {
             if ((cp & 0xf0000) != 0x20000)
                 return UNMAPPABLE_ENCODING;
-            return c2bSupp[(cp >> 8) & 0xff][cp & 0xff];
+            return c2bSupp[Integer.extractBits(cp, 8, 8)][cp & 0xff];
         }
 
         public boolean canEncode(char c) {

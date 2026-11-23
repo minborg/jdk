@@ -346,27 +346,27 @@ public final class RIFFWriter extends OutputStream {
     // Write 16 bit signed integer to stream
     public void writeShort(short b) throws IOException {
         write((b >>> 0) & 0xFF);
-        write((b >>> 8) & 0xFF);
+        write(Integer.extractBits(b, 8, 8));
     }
 
     // Write 32 bit signed integer to stream
     public void writeInt(int b) throws IOException {
         write((b >>> 0) & 0xFF);
-        write((b >>> 8) & 0xFF);
-        write((b >>> 16) & 0xFF);
-        write((b >>> 24) & 0xFF);
+        write(Integer.extractBits(b, 8, 8));
+        write(Integer.extractBits(b, 16, 8));
+        write(Integer.extractBits(b, 24, 8));
     }
 
     // Write 64 bit signed integer to stream
     public void writeLong(long b) throws IOException {
         write((int) (b >>> 0) & 0xFF);
-        write((int) (b >>> 8) & 0xFF);
-        write((int) (b >>> 16) & 0xFF);
-        write((int) (b >>> 24) & 0xFF);
-        write((int) (b >>> 32) & 0xFF);
-        write((int) (b >>> 40) & 0xFF);
-        write((int) (b >>> 48) & 0xFF);
-        write((int) (b >>> 56) & 0xFF);
+        write((int) Long.extractBits(b, 8, 8));
+        write((int) Long.extractBits(b, 16, 8));
+        write((int) Long.extractBits(b, 24, 8));
+        write((int) Long.extractBits(b, 32, 8));
+        write((int) Long.extractBits(b, 40, 8));
+        write((int) Long.extractBits(b, 48, 8));
+        write((int) Long.extractBits(b, 56, 8));
     }
 
     // Write 8 bit unsigned integer to stream

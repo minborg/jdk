@@ -296,9 +296,9 @@ public class Net {
      */
     static InetAddress inet4FromInt(int address) {
         byte[] addr = new byte[4];
-        addr[0] = (byte) ((address >>> 24) & 0xFF);
-        addr[1] = (byte) ((address >>> 16) & 0xFF);
-        addr[2] = (byte) ((address >>> 8) & 0xFF);
+        addr[0] = (byte) Integer.extractBits(address, 24, 8);
+        addr[1] = (byte) Integer.extractBits(address, 16, 8);
+        addr[2] = (byte) Integer.extractBits(address, 8, 8);
         addr[3] = (byte) (address & 0xFF);
         try {
             return InetAddress.getByAddress(addr);

@@ -732,7 +732,7 @@ public final class SocketPermission extends Permission
             for (int i = 15; i >= 0; i--) {
                 sb.append(Integer.toHexString(((addr[i]) & 0x0f)));
                 sb.append('.');
-                sb.append(Integer.toHexString(((addr[i] >> 4) & 0x0f)));
+                sb.append(Integer.toHexString(Integer.extractBits(addr[i], 4, 4)));
                 sb.append('.');
             }
             authHost = "auth." + sb.toString() + "IP6.ARPA";

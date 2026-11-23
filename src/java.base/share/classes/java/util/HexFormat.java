@@ -643,7 +643,7 @@ public final class HexFormat {
      * @return the hexadecimal character for the bits {@code 4-7} of the value
      */
     public char toHighHexDigit(int value) {
-        value = (value >> 4) & 0xf;
+        value = Integer.extractBits(value, 4, 4);
         if (value < 10) {
             return (char)('0' + value);
         }

@@ -641,14 +641,14 @@ final class FdLibm {
                 } else {
                     j = ix >> 20;
                     y[0] = r - w;
-                    i = j - (((__HI(y[0])) >> 20) & 0x7ff);
+                    i = j - Integer.extractBits(__HI(y[0]), 20, 11);
                     if (i > 16) {  // 2nd iteration needed, good to 118
                         t  = r;
                         w  = fn*pio2_2;
                         r  = t - w;
                         w  = fn*pio2_2t - ((t - r) - w);
                         y[0] = r - w;
-                        i = j - (((__HI(y[0])) >> 20) & 0x7ff);
+                        i = j - Integer.extractBits(__HI(y[0]), 20, 11);
                         if (i > 49)  { // 3rd iteration need, 151 bits acc
                             t  = r; // will cover all possible cases
                             w  = fn*pio2_3;

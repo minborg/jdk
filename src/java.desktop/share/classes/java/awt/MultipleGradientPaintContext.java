@@ -253,8 +253,8 @@ abstract class MultipleGradientPaintContext implements PaintContext {
             for (int i = 0; i < colors.length; i++) {
                 int argb = colors[i].getRGB();
                 int a = argb >>> 24;
-                int r = SRGBtoLinearRGB[(argb >> 16) & 0xff];
-                int g = SRGBtoLinearRGB[(argb >>  8) & 0xff];
+                int r = SRGBtoLinearRGB[Integer.extractBits(argb, 16, 8)];
+                int g = SRGBtoLinearRGB[Integer.extractBits(argb, 8, 8)];
                 int b = SRGBtoLinearRGB[(argb      ) & 0xff];
                 normalizedColors[i] = new Color(r, g, b, a);
             }
@@ -459,15 +459,15 @@ abstract class MultipleGradientPaintContext implements PaintContext {
         float stepSize = 1.0f / output.length;
 
         // extract color components from packed integer
-        a1 = (rgb1 >> 24) & 0xff;
-        r1 = (rgb1 >> 16) & 0xff;
-        g1 = (rgb1 >>  8) & 0xff;
+        a1 = Integer.extractBits(rgb1, 24, 8);
+        r1 = Integer.extractBits(rgb1, 16, 8);
+        g1 = Integer.extractBits(rgb1, 8, 8);
         b1 = (rgb1      ) & 0xff;
 
         // calculate the total change in alpha, red, green, blue
-        da = ((rgb2 >> 24) & 0xff) - a1;
-        dr = ((rgb2 >> 16) & 0xff) - r1;
-        dg = ((rgb2 >>  8) & 0xff) - g1;
+        da = Integer.extractBits(rgb2, 24, 8) - a1;
+        dr = Integer.extractBits(rgb2, 16, 8) - r1;
+        dg = Integer.extractBits(rgb2, 8, 8) - g1;
         db = ((rgb2      ) & 0xff) - b1;
 
         // for each step in the interval calculate the in-between color by
@@ -492,9 +492,9 @@ abstract class MultipleGradientPaintContext implements PaintContext {
         int a1, r1, g1, b1;
 
         // extract red, green, blue components
-        a1 = (rgb >> 24) & 0xff;
-        r1 = (rgb >> 16) & 0xff;
-        g1 = (rgb >>  8) & 0xff;
+        a1 = Integer.extractBits(rgb, 24, 8);
+        r1 = Integer.extractBits(rgb, 16, 8);
+        g1 = Integer.extractBits(rgb, 8, 8);
         b1 = (rgb      ) & 0xff;
 
         // use the lookup table

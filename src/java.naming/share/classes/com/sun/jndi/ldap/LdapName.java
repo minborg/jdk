@@ -835,7 +835,7 @@ public final class LdapName implements Name {
 
             for (int i = 0; i < val.length; i++) {
                 byte b = val[i];
-                buf.append(Character.forDigit(0xF & (b >>> 4), 16));
+                buf.append(Character.forDigit(Integer.extractBits(b, 4, 4), 16));
                 buf.append(Character.forDigit(0xF & b, 16));
             }
 

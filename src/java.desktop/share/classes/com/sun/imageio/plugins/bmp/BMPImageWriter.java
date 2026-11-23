@@ -1520,9 +1520,9 @@ public class BMPImageWriter extends ImageWriter implements BMPConstants {
 
     protected void writeMaskToPalette(int mask, int i,
                                       byte[] r, byte[]g, byte[] b, byte[]a) {
-        b[i] = (byte)(0xff & (mask >> 24));
-        g[i] = (byte)(0xff & (mask >> 16));
-        r[i] = (byte)(0xff & (mask >> 8));
+        b[i] = (byte)Integer.extractBits(mask, 24, 8);
+        g[i] = (byte)Integer.extractBits(mask, 16, 8);
+        r[i] = (byte)Integer.extractBits(mask, 8, 8);
         a[i] = (byte)(0xff & mask);
     }
 

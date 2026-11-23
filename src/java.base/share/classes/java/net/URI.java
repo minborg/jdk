@@ -2797,7 +2797,7 @@ public final class URI
 
     private static void appendEscape(StringBuilder sb, byte b) {
         sb.append('%');
-        sb.append(hexDigits[(b >> 4) & 0x0f]);
+        sb.append(hexDigits[Integer.extractBits(b, 4, 4)]);
         sb.append(hexDigits[(b >> 0) & 0x0f]);
     }
 

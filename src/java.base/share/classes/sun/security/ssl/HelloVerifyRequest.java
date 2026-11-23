@@ -96,7 +96,7 @@ final class HelloVerifyRequest {
 
         @Override
         public void send(HandshakeOutStream hos) throws IOException {
-            hos.putInt8((byte)((serverVersion >>> 8) & 0xFF));
+            hos.putInt8((byte)Integer.extractBits(serverVersion, 8, 8));
             hos.putInt8((byte)(serverVersion & 0xFF));
             hos.putBytes8(cookie);
         }

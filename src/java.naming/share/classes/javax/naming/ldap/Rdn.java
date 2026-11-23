@@ -567,7 +567,7 @@ public class Rdn implements Serializable, Comparable<Object> {
 
         for (int i = 0; i < val.length; i++) {
             byte b = val[i];
-            builder.append(Character.forDigit(0xF & (b >>> 4), 16));
+            builder.append(Character.forDigit(Integer.extractBits(b, 4, 4), 16));
             builder.append(Character.forDigit(0xF & b, 16));
         }
         return builder.toString();

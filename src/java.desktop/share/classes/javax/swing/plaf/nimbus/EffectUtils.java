@@ -142,9 +142,9 @@ class EffectUtils {
                     int pixel = srcPixels[offset + subOffset];
                     float blurFactor = kernel[radius + i];
 
-                    a += blurFactor * ((pixel >> 24) & 0xFF);
-                    r += blurFactor * ((pixel >> 16) & 0xFF);
-                    g += blurFactor * ((pixel >> 8) & 0xFF);
+                    a += blurFactor * Integer.extractBits(pixel, 24, 8);
+                    r += blurFactor * Integer.extractBits(pixel, 16, 8);
+                    g += blurFactor * Integer.extractBits(pixel, 8, 8);
                     b += blurFactor * ((pixel) & 0xFF);
                 }
 

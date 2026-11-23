@@ -12337,7 +12337,7 @@ public class GB18030
         }
 
         private char getChar(int offset) {
-            int byte1 = (offset >>8) & 0xFF;
+            int byte1 = Integer.extractBits(offset, 8, 8);
             int byte2 = (offset & 0xFF);
             int start = 0, end = 0xFF;
 
@@ -12435,7 +12435,7 @@ public class GB18030
                             int offset = (((byte1 - 0x81) * 10 +
                                            (byte2 - 0x30)) * 126 +
                                             byte3 - 0x81) * 10 + byte4 - 0x30;
-                            int hiByte = (offset >>8) & 0xFF;
+                            int hiByte = Integer.extractBits(offset, 8, 8);
                             int lowByte = (offset & 0xFF);
 
                         // Mixture of table lookups and algorithmic calculation
@@ -12543,7 +12543,7 @@ public class GB18030
                             int offset = (((byte1 - 0x81) * 10 +
                                            (byte2 - 0x30)) * 126 +
                                             byte3 - 0x81) * 10 + byte4 - 0x30;
-                            int hiByte = (offset >>8) & 0xFF;
+                            int hiByte = Integer.extractBits(offset, 8, 8);
                             int lowByte = (offset & 0xFF);
 
                         // Mixture of table lookups and algorithmic calculation
@@ -12614,7 +12614,7 @@ public class GB18030
 
         private int getGB18030(short[] outerIndex, String[] innerEncoderIndex,
                                char ch) {
-            int offset = outerIndex[((ch & 0xff00) >> 8 )] << 8;
+            int offset = outerIndex[(Integer.extractBits(ch, 8, 8) )] << 8;
             return innerEncoderIndex[offset >> 12].charAt((offset & 0xfff) +
                         (ch & 0xff));
         }
@@ -12663,7 +12663,7 @@ public class GB18030
                         if (outByteVal == 0xFFFD )
                                 return CoderResult.unmappableForLength(1);
 
-                        hiByte = (outByteVal & 0xFF00) >> 8;
+                        hiByte = Integer.extractBits(outByteVal, 8, 8);
                         loByte = (outByteVal & 0xFF);
 
                         condensedKey = (hiByte - 0x20) * 256 + loByte;
@@ -12763,7 +12763,7 @@ public class GB18030
                         if (outByteVal == 0xFFFD )
                             return CoderResult.unmappableForLength(1);
 
-                        hiByte = (outByteVal & 0xFF00) >> 8;
+                        hiByte = Integer.extractBits(outByteVal, 8, 8);
                         loByte = (outByteVal & 0xFF);
 
                         condensedKey = (hiByte - 0x20) * 256 + loByte;

@@ -167,7 +167,7 @@ public final class UBiDiProps {
     }
 
     public final int getJoiningType(int c) {
-        return (trie.get(c)&JT_MASK)>>JT_SHIFT;
+        return Integer.extractBits(trie.get(c), JT_SHIFT, 3);
     }
 
     public final int getJoiningGroup(int c) {
@@ -187,7 +187,7 @@ public final class UBiDiProps {
     }
 
     public final int getPairedBracketType(int c) {
-        return (trie.get(c)&BPT_MASK)>>BPT_SHIFT;
+        return Integer.extractBits(trie.get(c), BPT_SHIFT, 2);
     }
 
     public final int getPairedBracket(int c) {

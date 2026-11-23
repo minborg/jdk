@@ -320,7 +320,7 @@ abstract class Authenticator {
 
         @Override
         void setEpochNumber(int epoch) {
-            block[0] = (byte)((epoch >> 8) & 0xFF);
+            block[0] = (byte)Integer.extractBits(epoch, 8, 8);
             block[1] = (byte)(epoch & 0xFF);
         }
     }

@@ -95,8 +95,8 @@ public class GTKColorType extends ColorType {
      * Converts from RGB color space to HLS colorspace.
      */
     private static float[] rgbToHLS(int rgb, float[] hls) {
-        float r = ((rgb & 0xFF0000) >> 16) / 255.0f;
-        float g = ((rgb & 0xFF00) >> 8) / 255.0f;
+        float r = Integer.extractBits(rgb, 16, 8) / 255.0f;
+        float g = Integer.extractBits(rgb, 8, 8) / 255.0f;
         float b = (rgb & 0xFF) / 255.0f;
 
         /* calculate lightness */

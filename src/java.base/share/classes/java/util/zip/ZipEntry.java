@@ -277,11 +277,11 @@ public class ZipEntry implements ZipConstants, Cloneable {
             return LocalDateTime.ofInstant(mtime.toInstant(), ZoneId.systemDefault());
         }
         int ms = (int)(xdostime >> 32);
-        return LocalDateTime.of((int)(((xdostime >> 25) & 0x7f) + 1980),
-                             (int)((xdostime >> 21) & 0x0f),
-                             (int)((xdostime >> 16) & 0x1f),
-                             (int)((xdostime >> 11) & 0x1f),
-                             (int)((xdostime >> 5) & 0x3f),
+        return LocalDateTime.of((int)(Long.extractBits(xdostime, 25, 7) + 1980),
+                             (int)Long.extractBits(xdostime, 21, 4),
+                             (int)Long.extractBits(xdostime, 16, 5),
+                             (int)Long.extractBits(xdostime, 11, 5),
+                             (int)Long.extractBits(xdostime, 5, 6),
                              (int)((xdostime << 1) & 0x3e) + ms / 1000,
                              (ms % 1000) * 1000_000);
     }

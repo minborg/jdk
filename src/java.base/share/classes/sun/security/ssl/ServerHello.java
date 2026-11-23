@@ -206,7 +206,7 @@ final class ServerHello {
             hos.putInt8(serverVersion.minor);
             hos.write(serverRandom.randomBytes);
             hos.putBytes8(sessionId.getId());
-            hos.putInt8((cipherSuite.id >> 8) & 0xFF);
+            hos.putInt8(Integer.extractBits(cipherSuite.id, 8, 8));
             hos.putInt8(cipherSuite.id & 0xff);
             hos.putInt8(compressionMethod);
 
@@ -1568,8 +1568,8 @@ final class ServerHello {
             int hrrBodyLen = helloRetryRequest.handshakeRecord.remaining();
             byte[] hrrMessage = new byte[4 + hrrBodyLen];
             hrrMessage[0] = SSLHandshake.HELLO_RETRY_REQUEST.id;
-            hrrMessage[1] = (byte)((hrrBodyLen >> 16) & 0xFF);
-            hrrMessage[2] = (byte)((hrrBodyLen >> 8) & 0xFF);
+            hrrMessage[1] = (byte)Integer.extractBits(hrrBodyLen, 16, 8);
+            hrrMessage[2] = (byte)Integer.extractBits(hrrBodyLen, 8, 8);
             hrrMessage[3] = (byte)(hrrBodyLen & 0xFF);
 
             ByteBuffer hrrBody = helloRetryRequest.handshakeRecord.duplicate();

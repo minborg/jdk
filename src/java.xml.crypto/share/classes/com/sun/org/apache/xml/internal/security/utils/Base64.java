@@ -550,7 +550,7 @@ public final class Base64 {
                 }
                 decodedData = new byte[encodedIndex + 2];
                 decodedData[encodedIndex++] = (byte)(b1 << 2 | b2 >> 4);
-                decodedData[encodedIndex] = (byte)(((b2 & 0xf) << 4) |((b3 >> 2) & 0xf));
+                decodedData[encodedIndex] = (byte)(((b2 & 0xf) << 4) |Integer.extractBits(b3, 2, 4));
             } else {
                 //an error  like "3c[Pad]r", "3cdX", "3cXd", "3cXX" where X is non data
                 throw new Base64DecodingException("decoding.general");
@@ -559,7 +559,7 @@ public final class Base64 {
             //No PAD e.g 3cQl
             decodedData = new byte[encodedIndex+3];
             decodedData[encodedIndex++] = (byte)(b1 << 2 | b2 >> 4) ;
-            decodedData[encodedIndex++] = (byte)(((b2 & 0xf) << 4) | ((b3 >> 2) & 0xf));
+            decodedData[encodedIndex++] = (byte)(((b2 & 0xf) << 4) | Integer.extractBits(b3, 2, 4));
             decodedData[encodedIndex++] = (byte)(b3 << 6 | b4);
         }
         encodedIndex = 0;
@@ -577,7 +577,7 @@ public final class Base64 {
             }
 
             decodedData[encodedIndex++] = (byte)(b1 << 2 | b2 >> 4) ;
-            decodedData[encodedIndex++] = (byte)(((b2 & 0xf) << 4) |((b3 >> 2) & 0xf));
+            decodedData[encodedIndex++] = (byte)(((b2 & 0xf) << 4) |Integer.extractBits(b3, 2, 4));
             decodedData[encodedIndex++] = (byte)(b3 << 6 | b4 );
         }
         return decodedData;
@@ -647,7 +647,7 @@ public final class Base64 {
             }
 
             os.write((byte)(b1 << 2 | b2 >> 4));
-            os.write((byte)(((b2 & 0xf) << 4 ) | ((b3 >> 2) & 0xf)));
+            os.write((byte)(((b2 & 0xf) << 4 ) | Integer.extractBits(b3, 2, 4)));
             os.write((byte)(b3 << 6 | b4));
         }
         b1 = base64Alphabet[base64Data[dataIndex++]];
@@ -673,7 +673,7 @@ public final class Base64 {
                     throw new Base64DecodingException("decoding.general");
                 }
                 os.write((byte)(b1 << 2 | b2 >> 4));
-                os.write((byte)(((b2 & 0xf) << 4) | ((b3 >> 2) & 0xf)));
+                os.write((byte)(((b2 & 0xf) << 4) | Integer.extractBits(b3, 2, 4)));
             } else {
                 //an error  like "3c[Pad]r", "3cdX", "3cXd", "3cXX" where X is non data
                 throw new Base64DecodingException("decoding.general");
@@ -681,7 +681,7 @@ public final class Base64 {
         } else {
             //No PAD e.g 3cQl
             os.write((byte)(b1 << 2 | b2 >> 4));
-            os.write( (byte)(((b2 & 0xf) << 4) | ((b3 >> 2) & 0xf)));
+            os.write( (byte)(((b2 & 0xf) << 4) | Integer.extractBits(b3, 2, 4)));
             os.write((byte)(b3 << 6 | b4));
         }
     }
@@ -731,7 +731,7 @@ public final class Base64 {
             b4 = base64Alphabet[data[3]];
 
             os.write((byte)(b1 << 2 | b2 >> 4));
-            os.write((byte)(((b2 & 0xf) << 4) | ((b3 >> 2) & 0xf)));
+            os.write((byte)(((b2 & 0xf) << 4) | Integer.extractBits(b3, 2, 4)));
             os.write((byte)(b3 << 6 | b4));
         }
 
@@ -752,7 +752,7 @@ public final class Base64 {
                     throw new Base64DecodingException("decoding.general");
                 }
                 os.write((byte)(b1 << 2 | b2 >> 4));
-                os.write((byte)(((b2 & 0xf) << 4) | ((b3 >> 2) & 0xf)));
+                os.write((byte)(((b2 & 0xf) << 4) | Integer.extractBits(b3, 2, 4)));
             } else {
                 //an error  like "3c[Pad]r", "3cdX", "3cXd", "3cXX" where X is non data
                 throw new Base64DecodingException("decoding.general");
@@ -760,7 +760,7 @@ public final class Base64 {
         } else {
             //No PAD e.g 3cQl
             os.write((byte)(b1 << 2 | b2 >> 4));
-            os.write((byte)(((b2 & 0xf) << 4) | ((b3 >> 2) & 0xf)));
+            os.write((byte)(((b2 & 0xf) << 4) | Integer.extractBits(b3, 2, 4)));
             os.write((byte)(b3 << 6 | b4));
         }
     }

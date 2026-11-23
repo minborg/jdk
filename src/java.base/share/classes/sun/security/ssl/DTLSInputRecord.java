@@ -1417,9 +1417,9 @@ final class DTLSInputRecord extends InputRecord implements DTLSRecord {
                     // fill the handshake fragment of the record
                     recordFrag[0] = hsFrag.handshakeType;
                     recordFrag[1] =
-                            (byte)((hsFrag.messageLength >>> 16) & 0xFF);
+                            (byte)Integer.extractBits(hsFrag.messageLength, 16, 8);
                     recordFrag[2] =
-                            (byte)((hsFrag.messageLength >>> 8) & 0xFF);
+                            (byte)Integer.extractBits(hsFrag.messageLength, 8, 8);
                     recordFrag[3] = (byte)(hsFrag.messageLength & 0xFF);
 
                     System.arraycopy(hsFrag.fragment, 0,
@@ -1444,9 +1444,9 @@ final class DTLSInputRecord extends InputRecord implements DTLSRecord {
                     // fill the handshake fragment of the record
                     recordFrag[0] = hsFrag.handshakeType;
                     recordFrag[1] =
-                            (byte)((hsFrag.messageLength >>> 16) & 0xFF);
+                            (byte)Integer.extractBits(hsFrag.messageLength, 16, 8);
                     recordFrag[2] =
-                            (byte)((hsFrag.messageLength >>> 8) & 0xFF);
+                            (byte)Integer.extractBits(hsFrag.messageLength, 8, 8);
                     recordFrag[3] = (byte)(hsFrag.messageLength & 0xFF);
 
                     int msgSeq = hsFrag.messageSeq;
@@ -1776,12 +1776,12 @@ final class DTLSInputRecord extends InputRecord implements DTLSRecord {
             temporary[0] = hsFrag.handshakeType;
 
             // Handshake.length
-            temporary[1] = (byte)((hsFrag.messageLength >> 16) & 0xFF);
-            temporary[2] = (byte)((hsFrag.messageLength >> 8) & 0xFF);
+            temporary[1] = (byte)Integer.extractBits(hsFrag.messageLength, 16, 8);
+            temporary[2] = (byte)Integer.extractBits(hsFrag.messageLength, 8, 8);
             temporary[3] = (byte)(hsFrag.messageLength & 0xFF);
 
             // Handshake.message_seq
-            temporary[4] = (byte)((hsFrag.messageSeq >> 8) & 0xFF);
+            temporary[4] = (byte)Integer.extractBits(hsFrag.messageSeq, 8, 8);
             temporary[5] = (byte)(hsFrag.messageSeq & 0xFF);
 
             // Handshake.fragment_offset

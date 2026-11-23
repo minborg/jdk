@@ -216,9 +216,9 @@ public final class DerOutputStream
         // Obtain the four bytes of the int
 
         bytes[3] = (byte) (i & 0xff);
-        bytes[2] = (byte)((i & 0xff00) >>> 8);
-        bytes[1] = (byte)((i & 0xff0000) >>> 16);
-        bytes[0] = (byte)((i & 0xff000000) >>> 24);
+        bytes[2] = (byte)Integer.extractBits(i, 8, 8);
+        bytes[1] = (byte)Integer.extractBits(i, 16, 8);
+        bytes[0] = (byte)Integer.extractBits(i, 24, 8);
 
         // Reduce them to the least number of bytes needed to
         // represent this int

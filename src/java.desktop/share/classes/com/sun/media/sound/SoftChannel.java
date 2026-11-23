@@ -1389,11 +1389,11 @@ public final class SoftChannel implements MidiChannel, ModelDirectedPlayer {
          */
 
         if (controller == 3) {
-            tuning_program = (value >> 7) & 127;
+            tuning_program = Integer.extractBits(value, 7, 7);
             tuningChange(tuning_bank, tuning_program);
         }
         if (controller == 4) {
-            tuning_bank = (value >> 7) & 127;
+            tuning_bank = Integer.extractBits(value, 7, 7);
         }
 
         int[] val_i = co_midi_rpn_rpn_i.get(controller);

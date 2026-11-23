@@ -538,7 +538,7 @@ public class GIFImageReader extends ImageReader {
 
             int packedFields = stream.readUnsignedByte();
             boolean globalColorTableFlag = (packedFields & 0x80) != 0;
-            streamMetadata.colorResolution = ((packedFields >> 4) & 0x7) + 1;
+            streamMetadata.colorResolution = Integer.extractBits(packedFields, 4, 3) + 1;
             streamMetadata.sortFlag = (packedFields & 0x8) != 0;
             int numGCTEntries = 1 << ((packedFields & 0x7) + 1);
 
@@ -719,7 +719,7 @@ public class GIFImageReader extends ImageReader {
                         int gceLength = stream.readUnsignedByte(); // 4
                         int gcePackedFields = stream.readUnsignedByte();
                         imageMetadata.disposalMethod =
-                            (gcePackedFields >> 2) & 0x3;
+                            Integer.extractBits(gcePackedFields, 2, 2);
                         imageMetadata.userInputFlag =
                             (gcePackedFields & 0x2) != 0;
                         imageMetadata.transparentColorFlag =

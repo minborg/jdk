@@ -639,16 +639,16 @@ abstract class Trie2 implements Iterable<Trie2.Range> {
 
     private static int hashUChar32(int h, int c) {
         h = Trie2.hashByte(h, c & 255);
-        h = Trie2.hashByte(h, (c>>8) & 255);
+        h = Trie2.hashByte(h, Integer.extractBits(c, 8, 8));
         h = Trie2.hashByte(h, c>>16);
         return h;
     }
 
     private static int hashInt(int h, int i) {
         h = Trie2.hashByte(h, i & 255);
-        h = Trie2.hashByte(h, (i>>8) & 255);
-        h = Trie2.hashByte(h, (i>>16) & 255);
-        h = Trie2.hashByte(h, (i>>24) & 255);
+        h = Trie2.hashByte(h, Integer.extractBits(i, 8, 8));
+        h = Trie2.hashByte(h, Integer.extractBits(i, 16, 8));
+        h = Trie2.hashByte(h, Integer.extractBits(i, 24, 8));
         return h;
     }
 

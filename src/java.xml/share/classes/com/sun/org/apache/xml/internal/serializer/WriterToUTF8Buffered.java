@@ -155,14 +155,14 @@ final class WriterToUTF8Buffered extends Writer implements WriterChain
     else if (c < 0x10000)
     {
       m_outputBytes[count++] = (byte) (0xe0 + (c >> 12));
-      m_outputBytes[count++] = (byte) (0x80 + ((c >> 6) & 0x3f));
+      m_outputBytes[count++] = (byte) (0x80 + Integer.extractBits(c, 6, 6));
       m_outputBytes[count++] = (byte) (0x80 + (c & 0x3f));
     }
         else
         {
           m_outputBytes[count++] = (byte) (0xf0 + (c >> 18));
-          m_outputBytes[count++] = (byte) (0x80 + ((c >> 12) & 0x3f));
-          m_outputBytes[count++] = (byte) (0x80 + ((c >> 6) & 0x3f));
+          m_outputBytes[count++] = (byte) (0x80 + Integer.extractBits(c, 12, 6));
+          m_outputBytes[count++] = (byte) (0x80 + Integer.extractBits(c, 6, 6));
           m_outputBytes[count++] = (byte) (0x80 + (c & 0x3f));
         }
 
@@ -295,14 +295,14 @@ final class WriterToUTF8Buffered extends Writer implements WriterChain
           low = chars[i];
 
           buf_loc[count_loc++] = (byte) (0xF0 | (((high + 0x40) >> 8) & 0xf0));
-          buf_loc[count_loc++] = (byte) (0x80 | (((high + 0x40) >> 2) & 0x3f));
-          buf_loc[count_loc++] = (byte) (0x80 | ((low >> 6) & 0x0f) + ((high << 4) & 0x30));
+          buf_loc[count_loc++] = (byte) (0x80 | Integer.extractBits(high + 0x40, 2, 6));
+          buf_loc[count_loc++] = (byte) (0x80 | Integer.extractBits(low, 6, 4) + ((high << 4) & 0x30));
           buf_loc[count_loc++] = (byte) (0x80 | (low & 0x3f));
       }
       else
       {
         buf_loc[count_loc++] = (byte) (0xe0 + (c >> 12));
-        buf_loc[count_loc++] = (byte) (0x80 + ((c >> 6) & 0x3f));
+        buf_loc[count_loc++] = (byte) (0x80 + Integer.extractBits(c, 6, 6));
         buf_loc[count_loc++] = (byte) (0x80 + (c & 0x3f));
       }
     }
@@ -423,14 +423,14 @@ final class WriterToUTF8Buffered extends Writer implements WriterChain
         low = chars[i];
 
         buf_loc[count_loc++] = (byte) (0xF0 | (((high + 0x40) >> 8) & 0xf0));
-        buf_loc[count_loc++] = (byte) (0x80 | (((high + 0x40) >> 2) & 0x3f));
-        buf_loc[count_loc++] = (byte) (0x80 | ((low >> 6) & 0x0f) + ((high << 4) & 0x30));
+        buf_loc[count_loc++] = (byte) (0x80 | Integer.extractBits(high + 0x40, 2, 6));
+        buf_loc[count_loc++] = (byte) (0x80 | Integer.extractBits(low, 6, 4) + ((high << 4) & 0x30));
         buf_loc[count_loc++] = (byte) (0x80 | (low & 0x3f));
     }
       else
       {
         buf_loc[count_loc++] = (byte) (0xe0 + (c >> 12));
-        buf_loc[count_loc++] = (byte) (0x80 + ((c >> 6) & 0x3f));
+        buf_loc[count_loc++] = (byte) (0x80 + Integer.extractBits(c, 6, 6));
         buf_loc[count_loc++] = (byte) (0x80 + (c & 0x3f));
       }
     }

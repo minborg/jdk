@@ -1177,8 +1177,8 @@ public final /*value*/ class Float extends Number
                     // Preserve high order bit of float NaN in the
                     // binary16 result NaN (tenth bit); OR in remaining
                     // bits into lower 9 bits of binary 16 significand.
-                    | (doppel & 0x007f_e000) >> 13 // 10 bits
-                    | (doppel & 0x0000_1ff0) >> 4  //  9 bits
+                    | Integer.extractBits(doppel, 13, 10) // 10 bits
+                    | Integer.extractBits(doppel, 4, 9)  //  9 bits
                     | (doppel & 0x0000_000f));     //  4 bits
         }
 

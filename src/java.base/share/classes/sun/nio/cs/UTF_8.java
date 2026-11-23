@@ -495,8 +495,8 @@ public final class UTF_8 extends Unicode {
                     if (dl - dp < 4)
                         return overflow(src, sp, dst, dp);
                     da[dp++] = (byte)(0xf0 | ((uc >> 18)));
-                    da[dp++] = (byte)(0x80 | ((uc >> 12) & 0x3f));
-                    da[dp++] = (byte)(0x80 | ((uc >>  6) & 0x3f));
+                    da[dp++] = (byte)(0x80 | Integer.extractBits(uc, 12, 6));
+                    da[dp++] = (byte)(0x80 | Integer.extractBits(uc, 6, 6));
                     da[dp++] = (byte)(0x80 | (uc & 0x3f));
                     sp++;  // 2 chars
                 } else {
@@ -504,7 +504,7 @@ public final class UTF_8 extends Unicode {
                     if (dl - dp < 3)
                         return overflow(src, sp, dst, dp);
                     da[dp++] = (byte)(0xe0 | ((c >> 12)));
-                    da[dp++] = (byte)(0x80 | ((c >>  6) & 0x3f));
+                    da[dp++] = (byte)(0x80 | Integer.extractBits(c, 6, 6));
                     da[dp++] = (byte)(0x80 | (c & 0x3f));
                 }
                 sp++;
@@ -542,8 +542,8 @@ public final class UTF_8 extends Unicode {
                     if (dst.remaining() < 4)
                         return overflow(src, mark);
                     dst.put((byte)(0xf0 | ((uc >> 18))));
-                    dst.put((byte)(0x80 | ((uc >> 12) & 0x3f)));
-                    dst.put((byte)(0x80 | ((uc >>  6) & 0x3f)));
+                    dst.put((byte)(0x80 | Integer.extractBits(uc, 12, 6)));
+                    dst.put((byte)(0x80 | Integer.extractBits(uc, 6, 6)));
                     dst.put((byte)(0x80 | (uc & 0x3f)));
                     mark++;  // 2 chars
                 } else {
@@ -551,7 +551,7 @@ public final class UTF_8 extends Unicode {
                     if (dst.remaining() < 3)
                         return overflow(src, mark);
                     dst.put((byte)(0xe0 | ((c >> 12))));
-                    dst.put((byte)(0x80 | ((c >>  6) & 0x3f)));
+                    dst.put((byte)(0x80 | Integer.extractBits(c, 6, 6)));
                     dst.put((byte)(0x80 | (c & 0x3f)));
                 }
                 mark++;

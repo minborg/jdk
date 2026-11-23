@@ -176,9 +176,9 @@ public class PAForUserEnc {
         byte[] output = ba.toByteArray();
         int pnType = name.getNameType();
         output[0] = (byte)(pnType & 0xff);
-        output[1] = (byte)((pnType>>8) & 0xff);
-        output[2] = (byte)((pnType>>16) & 0xff);
-        output[3] = (byte)((pnType>>24) & 0xff);
+        output[1] = (byte)Integer.extractBits(pnType, 8, 8);
+        output[2] = (byte)Integer.extractBits(pnType, 16, 8);
+        output[3] = (byte)Integer.extractBits(pnType, 24, 8);
         return output;
     }
 

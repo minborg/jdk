@@ -141,9 +141,9 @@ public final class IntegerPolynomial1305 extends IntegerPolynomial {
 
     protected void encode(long high, long low, byte highByte, long[] result) {
         result[0] = low & 0x3FFFFFFL;
-        result[1] = (low >>> 26) & 0x3FFFFFFL;
+        result[1] = Long.extractBits(low, 26, 26);
         result[2] = (low >>> 52) + ((high & 0x3FFFL) << 12);
-        result[3] = (high >>> 14) & 0x3FFFFFFL;
+        result[3] = Long.extractBits(high, 14, 26);
         result[4] = (high >>> 40) + (highByte << 24L);
     }
 

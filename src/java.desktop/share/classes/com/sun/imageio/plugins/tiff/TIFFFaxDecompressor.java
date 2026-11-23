@@ -701,7 +701,7 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
 
                 // Get the 3 fields from the entry
                 isT = entry & 0x0001;
-                bits = (entry >>> 1) & 0x0f;
+                bits = Integer.extractBits(entry, 1, 4);
 
                 if (bits == 12) {          // Additional Make up code
                     // Get the next 2 bits
@@ -709,8 +709,8 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
                     // Consolidate the 2 new bits and last 2 bits into 4 bits
                     current = ((current << 2) & 0x000c) | twoBits;
                     entry = additionalMakeup[current];
-                    bits = (entry >>> 1) & 0x07;     // 3 bits 0000 0111
-                    code  = (entry >>> 4) & 0x0fff;  // 12 bits
+                    bits = Integer.extractBits(entry, 1, 3);     // 3 bits 0000 0111
+                    code  = Integer.extractBits(entry, 4, 12);  // 12 bits
                     bitOffset += code; // Skip white run
 
                     updatePointer(4 - bits);
@@ -726,7 +726,7 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
                     return;
                 } else {
                     // 11 bits - 0000 0111 1111 1111 = 0x07ff
-                    code = (entry >>> 5) & 0x07ff;
+                    code = Integer.extractBits(entry, 5, 11);
                     bitOffset += code;
 
                     updatePointer(10 - bits);
@@ -762,8 +762,8 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
 
                 // Get the 3 fields from the entry
                 isT = entry & 0x0001;
-                bits = (entry >>> 1) & 0x000f;
-                code = (entry >>> 5) & 0x07ff;
+                bits = Integer.extractBits(entry, 1, 4);
+                code = Integer.extractBits(entry, 5, 11);
 
                 if (code == 100) {
                     current = nextNBits(9);
@@ -771,16 +771,16 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
 
                     // Get the 3 fields from the entry
                     isT = entry & 0x0001;
-                    bits = (entry >>> 1) & 0x000f;
-                    code = (entry >>> 5) & 0x07ff;
+                    bits = Integer.extractBits(entry, 1, 4);
+                    code = Integer.extractBits(entry, 5, 11);
 
                     if (bits == 12) {
                         // Additional makeup codes
                         updatePointer(5);
                         current = nextLesserThan8Bits(4);
                         entry = additionalMakeup[current];
-                        bits = (entry >>> 1) & 0x07;     // 3 bits 0000 0111
-                        code  = (entry >>> 4) & 0x0fff;  // 12 bits
+                        bits = Integer.extractBits(entry, 1, 3);     // 3 bits 0000 0111
+                        code  = Integer.extractBits(entry, 4, 12);  // 12 bits
 
                         setToBlack(bitOffset, code);
                         bitOffset += code;
@@ -809,8 +809,8 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
                     // Is a Terminating code
                     current = nextLesserThan8Bits(2);
                     entry = twoBitBlack[current];
-                    code = (entry >>> 5) & 0x07ff;
-                    bits = (entry >>> 1) & 0x0f;
+                    code = Integer.extractBits(entry, 5, 11);
+                    bits = Integer.extractBits(entry, 1, 4);
 
                     setToBlack(bitOffset, code);
                     bitOffset += code;
@@ -931,7 +931,7 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
                     entry = (twoDCodes[entry] & 0xff);
 
                     // Get the code and the number of bits used up
-                    code = (entry & 0x78) >>> 3;
+                    code = Integer.extractBits(entry, 3, 4);
                     bits = entry & 0x07;
 
                     if (code == 0) {
@@ -1085,7 +1085,7 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
                 entry = (twoDCodes[entry] & 0xff);
 
                 // Get the code and the number of bits used up
-                code = (entry & 0x78) >>> 3;
+                code = Integer.extractBits(entry, 3, 4);
                 bits = entry & 0x07;
 
                 if (code == 0) { // Pass
@@ -1297,7 +1297,7 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
 
             // Get the 3 fields from the entry
             isT = entry & 0x0001;
-            bits = (entry >>> 1) & 0x0f;
+            bits = Integer.extractBits(entry, 1, 4);
 
             if (bits == 12) {           // Additional Make up code
                 // Get the next 2 bits
@@ -1305,8 +1305,8 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
                 // Consolidate the 2 new bits and last 2 bits into 4 bits
                 current = ((current << 2) & 0x000c) | twoBits;
                 entry = additionalMakeup[current];
-                bits = (entry >>> 1) & 0x07;     // 3 bits 0000 0111
-                code = (entry >>> 4) & 0x0fff;   // 12 bits
+                bits = Integer.extractBits(entry, 1, 3);     // 3 bits 0000 0111
+                code = Integer.extractBits(entry, 4, 12);   // 12 bits
                 runLength += code;
                 updatePointer(4 - bits);
             } else if (bits == 0) {     // ERROR
@@ -1315,7 +1315,7 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
                 throw new IIOException("Error 1");
             } else {
                 // 11 bits - 0000 0111 1111 1111 = 0x07ff
-                code = (entry >>> 5) & 0x07ff;
+                code = Integer.extractBits(entry, 5, 11);
                 runLength += code;
                 updatePointer(10 - bits);
                 if (isT == 0) {
@@ -1339,8 +1339,8 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
 
             // Get the 3 fields from the entry
             isT = entry & 0x0001;
-            bits = (entry >>> 1) & 0x000f;
-            code = (entry >>> 5) & 0x07ff;
+            bits = Integer.extractBits(entry, 1, 4);
+            code = Integer.extractBits(entry, 5, 11);
 
             if (code == 100) {
                 current = nextNBits(9);
@@ -1348,16 +1348,16 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
 
                 // Get the 3 fields from the entry
                 isT = entry & 0x0001;
-                bits = (entry >>> 1) & 0x000f;
-                code = (entry >>> 5) & 0x07ff;
+                bits = Integer.extractBits(entry, 1, 4);
+                code = Integer.extractBits(entry, 5, 11);
 
                 if (bits == 12) {
                     // Additional makeup codes
                     updatePointer(5);
                     current = nextLesserThan8Bits(4);
                     entry = additionalMakeup[current];
-                    bits = (entry >>> 1) & 0x07;     // 3 bits 0000 0111
-                    code  = (entry >>> 4) & 0x0fff;  // 12 bits
+                    bits = Integer.extractBits(entry, 1, 3);     // 3 bits 0000 0111
+                    code  = Integer.extractBits(entry, 4, 12);  // 12 bits
                     runLength += code;
 
                     updatePointer(4 - bits);
@@ -1375,9 +1375,9 @@ class TIFFFaxDecompressor extends TIFFDecompressor {
                 // Is a Terminating code
                 current = nextLesserThan8Bits(2);
                 entry = twoBitBlack[current];
-                code = (entry >>> 5) & 0x07ff;
+                code = Integer.extractBits(entry, 5, 11);
                 runLength += code;
-                bits = (entry >>> 1) & 0x0f;
+                bits = Integer.extractBits(entry, 1, 4);
                 updatePointer(2 - bits);
                 isWhite = true;
             } else {

@@ -213,7 +213,7 @@ public abstract class GSSToken {
     public static final String getHexBytes(byte[] bytes, int pos, int len) {
         StringBuilder sb = new StringBuilder();
         for (int i = pos; i < (pos+len); i++) {
-            int b1 = (bytes[i]>>4) & 0x0f;
+            int b1 = Integer.extractBits(bytes[i], 4, 4);
             int b2 = bytes[i] & 0x0f;
 
             sb.append(Integer.toHexString(b1));

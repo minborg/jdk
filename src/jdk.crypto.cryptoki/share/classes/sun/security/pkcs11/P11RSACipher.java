@@ -595,7 +595,7 @@ final class P11RSACipher extends CipherSpi {
 
         SecretKey newKey;
         CK_VERSION version = new CK_VERSION(
-                (clientVersion >>> 8) & 0xFF, clientVersion & 0xFF);
+                Integer.extractBits(clientVersion, 8, 8), clientVersion & 0xFF);
         try {
             CK_ATTRIBUTE[] attributes = token.getAttributes(
                     O_GENERATE, CKO_SECRET_KEY,

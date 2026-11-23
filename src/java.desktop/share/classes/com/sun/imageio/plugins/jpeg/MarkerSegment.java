@@ -194,7 +194,7 @@ class MarkerSegment implements Cloneable {
         if (value < 0 || value > 0xffff) {
             throw new IIOException("Invalid 2-byte value: " + value);
         }
-        ios.write((value >> 8) & 0xff);
+        ios.write(Integer.extractBits(value, 8, 8));
         ios.write(value & 0xff);
 
     }

@@ -601,7 +601,7 @@ public final /*value*/ class Short extends Number
      */
     @IntrinsicCandidate
     public static short reverseBytes(short i) {
-        return (short) (((i & 0xFF00) >> 8) | (i << 8));
+        return (short) (Integer.extractBits(i, 8, 8) | (i << 8));
     }
 
 

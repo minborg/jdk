@@ -108,9 +108,9 @@ public abstract class DkCrypto {
             // Derive encryption key
 
             byte[] constant = new byte[5];
-            constant[0] = (byte) ((usage>>24)&0xff);
-            constant[1] = (byte) ((usage>>16)&0xff);
-            constant[2] = (byte) ((usage>>8)&0xff);
+            constant[0] = (byte) Integer.extractBits(usage, 24, 8);
+            constant[1] = (byte) Integer.extractBits(usage, 16, 8);
+            constant[2] = (byte) Integer.extractBits(usage, 8, 8);
             constant[3] = (byte) (usage&0xff);
 
             constant[4] = (byte) 0xaa;
@@ -295,9 +295,9 @@ public abstract class DkCrypto {
         try {
             // Derive encryption key
             byte[] constant = new byte[5];
-            constant[0] = (byte) ((usage>>24)&0xff);
-            constant[1] = (byte) ((usage>>16)&0xff);
-            constant[2] = (byte) ((usage>>8)&0xff);
+            constant[0] = (byte) Integer.extractBits(usage, 24, 8);
+            constant[1] = (byte) Integer.extractBits(usage, 16, 8);
+            constant[2] = (byte) Integer.extractBits(usage, 8, 8);
             constant[3] = (byte) (usage&0xff);
 
             constant[4] = (byte) 0xaa;
@@ -404,9 +404,9 @@ public abstract class DkCrypto {
 
         // Derive keys
         byte[] constant = new byte[5];
-        constant[0] = (byte) ((usage>>24)&0xff);
-        constant[1] = (byte) ((usage>>16)&0xff);
-        constant[2] = (byte) ((usage>>8)&0xff);
+        constant[0] = (byte) Integer.extractBits(usage, 24, 8);
+        constant[1] = (byte) Integer.extractBits(usage, 16, 8);
+        constant[2] = (byte) Integer.extractBits(usage, 8, 8);
         constant[3] = (byte) (usage&0xff);
 
         constant[4] = (byte) 0x99;
@@ -581,12 +581,10 @@ public abstract class DkCrypto {
                 /* last, pick out correct byte within that shifted repetition */
                 + ((inbits-(i%inbits)) << 3)) % (inbits << 3);
 
-            /* pull out the byte value itself */
-            // Mask off values using &0xff to get only the lower byte
-            // Use >>> to avoid sign extension
-            bval =  ((((in[((inbits-1)-(msbit>>>3))%inbits]&0xff)<<8)|
-                (in[((inbits)-(msbit>>>3))%inbits]&0xff))
-                >>>((msbit&7)+1))&0xff;
+            // Assemble two bytes and extract the rotated byte.
+            int word = ((in[((inbits - 1) - (msbit >>> 3)) % inbits] & 0xff) << 8)
+                       | (in[(inbits - (msbit >>> 3)) % inbits] & 0xff);
+            bval = Integer.extractBits(word, (msbit & 7) + 1, Byte.SIZE);
 
             /*
             System.err.println("((" +

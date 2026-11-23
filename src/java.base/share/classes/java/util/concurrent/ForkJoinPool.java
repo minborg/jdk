@@ -2043,7 +2043,7 @@ public class ForkJoinPool extends AbstractExecutorService
         if (w == null)                        // currently impossible
             return IDLE;
         int p = phase | IDLE, activePhase = phase + (IDLE << 1);
-        long pc = ctl, qc = (activePhase & LMASK) | ((pc - RC_UNIT) & UMASK);
+        long pc = ctl, qc = Long.replaceBits(pc - RC_UNIT, 0, 32, activePhase);
         int sp = w.stackPred = (int)pc;       // set ctl stack link
         w.phase = p;
         if (!compareAndSetCtl(pc, qc))        // try to enqueue
@@ -2066,7 +2066,7 @@ public class ForkJoinPool extends AbstractExecutorService
             else if ((a = q.array) != null && (cap = a.length) > 0 &&
                      a[q.base & (cap - 1)] != null && --prechecks < 0 &&
                      (int)(c = ctl) == activePhase &&
-                     compareAndSetCtl(c, (sp & LMASK) | ((c + RC_UNIT) & UMASK)))
+                     compareAndSetCtl(c, Long.replaceBits(c + RC_UNIT, 0, 32, sp)))
                 return w.phase = activePhase; // reactivate
         }
     }
@@ -2197,7 +2197,7 @@ public class ForkJoinPool extends AbstractExecutorService
             WorkQueue[] qs; WorkQueue v; int i;
             if ((qs = queues) != null && qs.length > (i = sp & SMASK) &&
                 (v = qs[i]) != null &&
-                compareAndSetCtl(c, (c & UMASK) | (v.stackPred & LMASK))) {
+                compareAndSetCtl(c, Long.replaceBits(c, 0, 32, v.stackPred))) {
                 v.phase = sp;
                 if (v.parking != 0)
                     U.unpark(v.owner);
@@ -2205,7 +2205,7 @@ public class ForkJoinPool extends AbstractExecutorService
             }
         }
         else if (active > minActive && total >= pc) {   // reduce active workers
-            if (compareAndSetCtl(c, ((c - RC_UNIT) & RC_MASK) | (c & ~RC_MASK)))
+            if (compareAndSetCtl(c, Long.replaceBits(c - RC_UNIT, 0, 48, c)))
                 stat = UNCOMPENSATE;
         }
         else if (total < maxTotal && total < MAX_CAP) { // try to expand pool

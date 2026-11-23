@@ -1014,7 +1014,7 @@ public class BigDecimal extends Number implements Comparable<BigDecimal> {
         // to the formulae in JLS, Section 20.10.22.
         long valBits = Double.doubleToLongBits(val);
         int sign = ((valBits >> 63) == 0 ? 1 : -1);
-        int exponent = (int) ((valBits >> 52) & 0x7ffL);
+        int exponent = (int) Long.extractBits(valBits, 52, 11);
         long significand = (exponent == 0
                 ? (valBits & ((1L << 52) - 1)) << 1
                 : (valBits & ((1L << 52) - 1)) | (1L << 52));

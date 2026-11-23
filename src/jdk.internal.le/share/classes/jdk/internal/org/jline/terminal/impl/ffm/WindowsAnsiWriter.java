@@ -297,7 +297,7 @@ class WindowsAnsiWriter extends AnsiWriter {
 
     @Override
     protected void processDefaultTextColor() throws IOException {
-        info.attributes((short) ((info.attributes() & ~0x000F) | (originalColors & 0xF)));
+        info.attributes((short) Integer.replaceBits(info.attributes(), 0, 4, originalColors));
         info.attributes((short) (info.attributes() & ~FOREGROUND_INTENSITY));
         applyAttribute();
     }

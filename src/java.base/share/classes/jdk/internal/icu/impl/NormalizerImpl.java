@@ -452,7 +452,7 @@ public final class NormalizerImpl {
         return getCCFromNoNo(norm16);
     }
     public static int getCCFromNormalYesOrMaybe(int norm16) {
-        return (norm16 >> OFFSET_SHIFT) & 0xff;
+        return Integer.extractBits(norm16, OFFSET_SHIFT, 8);
     }
     public static int getCCFromYesOrMaybeYes(int norm16) {
         return norm16>=MIN_NORMAL_MAYBE_YES ? getCCFromNormalYesOrMaybe(norm16) : 0;
@@ -480,7 +480,7 @@ public final class NormalizerImpl {
         // 0<=lead<=0xffff
         byte bits=smallFCD[lead>>8];
         if(bits==0) { return false; }
-        return ((bits>>((lead>>5)&7))&1)!=0;
+        return ((bits>>Integer.extractBits(lead, 5, 3))&1)!=0;
     }
 
     /** Gets the FCD value from the regular normalization data. */
@@ -1060,7 +1060,7 @@ public final class NormalizerImpl {
 
             if (norm16 >= minMaybeNo) {
                 int fcd16 = getFCD16FromMaybeOrNonZeroCC(norm16);
-                int cc = (fcd16 >> 8) & 0xff;
+                int cc = Integer.extractBits(fcd16, 8, 8);
                 if (onlyContiguous /* FCC */ && cc != 0 &&
                         getTrailCCFromCompYesAndZeroCC(prevNorm16) > cc) {
                     // The [prevBoundary..prevSrc[ character
@@ -1085,7 +1085,7 @@ public final class NormalizerImpl {
                         norm16 = getNorm16(c);
                         if (norm16 >= minMaybeNo) {
                             fcd16 = getFCD16FromMaybeOrNonZeroCC(norm16);
-                            cc = (fcd16 >> 8) & 0xff;
+                            cc = Integer.extractBits(fcd16, 8, 8);
                             if (!(prevCC <= cc || cc == 0)) {
                                 break;
                             }

@@ -3908,7 +3908,7 @@ public class COFFFileParser {
     }
 
     short byteSwap(short arg) {
-      return (short) ((arg << 8) | ((arg >>> 8) & 0xFF));
+      return (short) ((arg << 8) | Integer.extractBits(arg, 8, 8));
     }
 
     int byteSwap(int arg) {

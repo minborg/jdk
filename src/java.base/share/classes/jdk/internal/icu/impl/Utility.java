@@ -255,16 +255,16 @@ public final class Utility {
                 result.append('\\');
                 if ((c & ~0xFFFF) != 0) {
                     result.append('U');
-                    result.append(DIGITS[0xF&(c>>28)]);
-                    result.append(DIGITS[0xF&(c>>24)]);
-                    result.append(DIGITS[0xF&(c>>20)]);
-                    result.append(DIGITS[0xF&(c>>16)]);
+                    result.append(DIGITS[Integer.extractBits(c, 28, 4)]);
+                    result.append(DIGITS[Integer.extractBits(c, 24, 4)]);
+                    result.append(DIGITS[Integer.extractBits(c, 20, 4)]);
+                    result.append(DIGITS[Integer.extractBits(c, 16, 4)]);
                 } else {
                     result.append('u');
                 }
-                result.append(DIGITS[0xF&(c>>12)]);
-                result.append(DIGITS[0xF&(c>>8)]);
-                result.append(DIGITS[0xF&(c>>4)]);
+                result.append(DIGITS[Integer.extractBits(c, 12, 4)]);
+                result.append(DIGITS[Integer.extractBits(c, 8, 4)]);
+                result.append(DIGITS[Integer.extractBits(c, 4, 4)]);
                 result.append(DIGITS[0xF&c]);
                 return true;
             }

@@ -273,8 +273,8 @@ final class BlowfishCrypt extends SymmetricCipher
      */
     private int F(int v) {
         return ((  s0[ v >>> 24        ]
-                 + s1[(v  >> 16) & 0xff])
-                 ^ s2[(v  >>  8) & 0xff])
+                 + s1[Integer.extractBits(v, 16, 8)])
+                 ^ s2[Integer.extractBits(v, 8, 8)])
                  + s3[ v         & 0xff];
     }
 

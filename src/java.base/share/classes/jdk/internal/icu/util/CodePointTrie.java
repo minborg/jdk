@@ -213,7 +213,7 @@ public abstract class CodePointTrie extends CodePointMap {
             int shiftedHighStart = bytes.getChar();
             // struct UCPTrieHeader end
 
-            int typeInt = (options >> 6) & 3;
+            int typeInt = Integer.extractBits(options, 6, 2);
             Type actualType;
             switch (typeInt) {
             case 0: actualType = Type.FAST; break;
@@ -389,7 +389,7 @@ public abstract class CodePointTrie extends CodePointMap {
                     assert(c < highStart && highStart > SMALL_LIMIT);
                     i1 += SMALL_INDEX_LENGTH;
                 }
-                i3Block = index[index[i1] + ((c >> SHIFT_2) & INDEX_2_MASK)];
+                i3Block = index[index[i1] + Integer.extractBits(c, SHIFT_2, 5)];
                 if (i3Block == prevI3Block && (c - start) >= CP_PER_INDEX_2_ENTRY) {
                     // The index-3 block is the same as the previous one, and filled with value.
                     assert((c & (CP_PER_INDEX_2_ENTRY - 1)) == 0);
@@ -413,7 +413,7 @@ public abstract class CodePointTrie extends CodePointMap {
                     c = (c + CP_PER_INDEX_2_ENTRY) & ~(CP_PER_INDEX_2_ENTRY - 1);
                     continue;
                 }
-                i3 = (c >> SHIFT_3) & INDEX_3_MASK;
+                i3 = Integer.extractBits(c, SHIFT_3, 5);
                 i3BlockLength = INDEX_3_BLOCK_LENGTH;
                 dataBlockLength = SMALL_DATA_BLOCK_LENGTH;
             }
@@ -740,8 +740,8 @@ public abstract class CodePointTrie extends CodePointMap {
             assert(0 <= c && c < highStart && highStart > SMALL_LIMIT);
             i1 += SMALL_INDEX_LENGTH;
         }
-        int i3Block = index[index[i1] + ((c >> SHIFT_2) & INDEX_2_MASK)];
-        int i3 = (c >> SHIFT_3) & INDEX_3_MASK;
+        int i3Block = index[index[i1] + Integer.extractBits(c, SHIFT_2, 5)];
+        int i3 = Integer.extractBits(c, SHIFT_3, 5);
         int dataBlock;
         if ((i3Block & 0x8000) == 0) {
             // 16-bit indexes

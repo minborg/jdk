@@ -264,12 +264,12 @@ public class ImageUtil {
                     int i = eltOffset;
                     while(xRemaining > 8) {
                         short datum = data[i++];
-                        binaryDataArray[b++] = (byte)((datum >>> 8) & 0xFF);
+                        binaryDataArray[b++] = (byte)Integer.extractBits(datum, 8, 8);
                         binaryDataArray[b++] = (byte)(datum & 0xFF);
                         xRemaining -= 16;
                     }
                     if(xRemaining > 0) {
-                        binaryDataArray[b++] = (byte)((data[i] >>> 8) & 0XFF);
+                        binaryDataArray[b++] = (byte)Integer.extractBits(data[i], 8, 8);
                     }
                     eltOffset += lineStride;
                 }
@@ -281,16 +281,16 @@ public class ImageUtil {
                     int i = eltOffset;
                     while(xRemaining > 24) {
                         int datum = data[i++];
-                        binaryDataArray[b++] = (byte)((datum >>> 24) & 0xFF);
-                        binaryDataArray[b++] = (byte)((datum >>> 16) & 0xFF);
-                        binaryDataArray[b++] = (byte)((datum >>> 8) & 0xFF);
+                        binaryDataArray[b++] = (byte)Integer.extractBits(datum, 24, 8);
+                        binaryDataArray[b++] = (byte)Integer.extractBits(datum, 16, 8);
+                        binaryDataArray[b++] = (byte)Integer.extractBits(datum, 8, 8);
                         binaryDataArray[b++] = (byte)(datum & 0xFF);
                         xRemaining -= 32;
                     }
                     int shift = 24;
                     while(xRemaining > 0) {
                         binaryDataArray[b++] =
-                            (byte)((data[i] >>> shift) & 0xFF);
+                            (byte)Integer.extractBits(data[i], shift, Byte.SIZE);
                         shift -= 8;
                         xRemaining -= 8;
                     }
@@ -643,13 +643,15 @@ public class ImageUtil {
                             data[i] = (short)((data[i] & mask) | (datum << leftShift));
                         } else if (xRemaining > leftShift16) {
                             // This BYTE will be set into two SHORTs
-                            data[i] = (short)((data[i] & mask1) | ((datum >>> rightShift)&0xFFFF));
+                            data[i] = (short)((data[i] & mask1)
+                                             | Integer.extractBits(datum, rightShift, Short.SIZE));
                             data[++i] =
                                 (short)((datum << leftShift)&0xFFFF);
                         } else if (xRemaining > leftShift) {
                             // This BYTE will be set into two SHORTs;
                             // But not all the low bits will be set into SHORT
-                            data[i] = (short)((data[i] & mask1) | ((datum >>> rightShift)&0xFFFF));
+                            data[i] = (short)((data[i] & mask1)
+                                             | Integer.extractBits(datum, rightShift, Short.SIZE));
                             i++;
                             data[i] =
                                 (short)((data[i] & mask2) | ((datum << leftShift)&0xFFFF));
@@ -657,8 +659,8 @@ public class ImageUtil {
                             // Only some of the high bits will be set into
                             // SHORTs
                             int remainMask = (1 << leftShift - xRemaining) - 1;
-                            data[i] = (short)((data[i] & (mask1 | remainMask)) |
-                                      ((datum >>> rightShift)&0xFFFF & ~remainMask));
+                            data[i] = (short)((data[i] & (mask1 | remainMask))
+                                             | (Integer.extractBits(datum, rightShift, Short.SIZE) & ~remainMask));
                         }
                     }
                     eltOffset += lineStride;

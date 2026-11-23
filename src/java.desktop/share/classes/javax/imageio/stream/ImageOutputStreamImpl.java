@@ -178,18 +178,18 @@ public abstract class ImageOutputStreamImpl
         }
 
         byte[] b = new byte[utflen+2];
-        b[boff++] = (byte) ((utflen >>> 8) & 0xFF);
+        b[boff++] = (byte) Integer.extractBits(utflen, 8, 8);
         b[boff++] = (byte) ((utflen >>> 0) & 0xFF);
         for (int i = 0; i < strlen; i++) {
             c = charr[i];
             if ((c >= 0x0001) && (c <= 0x007F)) {
                 b[boff++] = (byte) c;
             } else if (c > 0x07FF) {
-                b[boff++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
-                b[boff++] = (byte) (0x80 | ((c >>  6) & 0x3F));
+                b[boff++] = (byte) (0xE0 | Integer.extractBits(c, 12, 4));
+                b[boff++] = (byte) (0x80 | Integer.extractBits(c, 6, 6));
                 b[boff++] = (byte) (0x80 | ((c >>  0) & 0x3F));
             } else {
-                b[boff++] = (byte) (0xC0 | ((c >>  6) & 0x1F));
+                b[boff++] = (byte) (0xC0 | Integer.extractBits(c, 6, 5));
                 b[boff++] = (byte) (0x80 | ((c >>  0) & 0x3F));
             }
         }
@@ -415,9 +415,7 @@ public abstract class ImageOutputStreamImpl
             int extra = numBits % 8;
             for (int numBytes = numBits / 8; numBytes > 0; numBytes--) {
                 int shift = (numBytes-1)*8+extra;
-                int value = (int) ((shift == 0)
-                                   ? bits & 0xFF
-                                   : (bits>>shift) & 0xFF);
+                int value = (int) Long.extractBits(bits, shift, Byte.SIZE);
                 write(value);
             }
             numBits = extra;

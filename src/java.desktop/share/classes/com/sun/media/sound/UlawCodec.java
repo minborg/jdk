@@ -61,11 +61,11 @@ public final class UlawCodec extends FormatConversionProvider {
 
             ulaw &= 0xFF;
             t = ((ulaw & 0xf)<<3) + 132;
-            t <<= ((ulaw & 0x70) >> 4);
+            t <<= Integer.extractBits(ulaw, 4, 3);
             t = ( (ulaw&0x80) != 0 ) ? (132-t) : (t-132);
 
             ULAW_TABL[i] = (byte) (t&0xff);
-            ULAW_TABH[i] = (byte) ((t>>8) & 0xff);
+            ULAW_TABH[i] = (byte) Integer.extractBits(t, 8, 8);
         }
     }
 
@@ -373,7 +373,7 @@ public final class UlawCodec extends FormatConversionProvider {
                         if (seg >= 8) {  /* out of range, return maximum value. */
                             enc = (byte) (0x7F ^ mask);
                         } else {
-                            enc = (byte) ((seg << 4) | ((sample >> (seg+3)) & 0xF));
+                            enc = (byte) ((seg << 4) | Integer.extractBits(sample, seg + 3, 4));
                             enc ^= mask;
                         }
                         /* Now put the encoded sample where it belongs */

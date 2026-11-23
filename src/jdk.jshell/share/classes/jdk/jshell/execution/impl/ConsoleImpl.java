@@ -461,15 +461,15 @@ public class ConsoleImpl {
         for (int i = 0; i < len; i++) {
             char c = data[off + i];
 
-            remoteInput.write((c >> 8) & 0xFF);
+            remoteInput.write(Integer.extractBits(c, 8, 8));
             remoteInput.write((c >> 0) & 0xFF);
         }
     }
 
     private static void sendInt(OutputStream remoteInput, int data) throws IOException {
-        remoteInput.write((data >> 24) & 0xFF);
-        remoteInput.write((data >> 16) & 0xFF);
-        remoteInput.write((data >>  8) & 0xFF);
+        remoteInput.write(Integer.extractBits(data, 24, 8));
+        remoteInput.write(Integer.extractBits(data, 16, 8));
+        remoteInput.write(Integer.extractBits(data, 8, 8));
         remoteInput.write((data >>  0) & 0xFF);
     }
 

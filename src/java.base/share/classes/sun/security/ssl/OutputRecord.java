@@ -520,7 +520,7 @@ abstract class OutputRecord
         buf[0] = contentType;
         buf[1] = pv.major;
         buf[2] = pv.minor;
-        buf[3] = (byte)((fragLen >> 8) & 0xFF);
+        buf[3] = (byte)Integer.extractBits(fragLen, 8, 8);
         buf[4] = (byte)(fragLen & 0xFF);
 
         return Authenticator.toLong(sequenceNumber);
@@ -548,7 +548,7 @@ abstract class OutputRecord
         buf[0] = contentType;
         buf[1] = protocolVersion.major;
         buf[2] = protocolVersion.minor;
-        buf[3] = (byte)((fragLen >> 8) & 0xFF);
+        buf[3] = (byte)Integer.extractBits(fragLen, 8, 8);
         buf[4] = (byte)(fragLen & 0xFF);
 
         return Authenticator.toLong(sequenceNumber);
@@ -617,7 +617,7 @@ abstract class OutputRecord
          */
         int msgLen = dstBuf.position() - 2;   // Exclude the length field itself
         dstBuf.position(0);
-        dstBuf.put((byte)(0x80 | ((msgLen >>> 8) & 0xFF)));  // pos: 0
+        dstBuf.put((byte)(0x80 | Integer.extractBits(msgLen, 8, 8)));  // pos: 0
         dstBuf.put((byte)(msgLen & 0xFF));                   // pos: 1
         dstBuf.put(SSLHandshake.CLIENT_HELLO.id);            // pos: 2
         dstBuf.put(fragment[offset]);         // major version, pos: 3

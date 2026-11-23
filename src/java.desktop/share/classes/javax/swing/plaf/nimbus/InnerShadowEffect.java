@@ -93,7 +93,7 @@ class InnerShadowEffect extends ShadowEffect {
             srcRaster.getDataElements(0, y, w, 1, lineBuf);
             for (int x = 0; x < w; x++) {
                 int dx = x + tmpOffX;
-                srcAlphaBuf[offset + dx] = (byte) ((255 - ((lineBuf[x] & 0xFF000000) >>> 24)) & 0xFF);
+                srcAlphaBuf[offset + dx] = (byte) ((255 - Integer.extractBits(lineBuf[x], 24, 8)) & 0xFF);
             }
         }
         // blur

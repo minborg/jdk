@@ -188,7 +188,7 @@ class SocksSocketImpl extends DelegatingSocketImpl implements SocksConsts {
         }
         out.write(PROTO_VERS4);
         out.write(CONNECT);
-        out.write((endpoint.getPort() >> 8) & 0xff);
+        out.write(Integer.extractBits(endpoint.getPort(), 8, 8));
         out.write((endpoint.getPort() >> 0) & 0xff);
         out.write(endpoint.getAddress().getAddress());
         String userName = getUserName();
@@ -391,17 +391,17 @@ class SocksSocketImpl extends DelegatingSocketImpl implements SocksConsts {
             out.write(DOMAIN_NAME);
             out.write(domainNameBytes.length);
             out.write(domainNameBytes);
-            out.write((epoint.getPort() >> 8) & 0xff);
+            out.write(Integer.extractBits(epoint.getPort(), 8, 8));
             out.write((epoint.getPort() >> 0) & 0xff);
         } else if (epoint.getAddress() instanceof Inet6Address) {
             out.write(IPV6);
             out.write(epoint.getAddress().getAddress());
-            out.write((epoint.getPort() >> 8) & 0xff);
+            out.write(Integer.extractBits(epoint.getPort(), 8, 8));
             out.write((epoint.getPort() >> 0) & 0xff);
         } else {
             out.write(IPV4);
             out.write(epoint.getAddress().getAddress());
-            out.write((epoint.getPort() >> 8) & 0xff);
+            out.write(Integer.extractBits(epoint.getPort(), 8, 8));
             out.write((epoint.getPort() >> 0) & 0xff);
         }
         out.flush();

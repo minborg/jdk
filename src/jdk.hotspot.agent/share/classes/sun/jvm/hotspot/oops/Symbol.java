@@ -138,7 +138,7 @@ public class Symbol extends VMObject {
     final int len = buf.length;
     byte[] tmp = new byte[len + 2];
     // write modified UTF-8 length as short in big endian
-    tmp[0] = (byte) ((len >>> 8) & 0xFF);
+    tmp[0] = (byte) Integer.extractBits(len, 8, 8);
     tmp[1] = (byte) ((len >>> 0) & 0xFF);
     // copy the data
     System.arraycopy(buf, 0, tmp, 2, len);

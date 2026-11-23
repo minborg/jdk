@@ -317,7 +317,7 @@ public class TIFFOldJPEGDecompressor extends TIFFJPEGDecompressor {
                 baos.write(DQT);
 
                 char markerLength = (char)67;
-                baos.write((markerLength >>> 8) & 0xff); // Length
+                baos.write(Integer.extractBits(markerLength, 8, 8)); // Length
                 baos.write(markerLength & 0xff);
 
                 baos.write(i); // Table ID and precision
@@ -367,7 +367,7 @@ public class TIFFOldJPEGDecompressor extends TIFFJPEGDecompressor {
 
                     char markerLength = (char)(19 + numCodes);
 
-                    baos.write((markerLength >>> 8) & 0xff); // Length
+                    baos.write(Integer.extractBits(markerLength, 8, 8)); // Length
                     baos.write(markerLength & 0xff);
 
                     baos.write(i | (k << 4)); // Table ID and type
@@ -384,14 +384,14 @@ public class TIFFOldJPEGDecompressor extends TIFFJPEGDecompressor {
             baos.write((byte)0xff); // Marker identifier
             baos.write((byte)SOF0);
             short sval = (short)(8 + 3*samplesPerPixel); // Length
-            baos.write((byte)((sval >>> 8) & 0xff));
+            baos.write((byte)Integer.extractBits(sval, 8, 8));
             baos.write((byte)(sval & 0xff));
             baos.write((byte)8); // Data precision
             sval = (short)srcHeight; // Tile/strip height
-            baos.write((byte)((sval >>> 8) & 0xff));
+            baos.write((byte)Integer.extractBits(sval, 8, 8));
             baos.write((byte)(sval & 0xff));
             sval = (short)srcWidth; // Tile/strip width
-            baos.write((byte)((sval >>> 8) & 0xff));
+            baos.write((byte)Integer.extractBits(sval, 8, 8));
             baos.write((byte)(sval & 0xff));
             baos.write((byte)samplesPerPixel); // Number of components
             if(samplesPerPixel == 1) {
@@ -421,11 +421,11 @@ public class TIFFOldJPEGDecompressor extends TIFFJPEGDecompressor {
                     baos.write((byte)DRI);
 
                     sval = 4;
-                    baos.write((byte)((sval >>> 8) & 0xff)); // Length
+                    baos.write((byte)Integer.extractBits(sval, 8, 8)); // Length
                     baos.write((byte)(sval & 0xff));
 
                     // RestartInterval
-                    baos.write((byte)((restartInterval >>> 8) & 0xff));
+                    baos.write((byte)Integer.extractBits(restartInterval, 8, 8));
                     baos.write((byte)(restartInterval & 0xff));
                 }
             }
@@ -461,14 +461,14 @@ public class TIFFOldJPEGDecompressor extends TIFFJPEGDecompressor {
             tables[tmpOffset++] = (byte)0xff; // Marker identifier
             tables[tmpOffset++] = (byte)SOF0;
             short sval = (short)(8 + 3*samplesPerPixel); // Length
-            tables[tmpOffset++] = (byte)((sval >>> 8) & 0xff);
+            tables[tmpOffset++] = (byte)Integer.extractBits(sval, 8, 8);
             tables[tmpOffset++] = (byte)(sval & 0xff);
             tables[tmpOffset++] = (byte)8; // Data precision
             sval = (short)srcHeight; // Tile/strip height
-            tables[tmpOffset++] = (byte)((sval >>> 8) & 0xff);
+            tables[tmpOffset++] = (byte)Integer.extractBits(sval, 8, 8);
             tables[tmpOffset++] = (byte)(sval & 0xff);
             sval = (short)srcWidth; // Tile/strip width
-            tables[tmpOffset++] = (byte)((sval >>> 8) & 0xff);
+            tables[tmpOffset++] = (byte)Integer.extractBits(sval, 8, 8);
             tables[tmpOffset++] = (byte)(sval & 0xff);
             tables[tmpOffset++] = (byte)samplesPerPixel; // Number of components
             if(samplesPerPixel == 1) {
@@ -501,7 +501,7 @@ public class TIFFOldJPEGDecompressor extends TIFFJPEGDecompressor {
             SOSMarker = new byte[SOSLength+2];
             SOSMarker[0] = (byte)0xff;
             SOSMarker[1] = (byte)SOS;
-            SOSMarker[2] = (byte)((SOSLength & 0xff00) >> 8);
+            SOSMarker[2] = (byte)Integer.extractBits(SOSLength, 8, 8);
             SOSMarker[3] = (byte)(SOSLength & 0xff);
             stream.readFully(SOSMarker, 4, SOSLength - 2);
         } else {
@@ -513,7 +513,7 @@ public class TIFFOldJPEGDecompressor extends TIFFJPEGDecompressor {
             SOSMarker[SOSMarkerIndex++] = (byte)0xff; // Marker identifier
             SOSMarker[SOSMarkerIndex++] = (byte)SOS;
             short sval = (short)(6 + 2*samplesPerPixel); // Length
-            SOSMarker[SOSMarkerIndex++] = (byte)((sval >>> 8) & 0xff);
+            SOSMarker[SOSMarkerIndex++] = (byte)Integer.extractBits(sval, 8, 8);
             SOSMarker[SOSMarkerIndex++] = (byte)(sval & 0xff);
             // Number of components in scan
             SOSMarker[SOSMarkerIndex++] = (byte)samplesPerPixel;
@@ -569,10 +569,10 @@ public class TIFFOldJPEGDecompressor extends TIFFJPEGDecompressor {
 
             // Update the SOF dimensions.
             short sval = (short)srcHeight; // Tile/strip height
-            buf[SOFPosition + 5] = (byte)((sval >>> 8) & 0xff);
+            buf[SOFPosition + 5] = (byte)Integer.extractBits(sval, 8, 8);
             buf[SOFPosition + 6] = (byte)(sval & 0xff);
             sval = (short)srcWidth; // Tile/strip width
-            buf[SOFPosition + 7] = (byte)((sval >>> 8) & 0xff);
+            buf[SOFPosition + 7] = (byte)Integer.extractBits(sval, 8, 8);
             buf[SOFPosition + 8] = (byte)(sval & 0xff);
 
             // Seek to data.

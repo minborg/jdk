@@ -444,8 +444,8 @@ public class Colors {
     }
 
     private static double[] rgb(int color) {
-        int r = (color >> 16) & 0xFF;
-        int g = (color >> 8) & 0xFF;
+        int r = Integer.extractBits(color, 16, 8);
+        int g = Integer.extractBits(color, 8, 8);
         int b = (color >> 0) & 0xFF;
         return new double[] {r / 255.0, g / 255.0, b / 255.0};
     }

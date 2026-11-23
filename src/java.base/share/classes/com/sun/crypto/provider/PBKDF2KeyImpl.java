@@ -177,9 +177,9 @@ public final class PBKDF2KeyImpl implements javax.crypto.interfaces.PBEKey {
             for (int i = 1; i <= intL; i++) {
                 prf.update(salt);
                 ibytes[3] = (byte) i;
-                ibytes[2] = (byte) ((i >> 8) & 0xff);
-                ibytes[1] = (byte) ((i >> 16) & 0xff);
-                ibytes[0] = (byte) ((i >> 24) & 0xff);
+                ibytes[2] = (byte) Integer.extractBits(i, 8, 8);
+                ibytes[1] = (byte) Integer.extractBits(i, 16, 8);
+                ibytes[0] = (byte) Integer.extractBits(i, 24, 8);
                 prf.update(ibytes);
                 prf.doFinal(ui, 0);
                 System.arraycopy(ui, 0, ti, 0, ui.length);

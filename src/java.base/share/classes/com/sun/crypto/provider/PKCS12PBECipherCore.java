@@ -81,7 +81,7 @@ final class PKCS12PBECipherCore {
 
         byte[] passwd = new byte[length];
         for (int i = 0, j = 0; i < chars.length; i++, j+=2) {
-            passwd[j] = (byte) ((chars[i] >>> 8) & 0xFF);
+            passwd[j] = (byte) Integer.extractBits(chars[i], 8, 8);
             passwd[j+1] = (byte) (chars[i] & 0xFF);
         }
         byte[] key = new byte[n];

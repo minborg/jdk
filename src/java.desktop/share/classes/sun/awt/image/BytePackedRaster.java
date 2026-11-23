@@ -436,15 +436,15 @@ public class BytePackedRaster extends SunWritableRaster {
             case 2:
                 for (; i < w - 7; i += 8) {
                     element = data[inIndex++];
-                    outData[outindex++] = (byte)((element >> 6) & 3);
-                    outData[outindex++] = (byte)((element >> 4) & 3);
-                    outData[outindex++] = (byte)((element >> 2) & 3);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 6, 2);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 4, 2);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 2, 2);
                     outData[outindex++] = (byte)(element & 3);
 
                     element = data[inIndex++];
-                    outData[outindex++] = (byte)((element >> 6) & 3);
-                    outData[outindex++] = (byte)((element >> 4) & 3);
-                    outData[outindex++] = (byte)((element >> 2) & 3);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 6, 2);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 4, 2);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 2, 2);
                     outData[outindex++] = (byte)(element & 3);
 
                     bitnum += 16;
@@ -454,19 +454,19 @@ public class BytePackedRaster extends SunWritableRaster {
             case 4:
                 for (; i < w - 7; i += 8) {
                     element = data[inIndex++];
-                    outData[outindex++] = (byte)((element >> 4) & 0xf);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 4, 4);
                     outData[outindex++] = (byte)(element & 0xf);
 
                     element = data[inIndex++];
-                    outData[outindex++] = (byte)((element >> 4) & 0xf);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 4, 4);
                     outData[outindex++] = (byte)(element & 0xf);
 
                     element = data[inIndex++];
-                    outData[outindex++] = (byte)((element >> 4) & 0xf);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 4, 4);
                     outData[outindex++] = (byte)(element & 0xf);
 
                     element = data[inIndex++];
-                    outData[outindex++] = (byte)((element >> 4) & 0xf);
+                    outData[outindex++] = (byte)Integer.extractBits(element, 4, 4);
                     outData[outindex++] = (byte)(element & 0xf);
 
                     bitnum += 32;
@@ -654,7 +654,7 @@ public class BytePackedRaster extends SunWritableRaster {
                 // Copy partial bytes on right
                 int inbyte = inbit >> 3;
                 int outbyte = outbit >> 3;
-                int mask = (0xff00 >> copybits) & 0xff;
+                int mask = Integer.extractBits(0xff00, copybits, Byte.SIZE);
                 for (int j = 0; j < height; j++) {
                     int element = outData[outbyte];
                     element &= ~mask;
@@ -752,7 +752,7 @@ public class BytePackedRaster extends SunWritableRaster {
             if (copybits > 0) {
                 int inbyte = inbit >> 3;
                 int outbyte = outbit >> 3;
-                int mask = (0xff00 >> copybits) & 0xff;
+                int mask = Integer.extractBits(0xff00, copybits, Byte.SIZE);
                 int lshift = inbit & 7;
                 int rshift = 8 - lshift;
 
@@ -1075,15 +1075,15 @@ public class BytePackedRaster extends SunWritableRaster {
             case 2:
                 for (; i < w - 7; i += 8) {
                     element = data[inIndex++];
-                    iArray[outindex++] = (element >> 6) & 3;
-                    iArray[outindex++] = (element >> 4) & 3;
-                    iArray[outindex++] = (element >> 2) & 3;
+                    iArray[outindex++] = Integer.extractBits(element, 6, 2);
+                    iArray[outindex++] = Integer.extractBits(element, 4, 2);
+                    iArray[outindex++] = Integer.extractBits(element, 2, 2);
                     iArray[outindex++] = element & 3;
 
                     element = data[inIndex++];
-                    iArray[outindex++] = (element >> 6) & 3;
-                    iArray[outindex++] = (element >> 4) & 3;
-                    iArray[outindex++] = (element >> 2) & 3;
+                    iArray[outindex++] = Integer.extractBits(element, 6, 2);
+                    iArray[outindex++] = Integer.extractBits(element, 4, 2);
+                    iArray[outindex++] = Integer.extractBits(element, 2, 2);
                     iArray[outindex++] = element & 3;
 
                     bitnum += 16;
@@ -1093,19 +1093,19 @@ public class BytePackedRaster extends SunWritableRaster {
             case 4:
                 for (; i < w - 7; i += 8) {
                     element = data[inIndex++];
-                    iArray[outindex++] = (element >> 4) & 0xf;
+                    iArray[outindex++] = Integer.extractBits(element, 4, 4);
                     iArray[outindex++] = element & 0xf;
 
                     element = data[inIndex++];
-                    iArray[outindex++] = (element >> 4) & 0xf;
+                    iArray[outindex++] = Integer.extractBits(element, 4, 4);
                     iArray[outindex++] = element & 0xf;
 
                     element = data[inIndex++];
-                    iArray[outindex++] = (element >> 4) & 0xf;
+                    iArray[outindex++] = Integer.extractBits(element, 4, 4);
                     iArray[outindex++] = element & 0xf;
 
                     element = data[inIndex++];
-                    iArray[outindex++] = (element >> 4) & 0xf;
+                    iArray[outindex++] = Integer.extractBits(element, 4, 4);
                     iArray[outindex++] = element & 0xf;
 
                     bitnum += 32;

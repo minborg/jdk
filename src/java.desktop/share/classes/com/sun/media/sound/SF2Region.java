@@ -146,7 +146,7 @@ public class SF2Region {
         int val = getInteger(generator);
         byte[] bytes = new byte[2];
         bytes[0] = (byte) (0xFF & val);
-        bytes[1] = (byte) ((0xFF00 & val) >> 8);
+        bytes[1] = (byte) Integer.extractBits(val, 8, 8);
         return bytes;
     }
 

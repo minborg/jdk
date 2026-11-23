@@ -147,7 +147,7 @@ public class GifImageDecoder extends ImageDecoder {
                             isAnimation = true;
                             ImageFetcher.startingAnimation();
                         }
-                        disposal_method = (buf[1] >> 2) & 7;
+                        disposal_method = Integer.extractBits(buf[1], 2, 3);
                         if ((buf[1] & TRANSPARENCYMASK) != 0) {
                             trans_pixel = ExtractByte(buf, 4);
                         } else {

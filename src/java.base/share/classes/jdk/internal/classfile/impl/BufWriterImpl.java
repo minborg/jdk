@@ -376,7 +376,8 @@ public final class BufWriterImpl implements BufWriter {
     public void writeIntBytes(int intSize, long intValue) {
         reserveSpace(intSize);
         for (int i = 0; i < intSize; i++) {
-            elems[offset++] = (byte) ((intValue >> 8 * (intSize - i - 1)) & 0xFF);
+            int shift = ((intSize - i - 1) % Long.BYTES) * Byte.SIZE;
+            elems[offset++] = (byte) Long.extractBits(intValue, shift, Byte.SIZE);
         }
     }
 

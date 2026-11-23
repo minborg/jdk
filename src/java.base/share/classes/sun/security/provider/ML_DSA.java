@@ -818,11 +818,11 @@ public class ML_DSA {
                 int vOffset = (i*320) + (j*5);
                 t1[i][tOffset] = (v[vOffset] & 0xFF) +
                         ((v[vOffset+1] << 8) & 0x3FF);
-                t1[i][tOffset+1] = ((v[vOffset+1] >> 2) & 0x3F) +
+                t1[i][tOffset+1] = Integer.extractBits(v[vOffset+1], 2, 6) +
                         ((v[vOffset+2] << 6) & 0x3FF);
-                t1[i][tOffset+2] = ((v[vOffset+2] >> 4) & 0xF) +
+                t1[i][tOffset+2] = Integer.extractBits(v[vOffset+2], 4, 4) +
                         ((v[vOffset+3] << 4) & 0x3FF);
-                t1[i][tOffset+3] = ((v[vOffset+3] >> 6) & 0x3) +
+                t1[i][tOffset+3] = Integer.extractBits(v[vOffset+3], 6, 2) +
                         ((v[vOffset+4] << 2) & 0x3FF);
             }
         }
@@ -875,13 +875,13 @@ public class ML_DSA {
                 result[i][j] = maxValue - ((v[vIndex] & 0xff) +
                         ((v[vIndex + 1] & 0xff) << 8) +
                         ((v[vIndex + 2] & 0x3) << 16));
-                result[i][j + 1] = maxValue - (((v[vIndex + 2] >> 2) & 0x3f) +
+                result[i][j + 1] = maxValue - (Integer.extractBits(v[vIndex + 2], 2, 6) +
                         ((v[vIndex + 3] & 0xff) << 6) +
                         ((v[vIndex + 4] & 0xf) << 14));
-                result[i][j + 2] = maxValue - (((v[vIndex + 4] >> 4) & 0xf) +
+                result[i][j + 2] = maxValue - (Integer.extractBits(v[vIndex + 4], 4, 4) +
                         ((v[vIndex + 5] & 0xff) << 4) +
                         ((v[vIndex + 6] & 0x3f) << 12));
-                result[i][j + 3] = maxValue - (((v[vIndex + 6] >> 6) & 0x3) +
+                result[i][j + 3] = maxValue - (Integer.extractBits(v[vIndex + 6], 6, 2) +
                         ((v[vIndex + 7] & 0xff) << 2) +
                         ((v[vIndex + 8] & 0xff) << 10));
                 vIndex += 9;
@@ -898,7 +898,7 @@ public class ML_DSA {
                 result[i][j] = maxValue - ((v[vIndex] & 0xff) +
                         ((v[vIndex + 1] & 0xff) << 8) +
                         ((v[vIndex + 2] & 0xf) << 16));
-                result[i][j + 1] = maxValue - (((v[vIndex + 2] >> 4) & 0xf) +
+                result[i][j + 1] = maxValue - (Integer.extractBits(v[vIndex + 2], 4, 4) +
                         ((v[vIndex + 3] & 0xff) << 4) +
                         ((v[vIndex + 4] & 0xff) << 12));
                 vIndex += 5;

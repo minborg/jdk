@@ -57,9 +57,9 @@ class AESKeyWrapPadded extends FeedbackCipher {
         assert(dest.length >= SEMI_BLKSIZE) : "buffer needs at least 8 bytes";
 
         System.arraycopy(iv, 0, dest, 0, iv.length);
-        dest[4] = (byte) ((inLen >>> 24) & 0xFF);
-        dest[5] = (byte) ((inLen >>> 16) & 0xFF);
-        dest[6] = (byte) ((inLen >>> 8) & 0xFF);
+        dest[4] = (byte) Integer.extractBits(inLen, 24, 8);
+        dest[5] = (byte) Integer.extractBits(inLen, 16, 8);
+        dest[6] = (byte) Integer.extractBits(inLen, 8, 8);
         dest[7] = (byte) (inLen & 0xFF);
     }
 

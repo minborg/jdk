@@ -213,7 +213,7 @@ public class DebuggerUtilities {
 
   public byte[] jcharToData(char value) {
     byte[] res = new byte[2];
-    res[0] = (byte) ((value >> 8) & 0xFF);
+    res[0] = (byte) Integer.extractBits(value, 8, 8);
     res[1] = (byte) value;
     if (!isBigEndian) {
       byteSwap(res);
@@ -255,7 +255,7 @@ public class DebuggerUtilities {
 
   public byte[] jshortToData(short value) {
     byte[] res = new byte[2];
-    res[0] = (byte) ((value >> 8) & 0xFF);
+    res[0] = (byte) Integer.extractBits(value, 8, 8);
     res[1] = (byte) value;
     if (!isBigEndian) {
       byteSwap(res);

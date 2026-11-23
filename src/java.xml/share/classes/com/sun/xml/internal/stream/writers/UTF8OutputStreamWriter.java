@@ -78,8 +78,8 @@ public final class UTF8OutputStreamWriter extends Writer {
             }
 
             out.write(0xF0 | (uc >> 18));
-            out.write(0x80 | ((uc >> 12) & 0x3F));
-            out.write(0x80 | ((uc >> 6) & 0x3F));
+            out.write(0x80 | Integer.extractBits(uc, 12, 6));
+            out.write(0x80 | Integer.extractBits(uc, 6, 6));
             out.write(0x80 | (uc & 0x3F));
 
             lastUTF16CodePoint = 0;
@@ -100,7 +100,7 @@ public final class UTF8OutputStreamWriter extends Writer {
             if (!XMLChar.isHighSurrogate(c) && !XMLChar.isLowSurrogate(c)) {
                 // 3 bytes, 16 bits
                 out.write(0xE0 | (c >> 12));   // first 4
-                out.write(0x80 | ((c >> 6) & 0x3F));  // second 6
+                out.write(0x80 | Integer.extractBits(c, 6, 6));  // second 6
                 out.write(0x80 | (c & 0x3F));  // third 6
             }
             else {

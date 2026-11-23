@@ -206,7 +206,7 @@ final class ClientHello {
             HandshakeOutStream hos = new HandshakeOutStream(null);
             try {
                 // copied from send() method
-                hos.putInt8((byte)((clientVersion >>> 8) & 0xFF));
+                hos.putInt8((byte)Integer.extractBits(clientVersion, 8, 8));
                 hos.putInt8((byte)(clientVersion & 0xFF));
                 hos.write(clientRandom.randomBytes, 0, 32);
                 hos.putBytes8(sessionId.getId());
@@ -225,7 +225,7 @@ final class ClientHello {
             HandshakeOutStream hos = new HandshakeOutStream(null);
             try {
                 // copied from send() method
-                hos.putInt8((byte)((clientVersion >>> 8) & 0xFF));
+                hos.putInt8((byte)Integer.extractBits(clientVersion, 8, 8));
                 hos.putInt8((byte)(clientVersion & 0xFF));
                 hos.write(clientRandom.randomBytes, 0, 32);
                 hos.putBytes8(sessionId.getId());

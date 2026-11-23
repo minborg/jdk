@@ -108,7 +108,7 @@ public final class UrlUtil {
                 buf[j++] = (char) bytes[i];
             } else {
                 buf[j++] = '%';
-                buf[j++] = Character.forDigit(0xF & (bytes[i] >>> 4), 16);
+                buf[j++] = Character.forDigit(Integer.extractBits(bytes[i], 4, 4), 16);
                 buf[j++] = Character.forDigit(0xF & bytes[i], 16);
             }
         }

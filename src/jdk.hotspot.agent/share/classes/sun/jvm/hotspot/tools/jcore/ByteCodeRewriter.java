@@ -70,7 +70,7 @@ public class ByteCodeRewriter
      }
 
     private static void writeShort(byte[] buf, int index, short value) {
-        buf[index] = (byte) ((value >> 8) & 0x00FF);
+        buf[index] = (byte) Integer.extractBits(value, 8, 8);
         buf[index + 1] = (byte) (value & 0x00FF);
     }
 

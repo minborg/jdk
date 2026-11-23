@@ -131,21 +131,21 @@ interface Record {
 
     static void putInt16(ByteBuffer m, int i) throws IOException {
         verifyLength(m, 2);
-        m.put((byte)((i >> 8) & 0xFF));
+        m.put((byte)Integer.extractBits(i, 8, 8));
         m.put((byte)(i & 0xFF));
     }
 
     static void putInt24(ByteBuffer m, int i) throws IOException {
         verifyLength(m, 3);
-        m.put((byte)((i >> 16) & 0xFF));
-        m.put((byte)((i >> 8) & 0xFF));
+        m.put((byte)Integer.extractBits(i, 16, 8));
+        m.put((byte)Integer.extractBits(i, 8, 8));
         m.put((byte)(i & 0xFF));
     }
 
     static void putInt32(ByteBuffer m, int i) throws IOException {
-        m.put((byte)((i >> 24) & 0xFF));
-        m.put((byte)((i >> 16) & 0xFF));
-        m.put((byte)((i >> 8) & 0xFF));
+        m.put((byte)Integer.extractBits(i, 24, 8));
+        m.put((byte)Integer.extractBits(i, 16, 8));
+        m.put((byte)Integer.extractBits(i, 8, 8));
         m.put((byte)(i & 0xFF));
     }
 

@@ -322,7 +322,7 @@ enum SignatureScheme {
             }
         }
 
-        if (mediator && ((id >> 8) & 0xFF) == 0x03) {   // SHA224
+        if (mediator && Integer.extractBits(id, 8, 8) == 0x03) {   // SHA224
             // There are some problems to use SHA224 on Windows.
             if (Security.getProvider("SunMSCAPI") != null) {
                 mediator = false;
@@ -350,7 +350,7 @@ enum SignatureScheme {
         }
 
         // Use TLS 1.2 style name for unknown signature scheme.
-        int hashId = ((id >> 8) & 0xFF);
+        int hashId = Integer.extractBits(id, 8, 8);
         int signId = (id & 0xFF);
         String hashName = (hashId >= hashAlgorithms.length) ?
             "UNDEFINED-HASH(" + hashId + ")" : hashAlgorithms[hashId];

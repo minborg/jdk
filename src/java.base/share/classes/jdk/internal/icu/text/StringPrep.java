@@ -177,9 +177,9 @@ public final class StringPrep {
 
     private static VersionInfo getVersionInfo(int comp){
         int micro = comp & 0xFF;
-        int milli =(comp >> 8)  & 0xFF;
-        int minor =(comp >> 16) & 0xFF;
-        int major =(comp >> 24) & 0xFF;
+        int milli =Integer.extractBits(comp, 8, 8);
+        int minor =Integer.extractBits(comp, 16, 8);
+        int major =Integer.extractBits(comp, 24, 8);
         return VersionInfo.getInstance(major,minor,milli,micro);
     }
     private static VersionInfo getVersionInfo(byte[] version){

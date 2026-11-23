@@ -60,7 +60,7 @@ public class HexDumpEncoder {
     static void hexDigit(PrintStream p, byte x) {
         char c;
 
-        c = (char) ((x >> 4) & 0xf);
+        c = (char) Integer.extractBits(x, 4, 4);
         if (c > 9)
             c = (char) ((c-10) + 'A');
         else
@@ -88,7 +88,7 @@ public class HexDumpEncoder {
     }
 
     protected void encodeLinePrefix(OutputStream o, int len) {
-        hexDigit(pStream, (byte)((offset >>> 8) & 0xff));
+        hexDigit(pStream, (byte)Integer.extractBits(offset, 8, 8));
         hexDigit(pStream, (byte)(offset & 0xff));
         pStream.print(": ");
         currentByte = 0;

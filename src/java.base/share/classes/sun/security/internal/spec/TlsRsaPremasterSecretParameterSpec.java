@@ -133,10 +133,10 @@ public class TlsRsaPremasterSecretParameterSpec
     public int getMajorVersion() {
         if (rsaPreMasterSecretFix || clientVersion >= 0x0302) {
                                                         // 0x0302: TLSv1.1
-            return (clientVersion >>> 8) & 0xFF;
+            return Integer.extractBits(clientVersion, 8, 8);
         }
 
-        return (serverVersion >>> 8) & 0xFF;
+        return Integer.extractBits(serverVersion, 8, 8);
     }
 
     /**

@@ -152,7 +152,7 @@ enum ProtocolVersion {
         this.id = id;
         this.name = name;
         this.isDTLS = isDTLS;
-        this.major = (byte)((id >>> 8) & 0xFF);
+        this.major = (byte)Integer.extractBits(id, 8, 8);
         this.minor = (byte)(id & 0xFF);
 
         this.isAvailable = SSLAlgorithmConstraints.DEFAULT_SSL_ONLY.permits(
@@ -205,7 +205,7 @@ enum ProtocolVersion {
      * Return name of a (D)TLS protocol specified by a protocol number.
      */
     static String nameOf(int id) {
-        return nameOf((byte)((id >>> 8) & 0xFF), (byte)(id & 0xFF));
+        return nameOf((byte)Integer.extractBits(id, 8, 8), (byte)(id & 0xFF));
     }
 
     /**

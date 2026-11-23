@@ -422,13 +422,13 @@ class CESU_8 extends Unicode
 
         private static void to3Bytes(byte[] da, int dp, char c) {
             da[dp] = (byte)(0xe0 | ((c >> 12)));
-            da[dp + 1] = (byte)(0x80 | ((c >>  6) & 0x3f));
+            da[dp + 1] = (byte)(0x80 | Integer.extractBits(c, 6, 6));
             da[dp + 2] = (byte)(0x80 | (c & 0x3f));
         }
 
         private static void to3Bytes(ByteBuffer dst, char c) {
             dst.put((byte)(0xe0 | ((c >> 12))));
-            dst.put((byte)(0x80 | ((c >>  6) & 0x3f)));
+            dst.put((byte)(0x80 | Integer.extractBits(c, 6, 6)));
             dst.put((byte)(0x80 | (c & 0x3f)));
         }
 

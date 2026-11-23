@@ -919,7 +919,7 @@ public void writeCharacter(char ch)
         int nybble;
         outputStream.write('\\');
         outputStream.write('\'');
-        nybble = ( b & 0xF0 ) >>> 4;
+        nybble = Integer.extractBits(b, 4, 4);
         outputStream.write(hexdigits[nybble]);
         nybble = ( b & 0x0F );
         outputStream.write(hexdigits[nybble]);

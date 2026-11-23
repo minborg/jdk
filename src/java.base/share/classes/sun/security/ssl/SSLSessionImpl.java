@@ -1656,7 +1656,7 @@ final class SSLSessionImpl extends ExtendedSSLSession {
             pos += serverRandomBytes.length;
             if (context != null) {
                 // RFC 5705, "If no context is provided, ..."
-                seed[pos++] = (byte) ((context.length >> 8) & 0xFF);
+                seed[pos++] = (byte) Integer.extractBits(context.length, 8, 8);
                 seed[pos++] = (byte) ((context.length) & 0xFF);
                 System.arraycopy(
                         context, 0, seed, pos, context.length);

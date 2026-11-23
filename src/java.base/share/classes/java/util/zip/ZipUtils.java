@@ -92,11 +92,11 @@ class ZipUtils {
      * Converts DOS time to Java time (number of milliseconds since epoch).
      */
     public static long dosToJavaTime(long dtime) {
-        int year = (int) (((dtime >> 25) & 0x7f) + 1980);
-        int month = (int) ((dtime >> 21) & 0x0f);
-        int day = (int) ((dtime >> 16) & 0x1f);
-        int hour = (int) ((dtime >> 11) & 0x1f);
-        int minute = (int) ((dtime >> 5) & 0x3f);
+        int year = (int) (Long.extractBits(dtime, 25, 7) + 1980);
+        int month = (int) Long.extractBits(dtime, 21, 4);
+        int day = (int) Long.extractBits(dtime, 16, 5);
+        int hour = (int) Long.extractBits(dtime, 11, 5);
+        int minute = (int) Long.extractBits(dtime, 5, 6);
         int second = (int) ((dtime << 1) & 0x3e);
 
         if (month > 0 && month < 13 && day > 0 && hour < 24 && minute < 60 && second < 60) {

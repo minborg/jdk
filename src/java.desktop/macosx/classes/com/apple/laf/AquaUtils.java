@@ -116,8 +116,8 @@ final class AquaUtils {
 
         @Override
         public final int filterRGB(final int x, final int y, final int rgb) {
-            final int red = (rgb >> 16) & 0xff;
-            final int green = (rgb >> 8) & 0xff;
+            final int red = Integer.extractBits(rgb, 16, 8);
+            final int green = Integer.extractBits(rgb, 8, 8);
             final int blue = rgb & 0xff;
             final int gray = getGreyFor((int)((0.30 * red + 0.59 * green + 0.11 * blue) / 3));
 

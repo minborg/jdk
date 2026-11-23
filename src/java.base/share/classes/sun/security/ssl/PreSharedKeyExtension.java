@@ -291,7 +291,7 @@ final class PreSharedKeyExtension {
 
         byte[] getEncoded() {
             return new byte[] {
-                (byte)((selectedIdentity >> 8) & 0xFF),
+                (byte)Integer.extractBits(selectedIdentity, 8, 8),
                 (byte)(selectedIdentity & 0xFF)
             };
         }

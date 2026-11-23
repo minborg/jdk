@@ -328,8 +328,8 @@ public final class Currency implements Serializable {
             if ((tableEntry & COUNTRY_TYPE_MASK) == SIMPLE_CASE_COUNTRY_MASK
                     && tableEntry != INVALID_COUNTRY_ENTRY
                     && currencyCode.charAt(2) - 'A' == (tableEntry & SIMPLE_CASE_COUNTRY_FINAL_CHAR_MASK)) {
-                defaultFractionDigits = (tableEntry & SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_MASK) >> SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_SHIFT;
-                numericCode = (tableEntry & NUMERIC_CODE_MASK) >> NUMERIC_CODE_SHIFT;
+                defaultFractionDigits = Integer.extractBits(tableEntry, SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_SHIFT, 4);
+                numericCode = Integer.extractBits(tableEntry, NUMERIC_CODE_SHIFT, 10);
                 found = true;
             } else { //special case
                 int[] fractionAndNumericCode = SpecialCaseEntry.findEntry(currencyCode);
@@ -407,8 +407,8 @@ public final class Currency implements Serializable {
         if ((tableEntry & COUNTRY_TYPE_MASK) == SIMPLE_CASE_COUNTRY_MASK
                     && tableEntry != INVALID_COUNTRY_ENTRY) {
             char finalChar = (char) ((tableEntry & SIMPLE_CASE_COUNTRY_FINAL_CHAR_MASK) + 'A');
-            int defaultFractionDigits = (tableEntry & SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_MASK) >> SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_SHIFT;
-            int numericCode = (tableEntry & NUMERIC_CODE_MASK) >> NUMERIC_CODE_SHIFT;
+            int defaultFractionDigits = Integer.extractBits(tableEntry, SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_SHIFT, 4);
+            int numericCode = Integer.extractBits(tableEntry, NUMERIC_CODE_SHIFT, 10);
             StringBuilder sb = new StringBuilder(country);
             sb.append(finalChar);
             return getInstance(sb.toString(), defaultFractionDigits, numericCode);
@@ -480,8 +480,9 @@ public final class Currency implements Serializable {
                         && tableEntry != INVALID_COUNTRY_ENTRY) {
                     // Simple Currencies
                     char finalChar = (char) ((tableEntry & SIMPLE_CASE_COUNTRY_FINAL_CHAR_MASK) + 'A');
-                    int defaultFractionDigits = (tableEntry & SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_MASK) >> SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_SHIFT;
-                    int numericCode = (tableEntry & NUMERIC_CODE_MASK) >> NUMERIC_CODE_SHIFT;
+                    int defaultFractionDigits =
+                            Integer.extractBits(tableEntry, SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_SHIFT, 4);
+                    int numericCode = Integer.extractBits(tableEntry, NUMERIC_CODE_SHIFT, 10);
                     StringBuilder sb = new StringBuilder();
                     sb.append(c1);
                     sb.append(c2);
@@ -945,11 +946,8 @@ public final class Currency implements Serializable {
                 && code.charAt(2) - 'A' == (tableEntry
                 & SIMPLE_CASE_COUNTRY_FINAL_CHAR_MASK)) {
 
-            int numericCode = (tableEntry & NUMERIC_CODE_MASK)
-                    >> NUMERIC_CODE_SHIFT;
-            int defaultFractionDigits = (tableEntry
-                    & SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_MASK)
-                    >> SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_SHIFT;
+            int numericCode = Integer.extractBits(tableEntry, NUMERIC_CODE_SHIFT, 10);
+            int defaultFractionDigits = Integer.extractBits(tableEntry, SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_SHIFT, 4);
             if (numeric != numericCode || fraction != defaultFractionDigits) {
                 // update the entry in main table
                 entry |= (fraction << SIMPLE_CASE_COUNTRY_DEFAULT_DIGITS_SHIFT)

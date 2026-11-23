@@ -55,13 +55,13 @@ final class RecordingOutput implements Closeable {
     }
 
     public void writeRawLong(long v) throws IOException {
-        writeByte((byte) ((v >> 56) & 0xff));
-        writeByte((byte) ((v >> 48) & 0xff));
-        writeByte((byte) ((v >> 40) & 0xff));
-        writeByte((byte) ((v >> 32) & 0xff));
-        writeByte((byte) ((v >> 24) & 0xff));
-        writeByte((byte) ((v >> 16) & 0xff));
-        writeByte((byte) ((v >> 8) & 0xff));
+        writeByte((byte) Long.extractBits(v, 56, 8));
+        writeByte((byte) Long.extractBits(v, 48, 8));
+        writeByte((byte) Long.extractBits(v, 40, 8));
+        writeByte((byte) Long.extractBits(v, 32, 8));
+        writeByte((byte) Long.extractBits(v, 24, 8));
+        writeByte((byte) Long.extractBits(v, 16, 8));
+        writeByte((byte) Long.extractBits(v, 8, 8));
         writeByte((byte) ((v) & 0xff));
     }
 

@@ -1162,7 +1162,7 @@ public final class VectorOperators {
                 int opc = conv.opCodeRaw();
                 switch (conv.kind) {
                 case 'W':
-                    int domCode = (opc >> VO_DOM_SHIFT) & 0xF;
+                    int domCode = Integer.extractBits(opc, VO_DOM_SHIFT, 4);
                     dom = LaneType.ofLaneTypeOrdinal(domCode);
                     break;
                 case 'N':
@@ -1240,7 +1240,7 @@ public final class VectorOperators {
                 break;
             case 'W':
                 doc = "In-place widen {@code _domVal} inside _ran to {@code (_ran)_domVal}";
-                LaneType logdom = LaneType.ofLaneTypeOrdinal(domran >> VO_DOM_SHIFT & 0xF);
+                LaneType logdom = LaneType.ofLaneTypeOrdinal(Integer.extractBits(domran, VO_DOM_SHIFT, 4));
                 doc = doc.replace("_dom", logdom.elementType.getSimpleName());
                 break;
             case 'N':

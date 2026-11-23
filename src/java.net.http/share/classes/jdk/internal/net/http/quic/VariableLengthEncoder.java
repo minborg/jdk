@@ -333,7 +333,7 @@ public class VariableLengthEncoder {
         long pos = offset;
         if (limit <= pos) return -1;
         int first = buffers.get(pos);
-        int prefix = (first & 0xC0) >>> 6;
+        int prefix = Integer.extractBits(first, 6, 2);
         int size = 1 << prefix;
         assert size > 0 && size <= 8;
         return size;

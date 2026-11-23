@@ -765,7 +765,7 @@ public class ConstantPool extends Metadata implements ClassConstants {
 
   private static int extractHighShortFromInt(int val) {
     // must stay in sync with ConstantPool::name_and_type_at_put, method_at_put, etc.
-    return (val >> 16) & 0xFFFF;
+    return Integer.extractBits(val, 16, 16);
   }
 
   private static int extractLowShortFromInt(int val) {

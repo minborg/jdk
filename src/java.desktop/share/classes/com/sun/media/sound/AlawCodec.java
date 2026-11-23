@@ -58,7 +58,7 @@ public final class AlawCodec extends FormatConversionProvider {
         for (int i=0;i<256;i++) {
             int input    = i ^ 0x55;
             int mantissa = (input & 0xf ) << 4;
-            int segment  = (input & 0x70) >> 4;
+            int segment  = Integer.extractBits(input, 4, 3);
             int value    = mantissa+8;
 
             if(segment>=1)

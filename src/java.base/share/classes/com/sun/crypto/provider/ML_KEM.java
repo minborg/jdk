@@ -1380,7 +1380,7 @@ public final class ML_KEM {
         for (int i = 0; i < parsedLength * 3 / 2; i += 3) {
             parsed[(i / 3) * 2] = (short) ((condensed[i + index] & 0xff) +
                     256 * (condensed[i + index + 1] & 0xf));
-            parsed[(i / 3) * 2 + 1] = (short) (((condensed[i + index + 1] >>> 4) & 0xf) +
+            parsed[(i / 3) * 2 + 1] = (short) (Integer.extractBits(condensed[i + index + 1], 4, 4) +
                     16 * (condensed[i + index + 2] & 0xff));
         }
     }
@@ -1420,7 +1420,7 @@ public final class ML_KEM {
     private static void decodePoly4(byte[] condensed, int index, short[] parsed) {
         for (int i = 0; i < ML_KEM_N / 2; i++) {
             parsed[i * 2] = (short) (condensed[i + index] & 0xf);
-            parsed[i * 2 + 1] = (short) ((condensed[i + index] >>> 4) & 0xf);
+            parsed[i * 2 + 1] = (short) Integer.extractBits(condensed[i + index], 4, 4);
         }
     }
 

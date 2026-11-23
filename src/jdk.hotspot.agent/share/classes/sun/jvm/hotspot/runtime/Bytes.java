@@ -42,7 +42,7 @@ public class Bytes {
     if (!swap)
       return x;
 
-    return (short) (((x >> 8) & 0xFF) | (x << 8));
+    return (short) (Integer.extractBits(x, 8, 8) | (x << 8));
   }
 
   /** Should only swap if the hardware's underlying byte order is

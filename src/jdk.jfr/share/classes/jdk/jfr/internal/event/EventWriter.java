@@ -304,13 +304,13 @@ public final class EventWriter {
         long b1 = (((v >>> 0) & 0x7F) | 0x80) << 24;
 
         // bit  7-13 + pad => bit 16 - 23
-        long b2 = (((v >>> 7) & 0x7F) | 0x80) << 16;
+        long b2 = (Integer.extractBits(v, 7, 7) | 0x80) << 16;
 
         // bit 14-20 + pad => bit  8 - 15
-        long b3 = (((v >>> 14) & 0x7F) | 0x80) << 8;
+        long b3 = (Integer.extractBits(v, 14, 7) | 0x80) << 8;
 
         // bit 21-28       => bit  0 -  7
-        long b4 = (((v >>> 21) & 0x7F)) << 0;
+        long b4 = Integer.extractBits(v, 21, 7) << 0;
 
         return (int) (b1 + b2 + b3 + b4);
     }

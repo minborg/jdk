@@ -615,15 +615,15 @@ class DESCrypt extends SymmetricCipher implements DESConstants {
             // every 6 bit is fed into the sbox, which
             // produces 4-bit output
             left ^= s0p[(temp & 0x3f) ^ key[j+0]]
-                ^ s1p[((temp >>  4) & 0x3f) ^ key[j+1]]
-                ^ s2p[((temp >>  8) & 0x3f) ^ key[j+2]]
-                ^ s3p[((temp >> 12) & 0x3f) ^ key[j+3]]
-                ^ s4p[((temp >> 16) & 0x3f) ^ key[j+4]]
-                ^ s5p[((temp >> 20) & 0x3f) ^ key[j+5]]
-                ^ s6p[((temp >> 24) & 0x3f) ^ key[j+6]];
+                ^ s1p[Integer.extractBits(temp, 4, 6) ^ key[j+1]]
+                ^ s2p[Integer.extractBits(temp, 8, 6) ^ key[j+2]]
+                ^ s3p[Integer.extractBits(temp, 12, 6) ^ key[j+3]]
+                ^ s4p[Integer.extractBits(temp, 16, 6) ^ key[j+4]]
+                ^ s5p[Integer.extractBits(temp, 20, 6) ^ key[j+5]]
+                ^ s6p[Integer.extractBits(temp, 24, 6) ^ key[j+6]];
 
             // make the last sbox input the last bit from right[0]
-            temp = ((right & 1) << 5) | ((right >> 27) & 0x1f);
+            temp = ((right & 1) << 5) | Integer.extractBits(right, 27, 5);
             left ^= s7p[temp ^ key[j+7]];
             temp = left;
             left = right;
@@ -691,21 +691,21 @@ class DESCrypt extends SymmetricCipher implements DESConstants {
         int l;
 
         l  = initPermLeft1[block[offset] & 0xf];
-        l |= initPermLeft0[(block[offset] >> 4) & 0xf];
+        l |= initPermLeft0[Integer.extractBits(block[offset], 4, 4)];
         l |= initPermLeft3[block[offset + 1] & 0xf];
-        l |= initPermLeft2[(block[offset + 1] >> 4) & 0xf];
+        l |= initPermLeft2[Integer.extractBits(block[offset + 1], 4, 4)];
         l |= initPermLeft5[block[offset + 2] & 0xf];
-        l |= initPermLeft4[(block[offset + 2] >> 4) & 0xf];
+        l |= initPermLeft4[Integer.extractBits(block[offset + 2], 4, 4)];
         l |= initPermLeft7[block[offset + 3] & 0xf];
-        l |= initPermLeft6[(block[offset + 3] >> 4) & 0xf];
+        l |= initPermLeft6[Integer.extractBits(block[offset + 3], 4, 4)];
         l |= initPermLeft9[block[offset + 4] & 0xf];
-        l |= initPermLeft8[(block[offset + 4] >> 4) & 0xf];
+        l |= initPermLeft8[Integer.extractBits(block[offset + 4], 4, 4)];
         l |= initPermLeftB[block[offset + 5] & 0xf];
-        l |= initPermLeftA[(block[offset + 5] >> 4) & 0xf];
+        l |= initPermLeftA[Integer.extractBits(block[offset + 5], 4, 4)];
         l |= initPermLeftD[block[offset + 6] & 0xf];
-        l |= initPermLeftC[(block[offset + 6] >> 4) & 0xf];
+        l |= initPermLeftC[Integer.extractBits(block[offset + 6], 4, 4)];
         l |= initPermLeftF[block[offset + 7] & 0xf];
-        l |= initPermLeftE[(block[offset + 7] >> 4) & 0xf];
+        l |= initPermLeftE[Integer.extractBits(block[offset + 7], 4, 4)];
         return l;
     }
 
@@ -713,21 +713,21 @@ class DESCrypt extends SymmetricCipher implements DESConstants {
         int l;
 
         l  = initPermRight1[block[offset] & 0xf];
-        l |= initPermRight0[(block[offset] >> 4) & 0xf];
+        l |= initPermRight0[Integer.extractBits(block[offset], 4, 4)];
         l |= initPermRight3[block[offset + 1] & 0xf];
-        l |= initPermRight2[(block[offset + 1] >> 4) & 0xf];
+        l |= initPermRight2[Integer.extractBits(block[offset + 1], 4, 4)];
         l |= initPermRight5[block[offset + 2] & 0xf];
-        l |= initPermRight4[(block[offset + 2] >> 4) & 0xf];
+        l |= initPermRight4[Integer.extractBits(block[offset + 2], 4, 4)];
         l |= initPermRight7[block[offset + 3] & 0xf];
-        l |= initPermRight6[(block[offset + 3] >> 4) & 0xf];
+        l |= initPermRight6[Integer.extractBits(block[offset + 3], 4, 4)];
         l |= initPermRight9[block[offset + 4] & 0xf];
-        l |= initPermRight8[(block[offset + 4] >> 4) & 0xf];
+        l |= initPermRight8[Integer.extractBits(block[offset + 4], 4, 4)];
         l |= initPermRightB[block[offset + 5] & 0xf];
-        l |= initPermRightA[(block[offset + 5] >> 4) & 0xf];
+        l |= initPermRightA[Integer.extractBits(block[offset + 5], 4, 4)];
         l |= initPermRightD[block[offset + 6] & 0xf];
-        l |= initPermRightC[(block[offset + 6] >> 4) & 0xf];
+        l |= initPermRightC[Integer.extractBits(block[offset + 6], 4, 4)];
         l |= initPermRightF[block[offset + 7] & 0xf];
-        l |= initPermRightE[(block[offset + 7] >> 4) & 0xf];
+        l |= initPermRightE[Integer.extractBits(block[offset + 7], 4, 4)];
         return l;
     }
 

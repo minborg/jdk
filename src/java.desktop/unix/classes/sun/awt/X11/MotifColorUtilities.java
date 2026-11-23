@@ -479,14 +479,14 @@ final class MotifColorUtilities {
         int textFore;
 
 
-        r = (colors[0] & 0x00FF0000) >> 16;
-        g = (colors[0] & 0x0000FF00) >> 8;
+        r = Integer.extractBits(colors[0], 16, 8);
+        g = Integer.extractBits(colors[0], 8, 8);
         b = (colors[0] & 0x000000FF);
 
         activeFore = MotifColorUtilities.calculateForegroundFromBackground(r,g,b);
 
-        r = (colors[1] & 0x00FF0000) >> 16;
-        g = (colors[1] & 0x0000FF00) >> 8;
+        r = Integer.extractBits(colors[1], 16, 8);
+        g = Integer.extractBits(colors[1], 8, 8);
         b = (colors[1] & 0x000000FF);
 
         inactiveFore = MotifColorUtilities.calculateForegroundFromBackground(r,g,b);
@@ -495,8 +495,8 @@ final class MotifColorUtilities {
         int bottom_shadow = MotifColorUtilities.calculateBottomShadowFromBackground(r,g,b);
 
 
-        r = (colors[3] & 0x00FF0000) >> 16;
-        g = (colors[3] & 0x0000FF00) >> 8;
+        r = Integer.extractBits(colors[3], 16, 8);
+        g = Integer.extractBits(colors[3], 8, 8);
         b = (colors[3] & 0x000000FF);
 
         textFore = MotifColorUtilities.calculateForegroundFromBackground(r,g,b);
@@ -544,26 +544,26 @@ final class MotifColorUtilities {
         int textFore;
 
 
-        r = (colors[0] & 0x00FF0000) >> 16;
-        g = (colors[0] & 0x0000FF00) >> 8;
+        r = Integer.extractBits(colors[0], 16, 8);
+        g = Integer.extractBits(colors[0], 8, 8);
         b = (colors[0] & 0x000000FF);
 
         activeFore = MotifColorUtilities.calculateForegroundFromBackground(r,g,b);
 
-        r = (colors[1] & 0x00FF0000) >> 16;
-        g = (colors[1] & 0x0000FF00) >> 8;
+        r = Integer.extractBits(colors[1], 16, 8);
+        g = Integer.extractBits(colors[1], 8, 8);
         b = (colors[1] & 0x000000FF);
 
         inactiveFore = MotifColorUtilities.calculateForegroundFromBackground(r,g,b);
 
-        r = (colors[3] & 0x00FF0000) >> 16;
-        g = (colors[3] & 0x0000FF00) >> 8;
+        r = Integer.extractBits(colors[3], 16, 8);
+        g = Integer.extractBits(colors[3], 8, 8);
         b = (colors[3] & 0x000000FF);
 
         textFore = MotifColorUtilities.calculateForegroundFromBackground(r,g,b);
 
-        r = (colors[4] & 0x00FF0000) >> 16;
-        g = (colors[4] & 0x0000FF00) >> 8;
+        r = Integer.extractBits(colors[4], 16, 8);
+        g = Integer.extractBits(colors[4], 8, 8);
         b = (colors[4] & 0x000000FF);
 
         int windowFore = MotifColorUtilities.calculateForegroundFromBackground(r,g,b);
@@ -572,8 +572,8 @@ final class MotifColorUtilities {
         int bottom_shadow = MotifColorUtilities.calculateBottomShadowFromBackground(r,g,b);
 
 
-        r = (colors[5] & 0x00FF0000) >> 16;
-        g = (colors[5] & 0x0000FF00) >> 8;
+        r = Integer.extractBits(colors[5], 16, 8);
+        g = Integer.extractBits(colors[5], 8, 8);
         b = (colors[5] & 0x000000FF);
 
         int menuFore = MotifColorUtilities.calculateForegroundFromBackground(r,g,b);
@@ -615,8 +615,8 @@ final class MotifColorUtilities {
         systemColors[SystemColor.SCROLLBAR] = MotifColorUtilities.DEFAULT_COLOR;
         systemColors[SystemColor.CONTROL] = MotifColorUtilities.MOTIF_WINDOW_COLOR;
 
-        int r = (MotifColorUtilities.DEFAULT_COLOR & 0x00FF0000) >> 16;
-        int g = (MotifColorUtilities.DEFAULT_COLOR & 0x0000FF00) >> 8;
+        int r = Integer.extractBits(MotifColorUtilities.DEFAULT_COLOR, 16, 8);
+        int g = Integer.extractBits(MotifColorUtilities.DEFAULT_COLOR, 8, 8);
         int b = (MotifColorUtilities.DEFAULT_COLOR & 0x000000FF);
 
 

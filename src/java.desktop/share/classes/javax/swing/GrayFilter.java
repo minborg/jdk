@@ -90,8 +90,8 @@ public class GrayFilter extends RGBImageFilter {
      */
     public int filterRGB(int x, int y, int rgb) {
         // Use NTSC conversion formula.
-        int gray = (int)((0.30 * ((rgb >> 16) & 0xff) +
-                         0.59 * ((rgb >> 8) & 0xff) +
+        int gray = (int)((0.30 * Integer.extractBits(rgb, 16, 8) +
+                         0.59 * Integer.extractBits(rgb, 8, 8) +
                          0.11 * (rgb & 0xff)) / 3);
 
         if (brighter) {

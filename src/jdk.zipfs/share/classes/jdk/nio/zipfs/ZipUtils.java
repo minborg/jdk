@@ -144,7 +144,7 @@ class ZipUtils {
      */
     public static void writeShort(OutputStream os, int v) throws IOException {
         os.write(v & 0xff);
-        os.write((v >>> 8) & 0xff);
+        os.write(Integer.extractBits(v, 8, 8));
     }
 
     /*
@@ -152,9 +152,9 @@ class ZipUtils {
      */
     public static void writeInt(OutputStream os, long v) throws IOException {
         os.write((int)(v & 0xff));
-        os.write((int)((v >>>  8) & 0xff));
-        os.write((int)((v >>> 16) & 0xff));
-        os.write((int)((v >>> 24) & 0xff));
+        os.write((int)Long.extractBits(v, 8, 8));
+        os.write((int)Long.extractBits(v, 16, 8));
+        os.write((int)Long.extractBits(v, 24, 8));
     }
 
     /*
@@ -162,13 +162,13 @@ class ZipUtils {
      */
     public static void writeLong(OutputStream os, long v) throws IOException {
         os.write((int)(v & 0xff));
-        os.write((int)((v >>>  8) & 0xff));
-        os.write((int)((v >>> 16) & 0xff));
-        os.write((int)((v >>> 24) & 0xff));
-        os.write((int)((v >>> 32) & 0xff));
-        os.write((int)((v >>> 40) & 0xff));
-        os.write((int)((v >>> 48) & 0xff));
-        os.write((int)((v >>> 56) & 0xff));
+        os.write((int)Long.extractBits(v, 8, 8));
+        os.write((int)Long.extractBits(v, 16, 8));
+        os.write((int)Long.extractBits(v, 24, 8));
+        os.write((int)Long.extractBits(v, 32, 8));
+        os.write((int)Long.extractBits(v, 40, 8));
+        os.write((int)Long.extractBits(v, 48, 8));
+        os.write((int)Long.extractBits(v, 56, 8));
     }
 
     /*
@@ -204,11 +204,11 @@ class ZipUtils {
      * Converts DOS time to Java time (number of milliseconds since epoch).
      */
     public static long dosToJavaTime(long dtime) {
-        int year = (int) (((dtime >> 25) & 0x7f) + 1980);
-        int month = (int) ((dtime >> 21) & 0x0f);
-        int day = (int) ((dtime >> 16) & 0x1f);
-        int hour = (int) ((dtime >> 11) & 0x1f);
-        int minute = (int) ((dtime >> 5) & 0x3f);
+        int year = (int) (Long.extractBits(dtime, 25, 7) + 1980);
+        int month = (int) Long.extractBits(dtime, 21, 4);
+        int day = (int) Long.extractBits(dtime, 16, 5);
+        int hour = (int) Long.extractBits(dtime, 11, 5);
+        int minute = (int) Long.extractBits(dtime, 5, 6);
         int second = (int) ((dtime << 1) & 0x3e);
 
         if (month > 0 && month < 13 && day > 0 && hour < 24 && minute < 60 && second < 60) {

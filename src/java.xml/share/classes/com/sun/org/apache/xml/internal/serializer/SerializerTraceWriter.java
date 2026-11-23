@@ -197,7 +197,7 @@ final class SerializerTraceWriter extends Writer implements WriterChain
         else
         {
             buf[count++] = (byte) (0xe0 + (c >> 12));
-            buf[count++] = (byte) (0x80 + ((c >> 6) & 0x3f));
+            buf[count++] = (byte) (0x80 + Integer.extractBits(c, 6, 6));
             buf[count++] = (byte) (0x80 + (c & 0x3f));
         }
     }
@@ -255,7 +255,7 @@ final class SerializerTraceWriter extends Writer implements WriterChain
             else
             {
                 buf[count++] = (byte) (0xe0 + (c >> 12));
-                buf[count++] = (byte) (0x80 + ((c >> 6) & 0x3f));
+                buf[count++] = (byte) (0x80 + Integer.extractBits(c, 6, 6));
                 buf[count++] = (byte) (0x80 + (c & 0x3f));
             }
         }
@@ -314,7 +314,7 @@ final class SerializerTraceWriter extends Writer implements WriterChain
             else
             {
                 buf[count++] = (byte) (0xe0 + (c >> 12));
-                buf[count++] = (byte) (0x80 + ((c >> 6) & 0x3f));
+                buf[count++] = (byte) (0x80 + Integer.extractBits(c, 6, 6));
                 buf[count++] = (byte) (0x80 + (c & 0x3f));
             }
         }

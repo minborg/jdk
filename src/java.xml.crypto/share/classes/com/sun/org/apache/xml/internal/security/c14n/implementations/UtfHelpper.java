@@ -114,7 +114,7 @@ public final class UtfHelpper {
         out.write(write);
         for (int i = extraByte - 1; i >= 0; i--) {
             shift -= 6;
-            write = (byte)(0x80 | ((c >>> shift) & 0x3F));
+            write = (byte)(0x80 | Integer.extractBits(c, shift, 6));
             out.write(write);
         }
     }
@@ -178,7 +178,7 @@ public final class UtfHelpper {
             out.write(write);
             for (int j = extraByte - 1; j >= 0; j--) {
                 shift -= 6;
-                write = (byte)(0x80 | ((c >>> shift) & 0x3F));
+                write = (byte)(0x80 | Integer.extractBits(c, shift, 6));
                 out.write(write);
             }
 
@@ -252,7 +252,7 @@ public final class UtfHelpper {
             result[out++] = write;
             for (int j = extraByte - 1; j >= 0; j--) {
                 shift -= 6;
-                write = (byte)(0x80 | ((c >>> shift) & 0x3F));
+                write = (byte)(0x80 | Integer.extractBits(c, shift, 6));
                 result[out++] = write;
             }
         }

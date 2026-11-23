@@ -1558,15 +1558,15 @@ public final class String
                     }
                 } else {
                     dst[dp++] = (byte)(0xf0 | ((uc >> 18)));
-                    dst[dp++] = (byte)(0x80 | ((uc >> 12) & 0x3f));
-                    dst[dp++] = (byte)(0x80 | ((uc >>  6) & 0x3f));
+                    dst[dp++] = (byte)(0x80 | Integer.extractBits(uc, 12, 6));
+                    dst[dp++] = (byte)(0x80 | Integer.extractBits(uc, 6, 6));
                     dst[dp++] = (byte)(0x80 | (uc & 0x3f));
                     sp++;  // 2 chars
                 }
             } else {
                 // 3 bytes, 16 bits
                 dst[dp++] = (byte)(0xe0 | ((c >> 12)));
-                dst[dp++] = (byte)(0x80 | ((c >>  6) & 0x3f));
+                dst[dp++] = (byte)(0x80 | Integer.extractBits(c, 6, 6));
                 dst[dp++] = (byte)(0x80 | (c & 0x3f));
             }
         }

@@ -130,7 +130,7 @@ public abstract class DoubleByteEncoder
                 if (ncode != 0 && c != '\u0000' ) {
                     if (dl - dp < 2)
                         return CoderResult.OVERFLOW;
-                    da[dp++] = (byte) ((ncode & 0xff00) >> 8);
+                    da[dp++] = (byte) Integer.extractBits(ncode, 8, 8);
                     da[dp++] = (byte) (ncode & 0xff);
                     sp++;
                     continue;
@@ -186,7 +186,7 @@ public abstract class DoubleByteEncoder
                     if (dst.remaining() < 2)
                         return CoderResult.OVERFLOW;
                     mark++;
-                    dst.put((byte) ((ncode & 0xff00) >> 8));
+                    dst.put((byte) Integer.extractBits(ncode, 8, 8));
                     dst.put((byte) ncode);
                     continue;
                 }
@@ -211,7 +211,7 @@ public abstract class DoubleByteEncoder
      * Can be changed by subclass
      */
     protected int encodeDouble(char ch) {
-        int offset = index1[((ch & 0xff00) >> 8 )] << 8;
+        int offset = index1[(Integer.extractBits(ch, 8, 8) )] << 8;
         return index2[offset >> 12].charAt((offset & 0xfff) + (ch & 0xff));
     }
 

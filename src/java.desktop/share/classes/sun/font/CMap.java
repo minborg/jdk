@@ -310,7 +310,7 @@ abstract class CMap {
             int firstByte;
             if (encodingID == ShiftJISEncoding) {
                 for (int i = dBegin; i <= dEnd; i++) {
-                    firstByte = (i >> 8 & 0xff);
+                    firstByte = Integer.extractBits(i, 8, 8);
                     if (firstByte >= 0xa1 && firstByte <= 0xdf) {
                         //sjis halfwidth katakana
                         inputBytes[j++] = (byte)0xff;
@@ -322,7 +322,7 @@ abstract class CMap {
                 }
             } else {
                 for (int i = dBegin; i <= dEnd; i++) {
-                    inputBytes[j++] = (byte)(i>>8 & 0xff);
+                    inputBytes[j++] = (byte)Integer.extractBits(i, 8, 8);
                     inputBytes[j++] = (byte)(i & 0xff);
                 }
             }
@@ -510,7 +510,7 @@ abstract class CMap {
 
             for (int i=0; i<segCount; i++) {
                 char ctmp = buffer.get();
-                idRangeOffset[i] = (char)((ctmp>>1)&0xffff);
+                idRangeOffset[i] = (char)Integer.extractBits(ctmp, 1, 16);
             }
             /* Can calculate the number of glyph IDs by subtracting
              * "pos" from the length of the cmap

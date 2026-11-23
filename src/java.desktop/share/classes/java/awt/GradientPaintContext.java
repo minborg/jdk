@@ -159,13 +159,13 @@ class GradientPaintContext implements PaintContext {
         this.cyclic = cyclic;
         int rgb1 = c1.getRGB();
         int rgb2 = c2.getRGB();
-        int a1 = (rgb1 >> 24) & 0xff;
-        int r1 = (rgb1 >> 16) & 0xff;
-        int g1 = (rgb1 >>  8) & 0xff;
+        int a1 = Integer.extractBits(rgb1, 24, 8);
+        int r1 = Integer.extractBits(rgb1, 16, 8);
+        int g1 = Integer.extractBits(rgb1, 8, 8);
         int b1 = (rgb1      ) & 0xff;
-        int da = ((rgb2 >> 24) & 0xff) - a1;
-        int dr = ((rgb2 >> 16) & 0xff) - r1;
-        int dg = ((rgb2 >>  8) & 0xff) - g1;
+        int da = Integer.extractBits(rgb2, 24, 8) - a1;
+        int dr = Integer.extractBits(rgb2, 16, 8) - r1;
+        int dg = Integer.extractBits(rgb2, 8, 8) - g1;
         int db = ((rgb2      ) & 0xff) - b1;
         if (a1 == 0xff && da == 0) {
             model = xrgbmodel;

@@ -140,8 +140,8 @@ public class ColorPalette {
             String initc = terminal.getStringCapability(InfoCmp.Capability.initialize_color);
             if (initc != null || osc4) {
                 // initc expects color in 0..1000 range
-                int r = (((color >> 16) & 0xFF) * 1000) / 255 + 1;
-                int g = (((color >> 8) & 0xFF) * 1000) / 255 + 1;
+                int r = (Integer.extractBits(color, 16, 8) * 1000) / 255 + 1;
+                int g = (Integer.extractBits(color, 8, 8) * 1000) / 255 + 1;
                 int b = ((color & 0xFF) * 1000) / 255 + 1;
                 if (initc == null) {
                     // This is the xterm version

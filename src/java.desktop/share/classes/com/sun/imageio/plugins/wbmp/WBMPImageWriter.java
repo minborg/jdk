@@ -74,8 +74,9 @@ public class WBMPImageWriter extends ImageWriter {
         byte[] multiBytes = new byte[(numBitsLeft + 6)/7];
 
         int maxIndex = multiBytes.length - 1;
+        long value = Integer.toUnsignedLong(intValue);
         for(int b = 0; b <= maxIndex; b++) {
-            multiBytes[b] = (byte)((intValue >>> ((maxIndex - b)*7))&0x7f);
+            multiBytes[b] = (byte) Long.extractBits(value, (maxIndex - b) * 7, 7);
             if(b != maxIndex) {
                 multiBytes[b] |= (byte)0x80;
             }

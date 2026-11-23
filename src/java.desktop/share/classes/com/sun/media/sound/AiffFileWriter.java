@@ -405,8 +405,7 @@ public final class AiffFileWriter extends SunFileWriter {
 
         long sign = (doubleBits & DOUBLE_SIGN_MASK)
             >> (DOUBLE_EXPONENT_LENGTH + DOUBLE_MANTISSA_LENGTH);
-        long doubleExponent = (doubleBits & DOUBLE_EXPONENT_MASK)
-            >> DOUBLE_MANTISSA_LENGTH;
+        long doubleExponent = Long.extractBits(doubleBits, DOUBLE_MANTISSA_LENGTH, 11);
         long doubleMantissa = doubleBits & DOUBLE_MANTISSA_MASK;
 
         long extendedExponent = doubleExponent - DOUBLE_EXPONENT_OFFSET

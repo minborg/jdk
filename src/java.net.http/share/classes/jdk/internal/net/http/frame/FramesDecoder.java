@@ -200,7 +200,7 @@ public class FramesDecoder {
 
     private void parseFrameHeader() throws IOException {
         int x = getInt();
-        this.frameLength = (x >>> 8) & 0x00ffffff;
+        this.frameLength = Integer.extractBits(x, 8, 24);
         this.frameType = x & 0xff;
         this.frameFlags = getByte();
         this.frameStreamid = getInt() & 0x7fffffff;

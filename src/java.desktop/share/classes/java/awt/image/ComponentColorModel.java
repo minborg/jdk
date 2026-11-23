@@ -1176,8 +1176,8 @@ public class ComponentColorModel extends ColorModel {
         // REMIND: Use rendering hints?
 
         int red, grn, blu, alp;
-        red = (rgb>>16) & 0xff;
-        grn = (rgb>>8) & 0xff;
+        red = Integer.extractBits(rgb, 16, 8);
+        grn = Integer.extractBits(rgb, 8, 8);
         blu = rgb & 0xff;
 
         if (needScaleInit) {
@@ -1205,7 +1205,7 @@ public class ComponentColorModel extends ColorModel {
                             factor = 32767.0f / 65535.0f;
                         }
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             sdata[3] =
                                 (short) (alp * (32767.0f / 255.0f) + 0.5f);
                             if (isAlphaPremultiplied) {
@@ -1224,7 +1224,7 @@ public class ComponentColorModel extends ColorModel {
                                       (0.0721f * blu)) / 65535.0f;
                         factor = 32767.0f;
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             sdata[1] =
                                 (short) (alp * (32767.0f / 255.0f) + 0.5f);
                             if (isAlphaPremultiplied) {
@@ -1242,7 +1242,7 @@ public class ComponentColorModel extends ColorModel {
                         gray = fromLinearGray16ToOtherGray16LUT[gray] & 0xffff;
                         factor = 32767.0f / 65535.0f;
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             sdata[1] =
                                 (short) (alp * (32767.0f / 255.0f) + 0.5f);
                             if (isAlphaPremultiplied) {
@@ -1273,7 +1273,7 @@ public class ComponentColorModel extends ColorModel {
                         }
                         factor = 32767.0f;
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             sdata[numColorComponents] =
                                 (short) (alp * (32767.0f / 255.0f) + 0.5f);
                             if (isAlphaPremultiplied) {
@@ -1305,7 +1305,7 @@ public class ComponentColorModel extends ColorModel {
                             factor = 1.0f / 255.0f;
                         }
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             fdata[3] = alp * (1.0f / 255.0f);
                             if (isAlphaPremultiplied) {
                                 factor *= fdata[3];
@@ -1322,7 +1322,7 @@ public class ComponentColorModel extends ColorModel {
                                     (0.7154f * grn) +
                                     (0.0721f * blu)) / 65535.0f;
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             fdata[1] = alp * (1.0f / 255.0f);
                             if (isAlphaPremultiplied) {
                                 fdata[0] *= fdata[1];
@@ -1338,7 +1338,7 @@ public class ComponentColorModel extends ColorModel {
                         fdata[0] = (fromLinearGray16ToOtherGray16LUT[gray] &
                                     0xffff) / 65535.0f;
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             fdata[1] = alp * (1.0f / 255.0f);
                             if (isAlphaPremultiplied) {
                                 fdata[0] *= fdata[1];
@@ -1352,7 +1352,7 @@ public class ComponentColorModel extends ColorModel {
                         norm[2] = blu * factor;
                         norm = colorSpace.fromRGB(norm);
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             fdata[numColorComponents] = alp * factor;
                             if (isAlphaPremultiplied) {
                                 factor *= alp;
@@ -1386,7 +1386,7 @@ public class ComponentColorModel extends ColorModel {
                             factor = 1.0 / 255.0;
                         }
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             ddata[3] = alp * (1.0 / 255.0);
                             if (isAlphaPremultiplied) {
                                 factor *= ddata[3];
@@ -1403,7 +1403,7 @@ public class ComponentColorModel extends ColorModel {
                                     (0.7154 * grn) +
                                     (0.0721 * blu)) / 65535.0;
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             ddata[1] = alp * (1.0 / 255.0);
                             if (isAlphaPremultiplied) {
                                 ddata[0] *= ddata[1];
@@ -1419,7 +1419,7 @@ public class ComponentColorModel extends ColorModel {
                         ddata[0] = (fromLinearGray16ToOtherGray16LUT[gray] &
                                     0xffff) / 65535.0;
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             ddata[1] = alp * (1.0 / 255.0);
                             if (isAlphaPremultiplied) {
                                 ddata[0] *= ddata[1];
@@ -1433,7 +1433,7 @@ public class ComponentColorModel extends ColorModel {
                         norm[2] = blu * factor;
                         norm = colorSpace.fromRGB(norm);
                         if (supportsAlpha) {
-                            alp = (rgb>>24) & 0xff;
+                            alp = Integer.extractBits(rgb, 24, 8);
                             ddata[numColorComponents] = alp * (1.0 / 255.0);
                             if (isAlphaPremultiplied) {
                                 factor *= alp;
@@ -1484,7 +1484,7 @@ public class ComponentColorModel extends ColorModel {
                 factor = 1.0f / 255.0f;
             }
             if (supportsAlpha) {
-                alp = (rgb>>24)&0xff;
+                alp = Integer.extractBits(rgb, 24, 8);
                 if (nBits[3] == 8) {
                     intpixel[3] = alp;
                 }
@@ -1523,7 +1523,7 @@ public class ComponentColorModel extends ColorModel {
                           (0.7154f * grn) +
                           (0.0721f * blu)) / 65535.0f;
             if (supportsAlpha) {
-                alp = (rgb>>24) & 0xff;
+                alp = Integer.extractBits(rgb, 24, 8);
                 if (nBits[1] == 8) {
                     intpixel[1] = alp;
                 } else {
@@ -1545,7 +1545,7 @@ public class ComponentColorModel extends ColorModel {
             float gray = (fromLinearGray16ToOtherGray16LUT[gray16] &
                           0xffff) / 65535.0f;
             if (supportsAlpha) {
-                alp = (rgb>>24) & 0xff;
+                alp = Integer.extractBits(rgb, 24, 8);
                 if (nBits[1] == 8) {
                     intpixel[1] = alp;
                 } else {
@@ -1580,7 +1580,7 @@ public class ComponentColorModel extends ColorModel {
                 }
             }
             if (supportsAlpha) {
-                alp = (rgb>>24) & 0xff;
+                alp = Integer.extractBits(rgb, 24, 8);
                 if (nBits[numColorComponents] == 8) {
                     intpixel[numColorComponents] = alp;
                 }

@@ -181,9 +181,9 @@ public class AesDkCrypto extends DkCrypto {
 
         // Derive keys
         byte[] constant = new byte[5];
-        constant[0] = (byte) ((usage>>24)&0xff);
-        constant[1] = (byte) ((usage>>16)&0xff);
-        constant[2] = (byte) ((usage>>8)&0xff);
+        constant[0] = (byte) Integer.extractBits(usage, 24, 8);
+        constant[1] = (byte) Integer.extractBits(usage, 16, 8);
+        constant[2] = (byte) Integer.extractBits(usage, 8, 8);
         constant[3] = (byte) (usage&0xff);
 
         constant[4] = (byte) 0x99;
@@ -309,9 +309,9 @@ public class AesDkCrypto extends DkCrypto {
         try {
             // derive Encryption key
             byte[] constant = new byte[5];
-            constant[0] = (byte) ((usage>>24)&0xff);
-            constant[1] = (byte) ((usage>>16)&0xff);
-            constant[2] = (byte) ((usage>>8)&0xff);
+            constant[0] = (byte) Integer.extractBits(usage, 24, 8);
+            constant[1] = (byte) Integer.extractBits(usage, 16, 8);
+            constant[2] = (byte) Integer.extractBits(usage, 8, 8);
             constant[3] = (byte) (usage&0xff);
             constant[4] = (byte) 0xaa;
             Ke = dk(baseKey, constant);  // Encryption key
@@ -378,9 +378,9 @@ public class AesDkCrypto extends DkCrypto {
         try {
             // Derive encryption key
             byte[] constant = new byte[5];
-            constant[0] = (byte) ((usage>>24)&0xff);
-            constant[1] = (byte) ((usage>>16)&0xff);
-            constant[2] = (byte) ((usage>>8)&0xff);
+            constant[0] = (byte) Integer.extractBits(usage, 24, 8);
+            constant[1] = (byte) Integer.extractBits(usage, 16, 8);
+            constant[2] = (byte) Integer.extractBits(usage, 8, 8);
             constant[3] = (byte) (usage&0xff);
 
             constant[4] = (byte) 0xaa;

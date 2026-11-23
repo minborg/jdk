@@ -329,6 +329,11 @@ public class MultiPixelPackedSampleModel extends SampleModel
         return pixelBitStride;
     }
 
+    private int sampleBitLength() {
+        // The historical mask (1 << pixelBitStride) - 1 is zero for a 32-bit stride.
+        return pixelBitStride % Integer.SIZE;
+    }
+
     /**
      * Returns the data bit offset in bits.
      * @return the {@code dataBitOffset} of this
@@ -398,7 +403,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
         int element = data.getElem(y*scanlineStride + bitnum/dataElementSize);
         int shift = dataElementSize - (bitnum & (dataElementSize-1))
                     - pixelBitStride;
-        return (element >> shift) & bitMask;
+        return Integer.extractBits(element, shift, sampleBitLength());
     }
 
     /**
@@ -429,9 +434,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
         int shift = dataElementSize - (bitnum & (dataElementSize-1))
                     - pixelBitStride;
         int element = data.getElem(index);
-        element &= ~(bitMask << shift);
-        element |= (s & bitMask) << shift;
-        data.setElem(index,element);
+        data.setElem(index, Integer.replaceBits(element, shift, sampleBitLength(), s));
     }
 
     /**
@@ -512,7 +515,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
 
             element = data.getElem(y*scanlineStride +
                                     bitnum/dataElementSize);
-            bdata[0] = (byte)((element >> shift) & bitMask);
+            bdata[0] = (byte)Integer.extractBits(element, shift, sampleBitLength());
 
             obj = (Object)bdata;
             break;
@@ -528,7 +531,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
 
             element = data.getElem(y*scanlineStride +
                                    bitnum/dataElementSize);
-            sdata[0] = (short)((element >> shift) & bitMask);
+            sdata[0] = (short)Integer.extractBits(element, shift, sampleBitLength());
 
             obj = (Object)sdata;
             break;
@@ -544,7 +547,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
 
             element = data.getElem(y*scanlineStride +
                                    bitnum/dataElementSize);
-            idata[0] = (element >> shift) & bitMask;
+            idata[0] = Integer.extractBits(element, shift, sampleBitLength());
 
             obj = (Object)idata;
             break;
@@ -586,7 +589,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
         int element = data.getElem(y*scanlineStride + bitnum/dataElementSize);
         int shift = dataElementSize - (bitnum & (dataElementSize-1))
                     - pixelBitStride;
-        pixels[0] = (element >> shift) & bitMask;
+        pixels[0] = Integer.extractBits(element, shift, sampleBitLength());
         return pixels;
     }
 
@@ -645,29 +648,25 @@ public class MultiPixelPackedSampleModel extends SampleModel
         int shift = dataElementSize - (bitnum & (dataElementSize-1))
                     - pixelBitStride;
         int element = data.getElem(index);
-        element &= ~(bitMask << shift);
 
         switch(type) {
 
         case DataBuffer.TYPE_BYTE:
 
             byte[] barray = (byte[])obj;
-            element |= ( ((int)(barray[0])&0xff) & bitMask) << shift;
-            data.setElem(index, element);
+            data.setElem(index, Integer.replaceBits(element, shift, sampleBitLength(), barray[0]));
             break;
 
         case DataBuffer.TYPE_USHORT:
 
             short[] sarray = (short[])obj;
-            element |= ( ((int)(sarray[0])&0xffff) & bitMask) << shift;
-            data.setElem(index, element);
+            data.setElem(index, Integer.replaceBits(element, shift, sampleBitLength(), sarray[0]));
             break;
 
         case DataBuffer.TYPE_INT:
 
             int[] iarray = (int[])obj;
-            element |= (iarray[0] & bitMask) << shift;
-            data.setElem(index, element);
+            data.setElem(index, Integer.replaceBits(element, shift, sampleBitLength(), iarray[0]));
             break;
         }
     }
@@ -696,9 +695,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
         int shift = dataElementSize - (bitnum & (dataElementSize-1))
                     - pixelBitStride;
         int element = data.getElem(index);
-        element &= ~(bitMask << shift);
-        element |= (iArray[0] & bitMask) << shift;
-        data.setElem(index,element);
+        data.setElem(index, Integer.replaceBits(element, shift, sampleBitLength(), iArray[0]));
     }
 
     public boolean equals(Object o) {

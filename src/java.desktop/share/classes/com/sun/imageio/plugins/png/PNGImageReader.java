@@ -886,8 +886,8 @@ public class PNGImageReader extends ImageReader {
 
                     StringBuilder chunkName = new StringBuilder(4);
                     chunkName.append((char)(chunkType >>> 24));
-                    chunkName.append((char)((chunkType >> 16) & 0xff));
-                    chunkName.append((char)((chunkType >> 8) & 0xff));
+                    chunkName.append((char)Integer.extractBits(chunkType, 16, 8));
+                    chunkName.append((char)Integer.extractBits(chunkType, 8, 8));
                     chunkName.append((char)(chunkType & 0xff));
 
                     int ancillaryBit = chunkType >>> 28;

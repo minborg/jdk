@@ -66,9 +66,9 @@ final class FastShortMessage extends ShortMessage {
         if (length>0) {
             returnedArray[0] = (byte) (packedMsg & 0xFF);
             if (length>1) {
-                returnedArray[1] = (byte) ((packedMsg & 0xFF00) >> 8);
+                returnedArray[1] = (byte) Integer.extractBits(packedMsg, 8, 8);
                 if (length>2) {
-                    returnedArray[2] = (byte) ((packedMsg & 0xFF0000) >> 16);
+                    returnedArray[2] = (byte) Integer.extractBits(packedMsg, 16, 8);
                 }
             }
         }
@@ -119,12 +119,12 @@ final class FastShortMessage extends ShortMessage {
 
     @Override
     public int getData1() {
-        return (packedMsg & 0xFF00) >> 8;
+        return Integer.extractBits(packedMsg, 8, 8);
     }
 
     @Override
     public int getData2() {
-        return (packedMsg & 0xFF0000) >> 16;
+        return Integer.extractBits(packedMsg, 16, 8);
     }
 
     @Override

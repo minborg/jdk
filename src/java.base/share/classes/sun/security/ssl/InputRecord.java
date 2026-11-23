@@ -304,7 +304,7 @@ abstract class InputRecord implements Record, Closeable {
         }
 
         j -= pointer + 2;
-        converted[pointer++] = (byte)((j >>> 8) & 0xFF);
+        converted[pointer++] = (byte)Integer.extractBits(j, 8, 8);
         converted[pointer++] = (byte)(j & 0xFF);
         pointer += j;
 
@@ -320,15 +320,15 @@ abstract class InputRecord implements Record, Closeable {
          */
         // Note: need not set the header.
         int fragLen = pointer - 5;                      // TLSPlaintext.length
-        converted[3] = (byte)((fragLen >>> 8) & 0xFF);
+        converted[3] = (byte)Integer.extractBits(fragLen, 8, 8);
         converted[4] = (byte)(fragLen & 0xFF);
 
         /*
          * Handshake.length, length of ClientHello message
          */
         fragLen = pointer - 9;                          // Handshake.length
-        converted[6] = (byte)((fragLen >>> 16) & 0xFF);
-        converted[7] = (byte)((fragLen >>> 8) & 0xFF);
+        converted[6] = (byte)Integer.extractBits(fragLen, 16, 8);
+        converted[7] = (byte)Integer.extractBits(fragLen, 8, 8);
         converted[8] = (byte)(fragLen & 0xFF);
 
         // consume the full record

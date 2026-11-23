@@ -818,7 +818,8 @@ public class FtpClient extends sun.net.ftp.FtpClient {
                 }
 
                 /* append port number */
-                portCmd = portCmd + ((portSocket.getLocalPort() >>> 8) & 0xff) + "," + (portSocket.getLocalPort() & 0xff);
+                portCmd = portCmd + Integer.extractBits(portSocket.getLocalPort(), 8, 8)
+                        + "," + (portSocket.getLocalPort() & 0xff);
                 issueCommandCheck(portCmd);
                 issueCommandCheck(cmd);
             }

@@ -454,9 +454,9 @@ public class ArcFourCrypto extends DkCrypto {
         int ms_usage = arcfour_translate_usage(usage);
         byte[] salt = new byte[4];
         salt[0] = (byte)(ms_usage & 0xff);
-        salt[1] = (byte)((ms_usage >> 8) & 0xff);
-        salt[2] = (byte)((ms_usage >> 16) & 0xff);
-        salt[3] = (byte)((ms_usage >> 24) & 0xff);
+        salt[1] = (byte)Integer.extractBits(ms_usage, 8, 8);
+        salt[2] = (byte)Integer.extractBits(ms_usage, 16, 8);
+        salt[3] = (byte)Integer.extractBits(ms_usage, 24, 8);
         return salt;
     }
 

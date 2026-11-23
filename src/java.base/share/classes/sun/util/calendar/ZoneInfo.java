@@ -265,7 +265,7 @@ public class ZoneInfo extends TimeZone {
             long val = transitions[index];
             int offset = this.offsets[(int)(val & OFFSET_MASK)] + rawOffsetDiff;
             if (offsets != null) {
-                int dst = (int)((val >>> DST_NSHIFT) & 0xfL);
+                int dst = (int)Long.extractBits(val, DST_NSHIFT, 4);
                 int save = (dst == 0) ? 0 : this.offsets[dst];
                 offsets[0] = offset - save;
                 offsets[1] = save;
@@ -299,7 +299,7 @@ public class ZoneInfo extends TimeZone {
             long val = transitions[transitions.length - 1];
             int offset = this.offsets[(int)(val & OFFSET_MASK)] + rawOffsetDiff;
             if (offsets != null) {
-                int dst = (int)((val >>> DST_NSHIFT) & 0xfL);
+                int dst = (int)Long.extractBits(val, DST_NSHIFT, 4);
                 int save = (dst == 0) ? 0 : this.offsets[dst];
                 offsets[0] = offset - save;
                 offsets[1] = save;
@@ -320,7 +320,7 @@ public class ZoneInfo extends TimeZone {
                 midVal += offsets[(int)(val & OFFSET_MASK)]; // wall time
             }
             if (type == STANDARD_TIME) {
-                int dstIndex = (int)((val >>> DST_NSHIFT) & 0xfL);
+                int dstIndex = (int)Long.extractBits(val, DST_NSHIFT, 4);
                 if (dstIndex != 0) {
                     midVal -= offsets[dstIndex]; // make it standard time
                 }

@@ -333,8 +333,8 @@ public class BufferedPaints {
             return rgb;
         }
         int a = rgb >>> 24;
-        int r = (rgb >> 16) & 0xff;
-        int g = (rgb >>  8) & 0xff;
+        int r = Integer.extractBits(rgb, 16, 8);
+        int g = Integer.extractBits(rgb, 8, 8);
         int b = (rgb      ) & 0xff;
         if (linear) {
             r = convertSRGBtoLinearRGB(r);

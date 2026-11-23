@@ -853,7 +853,7 @@ public class ZipOutputStream extends DeflaterOutputStream implements ZipConstant
     private void writeShort(int v) throws IOException {
         OutputStream out = this.out;
         out.write((v >>> 0) & 0xff);
-        out.write((v >>> 8) & 0xff);
+        out.write(Integer.extractBits(v, 8, 8));
         written += 2;
     }
 
@@ -863,9 +863,9 @@ public class ZipOutputStream extends DeflaterOutputStream implements ZipConstant
     private void writeInt(long v) throws IOException {
         OutputStream out = this.out;
         out.write((int)((v >>>  0) & 0xff));
-        out.write((int)((v >>>  8) & 0xff));
-        out.write((int)((v >>> 16) & 0xff));
-        out.write((int)((v >>> 24) & 0xff));
+        out.write((int)Long.extractBits(v, 8, 8));
+        out.write((int)Long.extractBits(v, 16, 8));
+        out.write((int)Long.extractBits(v, 24, 8));
         written += 4;
     }
 
@@ -875,13 +875,13 @@ public class ZipOutputStream extends DeflaterOutputStream implements ZipConstant
     private void writeLong(long v) throws IOException {
         OutputStream out = this.out;
         out.write((int)((v >>>  0) & 0xff));
-        out.write((int)((v >>>  8) & 0xff));
-        out.write((int)((v >>> 16) & 0xff));
-        out.write((int)((v >>> 24) & 0xff));
-        out.write((int)((v >>> 32) & 0xff));
-        out.write((int)((v >>> 40) & 0xff));
-        out.write((int)((v >>> 48) & 0xff));
-        out.write((int)((v >>> 56) & 0xff));
+        out.write((int)Long.extractBits(v, 8, 8));
+        out.write((int)Long.extractBits(v, 16, 8));
+        out.write((int)Long.extractBits(v, 24, 8));
+        out.write((int)Long.extractBits(v, 32, 8));
+        out.write((int)Long.extractBits(v, 40, 8));
+        out.write((int)Long.extractBits(v, 48, 8));
+        out.write((int)Long.extractBits(v, 56, 8));
         written += 8;
     }
 

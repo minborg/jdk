@@ -158,7 +158,7 @@ public final class Des {
     public static byte[] long2octet(long input) {
         byte[] output = new byte[8];
         for (int i = 0; i < 8; i++) {
-            output[i] = (byte)((input >>> ((7 - i) * 8)) & 0xffL);
+            output[i] = (byte) Long.extractBits(input, (7 - i) * Byte.SIZE, Byte.SIZE);
         }
         return output;
     }
@@ -171,7 +171,7 @@ public final class Des {
         for (int i = 0; i < 8; i++) {
             if (i + offset < output.length) {
                 output[i + offset] =
-                    (byte)((input >>> ((7 - i) * 8)) & 0xffL);
+                    (byte) Long.extractBits(input, (7 - i) * Byte.SIZE, Byte.SIZE);
             }
         }
     }

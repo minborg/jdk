@@ -359,8 +359,8 @@ abstract class TexturePaintContext implements PaintContext {
                 // bytes extracted from rgb fit in 8 bits (0 => 255)
                 // byte * factor thus fits in 32 bits (0 => 255 * 2^24)
                 accumA += (((rgb >>> 24)       ) * factor);
-                accumR += (((rgb >>> 16) & 0xff) * factor);
-                accumG += (((rgb >>>  8) & 0xff) * factor);
+                accumR += (Integer.extractBits(rgb, 16, 8) * factor);
+                accumG += (Integer.extractBits(rgb, 8, 8) * factor);
                 accumB += (((rgb       ) & 0xff) * factor);
             }
         }

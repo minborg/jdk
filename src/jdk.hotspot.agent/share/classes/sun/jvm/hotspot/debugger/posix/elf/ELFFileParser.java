@@ -954,7 +954,7 @@ public class ELFFileParser {
         /** Signed byte utility functions used for converting from big-endian
          * (MSB) to little-endian (LSB). */
         short byteSwap(short arg) {
-          return (short) ((arg << 8) | ((arg >>> 8) & 0xFF));
+          return (short) ((arg << 8) | Integer.extractBits(arg, 8, 8));
         }
 
         int byteSwap(int arg) {

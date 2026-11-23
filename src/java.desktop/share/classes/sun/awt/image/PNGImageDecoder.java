@@ -416,12 +416,14 @@ public class PNGImageDecoder extends ImageDecoder
                                 break;
                             case 2:
                                 bPixels[col+rowOffset] =
-                                    (byte)((rowByteBuffer[spos>>2]>>((3-(spos&3))*2))&3);
+                                    (byte) Integer.extractBits(rowByteBuffer[spos >> 2],
+                                                              (3 - (spos & 3)) * 2, 2);
                                 spos++;
                                 break;
                             case 4:
                                 bPixels[col+rowOffset] =
-                                    (byte)((rowByteBuffer[spos>>1]>>((1-(spos&1))*4))&15);
+                                    (byte) Integer.extractBits(rowByteBuffer[spos >> 1],
+                                                              (1 - (spos & 1)) * 4, 4);
                                 spos++;
                                 break;
                             case 8: bPixels[col+rowOffset] = rowByteBuffer[spos++];

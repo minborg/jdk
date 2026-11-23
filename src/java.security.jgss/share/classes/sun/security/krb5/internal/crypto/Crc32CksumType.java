@@ -76,7 +76,7 @@ public class Crc32CksumType extends CksumType {
     public static byte[] int2quad(long input) {
         byte[] output = new byte[4];
         for (int i = 0; i < 4; i++) {
-            output[i] = (byte)((input >>> (i * 8)) & 0xff);
+            output[i] = (byte) Long.extractBits(input, i * Byte.SIZE, Byte.SIZE);
         }
         return output;
     }

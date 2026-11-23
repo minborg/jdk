@@ -92,7 +92,7 @@ class Header {
             short flags = (short) getShort(msg, pos);
             pos += 2;
             query = (flags & QR_BIT) == 0;
-            opcode = (flags & OPCODE_MASK) >>> OPCODE_SHIFT;
+            opcode = Integer.extractBits(flags, OPCODE_SHIFT, 4);
             authoritative = (flags & AA_BIT) != 0;
             truncated = (flags & TC_BIT) != 0;
             recursionDesired = (flags & RD_BIT) != 0;

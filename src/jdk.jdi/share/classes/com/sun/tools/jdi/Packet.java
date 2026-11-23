@@ -52,20 +52,20 @@ public class Packet extends Object {
     public byte[] toByteArray() {
         int len = data.length + 11;
         byte b[] = new byte[len];
-        b[0] = (byte)((len >>> 24) & 0xff);
-        b[1] = (byte)((len >>> 16) & 0xff);
-        b[2] = (byte)((len >>>  8) & 0xff);
+        b[0] = (byte)Integer.extractBits(len, 24, 8);
+        b[1] = (byte)Integer.extractBits(len, 16, 8);
+        b[2] = (byte)Integer.extractBits(len, 8, 8);
         b[3] = (byte)((len >>>  0) & 0xff);
-        b[4] = (byte)((id >>> 24) & 0xff);
-        b[5] = (byte)((id >>> 16) & 0xff);
-        b[6] = (byte)((id >>>  8) & 0xff);
+        b[4] = (byte)Integer.extractBits(id, 24, 8);
+        b[5] = (byte)Integer.extractBits(id, 16, 8);
+        b[6] = (byte)Integer.extractBits(id, 8, 8);
         b[7] = (byte)((id >>>  0) & 0xff);
         b[8] = (byte)flags;
         if ((flags & Packet.Reply) == 0) {
             b[9] = (byte)cmdSet;
             b[10] = (byte)cmd;
         } else {
-            b[9] = (byte)((errorCode >>>  8) & 0xff);
+            b[9] = (byte)Integer.extractBits(errorCode, 8, 8);
             b[10] = (byte)((errorCode >>>  0) & 0xff);
         }
         if (data.length > 0) {

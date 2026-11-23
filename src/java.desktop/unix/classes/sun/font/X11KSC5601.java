@@ -84,7 +84,7 @@ public final class X11KSC5601 extends Charset {
                         return CoderResult.unmappableForLength(1);
                     int ncode = encodeDouble(c);
                     if (ncode != 0 && c != '\u0000' ) {
-                        da[dp++] = (byte) ((ncode  >> 8) & 0x7f);
+                        da[dp++] = (byte) Integer.extractBits(ncode, 8, 7);
                         da[dp++] = (byte) (ncode & 0x7f);
                         sp++;
                         continue;

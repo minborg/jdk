@@ -357,8 +357,7 @@ public abstract class Trie
 
         if ((m_options_ & HEADER_OPTIONS_SHIFT_MASK_) !=
                                                     INDEX_STAGE_1_SHIFT_ ||
-            ((m_options_ >> HEADER_OPTIONS_INDEX_SHIFT_) &
-                                                HEADER_OPTIONS_SHIFT_MASK_)
+            Integer.extractBits(m_options_, HEADER_OPTIONS_INDEX_SHIFT_, 4)
                                                  != INDEX_STAGE_2_SHIFT_) {
             return false;
         }

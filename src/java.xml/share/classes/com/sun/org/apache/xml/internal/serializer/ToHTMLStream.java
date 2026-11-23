@@ -1209,11 +1209,11 @@ public final class ToHTMLStream extends ToStream
                         // "Note that the value of wwww from the high surrogate bit pattern
                         // is incremented to make the uuuuu bit pattern in the scalar value
                         // so the surrogate pair don't address the BMP."
-                        int wwww = ((highSurrogate & 0x03C0) >> 6);
+                        int wwww = Integer.extractBits(highSurrogate, 6, 4);
                         int uuuuu = wwww + 1;
 
                         // next 4 bits
-                        int zzzz = (highSurrogate & 0x003C) >> 2;
+                        int zzzz = Integer.extractBits(highSurrogate, 2, 4);
 
                         // low 2 bits
                         int yyyyyy = ((highSurrogate & 0x0003) << 4) & 0x30;
@@ -1225,7 +1225,7 @@ public final class ToHTMLStream extends ToStream
                         int lowSurrogate = ((int) ch) & 0x03FF;
 
                         // put the middle 4 bits into the bottom of yyyyyy (byte 3)
-                        yyyyyy = yyyyyy | ((lowSurrogate & 0x03C0) >> 6);
+                        yyyyyy = yyyyyy | Integer.extractBits(lowSurrogate, 6, 4);
 
                         // bottom 6 bits.
                         int xxxxxx = (lowSurrogate & 0x003F);
@@ -1248,7 +1248,7 @@ public final class ToHTMLStream extends ToStream
                     else
                     {
                         int high = (ch >> 12) | 0xE0; // top 4 bits
-                        int middle = ((ch & 0x0FC0) >> 6) | 0x80;
+                        int middle = Integer.extractBits(ch, 6, 6) | 0x80;
                         // middle 6 bits
                         int low = (ch & 0x3F) | 0x80;
                         // First 6 bits, + high bit

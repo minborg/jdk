@@ -253,7 +253,7 @@ public class BitArray {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         for (int i = 0; i < repn.length - 1; i++) {
-            out.write(NYBBLE[(repn[i] >> 4) & 0x0F], 0, 4);
+            out.write(NYBBLE[Integer.extractBits(repn[i], 4, 4)], 0, 4);
             out.write(NYBBLE[repn[i] & 0x0F], 0, 4);
 
             if (i % BYTES_PER_LINE == BYTES_PER_LINE - 1) {

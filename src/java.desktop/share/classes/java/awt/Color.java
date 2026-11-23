@@ -721,7 +721,7 @@ public class Color implements Paint, java.io.Serializable {
     public static Color decode(String nm) throws NumberFormatException {
         Integer intval = Integer.decode(nm);
         int i = intval.intValue();
-        return new Color((i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF);
+        return new Color(Integer.extractBits(i, 16, 8), Integer.extractBits(i, 8, 8), i & 0xFF);
     }
 
     /**
@@ -772,7 +772,7 @@ public class Color implements Paint, java.io.Serializable {
             return v;
         }
         int i = intval.intValue();
-        return new Color((i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF);
+        return new Color(Integer.extractBits(i, 16, 8), Integer.extractBits(i, 8, 8), i & 0xFF);
     }
 
     /**
@@ -799,7 +799,7 @@ public class Color implements Paint, java.io.Serializable {
     public static Color getColor(String nm, int v) {
         Integer intval = Integer.getInteger(nm);
         int i = (intval != null) ? intval.intValue() : v;
-        return new Color((i >> 16) & 0xFF, (i >> 8) & 0xFF, (i >> 0) & 0xFF);
+        return new Color(Integer.extractBits(i, 16, 8), Integer.extractBits(i, 8, 8), (i >> 0) & 0xFF);
     }
 
     /**

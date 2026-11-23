@@ -48,7 +48,7 @@ public class CCacheOutputStream extends KrbDataOutputStream implements FileCCach
     }
 
     public void writeHeader(PrincipalName p, int version) throws IOException {
-        write((version & 0xff00) >> 8);
+        write(Integer.extractBits(version, 8, 8));
         write(version & 0x00ff);
         p.writePrincipal(this);
     }

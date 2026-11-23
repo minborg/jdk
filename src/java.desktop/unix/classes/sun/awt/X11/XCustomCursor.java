@@ -90,8 +90,8 @@ public final class XCustomCursor extends X11CustomCursor {
             XColor fore_color = new XColor();
 
             fore_color.set_flags((byte) (XConstants.DoRed | XConstants.DoGreen | XConstants.DoBlue));
-            fore_color.set_red((short)(((fcolor >> 16) & 0x000000ff) << 8));
-            fore_color.set_green((short) (((fcolor >> 8) & 0x000000ff) << 8));
+            fore_color.set_red((short)(Integer.extractBits(fcolor, 16, 8) << 8));
+            fore_color.set_green((short) (Integer.extractBits(fcolor, 8, 8) << 8));
             fore_color.set_blue((short)(((fcolor >> 0) & 0x000000ff) << 8));
 
             XlibWrapper.XAllocColor(display,colormap,fore_color.pData);
@@ -100,8 +100,8 @@ public final class XCustomCursor extends X11CustomCursor {
             XColor back_color = new XColor();
             back_color.set_flags((byte) (XConstants.DoRed | XConstants.DoGreen | XConstants.DoBlue));
 
-            back_color.set_red((short) (((bcolor >> 16) & 0x000000ff) << 8));
-            back_color.set_green((short) (((bcolor >> 8) & 0x000000ff) << 8));
+            back_color.set_red((short) (Integer.extractBits(bcolor, 16, 8) << 8));
+            back_color.set_green((short) (Integer.extractBits(bcolor, 8, 8) << 8));
             back_color.set_blue((short) (((bcolor >> 0) & 0x000000ff) << 8));
 
             XlibWrapper.XAllocColor(display,colormap,back_color.pData);

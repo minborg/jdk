@@ -48,7 +48,7 @@ public final class UCompactIntArray implements Cloneable {
      * @return the mapped value of the given character
      */
     public int elementAt(int index) {
-        int plane = (index & PLANEMASK) >> PLANESHIFT;
+        int plane = Integer.extractBits(index, PLANESHIFT, 2);
         if (!planeTouched[plane]) {
             return defaultValue;
         }
@@ -68,7 +68,7 @@ public final class UCompactIntArray implements Cloneable {
         if (isCompact) {
             expand();
         }
-        int plane = (index & PLANEMASK) >> PLANESHIFT;
+        int plane = Integer.extractBits(index, PLANESHIFT, 2);
         if (!planeTouched[plane]) {
             initPlane(plane);
         }

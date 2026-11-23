@@ -484,8 +484,8 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
                         }
 
                         dstBuf.put(hsMemo.handshakeType);
-                        dstBuf.put((byte)((memoFragLen >> 16) & 0xFF));
-                        dstBuf.put((byte)((memoFragLen >> 8) & 0xFF));
+                        dstBuf.put((byte)Integer.extractBits(memoFragLen, 16, 8));
+                        dstBuf.put((byte)Integer.extractBits(memoFragLen, 8, 8));
                         dstBuf.put((byte)(memoFragLen & 0xFF));
 
                         remainingFragLen -= 4;

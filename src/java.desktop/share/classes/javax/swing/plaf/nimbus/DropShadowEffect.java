@@ -94,7 +94,7 @@ class DropShadowEffect extends ShadowEffect {
             srcRaster.getDataElements(0, y, w, 1, lineBuf);
             for (int x = 0; x < w; x++) {
                 int dx = x + tmpOffX;
-                tmpBuf1[offset + dx] = (byte) ((lineBuf[x] & 0xFF000000) >>> 24);
+                tmpBuf1[offset + dx] = (byte) Integer.extractBits(lineBuf[x], 24, 8);
             }
         }
         // blur

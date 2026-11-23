@@ -426,7 +426,7 @@ public class HTMLGenerator implements /* imports */ ClassConstants {
       buf.append('#');
       buf.append(Integer.toString(val & 0xFFFF));
       buf.append(" #");
-      buf.append(Integer.toString((val >> 16) & 0xFFFF));
+      buf.append(Integer.toString(Integer.extractBits(val, 16, 16)));
       return buf.toString();
    }
 

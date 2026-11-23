@@ -234,14 +234,14 @@ public class UTF8Reader
                 if ((b3 & 0xC0) != 0x80) {
                     invalidByte(4, 4, b3);
                 }
-                int uuuuu = ((b0 << 2) & 0x001C) | ((b1 >> 4) & 0x0003);
+                int uuuuu = ((b0 << 2) & 0x001C) | Integer.extractBits(b1, 4, 2);
                 if (uuuuu > 0x10) {
                     invalidSurrogate(uuuuu);
                 }
                 int wwww = uuuuu - 1;
                 int hs = 0xD800 |
                          ((wwww << 6) & 0x03C0) | ((b1 << 2) & 0x003C) |
-                         ((b2 >> 4) & 0x0003);
+                         Integer.extractBits(b2, 4, 2);
                 int ls = 0xDC00 | ((b2 << 6) & 0x03C0) | (b3 & 0x003F);
                 c = hs;
                 fSurrogate = ls;
@@ -541,7 +541,7 @@ public class UTF8Reader
                 }
 
                 // decode bytes into surrogate characters
-                int uuuuu = ((b0 << 2) & 0x001C) | ((b1 >> 4) & 0x0003);
+                int uuuuu = ((b0 << 2) & 0x001C) | Integer.extractBits(b1, 4, 2);
                 if (uuuuu > 0x10) {
                     invalidSurrogate(uuuuu);
                 }

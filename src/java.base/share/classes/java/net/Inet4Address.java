@@ -397,8 +397,8 @@ class Inet4Address extends InetAddress {
         // that have been Registered with IANA" by Bill Manning
         // draft-manning-dsua-06.txt
         int address = holder().getAddress();
-        return (((address >>> 24) & 0xFF) == 169)
-            && (((address >>> 16) & 0xFF) == 254);
+        return (Integer.extractBits(address, 24, 8) == 169)
+            && (Integer.extractBits(address, 16, 8) == 254);
     }
 
     /**
@@ -413,11 +413,11 @@ class Inet4Address extends InetAddress {
         // 172.16/12 prefix
         // 192.168/16 prefix
         int address = holder().getAddress();
-        return (((address >>> 24) & 0xFF) == 10)
-            || ((((address >>> 24) & 0xFF) == 172)
+        return (Integer.extractBits(address, 24, 8) == 10)
+            || ((Integer.extractBits(address, 24, 8) == 172)
                 && (((address >>> 16) & 0xF0) == 16))
-            || ((((address >>> 24) & 0xFF) == 192)
-                && (((address >>> 16) & 0xFF) == 168));
+            || ((Integer.extractBits(address, 24, 8) == 192)
+                && (Integer.extractBits(address, 16, 8) == 168));
     }
 
     /**
@@ -457,9 +457,9 @@ class Inet4Address extends InetAddress {
     public boolean isMCLinkLocal() {
         // 224.0.0/24 prefix and ttl == 1
         int address = holder().getAddress();
-        return (((address >>> 24) & 0xFF) == 224)
-            && (((address >>> 16) & 0xFF) == 0)
-            && (((address >>> 8) & 0xFF) == 0);
+        return (Integer.extractBits(address, 24, 8) == 224)
+            && (Integer.extractBits(address, 16, 8) == 0)
+            && (Integer.extractBits(address, 8, 8) == 0);
     }
 
     /**
@@ -472,8 +472,8 @@ class Inet4Address extends InetAddress {
     public boolean isMCSiteLocal() {
         // 239.255/16 prefix or ttl < 32
         int address = holder().getAddress();
-        return (((address >>> 24) & 0xFF) == 239)
-            && (((address >>> 16) & 0xFF) == 255);
+        return (Integer.extractBits(address, 24, 8) == 239)
+            && (Integer.extractBits(address, 16, 8) == 255);
     }
 
     /**
@@ -487,9 +487,9 @@ class Inet4Address extends InetAddress {
     public boolean isMCOrgLocal() {
         // 239.192 - 239.195
         int address = holder().getAddress();
-        return (((address >>> 24) & 0xFF) == 239)
-            && (((address >>> 16) & 0xFF) >= 192)
-            && (((address >>> 16) & 0xFF) <= 195);
+        return (Integer.extractBits(address, 24, 8) == 239)
+            && (Integer.extractBits(address, 16, 8) >= 192)
+            && (Integer.extractBits(address, 16, 8) <= 195);
     }
 
     /**
@@ -503,9 +503,9 @@ class Inet4Address extends InetAddress {
         int address = holder().getAddress();
         byte[] addr = new byte[INADDRSZ];
 
-        addr[0] = (byte) ((address >>> 24) & 0xFF);
-        addr[1] = (byte) ((address >>> 16) & 0xFF);
-        addr[2] = (byte) ((address >>> 8) & 0xFF);
+        addr[0] = (byte) Integer.extractBits(address, 24, 8);
+        addr[1] = (byte) Integer.extractBits(address, 16, 8);
+        addr[2] = (byte) Integer.extractBits(address, 8, 8);
         addr[3] = (byte) (address & 0xFF);
         return addr;
     }

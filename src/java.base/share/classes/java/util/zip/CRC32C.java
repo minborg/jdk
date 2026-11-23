@@ -254,21 +254,21 @@ public final class CRC32C implements Checksum {
                 crc ^= firstHalf;
                 if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
                     crc = byteTable7[crc & 0xFF]
-                            ^ byteTable6[(crc >>> 8) & 0xFF]
-                            ^ byteTable5[(crc >>> 16) & 0xFF]
+                            ^ byteTable6[Integer.extractBits(crc, 8, 8)]
+                            ^ byteTable5[Integer.extractBits(crc, 16, 8)]
                             ^ byteTable4[crc >>> 24]
                             ^ byteTable3[secondHalf & 0xFF]
-                            ^ byteTable2[(secondHalf >>> 8) & 0xFF]
-                            ^ byteTable1[(secondHalf >>> 16) & 0xFF]
+                            ^ byteTable2[Integer.extractBits(secondHalf, 8, 8)]
+                            ^ byteTable1[Integer.extractBits(secondHalf, 16, 8)]
                             ^ byteTable0[secondHalf >>> 24];
                 } else { // ByteOrder.BIG_ENDIAN
                     crc = byteTable0[secondHalf & 0xFF]
-                            ^ byteTable1[(secondHalf >>> 8) & 0xFF]
-                            ^ byteTable2[(secondHalf >>> 16) & 0xFF]
+                            ^ byteTable1[Integer.extractBits(secondHalf, 8, 8)]
+                            ^ byteTable2[Integer.extractBits(secondHalf, 16, 8)]
                             ^ byteTable3[secondHalf >>> 24]
                             ^ byteTable4[crc & 0xFF]
-                            ^ byteTable5[(crc >>> 8) & 0xFF]
-                            ^ byteTable6[(crc >>> 16) & 0xFF]
+                            ^ byteTable5[Integer.extractBits(crc, 8, 8)]
+                            ^ byteTable6[Integer.extractBits(crc, 16, 8)]
                             ^ byteTable7[crc >>> 24];
                 }
             }
@@ -316,21 +316,21 @@ public final class CRC32C implements Checksum {
                 crc ^= firstHalf;
                 if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
                     crc = byteTable7[crc & 0xFF]
-                            ^ byteTable6[(crc >>> 8) & 0xFF]
-                            ^ byteTable5[(crc >>> 16) & 0xFF]
+                            ^ byteTable6[Integer.extractBits(crc, 8, 8)]
+                            ^ byteTable5[Integer.extractBits(crc, 16, 8)]
                             ^ byteTable4[crc >>> 24]
                             ^ byteTable3[secondHalf & 0xFF]
-                            ^ byteTable2[(secondHalf >>> 8) & 0xFF]
-                            ^ byteTable1[(secondHalf >>> 16) & 0xFF]
+                            ^ byteTable2[Integer.extractBits(secondHalf, 8, 8)]
+                            ^ byteTable1[Integer.extractBits(secondHalf, 16, 8)]
                             ^ byteTable0[secondHalf >>> 24];
                 } else { // ByteOrder.BIG_ENDIAN
                     crc = byteTable0[secondHalf & 0xFF]
-                            ^ byteTable1[(secondHalf >>> 8) & 0xFF]
-                            ^ byteTable2[(secondHalf >>> 16) & 0xFF]
+                            ^ byteTable1[Integer.extractBits(secondHalf, 8, 8)]
+                            ^ byteTable2[Integer.extractBits(secondHalf, 16, 8)]
                             ^ byteTable3[secondHalf >>> 24]
                             ^ byteTable4[crc & 0xFF]
-                            ^ byteTable5[(crc >>> 8) & 0xFF]
-                            ^ byteTable6[(crc >>> 16) & 0xFF]
+                            ^ byteTable5[Integer.extractBits(crc, 8, 8)]
+                            ^ byteTable6[Integer.extractBits(crc, 16, 8)]
                             ^ byteTable7[crc >>> 24];
                 }
             }

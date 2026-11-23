@@ -118,7 +118,7 @@ public final class BMPSet {
             return ((table7FF[c & 0x3f] & (1 << (c >> 6))) != 0);
         } else if (c < 0xd800 || (c >= 0xe000 && c <= 0xffff)) {
             int lead = c >> 12;
-            int twoBits = (bmpBlockBits[(c >> 6) & 0x3f] >> lead) & 0x10001;
+            int twoBits = (bmpBlockBits[Integer.extractBits(c, 6, 6)] >> lead) & 0x10001;
             if (twoBits <= 1) {
                 // All 64 code points with the same bits 15..6
                 // are either in the set or not.
@@ -170,7 +170,7 @@ public final class BMPSet {
                 } else if (c < 0xd800 ||
                            c >= 0xdc00 || (i + 1) == limit || (c2 = s.charAt(i + 1)) < 0xdc00 || c2 >= 0xe000) {
                     int lead = c >> 12;
-                    int twoBits = (bmpBlockBits[(c >> 6) & 0x3f] >> lead) & 0x10001;
+                    int twoBits = (bmpBlockBits[Integer.extractBits(c, 6, 6)] >> lead) & 0x10001;
                     if (twoBits <= 1) {
                         // All 64 code points with the same bits 15..6
                         // are either in the set or not.
@@ -209,7 +209,7 @@ public final class BMPSet {
                 } else if (c < 0xd800 ||
                            c >= 0xdc00 || (i + 1) == limit || (c2 = s.charAt(i + 1)) < 0xdc00 || c2 >= 0xe000) {
                     int lead = c >> 12;
-                    int twoBits = (bmpBlockBits[(c >> 6) & 0x3f] >> lead) & 0x10001;
+                    int twoBits = (bmpBlockBits[Integer.extractBits(c, 6, 6)] >> lead) & 0x10001;
                     if (twoBits <= 1) {
                         // All 64 code points with the same bits 15..6
                         // are either in the set or not.
@@ -266,7 +266,7 @@ public final class BMPSet {
                 } else if (c < 0xd800 ||
                            c < 0xdc00 || 0 == limit || (c2 = s.charAt(limit - 1)) < 0xd800 || c2 >= 0xdc00) {
                     int lead = c >> 12;
-                    int twoBits = (bmpBlockBits[(c >> 6) & 0x3f] >> lead) & 0x10001;
+                    int twoBits = (bmpBlockBits[Integer.extractBits(c, 6, 6)] >> lead) & 0x10001;
                     if (twoBits <= 1) {
                         // All 64 code points with the same bits 15..6
                         // are either in the set or not.
@@ -306,7 +306,7 @@ public final class BMPSet {
                 } else if (c < 0xd800 ||
                            c < 0xdc00 || 0 == limit || (c2 = s.charAt(limit - 1)) < 0xd800 || c2 >= 0xdc00) {
                     int lead = c >> 12;
-                    int twoBits = (bmpBlockBits[(c >> 6) & 0x3f] >> lead) & 0x10001;
+                    int twoBits = (bmpBlockBits[Integer.extractBits(c, 6, 6)] >> lead) & 0x10001;
                     if (twoBits <= 1) {
                         // All 64 code points with the same bits 15..6
                         // are either in the set or not.

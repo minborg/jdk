@@ -127,11 +127,11 @@ public final class ParseUtil {
                         retCC[retLen++] = c;
                     }
                 } else if (c > 0x07FF) {
-                    retLen = escape(retCC, (char)(0xE0 | ((c >> 12) & 0x0F)), retLen);
-                    retLen = escape(retCC, (char)(0x80 | ((c >>  6) & 0x3F)), retLen);
+                    retLen = escape(retCC, (char)(0xE0 | Integer.extractBits(c, 12, 4)), retLen);
+                    retLen = escape(retCC, (char)(0x80 | Integer.extractBits(c, 6, 6)), retLen);
                     retLen = escape(retCC, (char)(0x80 | ((c >>  0) & 0x3F)), retLen);
                 } else {
-                    retLen = escape(retCC, (char)(0xC0 | ((c >>  6) & 0x1F)), retLen);
+                    retLen = escape(retCC, (char)(0xC0 | Integer.extractBits(c, 6, 5)), retLen);
                     retLen = escape(retCC, (char)(0x80 | ((c >>  0) & 0x3F)), retLen);
                 }
             }
@@ -156,7 +156,7 @@ public final class ParseUtil {
      */
     private static int escape(char[] cc, char c, int index) {
         cc[index++] = '%';
-        cc[index++] = Character.forDigit((c >> 4) & 0xF, 16);
+        cc[index++] = Character.forDigit(Integer.extractBits(c, 4, 4), 16);
         cc[index++] = Character.forDigit(c & 0xF, 16);
         return index;
     }

@@ -691,7 +691,7 @@ public final class ZoneInfoFile {
                 Checksum sum = new Checksum();
                 for (i = 0; i < transitions.length; i++) {
                     long val = transitions[i];
-                    int dst = (int)((val >>> DST_NSHIFT) & 0xfL);
+                    int dst = (int)Long.extractBits(val, DST_NSHIFT, 4);
                     int index = (int)(val & OFFSET_MASK);
                     long second = (val >> TRANSITION_NSHIFT);
                     // javazic uses "index of the offset in offsets",
@@ -856,17 +856,17 @@ public final class ZoneInfoFile {
 
         ZoneOffsetTransitionRule(DataInput in) throws IOException {
             int data = in.readInt();
-            int dowByte = (data & (7 << 19)) >>> 19;
-            int timeByte = (data & (31 << 14)) >>> 14;
-            int stdByte = (data & (255 << 4)) >>> 4;
-            int beforeByte = (data & (3 << 2)) >>> 2;
+            int dowByte = Integer.extractBits(data, 19, 3);
+            int timeByte = Integer.extractBits(data, 14, 5);
+            int stdByte = Integer.extractBits(data, 4, 8);
+            int beforeByte = Integer.extractBits(data, 2, 2);
             int afterByte = (data & 3);
 
             this.month = data >>> 28;
-            this.dom = (byte)(((data & (63 << 22)) >>> 22) - 32);
+            this.dom = (byte)(Integer.extractBits(data, 22, 6) - 32);
             this.dow = dowByte == 0 ? -1 : dowByte;
             this.secondOfDay = timeByte == 31 ? in.readInt() : timeByte * 3600;
-            this.timeDefinition = (data & (3 << 12)) >>> 12;
+            this.timeDefinition = Integer.extractBits(data, 12, 2);
             this.standardOffset = stdByte == 255 ? in.readInt() : (stdByte - 128) * 900;
             this.offsetBefore = beforeByte == 3 ? in.readInt() : standardOffset + beforeByte * 1800;
             this.offsetAfter = afterByte == 3 ? in.readInt() : standardOffset + afterByte * 1800;

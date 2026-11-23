@@ -362,7 +362,7 @@ public class JColorChooser extends JComponent implements Accessible {
      *          above that specify the Red value.
      */
     public void setColor(int c) {
-        setColor((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF);
+        setColor(Integer.extractBits(c, 16, 8), Integer.extractBits(c, 8, 8), c & 0xFF);
     }
 
     /**

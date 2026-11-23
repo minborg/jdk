@@ -333,8 +333,8 @@ final class LCMSImageLayout {
      */
     private static int getBytesPerPixel(int pixelType) {
         int bytesPerSample = (0x7 & pixelType);
-        int colorSamplesPerPixel = 0xF & (pixelType >> 3);
-        int extraSamplesPerPixel = 0x7 & (pixelType >> 7);
+        int colorSamplesPerPixel = Integer.extractBits(pixelType, 3, 4);
+        int extraSamplesPerPixel = Integer.extractBits(pixelType, 7, 3);
 
         return bytesPerSample * (colorSamplesPerPixel + extraSamplesPerPixel);
     }

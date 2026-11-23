@@ -308,9 +308,9 @@ abstract class DigestMD5Base extends AbstractSaslImpl {
             a = randomData[i];
             b = randomData[i+1];
             c = randomData[i+2];
-            nonce[j++] = (byte)(pem_array[(a >>> 2) & 0x3F]);
-            nonce[j++] = (byte)(pem_array[((a << 4) & 0x30) + ((b >>> 4) & 0xf)]);
-            nonce[j++] = (byte)(pem_array[((b << 2) & 0x3c) + ((c >>> 6) & 0x3)]);
+            nonce[j++] = (byte)(pem_array[Integer.extractBits(a, 2, 6)]);
+            nonce[j++] = (byte)(pem_array[((a << 4) & 0x30) + Integer.extractBits(b, 4, 4)]);
+            nonce[j++] = (byte)(pem_array[((b << 2) & 0x3c) + Integer.extractBits(c, 6, 2)]);
             nonce[j++] = (byte)(pem_array[c & 0x3F]);
         }
 

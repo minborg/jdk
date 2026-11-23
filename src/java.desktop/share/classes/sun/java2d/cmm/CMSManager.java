@@ -125,9 +125,9 @@ public final class CMSManager {
 
         private static String signatureToString(int sig) {
             return String.format("%c%c%c%c",
-                                 (char)(0xff & (sig >> 24)),
-                                 (char)(0xff & (sig >> 16)),
-                                 (char)(0xff & (sig >>  8)),
+                                 (char)Integer.extractBits(sig, 24, 8),
+                                 (char)Integer.extractBits(sig, 16, 8),
+                                 (char)Integer.extractBits(sig, 8, 8),
                                  (char)(0xff & (sig      )));
         }
     }

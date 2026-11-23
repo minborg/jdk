@@ -97,16 +97,16 @@ public abstract class X11CustomCursor extends CustomCursor {
         java.util.Arrays.sort(cols, 0, numColors);
 
         if (numColors > 0) fc = cols[0].color;
-        int fcr = (fc >> 16) & 0x000000ff;
-        int fcg = (fc >>  8) & 0x000000ff;
+        int fcr = Integer.extractBits(fc, 16, 8);
+        int fcg = Integer.extractBits(fc, 8, 8);
         int fcb = (fc >>  0) & 0x000000ff;
 
         int rdis = 0;
         int gdis = 0;
         int bdis = 0;
         for (int j = 1; j < numColors; j++) {
-            int rr = (cols[j].color >> 16) & 0x000000ff;
-            int gg = (cols[j].color >>  8) & 0x000000ff;
+            int rr = Integer.extractBits(cols[j].color, 16, 8);
+            int gg = Integer.extractBits(cols[j].color, 8, 8);
             int bb = (cols[j].color >>  0) & 0x000000ff;
             rdis = rdis + cols[j].count * rr;
             gdis = gdis + cols[j].count * gg;
@@ -123,8 +123,8 @@ public abstract class X11CustomCursor extends CustomCursor {
         // System.out.println(" rdis is "+ rdis);
 
         for (int j = 1; j < numColors; j++) {
-            int rr = (cols[j].color >> 16) & 0x000000ff;
-            int gg = (cols[j].color >>  8) & 0x000000ff;
+            int rr = Integer.extractBits(cols[j].color, 16, 8);
+            int gg = Integer.extractBits(cols[j].color, 8, 8);
             int bb = (cols[j].color >>  0) & 0x000000ff;
 
             if ( (rr-fcr)*(rr-fcr) + (gg-fcg)*(gg-fcg) + (bb-fcb)*(bb-fcb)
@@ -133,8 +133,8 @@ public abstract class X11CustomCursor extends CustomCursor {
                 break;
             }
         }
-        int bcr = (bc >> 16) & 0x000000ff;
-        int bcg = (bc >>  8) & 0x000000ff;
+        int bcr = Integer.extractBits(bc, 16, 8);
+        int bcg = Integer.extractBits(bc, 8, 8);
         int bcb = (bc >>  0) & 0x000000ff;
 
 
@@ -159,8 +159,8 @@ public abstract class X11CustomCursor extends CustomCursor {
                     andMask[ibyte] |= omask;
                 }
 
-                int pr = (pixels[ip] >> 16) & 0x000000ff;
-                int pg = (pixels[ip] >>  8) & 0x000000ff;
+                int pr = Integer.extractBits(pixels[ip], 16, 8);
+                int pg = Integer.extractBits(pixels[ip], 8, 8);
                 int pb = (pixels[ip] >>  0) & 0x000000ff;
                 if ( (pr-fcr)*(pr-fcr) + (pg-fcg)*(pg-fcg) + (pb-fcb)*(pb-fcb)
                   <= (pr-bcr)*(pr-bcr) + (pg-bcg)*(pg-bcg) + (pb-bcb)*(pb-bcb) ) {

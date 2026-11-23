@@ -204,9 +204,9 @@ public class Util {
                         byte[] message = exc.getMessage().getBytes(UTF_8);
                         inTarget.write(TAG_EXCEPTION);
                         inTarget.write((message.length >>  0) & 0xFF);
-                        inTarget.write((message.length >>  8) & 0xFF);
-                        inTarget.write((message.length >> 16) & 0xFF);
-                        inTarget.write((message.length >> 24) & 0xFF);
+                        inTarget.write(Integer.extractBits(message.length, 8, 8));
+                        inTarget.write(Integer.extractBits(message.length, 16, 8));
+                        inTarget.write(Integer.extractBits(message.length, 24, 8));
                         inTarget.write(message);
                     }
                 }

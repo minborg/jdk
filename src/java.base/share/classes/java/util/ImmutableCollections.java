@@ -94,7 +94,7 @@ class ImmutableCollections {
         if (seed == 0) {
           seed = System.nanoTime();
         }
-        SALT32L = (int)((color * seed) >> 16) & 0xFFFF_FFFFL;
+        SALT32L = Long.extractBits(color * seed, 16, 32);
         // use the lowest bit to determine if we should reverse iteration
         REVERSE = (SALT32L & 1) == 0;
     }

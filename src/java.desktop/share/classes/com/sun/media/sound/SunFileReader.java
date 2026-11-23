@@ -176,7 +176,7 @@ abstract class SunFileReader extends AudioFileReader {
         b1 = ( i & 0xFF ) << 24 ;
         b2 = ( i & 0xFF00 ) << 8;
         b3 = ( i & 0xFF0000 ) >> 8;
-        b4 = ( i & 0xFF000000 ) >>> 24;
+        b4 = Integer.extractBits(i, 24, 8);
 
         i = ( b1 | b2 | b3 | b4 );
 
@@ -195,7 +195,7 @@ abstract class SunFileReader extends AudioFileReader {
         b1 = ( i & 0xFF ) << 24 ;
         b2 = ( i & 0xFF00 ) << 8;
         b3 = ( i & 0xFF0000 ) >> 8;
-        b4 = ( i & 0xFF000000 ) >>> 24;
+        b4 = Integer.extractBits(i, 24, 8);
 
         i = ( b1 | b2 | b3 | b4 );
 
@@ -216,7 +216,7 @@ abstract class SunFileReader extends AudioFileReader {
         s = dis.readShort();
 
         high = (short)(( s & 0xFF ) << 8) ;
-        low = (short)(( s & 0xFF00 ) >>> 8);
+        low = (short)Integer.extractBits(s, 8, 8);
 
         s = (short)( high | low );
 
@@ -233,7 +233,7 @@ abstract class SunFileReader extends AudioFileReader {
         short high, low;
 
         high = (short)(( i & 0xFF ) << 8) ;
-        low = (short)(( i & 0xFF00 ) >>> 8);
+        low = (short)Integer.extractBits(i, 8, 8);
 
         i = (short)( high | low );
 

@@ -1224,7 +1224,7 @@ public class BMPImageReader extends ImageReader implements BMPConstants {
                 iis.read(buf, 0, lineLength);
                 for (int i = 0; i < destinationRegion.width; i++) {
                     //get the bit and assign to the data buffer of the raster
-                    int v = (buf[srcPos[i]] >> srcOff[i]) & 0x0F;
+                    int v = Integer.extractBits(buf[srcPos[i]], srcOff[i], 4);
                     bdata[k + destPos[i]] |= v << destOff[i];
                 }
 
@@ -1845,7 +1845,7 @@ public class BMPImageReader extends ImageReader implements BMPConstants {
                     // exceed the source image size
                     for (int i = 0; (i < end) && (count < imSize); i++) {
                         readByte = (byte)(((i & 1) == 0) ?
-                                        (values[count] & 0xf0) >> 4 :
+                                        Integer.extractBits(values[count], 4, 4) :
                                         (values[count++] & 0x0f));
                         // Ensure to check if scanline index-l, does not
                         // exceed the scanline buffer size (width of image)
@@ -1872,7 +1872,7 @@ public class BMPImageReader extends ImageReader implements BMPConstants {
                 // Ensure to check if the source index-count, does not
                 // exceed the source image size
                 if (count < imSize) {
-                    int[] alternate = { (values[count] & 0xf0) >> 4,
+                    int[] alternate = { Integer.extractBits(values[count], 4, 4),
                                         values[count] & 0x0f };
                     for (int i=0; (i < value) && (l < width); i++) {
                         val[l++] = (byte)alternate[i & 1];

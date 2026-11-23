@@ -12460,7 +12460,7 @@ public final /*value*/ class Character
      */
     @IntrinsicCandidate
     public static char reverseBytes(char ch) {
-        return (char) (((ch & 0xFF00) >> 8) | (ch << 8));
+        return (char) (Integer.extractBits(ch, 8, 8) | (ch << 8));
     }
 
     /**

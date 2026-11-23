@@ -171,14 +171,14 @@ public class PixelConverter {
         public int rgbToPixel(int rgb, ColorModel cm) {
             return (((rgb >> (16 + 3 - 11)) & 0xf800) |
                     ((rgb >> ( 8 + 2 -  5)) & 0x07e0) |
-                    ((rgb >> ( 0 + 3 -  0)) & 0x001f));
+                    Integer.extractBits(rgb, 3, 5));
         }
 
         public int pixelToRgb(int pixel, ColorModel cm) {
             int r, g, b;
-            r = (pixel >> 11) & 0x1f;
+            r = Integer.extractBits(pixel, 11, 5);
             r = (r << 3) | (r >> 2);
-            g = (pixel >>  5) & 0x3f;
+            g = Integer.extractBits(pixel, 5, 6);
             g = (g << 2) | (g >> 4);
             b = (pixel      ) & 0x1f;
             b = (b << 3) | (b >> 2);
@@ -198,11 +198,11 @@ public class PixelConverter {
 
         public int pixelToRgb(int pixel, ColorModel cm) {
             int r, g, b;
-            r = (pixel >> 11) & 0x1f;
+            r = Integer.extractBits(pixel, 11, 5);
             r = (r << 3) | (r >> 2);
-            g = (pixel >>  6) & 0x1f;
+            g = Integer.extractBits(pixel, 6, 5);
             g = (g << 3) | (g >> 2);
-            b = (pixel >>  1) & 0x1f;
+            b = Integer.extractBits(pixel, 1, 5);
             b = (b << 3) | (b >> 2);
             return (0xff000000 | (r << 16) | (g << 8) | (b));
         }
@@ -215,14 +215,14 @@ public class PixelConverter {
         public int rgbToPixel(int rgb, ColorModel cm) {
             return (((rgb >> (16 + 3 - 10)) & 0x7c00) |
                     ((rgb >> ( 8 + 3 -  5)) & 0x03e0) |
-                    ((rgb >> ( 0 + 3 -  0)) & 0x001f));
+                    Integer.extractBits(rgb, 3, 5));
         }
 
         public int pixelToRgb(int pixel, ColorModel cm) {
             int r, g, b;
-            r = (pixel >> 10) & 0x1f;
+            r = Integer.extractBits(pixel, 10, 5);
             r = (r << 3) | (r >> 2);
-            g = (pixel >>  5) & 0x1f;
+            g = Integer.extractBits(pixel, 5, 5);
             g = (g << 3) | (g >> 2);
             b = (pixel      ) & 0x1f;
             b = (b << 3) | (b >> 2);
@@ -242,7 +242,7 @@ public class PixelConverter {
             int a = (rgb >> 16) & 0xf000;
             int r = (rgb >> 12) & 0x0f00;
             int g = (rgb >>  8) & 0x00f0;
-            int b = (rgb >>  4) & 0x000f;
+            int b = Integer.extractBits(rgb, 4, 4);
 
             return (a | r | g | b);
         }
@@ -271,14 +271,14 @@ public class PixelConverter {
         public int rgbToPixel(int rgb, ColorModel cm) {
             return (((rgb & 0xff) << 16) |
                     (rgb & 0xff00) |
-                    ((rgb >> 16) & 0xff));
+                    Integer.extractBits(rgb, 16, 8));
         }
 
         public int pixelToRgb(int pixel, ColorModel cm) {
             return (0xff000000 |
                     ((pixel & 0xff) << 16) |
                     (pixel & 0xff00) |
-                    ((pixel >> 16) & 0xff));
+                    Integer.extractBits(pixel, 16, 8));
         }
     }
     public static class Bgrx extends PixelConverter {
@@ -326,8 +326,8 @@ public class PixelConverter {
                 return ((rgb << 8) | (rgb >>> 24));
             }
             int a = rgb >>> 24;
-            int r = (rgb >> 16) & 0xff;
-            int g = (rgb >>  8) & 0xff;
+            int r = Integer.extractBits(rgb, 16, 8);
+            int g = Integer.extractBits(rgb, 8, 8);
             int b = (rgb      ) & 0xff;
             int a2 = a + (a >> 7);
             r = (r * a2) >> 8;
@@ -342,8 +342,8 @@ public class PixelConverter {
                 return ((pixel >>> 8) | (pixel << 24));
             }
             int r = pixel >>> 24;
-            int g = (pixel >> 16) & 0xff;
-            int b = (pixel >>  8) & 0xff;
+            int g = Integer.extractBits(pixel, 16, 8);
+            int b = Integer.extractBits(pixel, 8, 8);
             r = ((r << 8) - r) / a;
             g = ((g << 8) - g) / a;
             b = ((b << 8) - b) / a;
@@ -362,8 +362,8 @@ public class PixelConverter {
                 return rgb;
             }
             int a = rgb >>> 24;
-            int r = (rgb >> 16) & 0xff;
-            int g = (rgb >>  8) & 0xff;
+            int r = Integer.extractBits(rgb, 16, 8);
+            int g = Integer.extractBits(rgb, 8, 8);
             int b = (rgb      ) & 0xff;
             int a2 = a + (a >> 7);
             r = (r * a2) >> 8;
@@ -377,8 +377,8 @@ public class PixelConverter {
             if ((a == 0xff) || (a == 0)) {
                 return pixel;
             }
-            int r = (pixel >> 16) & 0xff;
-            int g = (pixel >>  8) & 0xff;
+            int r = Integer.extractBits(pixel, 16, 8);
+            int g = Integer.extractBits(pixel, 8, 8);
             int b = (pixel      ) & 0xff;
             r = ((r << 8) - r) / a;
             g = ((g << 8) - g) / a;
@@ -408,8 +408,8 @@ public class PixelConverter {
         private ByteGray() {}
 
         public int rgbToPixel(int rgb, ColorModel cm) {
-            int red = (rgb >> 16) & 0xff;
-            int grn = (rgb >>  8) & 0xff;
+            int red = Integer.extractBits(rgb, 16, 8);
+            int grn = Integer.extractBits(rgb, 8, 8);
             int blu = (rgb      ) & 0xff;
             return (int) (red * RED_MULT +
                           grn * GRN_MULT +
@@ -431,8 +431,8 @@ public class PixelConverter {
         private UshortGray() {}
 
         public int rgbToPixel(int rgb, ColorModel cm) {
-            int red = (rgb >> 16) & 0xff;
-            int grn = (rgb >>  8) & 0xff;
+            int red = Integer.extractBits(rgb, 16, 8);
+            int grn = Integer.extractBits(rgb, 8, 8);
             int blu = (rgb      ) & 0xff;
             return (int) (red * USHORT_RED_MULT +
                           grn * USHORT_GRN_MULT +

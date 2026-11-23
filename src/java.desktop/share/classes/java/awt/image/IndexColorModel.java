@@ -556,8 +556,8 @@ public class IndexColorModel extends ColorModel {
                 continue;
             }
             int cmaprgb = cmap[j];
-            int r = (cmaprgb >> 16) & 0xff;
-            int g = (cmaprgb >>  8) & 0xff;
+            int r = Integer.extractBits(cmaprgb, 16, 8);
+            int g = Integer.extractBits(cmaprgb, 8, 8);
             int b = (cmaprgb      ) & 0xff;
             allgray = allgray && (r == g) && (g == b);
             if (hasalpha) {
@@ -779,7 +779,7 @@ public class IndexColorModel extends ColorModel {
      * @return the value of the red color component for the specified pixel
      */
     public final int getRed(int pixel) {
-        return (rgb[pixel & pixel_mask] >> 16) & 0xff;
+        return Integer.extractBits(rgb[pixel & pixel_mask], 16, 8);
     }
 
     /**
@@ -794,7 +794,7 @@ public class IndexColorModel extends ColorModel {
      * @return the value of the green color component for the specified pixel
      */
     public final int getGreen(int pixel) {
-        return (rgb[pixel & pixel_mask] >> 8) & 0xff;
+        return Integer.extractBits(rgb[pixel & pixel_mask], 8, 8);
     }
 
     /**
@@ -822,7 +822,7 @@ public class IndexColorModel extends ColorModel {
      * @return the value of the alpha component for the specified pixel
      */
     public final int getAlpha(int pixel) {
-        return (rgb[pixel & pixel_mask] >> 24) & 0xff;
+        return Integer.extractBits(rgb[pixel & pixel_mask], 24, 8);
     }
 
     /**
@@ -878,8 +878,8 @@ public class IndexColorModel extends ColorModel {
      * @see SampleModel#setDataElements
      */
     public synchronized Object getDataElements(int rgb, Object pixel) {
-        int red = (rgb>>16) & 0xff;
-        int green = (rgb>>8) & 0xff;
+        int red = Integer.extractBits(rgb, 16, 8);
+        int green = Integer.extractBits(rgb, 8, 8);
         int blue  = rgb & 0xff;
         int alpha = (rgb>>>24);
         int pix = 0;
@@ -963,10 +963,10 @@ public class IndexColorModel extends ColorModel {
                         continue;
                     }
 
-                    int tmp = ((lutrgb >> 16) & 0xff) - red;
+                    int tmp = Integer.extractBits(lutrgb, 16, 8) - red;
                     int currentError = tmp*tmp;
                     if (currentError < smallestError) {
-                        tmp = ((lutrgb >> 8) & 0xff) - green;
+                        tmp = Integer.extractBits(lutrgb, 8, 8) - green;
                         currentError += tmp * tmp;
                         if (currentError < smallestError) {
                             tmp = (lutrgb & 0xff) - blue;
@@ -1003,10 +1003,10 @@ public class IndexColorModel extends ColorModel {
                     break;
                 }
 
-                int tmp = ((lutrgb >> 16) & 0xff) - red;
+                int tmp = Integer.extractBits(lutrgb, 16, 8) - red;
                 int currentError = tmp*tmp;
                 if (currentError < smallestError) {
-                    tmp = ((lutrgb >> 8) & 0xff) - green;
+                    tmp = Integer.extractBits(lutrgb, 8, 8) - green;
                     currentError += tmp * tmp;
                     if (currentError < smallestError) {
                         tmp = (lutrgb & 0xff) - blue;

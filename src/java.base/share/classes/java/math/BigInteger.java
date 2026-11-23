@@ -4594,8 +4594,7 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
             }
         }
 
-        twiceSignifFloor = ((highBits & LONG_MASK) << 32)
-                | (lowBits & LONG_MASK);
+        twiceSignifFloor = Long.replaceBits(lowBits, 32, 32, highBits);
 
         long signifFloor = twiceSignifFloor >> 1;
         signifFloor &= DoubleConsts.SIGNIF_BIT_MASK; // remove the implied bit

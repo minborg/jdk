@@ -422,7 +422,7 @@ public final class UUID implements java.io.Serializable, Comparable<UUID> {
         }
 
         return (mostSigBits & 0x0FFFL) << 48
-             | ((mostSigBits >> 16) & 0x0FFFFL) << 32
+             | Long.extractBits(mostSigBits, 16, 16) << 32
              | mostSigBits >>> 32;
     }
 
@@ -447,7 +447,7 @@ public final class UUID implements java.io.Serializable, Comparable<UUID> {
             throw new UnsupportedOperationException("Not a time-based UUID");
         }
 
-        return (int)((leastSigBits & 0x3FFF000000000000L) >>> 48);
+        return (int)Long.extractBits(leastSigBits, 48, 14);
     }
 
     /**

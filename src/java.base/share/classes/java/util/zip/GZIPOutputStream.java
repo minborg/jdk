@@ -223,7 +223,7 @@ public class GZIPOutputStream extends DeflaterOutputStream {
      */
     private void writeInt(int i, byte[] buf, int offset) throws IOException {
         writeShort(i & 0xffff, buf, offset);
-        writeShort((i >> 16) & 0xffff, buf, offset + 2);
+        writeShort(Integer.extractBits(i, 16, 16), buf, offset + 2);
     }
 
     /*
@@ -232,6 +232,6 @@ public class GZIPOutputStream extends DeflaterOutputStream {
      */
     private void writeShort(int s, byte[] buf, int offset) throws IOException {
         buf[offset] = (byte)(s & 0xff);
-        buf[offset + 1] = (byte)((s >> 8) & 0xff);
+        buf[offset + 1] = (byte)Integer.extractBits(s, 8, 8);
     }
 }

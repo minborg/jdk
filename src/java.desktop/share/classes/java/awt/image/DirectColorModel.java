@@ -319,9 +319,9 @@ public class DirectColorModel extends PackedColorModel {
 
 
     private int getsRGBComponentFromsRGB(int pixel, int idx) {
-        int c = ((pixel & maskArray[idx]) >>> maskOffsets[idx]);
+        int c = Integer.extractBits(pixel, maskOffsets[idx], nBits[idx]);
         if (isAlphaPremultiplied) {
-            int a = ((pixel & maskArray[3]) >>> maskOffsets[3]);
+            int a = Integer.extractBits(pixel, maskOffsets[3], nBits[3]);
             c = (a == 0) ? 0 :
                          (int) (((c * scaleFactors[idx]) * 255.0f /
                                  (a * scaleFactors[3])) + 0.5f);
@@ -333,10 +333,10 @@ public class DirectColorModel extends PackedColorModel {
 
 
     private int getsRGBComponentFromLinearRGB(int pixel, int idx) {
-        int c = ((pixel & maskArray[idx]) >>> maskOffsets[idx]);
+        int c = Integer.extractBits(pixel, maskOffsets[idx], nBits[idx]);
         if (isAlphaPremultiplied) {
             float factor = (float) ((1 << lRGBprecision) - 1);
-            int a = ((pixel & maskArray[3]) >>> maskOffsets[3]);
+            int a = Integer.extractBits(pixel, maskOffsets[3], nBits[3]);
             c = (a == 0) ? 0 :
                          (int) (((c * scaleFactors[idx]) * factor /
                                  (a * scaleFactors[3])) + 0.5f);
@@ -430,7 +430,7 @@ public class DirectColorModel extends PackedColorModel {
      */
     public final int getAlpha(int pixel) {
         if (!supportsAlpha) return 255;
-        int a = ((pixel & maskArray[3]) >>> maskOffsets[3]);
+        int a = Integer.extractBits(pixel, maskOffsets[3], nBits[3]);
         if (scaleFactors[3] != 1.0f) {
             a = (int)(a * scaleFactors[3] + 0.5f);
         }
@@ -774,8 +774,8 @@ public class DirectColorModel extends PackedColorModel {
         }
 
         int red, grn, blu, alp;
-        red = (rgb>>16) & 0xff;
-        grn = (rgb>>8) & 0xff;
+        red = Integer.extractBits(rgb, 16, 8);
+        grn = Integer.extractBits(rgb, 8, 8);
         blu = rgb & 0xff;
         if (is_sRGB || is_LinearRGB) {
             int precision;
@@ -799,7 +799,7 @@ public class DirectColorModel extends PackedColorModel {
                 factor = 1.0f / 255.0f;
             }
             if (supportsAlpha) {
-                alp = (rgb>>24) & 0xff;
+                alp = Integer.extractBits(rgb, 24, 8);
                 if (isAlphaPremultiplied) {
                     factor *= (alp * (1.0f / 255.0f));
                     precision = -1;  // force component calculations below
@@ -832,7 +832,7 @@ public class DirectColorModel extends PackedColorModel {
             norm[2] = blu * factor;
             norm = colorSpace.fromRGB(norm);
             if (supportsAlpha) {
-                alp = (rgb>>24) & 0xff;
+                alp = Integer.extractBits(rgb, 24, 8);
                 if (isAlphaPremultiplied) {
                     factor *= alp;
                     for (int i = 0; i < 3; i++) {
@@ -929,7 +929,7 @@ public class DirectColorModel extends PackedColorModel {
         }
 
         for (int i=0; i < numComponents; i++) {
-            components[offset+i] = (pixel & maskArray[i]) >>> maskOffsets[i];
+            components[offset+i] = Integer.extractBits(pixel, maskOffsets[i], nBits[i]);
         }
 
         return components;

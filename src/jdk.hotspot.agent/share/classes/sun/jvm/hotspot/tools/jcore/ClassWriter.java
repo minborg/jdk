@@ -67,7 +67,7 @@ public class ClassWriter implements /* imports */ ClassConstants
 
     protected static int extractHighShortFromInt(int val) {
         // must stay in sync with ConstantPool::name_and_type_at_put, method_at_put, etc.
-        return (val >> 16) & 0xFFFF;
+        return Integer.extractBits(val, 16, 16);
     }
 
     protected static int extractLowShortFromInt(int val) {

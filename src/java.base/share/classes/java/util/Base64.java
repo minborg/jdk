@@ -431,9 +431,9 @@ public final class Base64 {
                 int bits = (src[sp0++] & 0xff) << 16 |
                            (src[sp0++] & 0xff) <<  8 |
                            (src[sp0++] & 0xff);
-                dst[dp0++] = (byte)base64[(bits >>> 18) & 0x3f];
-                dst[dp0++] = (byte)base64[(bits >>> 12) & 0x3f];
-                dst[dp0++] = (byte)base64[(bits >>> 6)  & 0x3f];
+                dst[dp0++] = (byte)base64[Integer.extractBits(bits, 18, 6)];
+                dst[dp0++] = (byte)base64[Integer.extractBits(bits, 12, 6)];
+                dst[dp0++] = (byte)base64[Integer.extractBits(bits, 6, 6)];
                 dst[dp0++] = (byte)base64[bits & 0x3f];
             }
         }
@@ -971,9 +971,9 @@ public final class Base64 {
                     int bits = (b[sp++] & 0xff) << 16 |
                                (b[sp++] & 0xff) <<  8 |
                                (b[sp++] & 0xff);
-                    buf[dp++] = (byte)base64[(bits >>> 18) & 0x3f];
-                    buf[dp++] = (byte)base64[(bits >>> 12) & 0x3f];
-                    buf[dp++] = (byte)base64[(bits >>> 6)  & 0x3f];
+                    buf[dp++] = (byte)base64[Integer.extractBits(bits, 18, 6)];
+                    buf[dp++] = (byte)base64[Integer.extractBits(bits, 12, 6)];
+                    buf[dp++] = (byte)base64[Integer.extractBits(bits, 6, 6)];
                     buf[dp++] = (byte)base64[bits & 0x3f];
                 }
                 out.write(buf, 0, dp);

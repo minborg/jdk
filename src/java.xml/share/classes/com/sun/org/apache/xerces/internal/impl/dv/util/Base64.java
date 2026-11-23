@@ -239,7 +239,7 @@ public final class  Base64 {
             b4 = base64Alphabet[d4];
 
             decodedData[encodedIndex++] = (byte)(  b1 <<2 | b2>>4 ) ;
-            decodedData[encodedIndex++] = (byte)(((b2 & 0xf)<<4 ) |( (b3>>2) & 0xf) );
+            decodedData[encodedIndex++] = (byte)(((b2 & 0xf)<<4 ) |( Integer.extractBits(b3, 2, 4)) );
             decodedData[encodedIndex++] = (byte)( b3<<6 | b4 );
         }
 
@@ -269,7 +269,7 @@ public final class  Base64 {
                 byte[] tmp = new byte[ i*3 + 2 ];
                 System.arraycopy( decodedData, 0, tmp, 0, i*3 );
                 tmp[encodedIndex++] = (byte)(  b1 <<2 | b2>>4 );
-                tmp[encodedIndex]   = (byte)(((b2 & 0xf)<<4 ) |( (b3>>2) & 0xf) );
+                tmp[encodedIndex]   = (byte)(((b2 & 0xf)<<4 ) |( Integer.extractBits(b3, 2, 4)) );
                 return tmp;
             } else {
                 return null;//an error  like "3c[Pad]r", "3cdX", "3cXd", "3cXX" where X is non data
@@ -278,7 +278,7 @@ public final class  Base64 {
             b3 = base64Alphabet[ d3 ];
             b4 = base64Alphabet[ d4 ];
             decodedData[encodedIndex++] = (byte)(  b1 <<2 | b2>>4 ) ;
-            decodedData[encodedIndex++] = (byte)(((b2 & 0xf)<<4 ) |( (b3>>2) & 0xf) );
+            decodedData[encodedIndex++] = (byte)(((b2 & 0xf)<<4 ) |( Integer.extractBits(b3, 2, 4)) );
             decodedData[encodedIndex++] = (byte)( b3<<6 | b4 );
 
         }

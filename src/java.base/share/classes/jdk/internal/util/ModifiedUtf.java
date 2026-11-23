@@ -44,12 +44,12 @@ public final class ModifiedUtf {
         if (c != 0 && c < 0x80) {
             buf[offset++] = (byte) c;
         } else if (c >= 0x800) {
-            buf[offset    ] = (byte) (0xE0 | c >> 12 & 0x0F);
-            buf[offset + 1] = (byte) (0x80 | c >> 6  & 0x3F);
+            buf[offset    ] = (byte) (0xE0 | Integer.extractBits(c, 12, 4));
+            buf[offset + 1] = (byte) (0x80 | Integer.extractBits(c, 6, 6));
             buf[offset + 2] = (byte) (0x80 | c       & 0x3F);
             offset += 3;
         } else {
-            buf[offset    ] = (byte) (0xC0 | c >> 6 & 0x1F);
+            buf[offset    ] = (byte) (0xC0 | Integer.extractBits(c, 6, 5));
             buf[offset + 1] = (byte) (0x80 | c      & 0x3F);
             offset += 2;
         }

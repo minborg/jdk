@@ -286,7 +286,7 @@ class VerificationType {
 
     int bci(VerifierImpl context) {
         if (!(is_uninitialized())) context.verifyError("Must be uninitialized type");
-        return ((_data & BciMask) >> 1 * BitsPerByte);
+        return java.lang.Integer.extractBits(_data, 8, 16);
     }
 
     boolean is_assignable_from(VerificationType from, VerifierImpl context) {

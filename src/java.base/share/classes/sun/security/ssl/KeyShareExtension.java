@@ -880,7 +880,7 @@ final class KeyShareExtension {
             }
 
             byte[] extdata = new byte[] {
-                    (byte)((selectedGroup.id >> 8) & 0xFF),
+                    (byte)Integer.extractBits(selectedGroup.id, 8, 8),
                     (byte)(selectedGroup.id & 0xFF)
                 };
 
@@ -923,7 +923,7 @@ final class KeyShareExtension {
                 int namedGroupId = spec.clientShares.get(0).namedGroupId;
 
                 return new byte[] {
-                        (byte)((namedGroupId >> 8) & 0xFF),
+                        (byte)Integer.extractBits(namedGroupId, 8, 8),
                         (byte)(namedGroupId & 0xFF)
                     };
             }

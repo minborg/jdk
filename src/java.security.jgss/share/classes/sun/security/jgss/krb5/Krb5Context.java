@@ -1197,7 +1197,7 @@ class Krb5Context implements GSSContextSpi {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < len; i++) {
 
-            int b1 = (bytes[i]>>4) & 0x0f;
+            int b1 = Integer.extractBits(bytes[i], 4, 4);
             int b2 = bytes[i] & 0x0f;
 
             sb.append(Integer.toHexString(b1));

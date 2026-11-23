@@ -106,31 +106,31 @@ class PacketStream {
     }
 
     void writeChar(char data) {
-        dataStream.write( (byte)((data >>> 8) & 0xFF) );
+        dataStream.write( (byte)Integer.extractBits(data, 8, 8) );
         dataStream.write( (byte)((data >>> 0) & 0xFF) );
     }
 
     void writeShort(short data) {
-        dataStream.write( (byte)((data >>> 8) & 0xFF) );
+        dataStream.write( (byte)Integer.extractBits(data, 8, 8) );
         dataStream.write( (byte)((data >>> 0) & 0xFF) );
     }
 
     void writeInt(int data) {
-        dataStream.write( (byte)((data >>> 24) & 0xFF) );
-        dataStream.write( (byte)((data >>> 16) & 0xFF) );
-        dataStream.write( (byte)((data >>> 8) & 0xFF) );
+        dataStream.write( (byte)Integer.extractBits(data, 24, 8) );
+        dataStream.write( (byte)Integer.extractBits(data, 16, 8) );
+        dataStream.write( (byte)Integer.extractBits(data, 8, 8) );
         dataStream.write( (byte)((data >>> 0) & 0xFF) );
     }
 
     void writeLong(long data) {
-        dataStream.write( (byte)((data >>> 56) & 0xFF) );
-        dataStream.write( (byte)((data >>> 48) & 0xFF) );
-        dataStream.write( (byte)((data >>> 40) & 0xFF) );
-        dataStream.write( (byte)((data >>> 32) & 0xFF) );
+        dataStream.write( (byte)Long.extractBits(data, 56, 8) );
+        dataStream.write( (byte)Long.extractBits(data, 48, 8) );
+        dataStream.write( (byte)Long.extractBits(data, 40, 8) );
+        dataStream.write( (byte)Long.extractBits(data, 32, 8) );
 
-        dataStream.write( (byte)((data >>> 24) & 0xFF) );
-        dataStream.write( (byte)((data >>> 16) & 0xFF) );
-        dataStream.write( (byte)((data >>> 8) & 0xFF) );
+        dataStream.write( (byte)Long.extractBits(data, 24, 8) );
+        dataStream.write( (byte)Long.extractBits(data, 16, 8) );
+        dataStream.write( (byte)Long.extractBits(data, 8, 8) );
         dataStream.write( (byte)((data >>> 0) & 0xFF) );
     }
 

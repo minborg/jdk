@@ -1377,7 +1377,7 @@ public abstract class ForkJoinTask<V> implements Future<V>, Serializable {
      */
     public final short setForkJoinTaskTag(short newValue) {
         for (int s;;) {
-            if (casStatus(s = status, (s & ~SMASK) | (newValue & SMASK)))
+            if (casStatus(s = status, Integer.replaceBits(s, 0, 16, newValue)))
                 return (short)s;
         }
     }
@@ -1400,7 +1400,7 @@ public abstract class ForkJoinTask<V> implements Future<V>, Serializable {
         for (int s;;) {
             if ((short)(s = status) != expect)
                 return false;
-            if (casStatus(s, (s & ~SMASK) | (update & SMASK)))
+            if (casStatus(s, Integer.replaceBits(s, 0, 16, update)))
                 return true;
         }
     }

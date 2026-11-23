@@ -5389,7 +5389,7 @@ public abstract class JComponent extends Container implements Serializable,
                      (count << WRITE_OBJ_COUNTER_FIRST);
     }
     static byte getWriteObjCounter(JComponent comp) {
-        return (byte)((comp.flags >> WRITE_OBJ_COUNTER_FIRST) & 0xFF);
+        return (byte)Integer.extractBits(comp.flags, WRITE_OBJ_COUNTER_FIRST, 8);
     }
 
     /** Buffering **/

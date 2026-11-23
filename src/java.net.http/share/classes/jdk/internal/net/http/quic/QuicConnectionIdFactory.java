@@ -192,7 +192,7 @@ public class QuicConnectionIdFactory {
         int shift = 8 * len;
         for (int i = 0; i <= len; i++) {
             assert shift <= 56;
-            bytes[i + 1] = (byte) ((token >> shift) & 0xFF);
+            bytes[i + 1] = (byte) Long.extractBits(token, shift, Byte.SIZE);
             shift -= 8;
         }
         for (int i = 0; i < length; i++) {

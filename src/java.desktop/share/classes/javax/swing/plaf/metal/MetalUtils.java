@@ -422,8 +422,8 @@ class MetalUtils {
 
         public int filterRGB(int x, int y, int rgb) {
             // Coefficients are from the sRGB color space:
-            int gray = Math.min(255, (int)(((0.2125f * ((rgb >> 16) & 0xFF)) +
-                    (0.7154f * ((rgb >> 8) & 0xFF)) +
+            int gray = Math.min(255, (int)(((0.2125f * Integer.extractBits(rgb, 16, 8)) +
+                    (0.7154f * Integer.extractBits(rgb, 8, 8)) +
                     (0.0721f * (rgb & 0xFF)) + .5f) * factor + min));
 
             return (rgb & 0xff000000) | (gray << 16) | (gray << 8) |
@@ -441,8 +441,8 @@ class MetalUtils {
         }
 
         public int filterRGB(int x, int y, int rgb) {
-            int r = ((rgb >> 16) & 0xff);
-            int g = ((rgb >> 8) & 0xff);
+            int r = Integer.extractBits(rgb, 16, 8);
+            int g = Integer.extractBits(rgb, 8, 8);
             int b = (rgb & 0xff);
             int gray = Math.max(Math.max(r, g), b);
             return (rgb & 0xff000000) | (gray << 16) | (gray << 8) |

@@ -2027,7 +2027,7 @@ public class TIFFImageWriter extends ImageWriter {
                             for (int b = 0; b < numBands; b++) {
                                 int sample = samples[s + b];
                                 currTile[tcount++] =
-                                    (byte)((sample >>> 8) & 0xff);
+                                    (byte)Integer.extractBits(sample, 8, 8);
                                 currTile[tcount++] =
                                     (byte)(sample & 0xff);
                             }
@@ -2039,7 +2039,7 @@ public class TIFFImageWriter extends ImageWriter {
                                 currTile[tcount++] =
                                     (byte)(sample & 0xff);
                                 currTile[tcount++] =
-                                    (byte)((sample >>> 8) & 0xff);
+                                    (byte)Integer.extractBits(sample, 8, 8);
                             }
                         }
                     }
@@ -2057,9 +2057,9 @@ public class TIFFImageWriter extends ImageWriter {
                                 currTile[tcount++] =
                                     (byte)((isample & 0xff000000) >> 24);
                                 currTile[tcount++] =
-                                    (byte)((isample & 0x00ff0000) >> 16);
+                                    (byte)Integer.extractBits(isample, 16, 8);
                                 currTile[tcount++] =
-                                    (byte)((isample & 0x0000ff00) >> 8);
+                                    (byte)Integer.extractBits(isample, 8, 8);
                                 currTile[tcount++] =
                                     (byte)(isample & 0x000000ff);
                             }
@@ -2072,9 +2072,9 @@ public class TIFFImageWriter extends ImageWriter {
                                 currTile[tcount++] =
                                     (byte)(isample & 0x000000ff);
                                 currTile[tcount++] =
-                                    (byte)((isample & 0x0000ff00) >> 8);
+                                    (byte)Integer.extractBits(isample, 8, 8);
                                 currTile[tcount++] =
-                                    (byte)((isample & 0x00ff0000) >> 16);
+                                    (byte)Integer.extractBits(isample, 16, 8);
                                 currTile[tcount++] =
                                     (byte)((isample & 0xff000000) >> 24);
                             }
@@ -2100,9 +2100,9 @@ public class TIFFImageWriter extends ImageWriter {
                                     currTile[tcount++] =
                                         (byte)((sampleOut & 0xff000000) >> 24);
                                     currTile[tcount++] =
-                                        (byte)((sampleOut & 0x00ff0000) >> 16);
+                                        (byte)Long.extractBits(sampleOut, 16, 8);
                                     currTile[tcount++] =
-                                        (byte)((sampleOut & 0x0000ff00) >> 8);
+                                        (byte)Long.extractBits(sampleOut, 8, 8);
                                     currTile[tcount++] =
                                         (byte)(sampleOut & 0x000000ff);
                                 }
@@ -2116,9 +2116,9 @@ public class TIFFImageWriter extends ImageWriter {
                                     currTile[tcount++] =
                                         (byte)(sampleOut & 0x000000ff);
                                     currTile[tcount++] =
-                                        (byte)((sampleOut & 0x0000ff00) >> 8);
+                                        (byte)Long.extractBits(sampleOut, 8, 8);
                                     currTile[tcount++] =
-                                        (byte)((sampleOut & 0x00ff0000) >> 16);
+                                        (byte)Long.extractBits(sampleOut, 16, 8);
                                     currTile[tcount++] =
                                         (byte)((sampleOut & 0xff000000) >> 24);
                                 }
@@ -2132,9 +2132,9 @@ public class TIFFImageWriter extends ImageWriter {
                                     currTile[tcount++] =
                                         (byte)((isample & 0xff000000) >> 24);
                                     currTile[tcount++] =
-                                        (byte)((isample & 0x00ff0000) >> 16);
+                                        (byte)Integer.extractBits(isample, 16, 8);
                                     currTile[tcount++] =
-                                        (byte)((isample & 0x0000ff00) >> 8);
+                                        (byte)Integer.extractBits(isample, 8, 8);
                                     currTile[tcount++] =
                                         (byte)(isample & 0x000000ff);
                                 }
@@ -2146,9 +2146,9 @@ public class TIFFImageWriter extends ImageWriter {
                                     currTile[tcount++] =
                                         (byte)(isample & 0x000000ff);
                                     currTile[tcount++] =
-                                        (byte)((isample & 0x0000ff00) >> 8);
+                                        (byte)Integer.extractBits(isample, 8, 8);
                                     currTile[tcount++] =
-                                        (byte)((isample & 0x00ff0000) >> 16);
+                                        (byte)Integer.extractBits(isample, 16, 8);
                                     currTile[tcount++] =
                                         (byte)((isample & 0xff000000) >> 24);
                                 }
@@ -2169,17 +2169,17 @@ public class TIFFImageWriter extends ImageWriter {
                                 currTile[tcount++] =
                                     (byte)((lsample & 0xff00000000000000L) >> 56);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x00ff000000000000L) >> 48);
+                                    (byte)Long.extractBits(lsample, 48, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x0000ff0000000000L) >> 40);
+                                    (byte)Long.extractBits(lsample, 40, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x000000ff00000000L) >> 32);
+                                    (byte)Long.extractBits(lsample, 32, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x00000000ff000000L) >> 24);
+                                    (byte)Long.extractBits(lsample, 24, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x0000000000ff0000L) >> 16);
+                                    (byte)Long.extractBits(lsample, 16, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x000000000000ff00L) >> 8);
+                                    (byte)Long.extractBits(lsample, 8, 8);
                                 currTile[tcount++] =
                                     (byte)(lsample & 0x00000000000000ffL);
                             }
@@ -2192,17 +2192,17 @@ public class TIFFImageWriter extends ImageWriter {
                                 currTile[tcount++] =
                                     (byte)(lsample & 0x00000000000000ffL);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x000000000000ff00L) >> 8);
+                                    (byte)Long.extractBits(lsample, 8, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x0000000000ff0000L) >> 16);
+                                    (byte)Long.extractBits(lsample, 16, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x00000000ff000000L) >> 24);
+                                    (byte)Long.extractBits(lsample, 24, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x000000ff00000000L) >> 32);
+                                    (byte)Long.extractBits(lsample, 32, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x0000ff0000000000L) >> 40);
+                                    (byte)Long.extractBits(lsample, 40, 8);
                                 currTile[tcount++] =
-                                    (byte)((lsample & 0x00ff000000000000L) >> 48);
+                                    (byte)Long.extractBits(lsample, 48, 8);
                                 currTile[tcount++] =
                                     (byte)((lsample & 0xff00000000000000L) >> 56);
                             }

@@ -69,7 +69,7 @@ public final class ATR implements java.io.Serializable {
         if ((atr[0] != 0x3b) && (atr[0] != 0x3f)) {
             return;
         }
-        int t0 = (atr[1] & 0xf0) >> 4;
+        int t0 = Integer.extractBits(atr[1], 4, 4);
         int n = atr[1] & 0xf;
         int i = 2;
         while ((t0 != 0) && (i < atr.length)) {
@@ -86,7 +86,7 @@ public final class ATR implements java.io.Serializable {
                 if (i >= atr.length) {
                     return;
                 }
-                t0 = (atr[i++] & 0xf0) >> 4;
+                t0 = Integer.extractBits(atr[i++], 4, 4);
             } else {
                 t0 = 0;
             }

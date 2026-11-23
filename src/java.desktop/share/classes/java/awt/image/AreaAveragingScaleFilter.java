@@ -179,8 +179,8 @@ public class AreaAveragingScaleFilter extends ReplicateScaleFilter {
                     // getRGB() always returns non-premultiplied components
                     rgb = model.getRGB(rgb);
                     a = rgb >>> 24;
-                    r = (rgb >> 16) & 0xff;
-                    g = (rgb >>  8) & 0xff;
+                    r = Integer.extractBits(rgb, 16, 8);
+                    g = Integer.extractBits(rgb, 8, 8);
                     b = rgb & 0xff;
                     // premultiply the components if necessary
                     if (a != 255.0f) {

@@ -260,8 +260,9 @@ public final class ClassPrinterImpl {
                 if (c >= 0x20 && c < 0x7f) {
                     sb.append((char)c);
                 } else {
-                    sb.append('\\').append('u').append(DIGITS[(c >> 12) & 0xf])
-                            .append(DIGITS[(c >> 8) & 0xf]).append(DIGITS[(c >> 4) & 0xf]).append(DIGITS[(c) & 0xf]);
+                    sb.append('\\').append('u').append(DIGITS[Integer.extractBits(c, 12, 4)])
+                            .append(DIGITS[Integer.extractBits(c, 8, 4)])
+                            .append(DIGITS[Integer.extractBits(c, 4, 4)]).append(DIGITS[c & 0xf]);
                 }
             }
         }

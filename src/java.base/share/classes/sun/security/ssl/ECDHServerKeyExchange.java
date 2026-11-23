@@ -474,7 +474,7 @@ final class ECDHServerKeyExchange {
             sig.update(svrNonce);
 
             sig.update(CURVE_NAMED_CURVE);
-            sig.update((byte)((namedGroupId >> 8) & 0xFF));
+            sig.update((byte)Integer.extractBits(namedGroupId, 8, 8));
             sig.update((byte)(namedGroupId & 0xFF));
             sig.update((byte)publicPoint.length);
             sig.update(publicPoint);

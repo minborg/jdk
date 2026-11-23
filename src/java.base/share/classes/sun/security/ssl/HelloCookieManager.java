@@ -174,7 +174,7 @@ abstract class HelloCookieManager {
             md.update(helloBytes);
             md.update(getHostPortBytes(context));
             byte[] cookie = md.digest(secret);      // 32 bytes
-            cookie[0] = (byte)((version >> 24) & 0xFF);
+            cookie[0] = (byte)Integer.extractBits(version, 24, 8);
 
             return cookie;
         }
@@ -190,7 +190,7 @@ abstract class HelloCookieManager {
             byte[] secret;
             d10ManagerLock.lock();
             try {
-                if ((byte) ((cookieVersion >> 24) & 0xFF) == cookie[0]) {
+                if ((byte) Integer.extractBits(cookieVersion, 24, 8) == cookie[0]) {
                     secret = cookieSecret;
                 } else {
                     secret = legacySecret;  // including out of window cookies
@@ -320,9 +320,9 @@ abstract class HelloCookieManager {
             // + (hash length): Mac(ClientHello header)
             // + (hash length): Hash(ClientHello)
             byte[] prefix = new byte[] {
-                    (byte)((context.negotiatedCipherSuite.id >> 8) & 0xFF),
+                    (byte)Integer.extractBits(context.negotiatedCipherSuite.id, 8, 8),
                     (byte)(context.negotiatedCipherSuite.id & 0xFF),
-                    (byte)((version >> 24) & 0xFF)
+                    (byte)Integer.extractBits(version, 24, 8)
                 };
 
             byte[] cookie = Arrays.copyOf(prefix,
@@ -362,7 +362,7 @@ abstract class HelloCookieManager {
             byte[] secret;
             t13ManagerLock.lock();
             try {
-                if ((byte)((cookieVersion >> 24) & 0xFF) == cookie[2]) {
+                if ((byte)Integer.extractBits(cookieVersion, 24, 8) == cookie[2]) {
                     secret = cookieSecret;
                 } else {
                     secret = legacySecret;  // including out of window cookies
