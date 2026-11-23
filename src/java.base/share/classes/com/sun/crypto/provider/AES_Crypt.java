@@ -31,6 +31,8 @@ import java.util.Arrays;
 
 import jdk.internal.vm.annotation.IntrinsicCandidate;
 
+import static java.lang.Integer.extractBits;
+
 /**
  * Implementation of the AES cipher, which is based on the following documents:
  *
@@ -989,20 +991,22 @@ final class AES_Crypt extends SymmetricCipher {
             int widx = i * WB;
             int idx = w.length - widx;
 
-            dw[idx] = TMI0[w[widx] >>> 24] ^ TMI1[Integer.extractBits(w[widx], 16, 8)]
-                    ^ TMI2[Integer.extractBits(w[widx], 8, 8)] ^ TMI3[w[widx] & 0xFF];
-            dw[idx + 1] = TMI0[w[widx + 1] >>> 24]
-                    ^ TMI1[Integer.extractBits(w[widx + 1], 16, 8)]
-                    ^ TMI2[Integer.extractBits(w[widx + 1], 8, 8)]
-                    ^ TMI3[w[widx + 1] & 0xFF];
-            dw[idx + 2] = TMI0[w[widx + 2] >>> 24]
-                    ^ TMI1[Integer.extractBits(w[widx + 2], 16, 8)]
-                    ^ TMI2[Integer.extractBits(w[widx + 2], 8, 8)]
-                    ^ TMI3[w[widx + 2] & 0xFF];
-            dw[idx + 3] = TMI0[w[widx + 3] >>> 24]
-                    ^ TMI1[Integer.extractBits(w[widx + 3], 16, 8)]
-                    ^ TMI2[Integer.extractBits(w[widx + 3], 8, 8)]
-                    ^ TMI3[w[widx + 3] & 0xFF];
+            dw[idx] = TMI0[extractBits(w[widx], 24, 8)]
+                    ^ TMI1[extractBits(w[widx], 16, 8)]
+                    ^ TMI2[extractBits(w[widx], 8, 8)]
+                    ^ TMI3[extractBits(w[widx], 0, 8)];
+            dw[idx + 1] = TMI0[extractBits(w[widx + 1], 24, 8)]
+                    ^ TMI1[extractBits(w[widx + 1], 16, 8)]
+                    ^ TMI2[extractBits(w[widx + 1], 8, 8)]
+                    ^ TMI3[extractBits(w[widx + 1], 0, 8)];
+            dw[idx + 2] = TMI0[extractBits(w[widx + 2], 24, 8)]
+                    ^ TMI1[extractBits(w[widx + 2], 16, 8)]
+                    ^ TMI2[extractBits(w[widx + 2], 8, 8)]
+                    ^ TMI3[extractBits(w[widx + 2], 0, 8)];
+            dw[idx + 3] = TMI0[extractBits(w[widx + 3], 24, 8)]
+                    ^ TMI1[extractBits(w[widx + 3], 16, 8)]
+                    ^ TMI2[extractBits(w[widx + 3], 8, 8)]
+                    ^ TMI3[extractBits(w[widx + 3], 0, 8)];
         }
         System.arraycopy(w, w.length - WB, dw, WB, WB);
         System.arraycopy(w, 0, dw, 0, WB);
@@ -1022,10 +1026,10 @@ final class AES_Crypt extends SymmetricCipher {
         byte b1 = (byte) (word >> 16);
         byte b2 = (byte) (word >> 8);
 
-        return ((SBOX[Integer.extractBits(b0, 4, 4)][b0 & 0x0F] & 0xFF) << 24)
-                | ((SBOX[Integer.extractBits(b1, 4, 4)][b1 & 0x0F] & 0xFF) << 16)
-                | ((SBOX[Integer.extractBits(b2, 4, 4)][b2 & 0x0F] & 0xFF) << 8)
-                | (SBOX[Integer.extractBits(word, 4, 4)][word & 0x0F] & 0xFF);
+        return ((SBOX[extractBits(b0, 4, 4)][b0 & 0x0F] & 0xFF) << 24)
+                | ((SBOX[extractBits(b1, 4, 4)][b1 & 0x0F] & 0xFF) << 16)
+                | ((SBOX[extractBits(b2, 4, 4)][b2 & 0x0F] & 0xFF) << 8)
+                | (SBOX[extractBits(word, 4, 4)][word & 0x0F] & 0xFF);
     }
 
     /**
@@ -1052,159 +1056,159 @@ final class AES_Crypt extends SymmetricCipher {
         a3 = ((p[po + 12] & 0xFF) << 24) ^ ((p[po + 13] & 0xFF) << 16)
                 ^ ((p[po + 14] & 0xFF) << 8) ^ (p[po + 15] & 0xFF) ^ K[3];
 
-        ti0 = T0[a0 >>> 24] ^ T1[Integer.extractBits(a1, 16, 8)]
-                ^ T2[Integer.extractBits(a2, 8, 8)] ^ T3[a3 & 0xFF] ^ K[4];
-        ti1 = T0[a1 >>> 24] ^ T1[Integer.extractBits(a2, 16, 8)]
-                ^ T2[Integer.extractBits(a3, 8, 8)] ^ T3[a0 & 0xFF] ^ K[5];
-        ti2 = T0[a2 >>> 24] ^ T1[Integer.extractBits(a3, 16, 8)]
-                ^ T2[Integer.extractBits(a0, 8, 8)] ^ T3[a1 & 0xFF] ^ K[6];
-        ti3 = T0[a3 >>> 24] ^ T1[Integer.extractBits(a0, 16, 8)]
-                ^ T2[Integer.extractBits(a1, 8, 8)] ^ T3[a2 & 0xFF] ^ K[7];
+        ti0 = T0[extractBits(a0, 24, 8)] ^ T1[extractBits(a1, 16, 8)]
+                ^ T2[extractBits(a2, 8, 8)] ^ T3[extractBits(a3, 0, 8)] ^ K[4];
+        ti1 = T0[extractBits(a1, 24, 8)] ^ T1[extractBits(a2, 16, 8)]
+                ^ T2[extractBits(a3, 8, 8)] ^ T3[extractBits(a0, 0, 8)] ^ K[5];
+        ti2 = T0[extractBits(a2, 24, 8)] ^ T1[extractBits(a3, 16, 8)]
+                ^ T2[extractBits(a0, 8, 8)] ^ T3[extractBits(a1, 0, 8)] ^ K[6];
+        ti3 = T0[extractBits(a3, 24, 8)] ^ T1[extractBits(a0, 16, 8)]
+                ^ T2[extractBits(a1, 8, 8)] ^ T3[extractBits(a2, 0, 8)] ^ K[7];
 
-        a0 = T0[ti0 >>> 24] ^ T1[Integer.extractBits(ti1, 16, 8)]
-                ^ T2[Integer.extractBits(ti2, 8, 8)] ^ T3[ti3 & 0xFF] ^ K[8];
-        a1 = T0[ti1 >>> 24] ^ T1[Integer.extractBits(ti2, 16, 8)]
-                ^ T2[Integer.extractBits(ti3, 8, 8)] ^ T3[ti0 & 0xFF] ^ K[9];
-        a2 = T0[ti2 >>> 24] ^ T1[Integer.extractBits(ti3, 16, 8)]
-                ^ T2[Integer.extractBits(ti0, 8, 8)] ^ T3[ti1 & 0xFF] ^ K[10];
-        a3 = T0[ti3 >>> 24] ^ T1[Integer.extractBits(ti0, 16, 8)]
-                ^ T2[Integer.extractBits(ti1, 8, 8)] ^ T3[ti2 & 0xFF] ^ K[11];
+        a0 = T0[extractBits(ti0, 24, 8)] ^ T1[extractBits(ti1, 16, 8)]
+                ^ T2[extractBits(ti2, 8, 8)] ^ T3[extractBits(ti3, 0, 8)] ^ K[8];
+        a1 = T0[extractBits(ti1, 24, 8)] ^ T1[extractBits(ti2, 16, 8)]
+                ^ T2[extractBits(ti3, 8, 8)] ^ T3[extractBits(ti0, 0, 8)] ^ K[9];
+        a2 = T0[extractBits(ti2, 24, 8)] ^ T1[extractBits(ti3, 16, 8)]
+                ^ T2[extractBits(ti0, 8, 8)] ^ T3[extractBits(ti1, 0, 8)] ^ K[10];
+        a3 = T0[extractBits(ti3, 24, 8)] ^ T1[extractBits(ti0, 16, 8)]
+                ^ T2[extractBits(ti1, 8, 8)] ^ T3[extractBits(ti2, 0, 8)] ^ K[11];
 
-        ti0 = T0[a0 >>> 24] ^ T1[Integer.extractBits(a1, 16, 8)]
-                ^ T2[Integer.extractBits(a2, 8, 8)] ^ T3[a3 & 0xFF] ^ K[12];
-        ti1 = T0[a1 >>> 24] ^ T1[Integer.extractBits(a2, 16, 8)]
-                ^ T2[Integer.extractBits(a3, 8, 8)] ^ T3[a0 & 0xFF] ^ K[13];
-        ti2 = T0[a2 >>> 24] ^ T1[Integer.extractBits(a3, 16, 8)]
-                ^ T2[Integer.extractBits(a0, 8, 8)] ^ T3[a1 & 0xFF] ^ K[14];
-        ti3 = T0[a3 >>> 24] ^ T1[Integer.extractBits(a0, 16, 8)]
-                ^ T2[Integer.extractBits(a1, 8, 8)] ^ T3[a2 & 0xFF] ^ K[15];
+        ti0 = T0[extractBits(a0, 24, 8)] ^ T1[extractBits(a1, 16, 8)]
+                ^ T2[extractBits(a2, 8, 8)] ^ T3[extractBits(a3, 0, 8)] ^ K[12];
+        ti1 = T0[extractBits(a1, 24, 8)] ^ T1[extractBits(a2, 16, 8)]
+                ^ T2[extractBits(a3, 8, 8)] ^ T3[extractBits(a0, 0, 8)] ^ K[13];
+        ti2 = T0[extractBits(a2, 24, 8)] ^ T1[extractBits(a3, 16, 8)]
+                ^ T2[extractBits(a0, 8, 8)] ^ T3[extractBits(a1, 0, 8)] ^ K[14];
+        ti3 = T0[extractBits(a3, 24, 8)] ^ T1[extractBits(a0, 16, 8)]
+                ^ T2[extractBits(a1, 8, 8)] ^ T3[extractBits(a2, 0, 8)] ^ K[15];
 
-        a0 = T0[ti0 >>> 24] ^ T1[Integer.extractBits(ti1, 16, 8)]
-                ^ T2[Integer.extractBits(ti2, 8, 8)] ^ T3[ti3 & 0xFF] ^ K[16];
-        a1 = T0[ti1 >>> 24] ^ T1[Integer.extractBits(ti2, 16, 8)]
-                ^ T2[Integer.extractBits(ti3, 8, 8)] ^ T3[ti0 & 0xFF] ^ K[17];
-        a2 = T0[ti2 >>> 24] ^ T1[Integer.extractBits(ti3, 16, 8)]
-                ^ T2[Integer.extractBits(ti0, 8, 8)] ^ T3[ti1 & 0xFF] ^ K[18];
-        a3 = T0[ti3 >>> 24] ^ T1[Integer.extractBits(ti0, 16, 8)]
-                ^ T2[Integer.extractBits(ti1, 8, 8)] ^ T3[ti2 & 0xFF] ^ K[19];
+        a0 = T0[extractBits(ti0, 24, 8)] ^ T1[extractBits(ti1, 16, 8)]
+                ^ T2[extractBits(ti2, 8, 8)] ^ T3[extractBits(ti3, 0, 8)] ^ K[16];
+        a1 = T0[extractBits(ti1, 24, 8)] ^ T1[extractBits(ti2, 16, 8)]
+                ^ T2[extractBits(ti3, 8, 8)] ^ T3[extractBits(ti0, 0, 8)] ^ K[17];
+        a2 = T0[extractBits(ti2, 24, 8)] ^ T1[extractBits(ti3, 16, 8)]
+                ^ T2[extractBits(ti0, 8, 8)] ^ T3[extractBits(ti1, 0, 8)] ^ K[18];
+        a3 = T0[extractBits(ti3, 24, 8)] ^ T1[extractBits(ti0, 16, 8)]
+                ^ T2[extractBits(ti1, 8, 8)] ^ T3[extractBits(ti2, 0, 8)] ^ K[19];
 
-        ti0 = T0[a0 >>> 24] ^ T1[Integer.extractBits(a1, 16, 8)]
-                ^ T2[Integer.extractBits(a2, 8, 8)] ^ T3[a3 & 0xFF] ^ K[20];
-        ti1 = T0[a1 >>> 24] ^ T1[Integer.extractBits(a2, 16, 8)]
-                ^ T2[Integer.extractBits(a3, 8, 8)] ^ T3[a0 & 0xFF] ^ K[21];
-        ti2 = T0[a2 >>> 24] ^ T1[Integer.extractBits(a3, 16, 8)]
-                ^ T2[Integer.extractBits(a0, 8, 8)] ^ T3[a1 & 0xFF] ^ K[22];
-        ti3 = T0[a3 >>> 24] ^ T1[Integer.extractBits(a0, 16, 8)]
-                ^ T2[Integer.extractBits(a1, 8, 8)] ^ T3[a2 & 0xFF] ^ K[23];
+        ti0 = T0[extractBits(a0, 24, 8)] ^ T1[extractBits(a1, 16, 8)]
+                ^ T2[extractBits(a2, 8, 8)] ^ T3[extractBits(a3, 0, 8)] ^ K[20];
+        ti1 = T0[extractBits(a1, 24, 8)] ^ T1[extractBits(a2, 16, 8)]
+                ^ T2[extractBits(a3, 8, 8)] ^ T3[extractBits(a0, 0, 8)] ^ K[21];
+        ti2 = T0[extractBits(a2, 24, 8)] ^ T1[extractBits(a3, 16, 8)]
+                ^ T2[extractBits(a0, 8, 8)] ^ T3[extractBits(a1, 0, 8)] ^ K[22];
+        ti3 = T0[extractBits(a3, 24, 8)] ^ T1[extractBits(a0, 16, 8)]
+                ^ T2[extractBits(a1, 8, 8)] ^ T3[extractBits(a2, 0, 8)] ^ K[23];
 
-        a0 = T0[ti0 >>> 24] ^ T1[Integer.extractBits(ti1, 16, 8)]
-                ^ T2[Integer.extractBits(ti2, 8, 8)] ^ T3[ti3 & 0xFF] ^ K[24];
-        a1 = T0[ti1 >>> 24] ^ T1[Integer.extractBits(ti2, 16, 8)]
-                ^ T2[Integer.extractBits(ti3, 8, 8)] ^ T3[ti0 & 0xFF] ^ K[25];
-        a2 = T0[ti2 >>> 24] ^ T1[Integer.extractBits(ti3, 16, 8)]
-                ^ T2[Integer.extractBits(ti0, 8, 8)] ^ T3[ti1 & 0xFF] ^ K[26];
-        a3 = T0[ti3 >>> 24] ^ T1[Integer.extractBits(ti0, 16, 8)]
-                ^ T2[Integer.extractBits(ti1, 8, 8)] ^ T3[ti2 & 0xFF] ^ K[27];
+        a0 = T0[extractBits(ti0, 24, 8)] ^ T1[extractBits(ti1, 16, 8)]
+                ^ T2[extractBits(ti2, 8, 8)] ^ T3[extractBits(ti3, 0, 8)] ^ K[24];
+        a1 = T0[extractBits(ti1, 24, 8)] ^ T1[extractBits(ti2, 16, 8)]
+                ^ T2[extractBits(ti3, 8, 8)] ^ T3[extractBits(ti0, 0, 8)] ^ K[25];
+        a2 = T0[extractBits(ti2, 24, 8)] ^ T1[extractBits(ti3, 16, 8)]
+                ^ T2[extractBits(ti0, 8, 8)] ^ T3[extractBits(ti1, 0, 8)] ^ K[26];
+        a3 = T0[extractBits(ti3, 24, 8)] ^ T1[extractBits(ti0, 16, 8)]
+                ^ T2[extractBits(ti1, 8, 8)] ^ T3[extractBits(ti2, 0, 8)] ^ K[27];
 
-        ti0 = T0[a0 >>> 24] ^ T1[Integer.extractBits(a1, 16, 8)]
-                ^ T2[Integer.extractBits(a2, 8, 8)] ^ T3[a3 & 0xFF] ^ K[28];
-        ti1 = T0[a1 >>> 24] ^ T1[Integer.extractBits(a2, 16, 8)]
-                ^ T2[Integer.extractBits(a3, 8, 8)] ^ T3[a0 & 0xFF] ^ K[29];
-        ti2 = T0[a2 >>> 24] ^ T1[Integer.extractBits(a3, 16, 8)]
-                ^ T2[Integer.extractBits(a0, 8, 8)] ^ T3[a1 & 0xFF] ^ K[30];
-        ti3 = T0[a3 >>> 24] ^ T1[Integer.extractBits(a0, 16, 8)]
-                ^ T2[Integer.extractBits(a1, 8, 8)] ^ T3[a2 & 0xFF] ^ K[31];
+        ti0 = T0[extractBits(a0, 24, 8)] ^ T1[extractBits(a1, 16, 8)]
+                ^ T2[extractBits(a2, 8, 8)] ^ T3[extractBits(a3, 0, 8)] ^ K[28];
+        ti1 = T0[extractBits(a1, 24, 8)] ^ T1[extractBits(a2, 16, 8)]
+                ^ T2[extractBits(a3, 8, 8)] ^ T3[extractBits(a0, 0, 8)] ^ K[29];
+        ti2 = T0[extractBits(a2, 24, 8)] ^ T1[extractBits(a3, 16, 8)]
+                ^ T2[extractBits(a0, 8, 8)] ^ T3[extractBits(a1, 0, 8)] ^ K[30];
+        ti3 = T0[extractBits(a3, 24, 8)] ^ T1[extractBits(a0, 16, 8)]
+                ^ T2[extractBits(a1, 8, 8)] ^ T3[extractBits(a2, 0, 8)] ^ K[31];
 
-        a0 = T0[ti0 >>> 24] ^ T1[Integer.extractBits(ti1, 16, 8)]
-                ^ T2[Integer.extractBits(ti2, 8, 8)] ^ T3[ti3 & 0xFF] ^ K[32];
-        a1 = T0[ti1 >>> 24] ^ T1[Integer.extractBits(ti2, 16, 8)]
-                ^ T2[Integer.extractBits(ti3, 8, 8)] ^ T3[ti0 & 0xFF] ^ K[33];
-        a2 = T0[ti2 >>> 24] ^ T1[Integer.extractBits(ti3, 16, 8)]
-                ^ T2[Integer.extractBits(ti0, 8, 8)] ^ T3[ti1 & 0xFF] ^ K[34];
-        a3 = T0[ti3 >>> 24] ^ T1[Integer.extractBits(ti0, 16, 8)]
-                ^ T2[Integer.extractBits(ti1, 8, 8)] ^ T3[ti2 & 0xFF] ^ K[35];
+        a0 = T0[extractBits(ti0, 24, 8)] ^ T1[extractBits(ti1, 16, 8)]
+                ^ T2[extractBits(ti2, 8, 8)] ^ T3[extractBits(ti3, 0, 8)] ^ K[32];
+        a1 = T0[extractBits(ti1, 24, 8)] ^ T1[extractBits(ti2, 16, 8)]
+                ^ T2[extractBits(ti3, 8, 8)] ^ T3[extractBits(ti0, 0, 8)] ^ K[33];
+        a2 = T0[extractBits(ti2, 24, 8)] ^ T1[extractBits(ti3, 16, 8)]
+                ^ T2[extractBits(ti0, 8, 8)] ^ T3[extractBits(ti1, 0, 8)] ^ K[34];
+        a3 = T0[extractBits(ti3, 24, 8)] ^ T1[extractBits(ti0, 16, 8)]
+                ^ T2[extractBits(ti1, 8, 8)] ^ T3[extractBits(ti2, 0, 8)] ^ K[35];
 
-        ti0 = T0[a0 >>> 24] ^ T1[Integer.extractBits(a1, 16, 8)]
-                ^ T2[Integer.extractBits(a2, 8, 8)] ^ T3[a3 & 0xFF] ^ K[36];
-        ti1 = T0[a1 >>> 24] ^ T1[Integer.extractBits(a2, 16, 8)]
-                ^ T2[Integer.extractBits(a3, 8, 8)] ^ T3[a0 & 0xFF] ^ K[37];
-        ti2 = T0[a2 >>> 24] ^ T1[Integer.extractBits(a3, 16, 8)]
-                ^ T2[Integer.extractBits(a0, 8, 8)] ^ T3[a1 & 0xFF] ^ K[38];
-        ti3 = T0[a3 >>> 24] ^ T1[Integer.extractBits(a0, 16, 8)]
-                ^ T2[Integer.extractBits(a1, 8, 8)] ^ T3[a2 & 0xFF] ^ K[39];
+        ti0 = T0[extractBits(a0, 24, 8)] ^ T1[extractBits(a1, 16, 8)]
+                ^ T2[extractBits(a2, 8, 8)] ^ T3[extractBits(a3, 0, 8)] ^ K[36];
+        ti1 = T0[extractBits(a1, 24, 8)] ^ T1[extractBits(a2, 16, 8)]
+                ^ T2[extractBits(a3, 8, 8)] ^ T3[extractBits(a0, 0, 8)] ^ K[37];
+        ti2 = T0[extractBits(a2, 24, 8)] ^ T1[extractBits(a3, 16, 8)]
+                ^ T2[extractBits(a0, 8, 8)] ^ T3[extractBits(a1, 0, 8)] ^ K[38];
+        ti3 = T0[extractBits(a3, 24, 8)] ^ T1[extractBits(a0, 16, 8)]
+                ^ T2[extractBits(a1, 8, 8)] ^ T3[extractBits(a2, 0, 8)] ^ K[39];
 
         if (rounds > AES_128_ROUNDS) {
-            a0 = T0[ti0 >>> 24] ^ T1[Integer.extractBits(ti1, 16, 8)]
-                    ^ T2[Integer.extractBits(ti2, 8, 8)] ^ T3[ti3 & 0xFF] ^ K[40];
-            a1 = T0[ti1 >>> 24] ^ T1[Integer.extractBits(ti2, 16, 8)]
-                    ^ T2[Integer.extractBits(ti3, 8, 8)] ^ T3[ti0 & 0xFF] ^ K[41];
-            a2 = T0[ti2 >>> 24] ^ T1[Integer.extractBits(ti3, 16, 8)]
-                    ^ T2[Integer.extractBits(ti0, 8, 8)] ^ T3[ti1 & 0xFF] ^ K[42];
-            a3 = T0[ti3 >>> 24] ^ T1[Integer.extractBits(ti0, 16, 8)]
-                    ^ T2[Integer.extractBits(ti1, 8, 8)] ^ T3[ti2 & 0xFF] ^ K[43];
+            a0 = T0[extractBits(ti0, 24, 8)] ^ T1[extractBits(ti1, 16, 8)]
+                    ^ T2[extractBits(ti2, 8, 8)] ^ T3[extractBits(ti3, 0, 8)] ^ K[40];
+            a1 = T0[extractBits(ti1, 24, 8)] ^ T1[extractBits(ti2, 16, 8)]
+                    ^ T2[extractBits(ti3, 8, 8)] ^ T3[extractBits(ti0, 0, 8)] ^ K[41];
+            a2 = T0[extractBits(ti2, 24, 8)] ^ T1[extractBits(ti3, 16, 8)]
+                    ^ T2[extractBits(ti0, 8, 8)] ^ T3[extractBits(ti1, 0, 8)] ^ K[42];
+            a3 = T0[extractBits(ti3, 24, 8)] ^ T1[extractBits(ti0, 16, 8)]
+                    ^ T2[extractBits(ti1, 8, 8)] ^ T3[extractBits(ti2, 0, 8)] ^ K[43];
 
-            ti0 = T0[a0 >>> 24] ^ T1[Integer.extractBits(a1, 16, 8)]
-                    ^ T2[Integer.extractBits(a2, 8, 8)] ^ T3[a3 & 0xFF] ^ K[44];
-            ti1 = T0[a1 >>> 24] ^ T1[Integer.extractBits(a2, 16, 8)]
-                    ^ T2[Integer.extractBits(a3, 8, 8)] ^ T3[a0 & 0xFF] ^ K[45];
-            ti2 = T0[a2 >>> 24] ^ T1[Integer.extractBits(a3, 16, 8)]
-                    ^ T2[Integer.extractBits(a0, 8, 8)] ^ T3[a1 & 0xFF] ^ K[46];
-            ti3 = T0[a3 >>> 24] ^ T1[Integer.extractBits(a0, 16, 8)]
-                    ^ T2[Integer.extractBits(a1, 8, 8)] ^ T3[a2 & 0xFF] ^ K[47];
+            ti0 = T0[extractBits(a0, 24, 8)] ^ T1[extractBits(a1, 16, 8)]
+                    ^ T2[extractBits(a2, 8, 8)] ^ T3[extractBits(a3, 0, 8)] ^ K[44];
+            ti1 = T0[extractBits(a1, 24, 8)] ^ T1[extractBits(a2, 16, 8)]
+                    ^ T2[extractBits(a3, 8, 8)] ^ T3[extractBits(a0, 0, 8)] ^ K[45];
+            ti2 = T0[extractBits(a2, 24, 8)] ^ T1[extractBits(a3, 16, 8)]
+                    ^ T2[extractBits(a0, 8, 8)] ^ T3[extractBits(a1, 0, 8)] ^ K[46];
+            ti3 = T0[extractBits(a3, 24, 8)] ^ T1[extractBits(a0, 16, 8)]
+                    ^ T2[extractBits(a1, 8, 8)] ^ T3[extractBits(a2, 0, 8)] ^ K[47];
         }
         if (rounds > AES_192_ROUNDS) {
-            a0 = T0[ti0 >>> 24] ^ T1[Integer.extractBits(ti1, 16, 8)]
-                    ^ T2[Integer.extractBits(ti2, 8, 8)] ^ T3[ti3 & 0xFF] ^ K[48];
-            a1 = T0[ti1 >>> 24] ^ T1[Integer.extractBits(ti2, 16, 8)]
-                    ^ T2[Integer.extractBits(ti3, 8, 8)] ^ T3[ti0 & 0xFF] ^ K[49];
-            a2 = T0[ti2 >>> 24] ^ T1[Integer.extractBits(ti3, 16, 8)]
-                    ^ T2[Integer.extractBits(ti0, 8, 8)] ^ T3[ti1 & 0xFF] ^ K[50];
-            a3 = T0[ti3 >>> 24] ^ T1[Integer.extractBits(ti0, 16, 8)]
-                    ^ T2[Integer.extractBits(ti1, 8, 8)] ^ T3[ti2 & 0xFF] ^ K[51];
+            a0 = T0[extractBits(ti0, 24, 8)] ^ T1[extractBits(ti1, 16, 8)]
+                    ^ T2[extractBits(ti2, 8, 8)] ^ T3[extractBits(ti3, 0, 8)] ^ K[48];
+            a1 = T0[extractBits(ti1, 24, 8)] ^ T1[extractBits(ti2, 16, 8)]
+                    ^ T2[extractBits(ti3, 8, 8)] ^ T3[extractBits(ti0, 0, 8)] ^ K[49];
+            a2 = T0[extractBits(ti2, 24, 8)] ^ T1[extractBits(ti3, 16, 8)]
+                    ^ T2[extractBits(ti0, 8, 8)] ^ T3[extractBits(ti1, 0, 8)] ^ K[50];
+            a3 = T0[extractBits(ti3, 24, 8)] ^ T1[extractBits(ti0, 16, 8)]
+                    ^ T2[extractBits(ti1, 8, 8)] ^ T3[extractBits(ti2, 0, 8)] ^ K[51];
 
-            ti0 = T0[a0 >>> 24] ^ T1[Integer.extractBits(a1, 16, 8)]
-                    ^ T2[Integer.extractBits(a2, 8, 8)] ^ T3[a3 & 0xFF] ^ K[52];
-            ti1 = T0[a1 >>> 24] ^ T1[Integer.extractBits(a2, 16, 8)]
-                    ^ T2[Integer.extractBits(a3, 8, 8)] ^ T3[a0 & 0xFF] ^ K[53];
-            ti2 = T0[a2 >>> 24] ^ T1[Integer.extractBits(a3, 16, 8)]
-                    ^ T2[Integer.extractBits(a0, 8, 8)] ^ T3[a1 & 0xFF] ^ K[54];
-            ti3 = T0[a3 >>> 24] ^ T1[Integer.extractBits(a0, 16, 8)]
-                    ^ T2[Integer.extractBits(a1, 8, 8)] ^ T3[a2 & 0xFF] ^ K[55];
+            ti0 = T0[extractBits(a0, 24, 8)] ^ T1[extractBits(a1, 16, 8)]
+                    ^ T2[extractBits(a2, 8, 8)] ^ T3[extractBits(a3, 0, 8)] ^ K[52];
+            ti1 = T0[extractBits(a1, 24, 8)] ^ T1[extractBits(a2, 16, 8)]
+                    ^ T2[extractBits(a3, 8, 8)] ^ T3[extractBits(a0, 0, 8)] ^ K[53];
+            ti2 = T0[extractBits(a2, 24, 8)] ^ T1[extractBits(a3, 16, 8)]
+                    ^ T2[extractBits(a0, 8, 8)] ^ T3[extractBits(a1, 0, 8)] ^ K[54];
+            ti3 = T0[extractBits(a3, 24, 8)] ^ T1[extractBits(a0, 16, 8)]
+                    ^ T2[extractBits(a1, 8, 8)] ^ T3[extractBits(a2, 0, 8)] ^ K[55];
         }
 
-        a0 = T2[ti0 >>> 24] & 0xFF000000
-                ^ T3[Integer.extractBits(ti1, 16, 8)] & 0xFF0000
-                ^ T0[Integer.extractBits(ti2, 8, 8)] & 0xFF00
-                ^ T1[ti3 & 0xFF] & 0xFF ^ K[w];
-        a1 = T2[ti1 >>> 24] & 0xFF000000
-                ^ T3[Integer.extractBits(ti2, 16, 8)] & 0xFF0000
-                ^ T0[Integer.extractBits(ti3, 8, 8)] & 0xFF00
-                ^ T1[ti0 & 0xFF] & 0xFF ^ K[w + 1];
-        a2 = T2[ti2 >>> 24] & 0xFF000000
-                ^ T3[Integer.extractBits(ti3, 16, 8)] & 0xFF0000
-                ^ T0[Integer.extractBits(ti0, 8, 8)] & 0xFF00
-                ^ T1[ti1 & 0xFF] & 0xFF ^ K[w + 2];
-        a3 = T2[ti3 >>> 24] & 0xFF000000
-                ^ T3[Integer.extractBits(ti0, 16, 8)] & 0xFF0000
-                ^ T0[Integer.extractBits(ti1, 8, 8)] & 0xFF00
-                ^ T1[ti2 & 0xFF] & 0xFF ^ K[w + 3];
+        a0 = T2[extractBits(ti0, 24, 8)] & 0xFF000000
+                ^ T3[extractBits(ti1, 16, 8)] & 0xFF0000
+                ^ T0[extractBits(ti2, 8, 8)] & 0xFF00
+                ^ T1[extractBits(ti3, 0, 8)] & 0xFF ^ K[w];
+        a1 = T2[extractBits(ti1, 24, 8)] & 0xFF000000
+                ^ T3[extractBits(ti2, 16, 8)] & 0xFF0000
+                ^ T0[extractBits(ti3, 8, 8)] & 0xFF00
+                ^ T1[extractBits(ti0, 0, 8)] & 0xFF ^ K[w + 1];
+        a2 = T2[extractBits(ti2, 24, 8)] & 0xFF000000
+                ^ T3[extractBits(ti3, 16, 8)] & 0xFF0000
+                ^ T0[extractBits(ti0, 8, 8)] & 0xFF00
+                ^ T1[extractBits(ti1, 0, 8)] & 0xFF ^ K[w + 2];
+        a3 = T2[extractBits(ti3, 24, 8)] & 0xFF000000
+                ^ T3[extractBits(ti0, 16, 8)] & 0xFF0000
+                ^ T0[extractBits(ti1, 8, 8)] & 0xFF00
+                ^ T1[extractBits(ti2, 0, 8)] & 0xFF ^ K[w + 3];
 
-        c[co] = (byte) (a0 >>> 24);
-        c[co + 1] = (byte) Integer.extractBits(a0, 16, 8);
-        c[co + 2] = (byte) Integer.extractBits(a0, 8, 8);
-        c[co + 3] = (byte) (a0 & 0xFF);
-        c[co + 4] = (byte) (a1 >>> 24);
-        c[co + 5] = (byte) Integer.extractBits(a1, 16, 8);
-        c[co + 6] = (byte) Integer.extractBits(a1, 8, 8);
-        c[co + 7] = (byte) (a1 & 0xFF);
-        c[co + 8] = (byte) (a2 >>> 24);
-        c[co + 9] = (byte) Integer.extractBits(a2, 16, 8);
-        c[co + 10] = (byte) Integer.extractBits(a2, 8, 8);
-        c[co + 11] = (byte) (a2 & 0xFF);
-        c[co + 12] = (byte) (a3 >> 24);
-        c[co + 13] = (byte) Integer.extractBits(a3, 16, 8);
-        c[co + 14] = (byte) Integer.extractBits(a3, 8, 8);
-        c[co + 15] = (byte) (a3 & 0xFF);
+        c[co] = (byte) extractBits(a0, 24, 8);
+        c[co + 1] = (byte) extractBits(a0, 16, 8);
+        c[co + 2] = (byte) extractBits(a0, 8, 8);
+        c[co + 3] = (byte) extractBits(a0, 0, 8);
+        c[co + 4] = (byte) extractBits(a1, 24, 8);
+        c[co + 5] = (byte) extractBits(a1, 16, 8);
+        c[co + 6] = (byte) extractBits(a1, 8, 8);
+        c[co + 7] = (byte) extractBits(a1, 0, 8);
+        c[co + 8] = (byte) extractBits(a2, 24, 8);
+        c[co + 9] = (byte) extractBits(a2, 16, 8);
+        c[co + 10] = (byte) extractBits(a2, 8, 8);
+        c[co + 11] = (byte) extractBits(a2, 0, 8);
+        c[co + 12] = (byte) extractBits(a3, 24, 8);
+        c[co + 13] = (byte) extractBits(a3, 16, 8);
+        c[co + 14] = (byte) extractBits(a3, 8, 8);
+        c[co + 15] = (byte) extractBits(a3, 0, 8);
     }
 
     /**
@@ -1230,151 +1234,159 @@ final class AES_Crypt extends SymmetricCipher {
         ti3 = ((c[co + 12] & 0xFF) << 24) ^ ((c[co + 13] & 0xFF) << 16)
                 ^ ((c[co + 14] & 0xFF) << 8) ^ (c[co + 15] & 0xFF) ^ K[7];
 
-        a0 = TI0[ti0 >>> 24] ^ TI1[Integer.extractBits(ti3, 16, 8)]
-                ^ TI2[Integer.extractBits(ti2, 8, 8)] ^ TI3[ti1 & 0xFF] ^ K[8];
-        a1 = TI0[ti1 >>> 24] ^ TI1[Integer.extractBits(ti0, 16, 8)]
-                ^ TI2[Integer.extractBits(ti3, 8, 8)] ^ TI3[ti2 & 0xFF] ^ K[9];
-        a2 = TI0[ti2 >>> 24] ^ TI1[Integer.extractBits(ti1, 16, 8)]
-                ^ TI2[Integer.extractBits(ti0, 8, 8)] ^ TI3[ti3 & 0xFF] ^ K[10];
-        a3 = TI0[ti3 >>> 24] ^ TI1[Integer.extractBits(ti2, 16, 8)]
-                ^ TI2[Integer.extractBits(ti1, 8, 8)] ^ TI3[ti0 & 0xFF] ^ K[11];
+        a0 = TI0[extractBits(ti0, 24, 8)] ^ TI1[extractBits(ti3, 16, 8)]
+                ^ TI2[extractBits(ti2, 8, 8)] ^ TI3[extractBits(ti1, 0, 8)] ^ K[8];
+        a1 = TI0[extractBits(ti1, 24, 8)] ^ TI1[extractBits(ti0, 16, 8)]
+                ^ TI2[extractBits(ti3, 8, 8)] ^ TI3[extractBits(ti2, 0, 8)] ^ K[9];
+        a2 = TI0[extractBits(ti2, 24, 8)] ^ TI1[extractBits(ti1, 16, 8)]
+                ^ TI2[extractBits(ti0, 8, 8)] ^ TI3[extractBits(ti3, 0, 8)] ^ K[10];
+        a3 = TI0[extractBits(ti3, 24, 8)] ^ TI1[extractBits(ti2, 16, 8)]
+                ^ TI2[extractBits(ti1, 8, 8)] ^ TI3[extractBits(ti0, 0, 8)] ^ K[11];
 
-        ti0 = TI0[a0 >>> 24] ^ TI1[Integer.extractBits(a3, 16, 8)]
-                ^ TI2[Integer.extractBits(a2, 8, 8)] ^ TI3[a1 & 0xFF] ^ K[12];
-        ti1 = TI0[a1 >>> 24] ^ TI1[Integer.extractBits(a0, 16, 8)]
-                ^ TI2[Integer.extractBits(a3, 8, 8)] ^ TI3[a2 & 0xFF] ^ K[13];
-        ti2 = TI0[a2 >>> 24] ^ TI1[Integer.extractBits(a1, 16, 8)]
-                ^ TI2[Integer.extractBits(a0, 8, 8)] ^ TI3[a3 & 0xFF] ^ K[14];
-        ti3 = TI0[a3 >>> 24] ^ TI1[Integer.extractBits(a2, 16, 8)]
-                ^ TI2[Integer.extractBits(a1, 8, 8)] ^ TI3[a0 & 0xFF] ^ K[15];
+        ti0 = TI0[extractBits(a0, 24, 8)] ^ TI1[extractBits(a3, 16, 8)]
+                ^ TI2[extractBits(a2, 8, 8)] ^ TI3[extractBits(a1, 0, 8)] ^ K[12];
+        ti1 = TI0[extractBits(a1, 24, 8)] ^ TI1[extractBits(a0, 16, 8)]
+                ^ TI2[extractBits(a3, 8, 8)] ^ TI3[extractBits(a2, 0, 8)] ^ K[13];
+        ti2 = TI0[extractBits(a2, 24, 8)] ^ TI1[extractBits(a1, 16, 8)]
+                ^ TI2[extractBits(a0, 8, 8)] ^ TI3[extractBits(a3, 0, 8)] ^ K[14];
+        ti3 = TI0[extractBits(a3, 24, 8)] ^ TI1[extractBits(a2, 16, 8)]
+                ^ TI2[extractBits(a1, 8, 8)] ^ TI3[extractBits(a0, 0, 8)] ^ K[15];
 
-        a0 = TI0[ti0 >>> 24] ^ TI1[Integer.extractBits(ti3, 16, 8)]
-                ^ TI2[Integer.extractBits(ti2, 8, 8)] ^ TI3[ti1 & 0xFF] ^ K[16];
-        a1 = TI0[ti1 >>> 24] ^ TI1[Integer.extractBits(ti0, 16, 8)]
-                ^ TI2[Integer.extractBits(ti3, 8, 8)] ^ TI3[ti2 & 0xFF] ^ K[17];
-        a2 = TI0[ti2 >>> 24] ^ TI1[Integer.extractBits(ti1, 16, 8)]
-                ^ TI2[Integer.extractBits(ti0, 8, 8)] ^ TI3[ti3 & 0xFF] ^ K[18];
-        a3 = TI0[ti3 >>> 24] ^ TI1[Integer.extractBits(ti2, 16, 8)]
-                ^ TI2[Integer.extractBits(ti1, 8, 8)] ^ TI3[ti0 & 0xFF] ^ K[19];
+        a0 = TI0[extractBits(ti0, 24, 8)] ^ TI1[extractBits(ti3, 16, 8)]
+                ^ TI2[extractBits(ti2, 8, 8)] ^ TI3[extractBits(ti1, 0, 8)] ^ K[16];
+        a1 = TI0[extractBits(ti1, 24, 8)] ^ TI1[extractBits(ti0, 16, 8)]
+                ^ TI2[extractBits(ti3, 8, 8)] ^ TI3[extractBits(ti2, 0, 8)] ^ K[17];
+        a2 = TI0[extractBits(ti2, 24, 8)] ^ TI1[extractBits(ti1, 16, 8)]
+                ^ TI2[extractBits(ti0, 8, 8)] ^ TI3[extractBits(ti3, 0, 8)] ^ K[18];
+        a3 = TI0[extractBits(ti3, 24, 8)] ^ TI1[extractBits(ti2, 16, 8)]
+                ^ TI2[extractBits(ti1, 8, 8)] ^ TI3[extractBits(ti0, 0, 8)] ^ K[19];
 
-        ti0 = TI0[a0 >>> 24] ^ TI1[Integer.extractBits(a3, 16, 8)]
-                ^ TI2[Integer.extractBits(a2, 8, 8)] ^ TI3[a1 & 0xFF] ^ K[20];
-        ti1 = TI0[a1 >>> 24] ^ TI1[Integer.extractBits(a0, 16, 8)]
-                ^ TI2[Integer.extractBits(a3, 8, 8)] ^ TI3[a2 & 0xFF] ^ K[21];
-        ti2 = TI0[a2 >>> 24] ^ TI1[Integer.extractBits(a1, 16, 8)]
-                ^ TI2[Integer.extractBits(a0, 8, 8)] ^ TI3[a3 & 0xFF] ^ K[22];
-        ti3 = TI0[a3 >>> 24] ^ TI1[Integer.extractBits(a2, 16, 8)]
-                ^ TI2[Integer.extractBits(a1, 8, 8)] ^ TI3[a0 & 0xFF] ^ K[23];
+        ti0 = TI0[extractBits(a0, 24, 8)] ^ TI1[extractBits(a3, 16, 8)]
+                ^ TI2[extractBits(a2, 8, 8)] ^ TI3[extractBits(a1, 0, 8)] ^ K[20];
+        ti1 = TI0[extractBits(a1, 24, 8)] ^ TI1[extractBits(a0, 16, 8)]
+                ^ TI2[extractBits(a3, 8, 8)] ^ TI3[extractBits(a2, 0, 8)] ^ K[21];
+        ti2 = TI0[extractBits(a2, 24, 8)] ^ TI1[extractBits(a1, 16, 8)]
+                ^ TI2[extractBits(a0, 8, 8)] ^ TI3[extractBits(a3, 0, 8)] ^ K[22];
+        ti3 = TI0[extractBits(a3, 24, 8)] ^ TI1[extractBits(a2, 16, 8)]
+                ^ TI2[extractBits(a1, 8, 8)] ^ TI3[extractBits(a0, 0, 8)] ^ K[23];
 
-        a0 = TI0[ti0 >>> 24] ^ TI1[Integer.extractBits(ti3, 16, 8)]
-                ^ TI2[Integer.extractBits(ti2, 8, 8)] ^ TI3[ti1 & 0xFF] ^ K[24];
-        a1 = TI0[ti1 >>> 24] ^ TI1[Integer.extractBits(ti0, 16, 8)]
-                ^ TI2[Integer.extractBits(ti3, 8, 8)] ^ TI3[ti2 & 0xFF] ^ K[25];
-        a2 = TI0[ti2 >>> 24] ^ TI1[Integer.extractBits(ti1, 16, 8)]
-                ^ TI2[Integer.extractBits(ti0, 8, 8)] ^ TI3[ti3 & 0xFF] ^ K[26];
-        a3 = TI0[ti3 >>> 24] ^ TI1[Integer.extractBits(ti2, 16, 8)]
-                ^ TI2[Integer.extractBits(ti1, 8, 8)] ^ TI3[ti0 & 0xFF] ^ K[27];
+        a0 = TI0[extractBits(ti0, 24, 8)] ^ TI1[extractBits(ti3, 16, 8)]
+                ^ TI2[extractBits(ti2, 8, 8)] ^ TI3[extractBits(ti1, 0, 8)] ^ K[24];
+        a1 = TI0[extractBits(ti1, 24, 8)] ^ TI1[extractBits(ti0, 16, 8)]
+                ^ TI2[extractBits(ti3, 8, 8)] ^ TI3[extractBits(ti2, 0, 8)] ^ K[25];
+        a2 = TI0[extractBits(ti2, 24, 8)] ^ TI1[extractBits(ti1, 16, 8)]
+                ^ TI2[extractBits(ti0, 8, 8)] ^ TI3[extractBits(ti3, 0, 8)] ^ K[26];
+        a3 = TI0[extractBits(ti3, 24, 8)] ^ TI1[extractBits(ti2, 16, 8)]
+                ^ TI2[extractBits(ti1, 8, 8)] ^ TI3[extractBits(ti0, 0, 8)] ^ K[27];
 
-        ti0 = TI0[a0 >>> 24] ^ TI1[Integer.extractBits(a3, 16, 8)]
-                ^ TI2[Integer.extractBits(a2, 8, 8)] ^ TI3[a1 & 0xFF] ^ K[28];
-        ti1 = TI0[a1 >>> 24] ^ TI1[Integer.extractBits(a0, 16, 8)]
-                ^ TI2[Integer.extractBits(a3, 8, 8)] ^ TI3[a2 & 0xFF] ^ K[29];
-        ti2 = TI0[a2 >>> 24] ^ TI1[Integer.extractBits(a1, 16, 8)]
-                ^ TI2[Integer.extractBits(a0, 8, 8)] ^ TI3[a3 & 0xFF] ^ K[30];
-        ti3 = TI0[a3 >>> 24] ^ TI1[Integer.extractBits(a2, 16, 8)]
-                ^ TI2[Integer.extractBits(a1, 8, 8)] ^ TI3[a0 & 0xFF] ^ K[31];
+        ti0 = TI0[extractBits(a0, 24, 8)] ^ TI1[extractBits(a3, 16, 8)]
+                ^ TI2[extractBits(a2, 8, 8)] ^ TI3[extractBits(a1, 0, 8)] ^ K[28];
+        ti1 = TI0[extractBits(a1, 24, 8)] ^ TI1[extractBits(a0, 16, 8)]
+                ^ TI2[extractBits(a3, 8, 8)] ^ TI3[extractBits(a2, 0, 8)] ^ K[29];
+        ti2 = TI0[extractBits(a2, 24, 8)] ^ TI1[extractBits(a1, 16, 8)]
+                ^ TI2[extractBits(a0, 8, 8)] ^ TI3[extractBits(a3, 0, 8)] ^ K[30];
+        ti3 = TI0[extractBits(a3, 24, 8)] ^ TI1[extractBits(a2, 16, 8)]
+                ^ TI2[extractBits(a1, 8, 8)] ^ TI3[extractBits(a0, 0, 8)] ^ K[31];
 
-        a0 = TI0[ti0 >>> 24] ^ TI1[Integer.extractBits(ti3, 16, 8)]
-                ^ TI2[Integer.extractBits(ti2, 8, 8)] ^ TI3[ti1 & 0xFF] ^ K[32];
-        a1 = TI0[ti1 >>> 24] ^ TI1[Integer.extractBits(ti0, 16, 8)]
-                ^ TI2[Integer.extractBits(ti3, 8, 8)] ^ TI3[ti2 & 0xFF] ^ K[33];
-        a2 = TI0[ti2 >>> 24] ^ TI1[Integer.extractBits(ti1, 16, 8)]
-                ^ TI2[Integer.extractBits(ti0, 8, 8)] ^ TI3[ti3 & 0xFF] ^ K[34];
-        a3 = TI0[ti3 >>> 24] ^ TI1[Integer.extractBits(ti2, 16, 8)]
-                ^ TI2[Integer.extractBits(ti1, 8, 8)] ^ TI3[ti0 & 0xFF] ^ K[35];
+        a0 = TI0[extractBits(ti0, 24, 8)] ^ TI1[extractBits(ti3, 16, 8)]
+                ^ TI2[extractBits(ti2, 8, 8)] ^ TI3[extractBits(ti1, 0, 8)] ^ K[32];
+        a1 = TI0[extractBits(ti1, 24, 8)] ^ TI1[extractBits(ti0, 16, 8)]
+                ^ TI2[extractBits(ti3, 8, 8)] ^ TI3[extractBits(ti2, 0, 8)] ^ K[33];
+        a2 = TI0[extractBits(ti2, 24, 8)] ^ TI1[extractBits(ti1, 16, 8)]
+                ^ TI2[extractBits(ti0, 8, 8)] ^ TI3[extractBits(ti3, 0, 8)] ^ K[34];
+        a3 = TI0[extractBits(ti3, 24, 8)] ^ TI1[extractBits(ti2, 16, 8)]
+                ^ TI2[extractBits(ti1, 8, 8)] ^ TI3[extractBits(ti0, 0, 8)] ^ K[35];
 
-        ti0 = TI0[a0 >>> 24] ^ TI1[Integer.extractBits(a3, 16, 8)]
-                ^ TI2[Integer.extractBits(a2, 8, 8)] ^ TI3[a1 & 0xFF] ^ K[36];
-        ti1 = TI0[a1 >>> 24] ^ TI1[Integer.extractBits(a0, 16, 8)]
-                ^ TI2[Integer.extractBits(a3, 8, 8)] ^ TI3[a2 & 0xFF] ^ K[37];
-        ti2 = TI0[a2 >>> 24] ^ TI1[Integer.extractBits(a1, 16, 8)]
-                ^ TI2[Integer.extractBits(a0, 8, 8)] ^ TI3[a3 & 0xFF] ^ K[38];
-        ti3 = TI0[a3 >>> 24] ^ TI1[Integer.extractBits(a2, 16, 8)]
-                ^ TI2[Integer.extractBits(a1, 8, 8)] ^ TI3[a0 & 0xFF] ^ K[39];
+        ti0 = TI0[extractBits(a0, 24, 8)] ^ TI1[extractBits(a3, 16, 8)]
+                ^ TI2[extractBits(a2, 8, 8)] ^ TI3[extractBits(a1, 0, 8)] ^ K[36];
+        ti1 = TI0[extractBits(a1, 24, 8)] ^ TI1[extractBits(a0, 16, 8)]
+                ^ TI2[extractBits(a3, 8, 8)] ^ TI3[extractBits(a2, 0, 8)] ^ K[37];
+        ti2 = TI0[extractBits(a2, 24, 8)] ^ TI1[extractBits(a1, 16, 8)]
+                ^ TI2[extractBits(a0, 8, 8)] ^ TI3[extractBits(a3, 0, 8)] ^ K[38];
+        ti3 = TI0[extractBits(a3, 24, 8)] ^ TI1[extractBits(a2, 16, 8)]
+                ^ TI2[extractBits(a1, 8, 8)] ^ TI3[extractBits(a0, 0, 8)] ^ K[39];
 
-        a0 = TI0[ti0 >>> 24] ^ TI1[Integer.extractBits(ti3, 16, 8)]
-                ^ TI2[Integer.extractBits(ti2, 8, 8)] ^ TI3[ti1 & 0xFF] ^ K[40];
-        a1 = TI0[ti1 >>> 24] ^ TI1[Integer.extractBits(ti0, 16, 8)]
-                ^ TI2[Integer.extractBits(ti3, 8, 8)] ^ TI3[ti2 & 0xFF] ^ K[41];
-        a2 = TI0[ti2 >>> 24] ^ TI1[Integer.extractBits(ti1, 16, 8)]
-                ^ TI2[Integer.extractBits(ti0, 8, 8)] ^ TI3[ti3 & 0xFF] ^ K[42];
-        a3 = TI0[ti3 >>> 24] ^ TI1[Integer.extractBits(ti2, 16, 8)]
-                ^ TI2[Integer.extractBits(ti1, 8, 8)] ^ TI3[ti0 & 0xFF] ^ K[43];
+        a0 = TI0[extractBits(ti0, 24, 8)] ^ TI1[extractBits(ti3, 16, 8)]
+                ^ TI2[extractBits(ti2, 8, 8)] ^ TI3[extractBits(ti1, 0, 8)] ^ K[40];
+        a1 = TI0[extractBits(ti1, 24, 8)] ^ TI1[extractBits(ti0, 16, 8)]
+                ^ TI2[extractBits(ti3, 8, 8)] ^ TI3[extractBits(ti2, 0, 8)] ^ K[41];
+        a2 = TI0[extractBits(ti2, 24, 8)] ^ TI1[extractBits(ti1, 16, 8)]
+                ^ TI2[extractBits(ti0, 8, 8)] ^ TI3[extractBits(ti3, 0, 8)] ^ K[42];
+        a3 = TI0[extractBits(ti3, 24, 8)] ^ TI1[extractBits(ti2, 16, 8)]
+                ^ TI2[extractBits(ti1, 8, 8)] ^ TI3[extractBits(ti0, 0, 8)] ^ K[43];
 
         if (rounds > AES_128_ROUNDS) {
-            ti0 = TI0[a0 >>> 24] ^ TI1[Integer.extractBits(a3, 16, 8)]
-                    ^ TI2[Integer.extractBits(a2, 8, 8)] ^ TI3[a1 & 0xFF] ^ K[44];
-            ti1 = TI0[a1 >>> 24] ^ TI1[Integer.extractBits(a0, 16, 8)]
-                    ^ TI2[Integer.extractBits(a3, 8, 8)] ^ TI3[a2 & 0xFF] ^ K[45];
-            ti2 = TI0[a2 >>> 24] ^ TI1[Integer.extractBits(a1, 16, 8)]
-                    ^ TI2[Integer.extractBits(a0, 8, 8)] ^ TI3[a3 & 0xFF] ^ K[46];
-            ti3 = TI0[a3 >>> 24] ^ TI1[Integer.extractBits(a2, 16, 8)]
-                    ^ TI2[Integer.extractBits(a1, 8, 8)] ^ TI3[a0 & 0xFF] ^ K[47];
+            ti0 = TI0[extractBits(a0, 24, 8)] ^ TI1[extractBits(a3, 16, 8)]
+                    ^ TI2[extractBits(a2, 8, 8)] ^ TI3[extractBits(a1, 0, 8)] ^ K[44];
+            ti1 = TI0[extractBits(a1, 24, 8)] ^ TI1[extractBits(a0, 16, 8)]
+                    ^ TI2[extractBits(a3, 8, 8)] ^ TI3[extractBits(a2, 0, 8)] ^ K[45];
+            ti2 = TI0[extractBits(a2, 24, 8)] ^ TI1[extractBits(a1, 16, 8)]
+                    ^ TI2[extractBits(a0, 8, 8)] ^ TI3[extractBits(a3, 0, 8)] ^ K[46];
+            ti3 = TI0[extractBits(a3, 24, 8)] ^ TI1[extractBits(a2, 16, 8)]
+                    ^ TI2[extractBits(a1, 8, 8)] ^ TI3[extractBits(a0, 0, 8)] ^ K[47];
 
-            a0 = TI0[ti0 >>> 24] ^ TI1[Integer.extractBits(ti3, 16, 8)]
-                    ^ TI2[Integer.extractBits(ti2, 8, 8)] ^ TI3[ti1 & 0xFF] ^ K[48];
-            a1 = TI0[ti1 >>> 24] ^ TI1[Integer.extractBits(ti0, 16, 8)]
-                    ^ TI2[Integer.extractBits(ti3, 8, 8)] ^ TI3[ti2 & 0xFF] ^ K[49];
-            a2 = TI0[ti2 >>> 24] ^ TI1[Integer.extractBits(ti1, 16, 8)]
-                    ^ TI2[Integer.extractBits(ti0, 8, 8)] ^ TI3[ti3 & 0xFF] ^ K[50];
-            a3 = TI0[ti3 >>> 24] ^ TI1[Integer.extractBits(ti2, 16, 8)]
-                    ^ TI2[Integer.extractBits(ti1, 8, 8)] ^ TI3[ti0 & 0xFF] ^ K[51];
+            a0 = TI0[extractBits(ti0, 24, 8)] ^ TI1[extractBits(ti3, 16, 8)]
+                    ^ TI2[extractBits(ti2, 8, 8)] ^ TI3[extractBits(ti1, 0, 8)] ^ K[48];
+            a1 = TI0[extractBits(ti1, 24, 8)] ^ TI1[extractBits(ti0, 16, 8)]
+                    ^ TI2[extractBits(ti3, 8, 8)] ^ TI3[extractBits(ti2, 0, 8)] ^ K[49];
+            a2 = TI0[extractBits(ti2, 24, 8)] ^ TI1[extractBits(ti1, 16, 8)]
+                    ^ TI2[extractBits(ti0, 8, 8)] ^ TI3[extractBits(ti3, 0, 8)] ^ K[50];
+            a3 = TI0[extractBits(ti3, 24, 8)] ^ TI1[extractBits(ti2, 16, 8)]
+                    ^ TI2[extractBits(ti1, 8, 8)] ^ TI3[extractBits(ti0, 0, 8)] ^ K[51];
         }
         if (rounds > AES_192_ROUNDS) {
-            ti0 = TI0[a0 >>> 24] ^ TI1[Integer.extractBits(a3, 16, 8)]
-                    ^ TI2[Integer.extractBits(a2, 8, 8)] ^ TI3[a1 & 0xFF] ^ K[52];
-            ti1 = TI0[a1 >>> 24] ^ TI1[Integer.extractBits(a0, 16, 8)]
-                    ^ TI2[Integer.extractBits(a3, 8, 8)] ^ TI3[a2 & 0xFF] ^ K[53];
-            ti2 = TI0[a2 >>> 24] ^ TI1[Integer.extractBits(a1, 16, 8)]
-                    ^ TI2[Integer.extractBits(a0, 8, 8)] ^ TI3[a3 & 0xFF] ^ K[54];
-            ti3 = TI0[a3 >>> 24] ^ TI1[Integer.extractBits(a2, 16, 8)]
-                    ^ TI2[Integer.extractBits(a1, 8, 8)] ^ TI3[a0 & 0xFF] ^ K[55];
+            ti0 = TI0[extractBits(a0, 24, 8)] ^ TI1[extractBits(a3, 16, 8)]
+                    ^ TI2[extractBits(a2, 8, 8)] ^ TI3[extractBits(a1, 0, 8)] ^ K[52];
+            ti1 = TI0[extractBits(a1, 24, 8)] ^ TI1[extractBits(a0, 16, 8)]
+                    ^ TI2[extractBits(a3, 8, 8)] ^ TI3[extractBits(a2, 0, 8)] ^ K[53];
+            ti2 = TI0[extractBits(a2, 24, 8)] ^ TI1[extractBits(a1, 16, 8)]
+                    ^ TI2[extractBits(a0, 8, 8)] ^ TI3[extractBits(a3, 0, 8)] ^ K[54];
+            ti3 = TI0[extractBits(a3, 24, 8)] ^ TI1[extractBits(a2, 16, 8)]
+                    ^ TI2[extractBits(a1, 8, 8)] ^ TI3[extractBits(a0, 0, 8)] ^ K[55];
 
-            a0 = TI0[ti0 >>> 24] ^ TI1[Integer.extractBits(ti3, 16, 8)]
-                    ^ TI2[Integer.extractBits(ti2, 8, 8)] ^ TI3[ti1 & 0xFF] ^ K[56];
-            a1 = TI0[ti1 >>> 24] ^ TI1[Integer.extractBits(ti0, 16, 8)]
-                    ^ TI2[Integer.extractBits(ti3, 8, 8)] ^ TI3[ti2 & 0xFF] ^ K[57];
-            a2 = TI0[ti2 >>> 24] ^ TI1[Integer.extractBits(ti1, 16, 8)]
-                    ^ TI2[Integer.extractBits(ti0, 8, 8)] ^ TI3[ti3 & 0xFF] ^ K[58];
-            a3 = TI0[ti3 >>> 24] ^ TI1[Integer.extractBits(ti2, 16, 8)]
-                    ^ TI2[Integer.extractBits(ti1, 8, 8)] ^ TI3[ti0 & 0xFF] ^ K[59];
+            a0 = TI0[extractBits(ti0, 24, 8)] ^ TI1[extractBits(ti3, 16, 8)]
+                    ^ TI2[extractBits(ti2, 8, 8)] ^ TI3[extractBits(ti1, 0, 8)] ^ K[56];
+            a1 = TI0[extractBits(ti1, 24, 8)] ^ TI1[extractBits(ti0, 16, 8)]
+                    ^ TI2[extractBits(ti3, 8, 8)] ^ TI3[extractBits(ti2, 0, 8)] ^ K[57];
+            a2 = TI0[extractBits(ti2, 24, 8)] ^ TI1[extractBits(ti1, 16, 8)]
+                    ^ TI2[extractBits(ti0, 8, 8)] ^ TI3[extractBits(ti3, 0, 8)] ^ K[58];
+            a3 = TI0[extractBits(ti3, 24, 8)] ^ TI1[extractBits(ti2, 16, 8)]
+                    ^ TI2[extractBits(ti1, 8, 8)] ^ TI3[extractBits(ti0, 0, 8)] ^ K[59];
         }
 
-        ti0 = TI4[a0 >>> 24] & 0xFF000000 ^ TI4[Integer.extractBits(a3, 16, 8)] & 0xFF0000
-                ^ TI4[Integer.extractBits(a2, 8, 8)] & 0xFF00 ^ TI4[a1 & 0xFF] & 0xFF ^ K[0];
-        ti1 = TI4[a1 >>> 24] & 0xFF000000 ^ TI4[Integer.extractBits(a0, 16, 8)] & 0xFF0000
-                ^ TI4[Integer.extractBits(a3, 8, 8)] & 0xFF00 ^ TI4[a2 & 0xFF] & 0xFF ^ K[1];
-        ti2 = TI4[a2 >>> 24] & 0xFF000000 ^ TI4[Integer.extractBits(a1, 16, 8)] & 0xFF0000
-                ^ TI4[Integer.extractBits(a0, 8, 8)] & 0xFF00 ^ TI4[a3 & 0xFF] & 0xFF ^ K[2];
-        ti3 = TI4[a3 >>> 24] & 0xFF000000 ^ TI4[Integer.extractBits(a2, 16, 8)] & 0xFF0000
-                ^ TI4[Integer.extractBits(a1, 8, 8)] & 0xFF00 ^ TI4[a0 & 0xFF] & 0xFF ^ K[3];
+        ti0 = TI4[extractBits(a0, 24, 8)] & 0xFF000000
+                ^ TI4[extractBits(a3, 16, 8)] & 0xFF0000
+                ^ TI4[extractBits(a2, 8, 8)] & 0xFF00
+                ^ TI4[extractBits(a1, 0, 8)] & 0xFF ^ K[0];
+        ti1 = TI4[extractBits(a1, 24, 8)] & 0xFF000000
+                ^ TI4[extractBits(a0, 16, 8)] & 0xFF0000
+                ^ TI4[extractBits(a3, 8, 8)] & 0xFF00
+                ^ TI4[extractBits(a2, 0, 8)] & 0xFF ^ K[1];
+        ti2 = TI4[extractBits(a2, 24, 8)] & 0xFF000000
+                ^ TI4[extractBits(a1, 16, 8)] & 0xFF0000
+                ^ TI4[extractBits(a0, 8, 8)] & 0xFF00
+                ^ TI4[extractBits(a3, 0, 8)] & 0xFF ^ K[2];
+        ti3 = TI4[extractBits(a3, 24, 8)] & 0xFF000000
+                ^ TI4[extractBits(a2, 16, 8)] & 0xFF0000
+                ^ TI4[extractBits(a1, 8, 8)] & 0xFF00
+                ^ TI4[extractBits(a0, 0, 8)] & 0xFF ^ K[3];
 
-        p[po] = (byte) (ti0 >>> 24);
-        p[po + 1] = (byte) Integer.extractBits(ti0, 16, 8);
-        p[po + 2] = (byte) Integer.extractBits(ti0, 8, 8);
-        p[po + 3] = (byte) (ti0 & 0xFF);
-        p[po + 4] = (byte) (ti1 >>> 24);
-        p[po + 5] = (byte) Integer.extractBits(ti1, 16, 8);
-        p[po + 6] = (byte) Integer.extractBits(ti1, 8, 8);
-        p[po + 7] = (byte) (ti1 & 0xFF);
-        p[po + 8] = (byte) (ti2 >>> 24);
-        p[po + 9] = (byte) Integer.extractBits(ti2, 16, 8);
-        p[po + 10] = (byte) Integer.extractBits(ti2, 8, 8);
-        p[po + 11] = (byte) (ti2 & 0xFF);
-        p[po + 12] = (byte) (ti3 >>> 24);
-        p[po + 13] = (byte) Integer.extractBits(ti3, 16, 8);
-        p[po + 14] = (byte) Integer.extractBits(ti3, 8, 8);
-        p[po + 15] = (byte) (ti3 & 0xFF);
+        p[po] = (byte) extractBits(ti0, 24, 8);
+        p[po + 1] = (byte) extractBits(ti0, 16, 8);
+        p[po + 2] = (byte) extractBits(ti0, 8, 8);
+        p[po + 3] = (byte) extractBits(ti0, 0, 8);
+        p[po + 4] = (byte) extractBits(ti1, 24, 8);
+        p[po + 5] = (byte) extractBits(ti1, 16, 8);
+        p[po + 6] = (byte) extractBits(ti1, 8, 8);
+        p[po + 7] = (byte) extractBits(ti1, 0, 8);
+        p[po + 8] = (byte) extractBits(ti2, 24, 8);
+        p[po + 9] = (byte) extractBits(ti2, 16, 8);
+        p[po + 10] = (byte) extractBits(ti2, 8, 8);
+        p[po + 11] = (byte) extractBits(ti2, 0, 8);
+        p[po + 12] = (byte) extractBits(ti3, 24, 8);
+        p[po + 13] = (byte) extractBits(ti3, 16, 8);
+        p[po + 14] = (byte) extractBits(ti3, 8, 8);
+        p[po + 15] = (byte) extractBits(ti3, 0, 8);
     }
 
     /**
