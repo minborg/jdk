@@ -542,7 +542,7 @@ public class Color implements Paint, java.io.Serializable {
      * @see #getRGB
      */
     public int getRed() {
-        return (getRGB() >> 16) & 0xFF;
+        return Integer.extractBits(getRGB(), 16, Byte.SIZE);
     }
 
     /**
@@ -552,7 +552,7 @@ public class Color implements Paint, java.io.Serializable {
      * @see #getRGB
      */
     public int getGreen() {
-        return (getRGB() >> 8) & 0xFF;
+        return Integer.extractBits(getRGB(), 8, Byte.SIZE);
     }
 
     /**
@@ -562,7 +562,7 @@ public class Color implements Paint, java.io.Serializable {
      * @see #getRGB
      */
     public int getBlue() {
-        return (getRGB() >> 0) & 0xFF;
+        return Integer.extractBits(getRGB(), 0, Byte.SIZE);
     }
 
     /**
@@ -571,7 +571,7 @@ public class Color implements Paint, java.io.Serializable {
      * @see #getRGB
      */
     public int getAlpha() {
-        return (getRGB() >> 24) & 0xff;
+        return Integer.extractBits(getRGB(), 24, Byte.SIZE);
     }
 
     /**

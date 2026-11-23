@@ -1699,6 +1699,55 @@ public final /*value*/ class Long extends Number
     }
 
     /**
+     * Extracts a contiguous range of bits from the specified {@code long}
+     * value. Bits are numbered starting at zero for the least significant
+     * bit. The selected bits are placed in the low-order bits of the result,
+     * in the same order, and all remaining bits are set to zero.
+     * A zero-length range returns zero.
+     *
+     * @param value the value from which to extract bits
+     * @param offset the index of the least significant bit of the range
+     * @param length the number of bits to extract
+     * @return the extracted bits, shifted down by {@code offset}
+     * @throws IndexOutOfBoundsException if {@code offset} or {@code length}
+     *         is negative, or if their sum exceeds {@link #SIZE}
+     * @see #replaceBits(long, int, int, long)
+     * @see #compress(long, long)
+     * @since 28
+     */
+    public static long extractBits(long value, int offset, int length) {
+        Objects.checkFromIndexSize(offset, length, SIZE);
+        return length == 0 ? 0 : (value >>> offset) & (-1L >>> (SIZE - length));
+    }
+
+    /**
+     * Replaces a contiguous range of bits in the specified {@code long}
+     * value with the {@code length} least significant bits of {@code field},
+     * in the same order. Bits are numbered starting at zero for the least
+     * significant bit. Bits outside the range are preserved.
+     * A zero-length range returns {@code value}.
+     *
+     * @param value the value in which to replace bits
+     * @param offset the index of the least significant bit of the range
+     * @param length the number of bits to replace
+     * @param field the value whose low-order bits are inserted into the range
+     * @return the value with the specified bits replaced
+     * @throws IndexOutOfBoundsException if {@code offset} or {@code length}
+     *         is negative, or if their sum exceeds {@link #SIZE}
+     * @see #extractBits(long, int, int)
+     * @since 28
+     */
+    @ForceInline
+    public static long replaceBits(long value, int offset, int length, long field) {
+        Objects.checkFromIndexSize(offset, length, SIZE);
+        if (length == 0) {
+            return value;
+        }
+        long mask = -1L >>> (SIZE - length);
+        return (value & ~(mask << offset)) | ((field & mask) << offset);
+    }
+
+    /**
      * Returns the value obtained by compressing the bits of the
      * specified {@code long} value, {@code i}, in accordance with
      * the specified bit mask.

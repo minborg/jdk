@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -593,8 +593,8 @@ public class Deflater implements AutoCloseable {
                         flush, params);
                 }
             }
-            int read = (int) (result & 0x7fff_ffffL);
-            int written = (int) (result >>> 31 & 0x7fff_ffffL);
+            int read = (int) Long.extractBits(result, 0, 31);
+            int written = (int) Long.extractBits(result, 31, 31);
             if ((result >>> 62 & 1) != 0) {
                 finished = true;
             }
@@ -769,8 +769,8 @@ public class Deflater implements AutoCloseable {
                     }
                 }
             }
-            int read = (int) (result & 0x7fff_ffffL);
-            int written = (int) (result >>> 31 & 0x7fff_ffffL);
+            int read = (int) Long.extractBits(result, 0, 31);
+            int written = (int) Long.extractBits(result, 31, 31);
             if ((result >>> 62 & 1) != 0) {
                 finished = true;
             }

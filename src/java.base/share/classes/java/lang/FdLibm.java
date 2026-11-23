@@ -96,8 +96,7 @@ final class FdLibm {
      */
     private static double __LO(double x, int low) {
         long transX = Double.doubleToRawLongBits(x);
-        return Double.longBitsToDouble((transX & 0xFFFF_FFFF_0000_0000L) |
-                                       (low    & 0x0000_0000_FFFF_FFFFL));
+        return Double.longBitsToDouble(Long.replaceBits(transX, 0, Integer.SIZE, low));
     }
 
     /**
@@ -114,8 +113,7 @@ final class FdLibm {
      */
     private static double __HI(double x, int high) {
         long transX = Double.doubleToRawLongBits(x);
-        return Double.longBitsToDouble((transX & 0x0000_0000_FFFF_FFFFL) |
-                                       ( ((long)high)) << 32 );
+        return Double.longBitsToDouble(Long.replaceBits(transX, Integer.SIZE, Integer.SIZE, high));
     }
 
     /**

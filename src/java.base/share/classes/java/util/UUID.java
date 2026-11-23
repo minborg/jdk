@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -146,10 +146,8 @@ public final class UUID implements java.io.Serializable, Comparable<UUID> {
 
         byte[] randomBytes = new byte[16];
         ng.nextBytes(randomBytes);
-        randomBytes[6]  &= 0x0f;  /* clear version        */
-        randomBytes[6]  |= 0x40;  /* set to version 4     */
-        randomBytes[8]  &= 0x3f;  /* clear variant        */
-        randomBytes[8]  |= (byte) 0x80;  /* set to IETF variant  */
+        randomBytes[6] = (byte) Integer.replaceBits(randomBytes[6], 4, 4, 4); // version
+        randomBytes[8] = (byte) Integer.replaceBits(randomBytes[8], 6, 2, 2); // IETF variant
         return new UUID(randomBytes);
     }
 
@@ -170,10 +168,8 @@ public final class UUID implements java.io.Serializable, Comparable<UUID> {
             throw new InternalError("MD5 not supported", nsae);
         }
         byte[] md5Bytes = md.digest(name);
-        md5Bytes[6]  &= 0x0f;  /* clear version        */
-        md5Bytes[6]  |= 0x30;  /* set to version 3     */
-        md5Bytes[8]  &= 0x3f;  /* clear variant        */
-        md5Bytes[8]  |= (byte) 0x80;  /* set to IETF variant  */
+        md5Bytes[6] = (byte) Integer.replaceBits(md5Bytes[6], 4, 4, 3); // version
+        md5Bytes[8] = (byte) Integer.replaceBits(md5Bytes[8], 6, 2, 2); // IETF variant
         return new UUID(md5Bytes);
     }
 
@@ -222,13 +218,8 @@ public final class UUID implements java.io.Serializable, Comparable<UUID> {
         randomBytes[4] = (byte)(timestamp >>> 8);
         randomBytes[5] = (byte)(timestamp);
 
-        // Set version to 7
-        randomBytes[6] &= 0x0f;
-        randomBytes[6] |= 0x70;
-
-        // Set variant to IETF
-        randomBytes[8] &= 0x3f;
-        randomBytes[8] |= (byte) 0x80;
+        randomBytes[6] = (byte) Integer.replaceBits(randomBytes[6], 4, 4, 7); // version
+        randomBytes[8] = (byte) Integer.replaceBits(randomBytes[8], 6, 2, 2); // IETF variant
 
         return new UUID(randomBytes);
     }
@@ -381,8 +372,7 @@ public final class UUID implements java.io.Serializable, Comparable<UUID> {
      * @return  The version number of this {@code UUID}
      */
     public int version() {
-        // Version is bits masked by 0x000000000000F000 in MS long
-        return (int)((mostSigBits >> 12) & 0x0f);
+        return (int) Long.extractBits(mostSigBits, 12, 4);
     }
 
     /**
