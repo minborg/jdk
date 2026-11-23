@@ -1735,6 +1735,7 @@ public final /*value*/ class Integer extends Number
      * @see #compress(int, int)
      * @since 28
      */
+    @ForceInline
     public static int extractBits(int value, int offset, int length) {
         Objects.checkFromIndexSize(offset, length, SIZE);
         return length == 0 ? 0 : (value >>> offset) & (-1 >>> (SIZE - length));

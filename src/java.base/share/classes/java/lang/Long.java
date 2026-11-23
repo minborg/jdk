@@ -1715,6 +1715,7 @@ public final /*value*/ class Long extends Number
      * @see #compress(long, long)
      * @since 28
      */
+    @ForceInline
     public static long extractBits(long value, int offset, int length) {
         Objects.checkFromIndexSize(offset, length, SIZE);
         return length == 0 ? 0 : (value >>> offset) & (-1L >>> (SIZE - length));
