@@ -34,6 +34,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.util.Lazy;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -188,6 +189,19 @@ final class LazyConstantTest {
         constant.get();
         String toString = assertDoesNotThrow(constant::toString);
         assertTrue(constant.toString().contains("(this LazyConstant)"), toString);
+    }
+
+    @Test
+    void supplierMonitorIsIndependentOfComputation() {
+        var ref = new AtomicReference<Supplier<Boolean>>();
+        var supplier = Lazy.ofSupplier(() -> Thread.holdsLock(ref.get()));
+        ref.set(supplier);
+        assertFalse(supplier.get());
+
+        var other = Lazy.ofSupplier(SUPPLIER);
+        synchronized (other) {
+            assertEquals(VALUE, other.get());
+        }
     }
 
     @Test

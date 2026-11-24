@@ -28,8 +28,8 @@
  * @run junit SerializedComputation
  */
 
-import java.lang.invoke.StableAccessors.OfArrayField;
-import java.lang.invoke.StableAccessors.OfField;
+import java.lang.invoke.StableFieldAccessors.OfArray;
+import java.lang.invoke.StableFieldAccessors.OfScalar;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -75,9 +75,10 @@ public class SerializedComputation {
             try {
                 results.add(executor.submit(() -> cell.read(shape)));
                 await(candidateReady);
-                // The first candidate exists, but has not yet been published.
+                // The waiters miss before publication. Their contexts would
+                // be rejected if they needed to compute after taking the monitor.
                 for (int i = 1; i < threads; i++) {
-                    results.add(executor.submit(() -> cell.read(shape)));
+                    results.add(executor.submit(() -> cell.read(shape, cell.monitor, "unused")));
                 }
                 await(allMissed);
                 assertEquals(1, cell.attempts.get());
@@ -130,36 +131,36 @@ public class SerializedComputation {
 
     @ParameterizedTest
     @EnumSource(Shape.class)
-    void nullMonitorIsRejectedBeforeAndAfterPublication(Shape shape) {
+    void nullMonitorIsRejectedOnlyOnInitialMiss(Shape shape) {
         Cell cell = new Cell();
         assertThrows(NullPointerException.class, () -> cell.read(shape, null, null));
         cell.value.set(VALUE);
-        assertThrows(NullPointerException.class, () -> cell.read(shape, null, null));
+        assertSame(VALUE, cell.read(shape, null, null));
         assertEquals(0, cell.attempts.get());
     }
 
     @ParameterizedTest
     @EnumSource(Shape.class)
-    void valueMonitorIsRejectedBeforeAndAfterPublication(Shape shape) {
+    void valueMonitorIsRejectedOnlyOnInitialMiss(Shape shape) {
         Cell cell = new Cell();
         Object invalidMonitor = new ValueMonitor();
         assertThrows(IdentityException.class, () -> cell.read(shape, invalidMonitor, null));
         cell.value.set(VALUE);
-        assertThrows(IdentityException.class, () -> cell.read(shape, invalidMonitor, null));
+        assertSame(VALUE, cell.read(shape, invalidMonitor, null));
         assertEquals(0, cell.attempts.get());
     }
 
     @ParameterizedTest
     @EnumSource(Shape.class)
-    void contextRestrictionIsPreservedBeforeAndAfterPublication(Shape shape) {
+    void contextIsCheckedOnlyWhenComputationIsNeeded(Shape shape) {
         Cell cell = new Cell();
         Object invalidContext = new Object();
         assertThrows(ClassCastException.class,
                 () -> cell.read(shape, cell.monitor, invalidContext));
-        cell.value.set(VALUE);
-        assertThrows(ClassCastException.class,
-                () -> cell.read(shape, cell.monitor, invalidContext));
         assertEquals(0, cell.attempts.get());
+        assertSame(VALUE, cell.read(shape));
+        assertSame(VALUE, cell.read(shape, cell.monitor, invalidContext));
+        assertEquals(1, cell.attempts.get());
     }
 
     private static void await(CountDownLatch latch) {
@@ -185,7 +186,9 @@ public class SerializedComputation {
         Runnable onMiss = () -> { };
         Runnable beforePublication = () -> { };
 
-        final OfField<Cell, Void, String> field = new OfField<>() {
+        // Model a Void.class context token. Accept Object at the method boundary
+        // so a bridge cast cannot reject the context before the location is read.
+        final OfScalar<Cell, Object, String> field = new OfScalar<>() {
             @Override
             public Optional<String> get(Cell receiver) {
                 assertSame(Cell.this, receiver);
@@ -193,13 +196,13 @@ public class SerializedComputation {
             }
 
             @Override
-            public String getOrCompute(Cell receiver, Void context) {
+            public String getOrCompute(Cell receiver, Object context) {
                 assertSame(Cell.this, receiver);
-                return compute();
+                return compute(context);
             }
         };
 
-        final OfArrayField<Cell, Void, String> array = new OfArrayField<>() {
+        final OfArray<Cell, Object, String> array = new OfArray<>() {
             @Override
             public Optional<String> get(Cell receiver, int index) {
                 assertSame(Cell.this, receiver);
@@ -208,10 +211,10 @@ public class SerializedComputation {
             }
 
             @Override
-            public String getOrCompute(Cell receiver, int index, Void context) {
+            public String getOrCompute(Cell receiver, int index, Object context) {
                 assertSame(Cell.this, receiver);
                 assertEquals(INDEX, index);
-                return compute();
+                return compute(context);
             }
         };
 
@@ -219,12 +222,10 @@ public class SerializedComputation {
             return read(shape, monitor, null);
         }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
         String read(Shape shape, Object monitor, Object context) {
-            // Raw invocation deliberately exercises the Void-context restriction.
             return switch (shape) {
-                case FIELD -> (String) ((OfField) field).getOrComputeSerialized(monitor, this, context);
-                case ARRAY -> (String) ((OfArrayField) array).getOrComputeSerialized(monitor, this, INDEX, context);
+                case FIELD -> field.getOrComputeSerialized(monitor, this, context);
+                case ARRAY -> array.getOrComputeSerialized(monitor, this, INDEX, context);
             };
         }
 
@@ -236,12 +237,13 @@ public class SerializedComputation {
             return Optional.ofNullable(observed);
         }
 
-        String compute() {
+        String compute(Object context) {
+            assertTrue(Thread.holdsLock(monitor), "The serialized default must delegate only under the monitor");
             String observed = value.get();
             if (observed != null) {
                 return observed;
             }
-            assertTrue(Thread.holdsLock(monitor), "Computation must hold the monitor");
+            Void.class.cast(context);
             maximumActive.accumulateAndGet(active.incrementAndGet(), Math::max);
             attempts.incrementAndGet();
             try {

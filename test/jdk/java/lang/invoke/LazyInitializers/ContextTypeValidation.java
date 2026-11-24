@@ -29,7 +29,7 @@
  */
 
 import java.lang.invoke.ReflectiveAccessOnly;
-import java.lang.invoke.StableAccessors;
+import java.lang.invoke.StableFieldAccessors;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -87,18 +87,18 @@ public class ContextTypeValidation {
 
     private static <C> void create(Factory factory, Class<C> contextType) {
         switch (factory) {
-            case INSTANCE_FIELD -> StableAccessors.ofField(
+            case INSTANCE_FIELD -> StableFieldAccessors.ofField(
                     Fields.class, String.class, "value", contextType,
-                    context -> unexpectedComputation());
-            case STATIC_FIELD -> StableAccessors.ofStaticField(
+                    (_, _) -> unexpectedComputation());
+            case STATIC_FIELD -> StableFieldAccessors.ofStaticField(
                     Fields.class, String.class, "staticValue", contextType,
-                    context -> unexpectedComputation());
-            case INSTANCE_ARRAY -> StableAccessors.ofArrayField(
+                    (_, _) -> unexpectedComputation());
+            case INSTANCE_ARRAY -> StableFieldAccessors.ofArrayField(
                     Fields.class, String.class, "array", contextType,
-                    (index, context) -> unexpectedComputation());
-            case STATIC_ARRAY -> StableAccessors.ofStaticArrayField(
+                    (_, _, _) -> unexpectedComputation());
+            case STATIC_ARRAY -> StableFieldAccessors.ofStaticArrayField(
                     Fields.class, String.class, "staticArray", contextType,
-                    (index, context) -> unexpectedComputation());
+                    (_, _, _) -> unexpectedComputation());
         }
     }
 

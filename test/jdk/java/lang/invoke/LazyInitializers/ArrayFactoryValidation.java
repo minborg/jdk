@@ -29,7 +29,7 @@
  */
 
 import java.lang.invoke.ReflectiveAccessOnly;
-import java.lang.invoke.StableAccessors;
+import java.lang.invoke.StableFieldAccessors;
 
 import org.junit.jupiter.api.Test;
 
@@ -83,21 +83,19 @@ public class ArrayFactoryValidation {
     @Test
     void nullArguments() {
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArrayField(null, String.class, "strings",
-                        index -> unexpectedComputation()));
+                StableFieldAccessors.ofArrayField(null, String.class, "strings", Void.class,
+                        (_, _, _) -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArrayField(Fields.class, null, "strings",
-                        index -> unexpectedComputation()));
+                StableFieldAccessors.ofArrayField(Fields.class, null, "strings", Void.class,
+                        (_, _, _) -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArrayField(Fields.class, String.class, null,
-                        index -> unexpectedComputation()));
+                StableFieldAccessors.ofArrayField(Fields.class, String.class, null, Void.class,
+                        (_, _, _) -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArrayField(Fields.class, String.class, "strings", null));
+                StableFieldAccessors.ofArrayField(Fields.class, String.class, "strings", Void.class, null));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArrayField(Fields.class, String.class, "strings", null,
-                        (index, context) -> unexpectedComputation()));
-        assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofArrayField(Fields.class, String.class, "strings", Object.class, null));
+                StableFieldAccessors.ofArrayField(Fields.class, String.class, "strings", null,
+                        (_, _, _) -> unexpectedComputation()));
     }
 
     @Test
@@ -158,20 +156,14 @@ public class ArrayFactoryValidation {
 
     private static <T, V> void rejects(Class<T> owner, Class<V> type, String name) {
         assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArrayField(owner, type, name,
-                        index -> unexpectedComputation()));
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofArrayField(owner, type, name, Object.class,
-                        (index, context) -> unexpectedComputation()));
+                StableFieldAccessors.ofArrayField(owner, type, name, Void.class,
+                        (_, _, _) -> unexpectedComputation()));
     }
 
     private static <T, V> void accepts(Class<T> owner, Class<V> type, String name) {
         assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofArrayField(owner, type, name,
-                        index -> unexpectedComputation()));
-        assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofArrayField(owner, type, name, Object.class,
-                        (index, context) -> unexpectedComputation()));
+                StableFieldAccessors.ofArrayField(owner, type, name, Void.class,
+                        (_, _, _) -> unexpectedComputation()));
     }
 
     private static <V> V unexpectedComputation() {

@@ -32,7 +32,7 @@
  */
 
 import java.lang.invoke.ReflectiveAccessOnly;
-import java.lang.invoke.StableAccessors;
+import java.lang.invoke.StableFieldAccessors;
 
 import jdk.internal.value.ValueClass;
 import jdk.internal.vm.annotation.NullRestricted;
@@ -87,22 +87,16 @@ public class NullRestrictedFieldValidation {
             throws ReflectiveOperationException {
         Class<? extends RuntimeException> expected = expectedException(name, nullRestricted);
         assertThrows(expected, () ->
-                StableAccessors.ofField(Fields.class, Value.class, name,
-                        () -> unexpectedComputation()));
-        assertThrows(expected, () ->
-                StableAccessors.ofField(Fields.class, Value.class, name, Object.class,
-                        context -> unexpectedComputation()));
+                StableFieldAccessors.ofField(Fields.class, Value.class, name, Void.class,
+                        (_, _) -> unexpectedComputation()));
     }
 
     private static void checkStatic(String name, boolean nullRestricted)
             throws ReflectiveOperationException {
         Class<? extends RuntimeException> expected = expectedException(name, nullRestricted);
         assertThrows(expected, () ->
-                StableAccessors.ofStaticField(Fields.class, Value.class, name,
-                        () -> unexpectedComputation()));
-        assertThrows(expected, () ->
-                StableAccessors.ofStaticField(Fields.class, Value.class, name, Object.class,
-                        context -> unexpectedComputation()));
+                StableFieldAccessors.ofStaticField(Fields.class, Value.class, name, Void.class,
+                        (_, _) -> unexpectedComputation()));
     }
 
     private static Class<? extends RuntimeException> expectedException(

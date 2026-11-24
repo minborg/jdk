@@ -23,15 +23,15 @@
 
 /*
  * @test
- * @summary Stable accessor factories express storage and context shapes through OfField and OfArrayField
+ * @summary Stable accessor factories express storage and context shapes through OfScalar and OfArray
  * @enablePreview
  * @run junit AccessorShapes
  */
 
 import java.lang.invoke.ReflectiveAccessOnly;
-import java.lang.invoke.StableAccessors;
-import java.lang.invoke.StableAccessors.OfArrayField;
-import java.lang.invoke.StableAccessors.OfField;
+import java.lang.invoke.StableFieldAccessors;
+import java.lang.invoke.StableFieldAccessors.OfArray;
+import java.lang.invoke.StableFieldAccessors.OfScalar;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
@@ -57,80 +57,84 @@ public class AccessorShapes {
     @Test
     void instanceFieldShapes() {
         assertThrows(UnsupportedOperationException.class, () -> {
-            OfField<Fields, Void, String> accessor = StableAccessors.ofField(
-                    Fields.class, String.class, "value", () -> unexpectedComputation());
+            OfScalar<Fields, Void, String> accessor = StableFieldAccessors.ofField(
+                    Fields.class, String.class, "value", Void.class,
+                    (_, _) -> unexpectedComputation());
         });
         assertThrows(UnsupportedOperationException.class, () -> {
-            OfField<Fields, Integer, String> accessor = StableAccessors.ofField(
+            OfScalar<Fields, Integer, String> accessor = StableFieldAccessors.ofField(
                     Fields.class, String.class, "value", Integer.class,
-                    context -> unexpectedComputation());
+                    (Fields _, Integer _) -> unexpectedComputation());
         });
     }
 
     @Test
     void staticFieldShapes() {
         assertThrows(UnsupportedOperationException.class, () -> {
-            OfField<Void, Void, String> accessor = StableAccessors.ofStaticField(
-                    Fields.class, String.class, "staticValue", () -> unexpectedComputation());
+            OfScalar<Void, Void, String> accessor = StableFieldAccessors.ofStaticField(
+                    Fields.class, String.class, "staticValue", Void.class,
+                    (_, _) -> unexpectedComputation());
         });
         assertThrows(UnsupportedOperationException.class, () -> {
-            OfField<Void, Integer, String> accessor = StableAccessors.ofStaticField(
+            OfScalar<Void, Integer, String> accessor = StableFieldAccessors.ofStaticField(
                     Fields.class, String.class, "staticValue", Integer.class,
-                    context -> unexpectedComputation());
+                    (_, _) -> unexpectedComputation());
         });
     }
 
     @Test
     void instanceArrayShapes() {
         assertThrows(UnsupportedOperationException.class, () -> {
-            OfArrayField<Fields, Void, String> accessor = StableAccessors.ofArrayField(
-                    Fields.class, String.class, "array", index -> unexpectedComputation());
+            OfArray<Fields, Void, String> accessor = StableFieldAccessors.ofArrayField(
+                    Fields.class, String.class, "array", Void.class,
+                    (_, _, _) -> unexpectedComputation());
         });
         assertThrows(UnsupportedOperationException.class, () -> {
-            OfArrayField<Fields, Integer, String> accessor = StableAccessors.ofArrayField(
+            OfArray<Fields, Integer, String> accessor = StableFieldAccessors.ofArrayField(
                     Fields.class, String.class, "array", Integer.class,
-                    (index, context) -> unexpectedComputation());
+                    (Fields _, int _, Integer _) -> unexpectedComputation());
         });
     }
 
     @Test
     void staticArrayShapes() {
         assertThrows(UnsupportedOperationException.class, () -> {
-            OfArrayField<Void, Void, String> accessor = StableAccessors.ofStaticArrayField(
-                    Fields.class, String.class, "staticArray", index -> unexpectedComputation());
+            OfArray<Void, Void, String> accessor = StableFieldAccessors.ofStaticArrayField(
+                    Fields.class, String.class, "staticArray", Void.class,
+                    (_, _, _) -> unexpectedComputation());
         });
         assertThrows(UnsupportedOperationException.class, () -> {
-            OfArrayField<Void, Integer, String> accessor = StableAccessors.ofStaticArrayField(
+            OfArray<Void, Integer, String> accessor = StableFieldAccessors.ofStaticArrayField(
                     Fields.class, String.class, "staticArray", Integer.class,
-                    (index, context) -> unexpectedComputation());
+                    (_, _, _) -> unexpectedComputation());
         });
     }
 
     @Test
     void onlyTwoAccessorInterfaces() throws ReflectiveOperationException {
-        assertEquals(Set.of(OfField.class, OfArrayField.class),
-                Arrays.stream(StableAccessors.class.getDeclaredClasses())
+        assertEquals(Set.of(OfScalar.class, OfArray.class),
+                Arrays.stream(StableFieldAccessors.class.getDeclaredClasses())
                         .filter(Class::isInterface)
                         .collect(Collectors.toSet()));
-        assertEquals(Set.of(OfField.Computer.class),
-                Set.of(OfField.class.getDeclaredClasses()));
-        assertEquals(Set.of(OfArrayField.Computer.class),
-                Set.of(OfArrayField.class.getDeclaredClasses()));
+        assertEquals(Set.of(OfScalar.Computer.class),
+                Set.of(OfScalar.class.getDeclaredClasses()));
+        assertEquals(Set.of(OfArray.Computer.class),
+                Set.of(OfArray.class.getDeclaredClasses()));
         assertEquals(Object.class,
-                OfField.Computer.class.getMethod("compute", Object.class).getReturnType());
+                OfScalar.Computer.class.getMethod("compute", Object.class, Object.class).getReturnType());
         assertEquals(Object.class,
-                OfArrayField.Computer.class.getMethod("compute", int.class, Object.class).getReturnType());
+                OfArray.Computer.class.getMethod("compute", Object.class, int.class, Object.class).getReturnType());
     }
 
     // These methods check the invocation signatures at compile time. Accessor
     // implementations are still prototype stubs, so there are no runtime calls.
-    private static <T, C, R> void fieldInvocations(OfField<T, C, R> accessor,
+    private static <T, C, R> void fieldInvocations(OfScalar<T, C, R> accessor,
                                                    T receiver, C context) {
         Optional<R> observed = accessor.get(receiver);
         R computed = accessor.getOrCompute(receiver, context);
     }
 
-    private static <T, C, R> void arrayInvocations(OfArrayField<T, C, R> accessor,
+    private static <T, C, R> void arrayInvocations(OfArray<T, C, R> accessor,
                                                    T receiver, int index, C context) {
         Optional<R> observed = accessor.get(receiver, index);
         R computed = accessor.getOrCompute(receiver, index, context);

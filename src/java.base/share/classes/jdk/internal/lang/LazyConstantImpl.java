@@ -65,6 +65,8 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
     @Stable
     private T constant;
 
+    private final Object mutex = new Object();
+
     // Underlying computing function to be used to compute the `constant` field.
     // The field needs to be `volatile` as a lazy constant can be
     // created by one thread and computed by another thread.
@@ -88,7 +90,7 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
     @DontInline
     private T getSlowPath() {
         preventReentry();
-        synchronized (this) {
+        synchronized (mutex) {
             T t = getAcquire();
             if (t == null) {
                 final Object cf = computingFunctionOrExceptionType;
@@ -184,7 +186,7 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
     }
 
     private void preventReentry() {
-        if (Thread.holdsLock(this)) {
+        if (Thread.holdsLock(mutex)) {
             throw new IllegalStateException("Recursive invocation of a LazyConstant's computing function: " + isolateToString(computingFunctionOrExceptionType));
         }
     }

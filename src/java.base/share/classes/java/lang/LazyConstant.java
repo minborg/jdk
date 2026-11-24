@@ -195,8 +195,7 @@ import java.util.function.Supplier;
  *          in section {@jls 12.4} of <cite>The Java Language Specification</cite>.
  *
  * @implNote
- *           A lazy constant is free to synchronize on itself. Hence, care must be
- *           taken when directly or indirectly synchronizing on a lazy constant.
+ *           A lazy constant uses a private monitor to coordinate computation.
  *           A lazy constant is unmodifiable but its content may or may not be
  *           immutable (e.g., it may hold an {@linkplain ArrayList}).
  *

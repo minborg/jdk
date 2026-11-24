@@ -25,7 +25,7 @@
 
 package java.util;
 
-import java.lang.invoke.StableAccessors;
+import java.lang.invoke.StableFieldAccessors;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
@@ -49,7 +49,7 @@ import jdk.internal.lang.LazyConstantImpl;
  * The mode applies independently to each cached result.
  * In every mode, once a result is installed, all normally returning accesses
  * requiring that result use its installed value. The factories manage their own storage.
- * For access to caller-owned fields and array elements, use {@link StableAccessors}.
+ * For access to caller-owned fields and array elements, use {@link StableFieldAccessors}.
  *
  * <h2 id="modes">Computation modes</h2>
  * <table class="striped">
@@ -119,8 +119,8 @@ import jdk.internal.lang.LazyConstantImpl;
  * Computing functions must support the concurrent invocations permitted by the mode
  * when their supplier or collection is accessed concurrently.
  * <p>
- * Installed results have the {@linkplain StableAccessors##memory-effects memory
- * effects described by StableAccessors}. These guarantees apply separately to each
+ * Installed results have the {@linkplain StableFieldAccessors##memory-effects memory
+ * effects described by StableFieldAccessors}. These guarantees apply separately to each
  * result and do not impose a total order on accesses to different results. In
  * {@code PUBLISH} mode, discarding a candidate does not itself publish the actions
  * of its computation. Publishing a reference does not make later mutations of the
@@ -142,7 +142,7 @@ import jdk.internal.lang.LazyConstantImpl;
  *
  * <h2 id="performance">Performance</h2>
  * Cached results may be eligible for optimizations such as constant folding, as
- * described in {@linkplain StableAccessors##performance StableAccessors}.
+ * described in {@linkplain StableFieldAccessors##performance StableFieldAccessors}.
  *
  * @implSpec <p id="computing-function-retention">Each supplier or collection returned
  *           by the factories in this class strongly references its computing function
@@ -151,7 +151,7 @@ import jdk.internal.lang.LazyConstantImpl;
  *           the function and captured objects may then be garbage collected if they are
  *           not otherwise strongly reachable.</p>
  *
- * @see StableAccessors
+ * @see StableFieldAccessors
  * @see Supplier
  * @see List
  * @see Set
@@ -219,6 +219,9 @@ public final class Lazy {
      * method returns the installed result, computing it if necessary.
      * This method returns a new supplier even if {@code computingFunction} is itself
      * a supplier returned by an earlier invocation of a factory in this class.
+     * In {@code ONCE} and {@code SERIALIZED} modes, computation is coordinated
+     * independently of the returned supplier's monitor. Holding that monitor
+     * when calling {@code get()} does not by itself constitute recursive access.
      * <p>
      * A lazy supplier can defer creation of a component until it is first needed:
      * {@snippet lang = java:
@@ -236,12 +239,6 @@ public final class Lazy {
      * }
      * }
      *
-     * @implNote An implementation of {@code ONCE} and {@code SERIALIZED} may synchronize
-     *           on the returned supplier and use monitor ownership to detect recursive
-     *           access. If no result is cached, calling {@code get()} while holding that
-     *           monitor may throw {@link IllegalStateException}, even if no computation
-     *           is in progress. This rejection does not invoke the computing function
-     *           or record a failure.
      * @param mode the computation and failure policy
      * @param computingFunction the function computing a non-null result
      * @param <T> the result type

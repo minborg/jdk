@@ -36,7 +36,7 @@ import jdk.internal.javac.PreviewFeature;
 /**
  * Indicates that a field or the elements of an array stored in a field are
  * intended to be accessed only through reflective or other indirect access
- * mechanisms, such as {@link VarHandle} or {@link StableAccessors}.
+ * mechanisms, such as {@link VarHandle} or {@link StableFieldAccessors}.
  * <p>
  * By default, this annotation applies to the annotated field. Client code must
  * not directly read or write that field using a Java field access. The intended

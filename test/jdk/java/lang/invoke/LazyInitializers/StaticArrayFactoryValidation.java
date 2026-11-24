@@ -23,13 +23,13 @@
 
 /*
  * @test
- * @summary Stable static array factories validate fields without initializing their declaring class
+ * @summary The stable static array factory validates fields without initializing their declaring class
  * @enablePreview
  * @run junit StaticArrayFactoryValidation
  */
 
 import java.lang.invoke.ReflectiveAccessOnly;
-import java.lang.invoke.StableAccessors;
+import java.lang.invoke.StableFieldAccessors;
 
 import org.junit.jupiter.api.Test;
 
@@ -96,30 +96,19 @@ public class StaticArrayFactoryValidation {
     @Test
     void nullArguments() {
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofStaticArrayField(null, String.class, "strings",
-                        index -> unexpectedComputation()));
+                StableFieldAccessors.ofStaticArrayField(null, String.class, "strings", Void.class,
+                        (_, _, _) -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofStaticArrayField(Fields.class, null, "strings",
-                        index -> unexpectedComputation()));
+                StableFieldAccessors.ofStaticArrayField(Fields.class, null, "strings", Void.class,
+                        (_, _, _) -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofStaticArrayField(Fields.class, String.class, null,
-                        index -> unexpectedComputation()));
+                StableFieldAccessors.ofStaticArrayField(Fields.class, String.class, null, Void.class,
+                        (_, _, _) -> unexpectedComputation()));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofStaticArrayField(Fields.class, String.class, "strings", null));
+                StableFieldAccessors.ofStaticArrayField(Fields.class, String.class, "strings", Void.class, null));
         assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofStaticArrayField(null, String.class, "strings", Object.class,
-                        (index, context) -> unexpectedComputation()));
-        assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofStaticArrayField(Fields.class, null, "strings", Object.class,
-                        (index, context) -> unexpectedComputation()));
-        assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofStaticArrayField(Fields.class, String.class, null, Object.class,
-                        (index, context) -> unexpectedComputation()));
-        assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofStaticArrayField(Fields.class, String.class, "strings", null,
-                        (index, context) -> unexpectedComputation()));
-        assertThrows(NullPointerException.class, () ->
-                StableAccessors.ofStaticArrayField(Fields.class, String.class, "strings", Object.class, null));
+                StableFieldAccessors.ofStaticArrayField(Fields.class, String.class, "strings", null,
+                        (_, _, _) -> unexpectedComputation()));
     }
 
     @Test
@@ -189,20 +178,14 @@ public class StaticArrayFactoryValidation {
 
     private static <V> void rejects(Class<?> owner, Class<V> type, String name) {
         assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofStaticArrayField(owner, type, name,
-                        index -> unexpectedComputation()));
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofStaticArrayField(owner, type, name, Object.class,
-                        (index, context) -> unexpectedComputation()));
+                StableFieldAccessors.ofStaticArrayField(owner, type, name, Void.class,
+                        (_, _, _) -> unexpectedComputation()));
     }
 
     private static <V> void accepts(Class<?> owner, Class<V> type, String name) {
         assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofStaticArrayField(owner, type, name,
-                        index -> unexpectedComputation()));
-        assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofStaticArrayField(owner, type, name, Object.class,
-                        (index, context) -> unexpectedComputation()));
+                StableFieldAccessors.ofStaticArrayField(owner, type, name, Void.class,
+                        (_, _, _) -> unexpectedComputation()));
     }
 
     private static <V> V unexpectedComputation() {

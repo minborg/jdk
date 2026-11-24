@@ -29,7 +29,7 @@
  */
 
 import java.lang.invoke.ReflectiveAccessOnly;
-import java.lang.invoke.StableAccessors;
+import java.lang.invoke.StableFieldAccessors;
 
 import org.junit.jupiter.api.Test;
 
@@ -93,38 +93,26 @@ public class FieldAnnotationValidation {
 
     private static <T> void acceptsInstance(Class<T> owner, Class<?> type, String name) {
         assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofField(owner, type, name, Object.class,
-                        context -> unexpectedComputation()));
-        assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofField(owner, type, name,
-                        () -> unexpectedComputation()));
+                StableFieldAccessors.ofField(owner, type, name, Void.class,
+                        (_, _) -> unexpectedComputation()));
     }
 
     private static void acceptsStatic(Class<?> owner, Class<?> type, String name) {
         assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofStaticField(owner, type, name, Object.class,
-                        context -> unexpectedComputation()));
-        assertThrows(UnsupportedOperationException.class, () ->
-                StableAccessors.ofStaticField(owner, type, name,
-                        () -> unexpectedComputation()));
+                StableFieldAccessors.ofStaticField(owner, type, name, Void.class,
+                        (_, _) -> unexpectedComputation()));
     }
 
     private static <T> void rejectsInstance(Class<T> owner, Class<?> type, String name) {
         assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofField(owner, type, name, Object.class,
-                        context -> unexpectedComputation()));
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofField(owner, type, name,
-                        () -> unexpectedComputation()));
+                StableFieldAccessors.ofField(owner, type, name, Void.class,
+                        (_, _) -> unexpectedComputation()));
     }
 
     private static <V> void rejectsStatic(Class<?> owner, Class<V> type, String name) {
         assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofStaticField(owner, type, name, Object.class,
-                        context -> unexpectedComputation()));
-        assertThrows(IllegalArgumentException.class, () ->
-                StableAccessors.ofStaticField(owner, type, name,
-                        () -> unexpectedComputation()));
+                StableFieldAccessors.ofStaticField(owner, type, name, Void.class,
+                        (_, _) -> unexpectedComputation()));
     }
 
     private static <V> V unexpectedComputation() {

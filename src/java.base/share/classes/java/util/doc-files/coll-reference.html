@@ -295,8 +295,8 @@ when the collection is accessed concurrently. The installed result
 for each input remains cached for the lifetime of the collection.
 <p>
 Each installed result is published with the <a href=
-"../../lang/invoke/StableAccessors.html#memory-effects">memory effects
-described by StableAccessors</a>. These guarantees apply separately to
+"../../lang/invoke/StableFieldAccessors.html#memory-effects">memory effects
+described by StableFieldAccessors</a>. These guarantees apply separately to
 each input; they do not impose a total order on accesses to the
 collection or provide additional visibility guarantees for actions
 performed after publication.
@@ -340,7 +340,7 @@ are serializable.</li>
 <li id="lazy-collections-performance"><strong>Performance</strong> -
 Cached results may be eligible for optimizations such as constant
 folding, as described in <a href=
-"../../lang/invoke/StableAccessors.html#performance">StableAccessors</a>.</li>
+"../../lang/invoke/StableFieldAccessors.html#performance">StableFieldAccessors</a>.</li>
 </ul>
 </li>
 <li><strong>Legacy implementations</strong> - Older collection
