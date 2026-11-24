@@ -73,9 +73,9 @@ import java.util.function.*;
  * boxed for primitive storage. For a static field, the receiver type is
  * {@link Void} and the receiver must be {@code null}.
  * <p>
- * Pass {@code Void.class} to the factory when no computation context is needed.
- * In that case, {@code C} is {@code Void} and the computing function accepts
- * only a null context.
+ * Pass {@code Void.class} when no computation context is needed.
+ * In that case, {@code C} is {@code Void}, and the computing function receives
+ * {@code null} as its context.
  * <table class="striped">
  * <caption>Accessor types and invocations by storage location</caption>
  * <thead>
@@ -123,10 +123,13 @@ import java.util.function.*;
  * a static or instance field whose declared type is a one-dimensional reference
  * or primitive array. The runtime array may have more dimensions. For example,
  * if an {@code Object[]} field holds a {@code String[][]}, each index selects a
- * {@code String[]} element of the outer array. The array's identity and the index
- * identify the cached location, so fields or receivers that share an array also
- * share its cached elements. The accessor API represents primitive values by
- * their wrapper types.
+ * {@code String[]} element of the outer array. An accessor read at that index
+ * may be {@linkplain ##performance constant-folded} to the installed
+ * {@code String[]} reference. The elements of that inner array remain mutable,
+ * so their reads cannot be folded on the strength of the outer accessor.
+ * The array's identity and the index identify the cached location, so fields
+ * or receivers that share an array also share its cached elements. The accessor
+ * API represents primitive values by their wrapper types.
  *
  * <h2 id="field-selection">Field selection and access checks</h2>
  * The owner type token and simple field name select a field independently of the
@@ -166,9 +169,8 @@ import java.util.function.*;
  * <p>
  * An {@link OfScalar.Computer} receives the receiver and context, and an
  * {@link OfArray.Computer} receives the receiver, index, and context, in the
- * same order as {@code getOrCompute}. With {@code Void.class} as the context
- * type token, the context is
- * {@code null}. A lambda can use {@code _} for any unused parameter.
+ * same order as {@code getOrCompute}. A lambda can use {@code _} for any
+ * unused parameter.
  * <p>
  * A {@code contextType} token must represent a reference type, including an array
  * type or a value class. Primitive type tokens, including {@code void.class}, are
@@ -631,8 +633,10 @@ import java.util.function.*;
  * a storage read preserves the guarantees described under
  * {@linkplain ##memory-effects Memory effects}.
  * <p>
- * For array accessors, these optimizations apply independently to each initialized
- * element.
+ * For array accessors, the JVM may fold a read when it can identify the array
+ * and index as a particular initialized location. Sharing the array across
+ * fields or receivers does not by itself establish this for a read through
+ * another accessor.
  *
  * @implNote The accessor factories' implementations install a field or element
  *           candidate as if using
@@ -966,8 +970,7 @@ public final class StableFieldAccessors {
         /**
          * Computes a candidate field value from the receiver and context. It may
          * be invoked more than once for the same field location, including concurrently.
-         * <p>
-         * An accessor created without a computation context passes null as the context.
+         *
          * @param <T> the receiver type, or {@code Void} for a static field
          * @param <C> the type of computation context
          * @param <R> the type of candidate values
@@ -979,7 +982,9 @@ public final class StableFieldAccessors {
              * {@return a non-default candidate value}
              *
              * @param receiver the object holding the field, or {@code null} for a static field
-             * @param context the computation context, possibly {@code null}
+             * @param context the computation context, possibly {@code null}.
+             *        An accessor created with {@code Void.class} as its context
+             *        type always passes {@code null}.
              */
             R compute(T receiver, C context);
         }
@@ -1112,8 +1117,7 @@ public final class StableFieldAccessors {
         /**
          * Computes a candidate array element from the receiver, index, and context.
          * It may be invoked more than once for the same element, including concurrently.
-         * <p>
-         * An accessor created without a computation context passes null as the context.
+         *
          * @param <T> the receiver type, or {@code Void} for a static field
          * @param <C> the type of computation context
          * @param <R> the type of candidate values
@@ -1125,7 +1129,9 @@ public final class StableFieldAccessors {
              * {@return a non-default candidate value}
              * @param receiver the object holding the field, or {@code null} for a static field
              * @param index the index of the selected element
-             * @param context the computation context, possibly {@code null}
+             * @param context the computation context, possibly {@code null}.
+             *        An accessor created with {@code Void.class} as its context
+             *        type always passes {@code null}.
              */
             R compute(T receiver, int index, C context);
         }
