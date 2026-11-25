@@ -73,8 +73,10 @@
 #include "runtime/objectMonitor.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
+#include "utilities/count_trailing_zeros.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
+#include "utilities/population_count.hpp"
 #include "utilities/powerOfTwo.hpp"
 
 //---------------------------make_vm_intrinsic----------------------------
@@ -2264,20 +2266,74 @@ bool LibraryCallKit::inline_number_methods(vmIntrinsics::ID id) {
   return true;
 }
 
+#ifdef AARCH64
+static Node* lower_constant_bitshuffle(PhaseGVN& gvn, Node* src, Node* mask_node, BasicType bt, bool compress) {
+  const TypeInteger* mask_type = gvn.type(mask_node)->isa_integer(bt);
+  if (mask_type == nullptr || !mask_type->is_con()) {
+    return nullptr;
+  }
+  const jlong constant = mask_type->get_con_as_long(bt);
+  uint64_t mask = bt == T_INT ? static_cast<uint32_t>(constant) : static_cast<uint64_t>(constant);
+  // Cap the graph size by counting the starts of contiguous runs.
+  if (population_count(mask & ~(mask << 1)) > 3) {
+    return nullptr;
+  }
+
+  Node* result = gvn.zerocon(bt);
+  unsigned packed = 0;
+  while (mask != 0) {
+    const unsigned start = count_trailing_zeros(mask);
+    const uint64_t shifted_mask = mask >> start;
+    const uint64_t remaining = shifted_mask & (shifted_mask + 1u);
+    const uint64_t run = shifted_mask ^ remaining;
+
+    // Move each run between its position in the mask and its packed position.
+    const uint64_t packed_mask = run << packed;
+    const jlong bits = bt == T_INT ? static_cast<jint>(packed_mask) : static_cast<jlong>(packed_mask);
+    Node* packed_mask_node = gvn.integercon(bits, bt);
+    Node* shift = gvn.intcon(start - packed);
+    Node* part;
+    if (compress) {
+      Node* aligned = gvn.transform(URShiftNode::make(src, shift, bt));
+      part = gvn.transform(MulNode::make_and(aligned, packed_mask_node, bt));
+    } else {
+      Node* selected = gvn.transform(MulNode::make_and(src, packed_mask_node, bt));
+      part = gvn.transform(LShiftNode::make(selected, shift, bt));
+    }
+    result = gvn.transform(bt == T_INT ? static_cast<Node*>(new OrINode(result, part)) : new OrLNode(result, part));
+
+    packed += population_count(run);
+    mask = remaining << start;
+  }
+  return result;
+}
+#endif
+
 //--------------------------inline_bitshuffle_methods-----------------------------
 // inline int Integer.compress(int, int)
 // inline int Integer.expand(int, int)
 // inline long Long.compress(long, long)
 // inline long Long.expand(long, long)
 bool LibraryCallKit::inline_bitshuffle_methods(vmIntrinsics::ID id) {
-  Node* n = nullptr;
-  switch (id) {
-    case vmIntrinsics::_compress_i:  n = new CompressBitsNode(argument(0), argument(1), TypeInt::INT); break;
-    case vmIntrinsics::_expand_i:    n = new ExpandBitsNode(argument(0),  argument(1), TypeInt::INT); break;
-    case vmIntrinsics::_compress_l:  n = new CompressBitsNode(argument(0), argument(2), TypeLong::LONG); break;
-    case vmIntrinsics::_expand_l:    n = new ExpandBitsNode(argument(0), argument(2), TypeLong::LONG); break;
-    default:  fatal_unexpected_iid(id);  break;
+  const bool compress = id == vmIntrinsics::_compress_i || id == vmIntrinsics::_compress_l;
+  const bool is_long = id == vmIntrinsics::_compress_l || id == vmIntrinsics::_expand_l;
+  assert(compress || id == vmIntrinsics::_expand_i || id == vmIntrinsics::_expand_l, "unexpected intrinsic");
+  const BasicType bt = is_long ? T_LONG : T_INT;
+  Node* src = argument(0);
+  Node* mask = argument(is_long ? 2 : 1);
+#ifdef AARCH64
+  if (!Matcher::match_rule_supported(compress ? Op_CompressBits : Op_ExpandBits)) {
+    Node* result = lower_constant_bitshuffle(_gvn, src, mask, bt, compress);
+    if (result == nullptr) {
+      return false;
+    }
+    set_result(result);
+    return true;
   }
+#endif
+  const Type* type = TypeInteger::bottom(bt);
+  Node* n = compress ? static_cast<Node*>(new CompressBitsNode(src, mask, type))
+                     : new ExpandBitsNode(src, mask, type);
   set_result(_gvn.transform(n));
   return true;
 }

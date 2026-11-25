@@ -166,23 +166,52 @@ public class PixelConverter {
     public static class Ushort565Rgb extends PixelConverter {
         public static final PixelConverter instance = new Ushort565Rgb();
 
+        // RGB565 stores 5 red, 6 green, and 5 blue bits in the low 16 bits.
+        private static final int RED_BITS = 5;
+        private static final int GREEN_BITS = 6;
+        private static final int BLUE_BITS = 5;
+
+        // Low bits dropped when packing and filled by replication when widening.
+        private static final int RED_PAD_BITS = Byte.SIZE - RED_BITS;
+        private static final int GREEN_PAD_BITS = Byte.SIZE - GREEN_BITS;
+        private static final int BLUE_PAD_BITS = Byte.SIZE - BLUE_BITS;
+
+        // Lay out the fields from high to low. Each field ends where the
+        // preceding field starts.
+        private static final IntBits.Field RED = IntBits.Field.endingAt(Short.SIZE, RED_BITS);
+        private static final IntBits.Field GREEN = IntBits.Field.endingAt(RED.offset(), GREEN_BITS);
+        private static final IntBits.Field BLUE = IntBits.Field.endingAt(GREEN.offset(), BLUE_BITS);
+
+        // From 0xAARRGGBB, select the high bits of each color byte.
+        // Each field ends at the upper boundary of its byte.
+        // compress packs the selected bits from low to high, starting with blue.
+        private static final IntBits.Selection RGB565 = IntBits.Selection.ofFields(
+                IntBits.Field.endingAt(3 * Byte.SIZE, RED_BITS),    // RR
+                IntBits.Field.endingAt(2 * Byte.SIZE, GREEN_BITS),  // GG
+                IntBits.Field.endingAt(1 * Byte.SIZE, BLUE_BITS));  // BB
+
+        // Build 0xAARRGGBB from high to low, starting with opaque alpha (0xff).
+        // Each color byte starts with the original channel bits. Repeat its
+        // high bits to fill the low positions. For example, blue expands
+        // from b4 b3 b2 b1 b0 to b4 b3 b2 b1 b0 b4 b3 b2.
+        private static final IntBits.Shuffle WIDEN = IntBits.Shuffle.concatHighToLow(
+                IntBits.Shuffle.ones(Byte.SIZE),        // AA
+                RED, highBits(RED, RED_PAD_BITS),       // RR
+                GREEN, highBits(GREEN, GREEN_PAD_BITS), // GG
+                BLUE, highBits(BLUE, BLUE_PAD_BITS));   // BB
+
+        private static IntBits.Field highBits(IntBits.Field field, int width) {
+            return IntBits.Field.endingAt(field.endExclusive(), width);
+        }
+
         private Ushort565Rgb() {}
 
         public int rgbToPixel(int rgb, ColorModel cm) {
-            return (((rgb >> (16 + 3 - 11)) & 0xf800) |
-                    ((rgb >> ( 8 + 2 -  5)) & 0x07e0) |
-                    ((rgb >> ( 0 + 3 -  0)) & 0x001f));
+            return RGB565.compress(rgb);
         }
 
         public int pixelToRgb(int pixel, ColorModel cm) {
-            int r, g, b;
-            r = (pixel >> 11) & 0x1f;
-            r = (r << 3) | (r >> 2);
-            g = (pixel >>  5) & 0x3f;
-            g = (g << 2) | (g >> 4);
-            b = (pixel      ) & 0x1f;
-            b = (b << 3) | (b >> 2);
-            return (0xff000000 | (r << 16) | (g << 8) | (b));
+            return WIDEN.rearrange(pixel);
         }
     }
     public static class Ushort555Rgbx extends PixelConverter {
@@ -266,19 +295,17 @@ public class PixelConverter {
     public static class Xbgr extends PixelConverter {
         public static final PixelConverter instance = new Xbgr();
 
+        private static final IntBits.Shuffle SWAP_RED_BLUE =
+                IntBits.Shuffle.ofBytes(2, 1, 0, IntBits.Shuffle.ZERO);
+
         private Xbgr() {}
 
         public int rgbToPixel(int rgb, ColorModel cm) {
-            return (((rgb & 0xff) << 16) |
-                    (rgb & 0xff00) |
-                    ((rgb >> 16) & 0xff));
+            return SWAP_RED_BLUE.rearrange(rgb);
         }
 
         public int pixelToRgb(int pixel, ColorModel cm) {
-            return (0xff000000 |
-                    ((pixel & 0xff) << 16) |
-                    (pixel & 0xff00) |
-                    ((pixel >> 16) & 0xff));
+            return 0xff000000 | SWAP_RED_BLUE.rearrange(pixel);
         }
     }
     public static class Bgrx extends PixelConverter {

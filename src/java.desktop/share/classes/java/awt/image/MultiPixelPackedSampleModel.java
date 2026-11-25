@@ -58,7 +58,7 @@ package java.awt.image;
  *      int element = data.getElem(y*scanlineStride + bitnum/dataElementSize);
  *      int shift = dataElementSize - (bitnum & (dataElementSize-1))
  *                  - pixelBitStride;
- *      int pixel = (element >> shift) & ((1 << pixelBitStride) - 1);
+ *      int pixel = (element >>> shift) & (int)((1L << pixelBitStride) - 1);
  * }</pre>
  */
 
@@ -66,9 +66,6 @@ public class MultiPixelPackedSampleModel extends SampleModel
 {
     /** The number of bits from one pixel to the next. */
     int pixelBitStride;
-
-    /** Bitmask that extracts the rightmost pixel of a data element. */
-    int bitMask;
 
     /**
       * The number of pixels that fit in a data element.  Also used
@@ -85,6 +82,9 @@ public class MultiPixelPackedSampleModel extends SampleModel
 
     /** ScanlineStride of the data buffer described in data array elements. */
     int scanlineStride;
+
+    private final IntBits.IndexedField pixelFields;
+    private final int firstPixelInElement;
 
     /**
      * Constructs a {@code MultiPixelPackedSampleModel} with the
@@ -203,9 +203,14 @@ public class MultiPixelPackedSampleModel extends SampleModel
                                              "does not allow pixels to " +
                                              "span data element boundaries");
         }
-        this.bitMask = (1 << numberOfBits) - 1;
+        pixelFields = IntBits.IndexedField.of(dataElementSize - numberOfBits,
+                numberOfBits, -numberOfBits, pixelsPerDataElement);
+        firstPixelInElement = (dataBitOffset % dataElementSize) / numberOfBits;
     }
 
+    private int pixelIndexInElement(int x) {
+        return (firstPixelInElement + x) & (pixelsPerDataElement - 1);
+    }
 
     /**
      * Creates a new {@code MultiPixelPackedSampleModel} with the
@@ -396,9 +401,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
         }
         int bitnum = dataBitOffset + x*pixelBitStride;
         int element = data.getElem(y*scanlineStride + bitnum/dataElementSize);
-        int shift = dataElementSize - (bitnum & (dataElementSize-1))
-                    - pixelBitStride;
-        return (element >> shift) & bitMask;
+        return pixelFields.extract(element, pixelIndexInElement(x));
     }
 
     /**
@@ -426,12 +429,8 @@ public class MultiPixelPackedSampleModel extends SampleModel
         }
         int bitnum = dataBitOffset + x * pixelBitStride;
         int index = y * scanlineStride + (bitnum / dataElementSize);
-        int shift = dataElementSize - (bitnum & (dataElementSize-1))
-                    - pixelBitStride;
         int element = data.getElem(index);
-        element &= ~(bitMask << shift);
-        element |= (s & bitMask) << shift;
-        data.setElem(index,element);
+        data.setElem(index, pixelFields.replace(element, pixelIndexInElement(x), s));
     }
 
     /**
@@ -495,9 +494,8 @@ public class MultiPixelPackedSampleModel extends SampleModel
 
         int type = getTransferType();
         int bitnum = dataBitOffset + x*pixelBitStride;
-        int shift = dataElementSize - (bitnum & (dataElementSize-1))
-                    - pixelBitStride;
-        int element = 0;
+        int index = y * scanlineStride + bitnum / dataElementSize;
+        int pixelIndex = pixelIndexInElement(x);
 
         switch(type) {
 
@@ -510,9 +508,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
             else
                 bdata = (byte[])obj;
 
-            element = data.getElem(y*scanlineStride +
-                                    bitnum/dataElementSize);
-            bdata[0] = (byte)((element >> shift) & bitMask);
+            bdata[0] = (byte)pixelFields.extract(data.getElem(index), pixelIndex);
 
             obj = (Object)bdata;
             break;
@@ -526,9 +522,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
             else
                 sdata = (short[])obj;
 
-            element = data.getElem(y*scanlineStride +
-                                   bitnum/dataElementSize);
-            sdata[0] = (short)((element >> shift) & bitMask);
+            sdata[0] = (short)pixelFields.extract(data.getElem(index), pixelIndex);
 
             obj = (Object)sdata;
             break;
@@ -542,9 +536,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
             else
                 idata = (int[])obj;
 
-            element = data.getElem(y*scanlineStride +
-                                   bitnum/dataElementSize);
-            idata[0] = (element >> shift) & bitMask;
+            idata[0] = pixelFields.extract(data.getElem(index), pixelIndex);
 
             obj = (Object)idata;
             break;
@@ -584,9 +576,7 @@ public class MultiPixelPackedSampleModel extends SampleModel
         }
         int bitnum = dataBitOffset + x*pixelBitStride;
         int element = data.getElem(y*scanlineStride + bitnum/dataElementSize);
-        int shift = dataElementSize - (bitnum & (dataElementSize-1))
-                    - pixelBitStride;
-        pixels[0] = (element >> shift) & bitMask;
+        pixels[0] = pixelFields.extract(element, pixelIndexInElement(x));
         return pixels;
     }
 
@@ -642,32 +632,29 @@ public class MultiPixelPackedSampleModel extends SampleModel
         int type = getTransferType();
         int bitnum = dataBitOffset + x * pixelBitStride;
         int index = y * scanlineStride + (bitnum / dataElementSize);
-        int shift = dataElementSize - (bitnum & (dataElementSize-1))
-                    - pixelBitStride;
         int element = data.getElem(index);
-        element &= ~(bitMask << shift);
+        int pixelIndex = pixelIndexInElement(x);
 
         switch(type) {
 
         case DataBuffer.TYPE_BYTE:
 
             byte[] barray = (byte[])obj;
-            element |= ( ((int)(barray[0])&0xff) & bitMask) << shift;
-            data.setElem(index, element);
+            data.setElem(index, pixelFields.replace(element, pixelIndex,
+                                                  Byte.toUnsignedInt(barray[0])));
             break;
 
         case DataBuffer.TYPE_USHORT:
 
             short[] sarray = (short[])obj;
-            element |= ( ((int)(sarray[0])&0xffff) & bitMask) << shift;
-            data.setElem(index, element);
+            data.setElem(index, pixelFields.replace(element, pixelIndex,
+                                                  Short.toUnsignedInt(sarray[0])));
             break;
 
         case DataBuffer.TYPE_INT:
 
             int[] iarray = (int[])obj;
-            element |= (iarray[0] & bitMask) << shift;
-            data.setElem(index, element);
+            data.setElem(index, pixelFields.replace(element, pixelIndex, iarray[0]));
             break;
         }
     }
@@ -693,12 +680,8 @@ public class MultiPixelPackedSampleModel extends SampleModel
         }
         int bitnum = dataBitOffset + x * pixelBitStride;
         int index = y * scanlineStride + (bitnum / dataElementSize);
-        int shift = dataElementSize - (bitnum & (dataElementSize-1))
-                    - pixelBitStride;
         int element = data.getElem(index);
-        element &= ~(bitMask << shift);
-        element |= (iArray[0] & bitMask) << shift;
-        data.setElem(index,element);
+        data.setElem(index, pixelFields.replace(element, pixelIndexInElement(x), iArray[0]));
     }
 
     public boolean equals(Object o) {
@@ -711,7 +694,6 @@ public class MultiPixelPackedSampleModel extends SampleModel
             this.numBands == that.numBands &&
             this.dataType == that.dataType &&
             this.pixelBitStride == that.pixelBitStride &&
-            this.bitMask == that.bitMask &&
             this.pixelsPerDataElement == that.pixelsPerDataElement &&
             this.dataElementSize == that.dataElementSize &&
             this.dataBitOffset == that.dataBitOffset &&
@@ -730,9 +712,8 @@ public class MultiPixelPackedSampleModel extends SampleModel
         hash ^= dataType;
         hash <<= 8;
         hash ^= pixelBitStride;
-        hash <<= 8;
-        hash ^= bitMask;
-        hash <<= 8;
+        // Keep the shift for the former mask to preserve the hash calculation.
+        hash <<= 16;
         hash ^= pixelsPerDataElement;
         hash <<= 8;
         hash ^= dataElementSize;

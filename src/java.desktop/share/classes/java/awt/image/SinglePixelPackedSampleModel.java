@@ -65,6 +65,9 @@ import java.util.Arrays;
 
 public class SinglePixelPackedSampleModel extends SampleModel
 {
+    private final IntBits.Field[] bandFields;
+
+    // The masks, offsets, sizes and maximum size are also read by native code.
     /** Bit masks for all bands of the image data. */
     private int[] bitMasks;
 
@@ -154,33 +157,17 @@ public class SinglePixelPackedSampleModel extends SampleModel
 
         this.bitOffsets = new int[numBands];
         this.bitSizes = new int[numBands];
+        this.bandFields = new IntBits.Field[numBands];
 
         int maxMask = (int)((1L << DataBuffer.getDataTypeSize(dataType)) - 1);
 
-        this.maxBitSize = 0;
-        for (int i=0; i<numBands; i++) {
-            int bitOffset = 0, bitSize = 0, mask;
+        for (int i = 0; i < numBands; i++) {
             this.bitMasks[i] &= maxMask;
-            mask = this.bitMasks[i];
-            if (mask != 0) {
-                while ((mask & 1) == 0) {
-                    mask = mask >>> 1;
-                    bitOffset++;
-                }
-                while ((mask & 1) == 1) {
-                    mask = mask >>> 1;
-                    bitSize++;
-                }
-                if (mask != 0) {
-                    throw new IllegalArgumentException("Mask "+bitMasks[i]+
-                                                       " must be contiguous");
-                }
-            }
-            bitOffsets[i] = bitOffset;
-            bitSizes[i] = bitSize;
-            if (bitSize > maxBitSize) {
-                maxBitSize = bitSize;
-            }
+            IntBits.Field field = IntBits.Field.fromMask(this.bitMasks[i]);
+            bandFields[i] = field;
+            bitOffsets[i] = field.offset();
+            bitSizes[i] = field.width();
+            maxBitSize = Math.max(maxBitSize, field.width());
         }
     }
 
@@ -447,7 +434,7 @@ public class SinglePixelPackedSampleModel extends SampleModel
 
         int value = data.getElem(y * scanlineStride + x);
         for (int i=0; i<numBands; i++) {
-            pixels[i] = (value & bitMasks[i]) >>> bitOffsets[i];
+            pixels[i] = bandFields[i].extract(value);
         }
         return pixels;
     }
@@ -484,8 +471,7 @@ public class SinglePixelPackedSampleModel extends SampleModel
            for (int j = 0; j < w; j++) {
               int value = data.getElem(lineOffset+j);
               for (int k=0; k < numBands; k++) {
-                  pixels[dstOffset++] =
-                     ((value & bitMasks[k]) >>> bitOffsets[k]);
+                  pixels[dstOffset++] = bandFields[k].extract(value);
               }
            }
            lineOffset += scanlineStride;
@@ -506,7 +492,7 @@ public class SinglePixelPackedSampleModel extends SampleModel
                 ("Coordinate out of bounds!");
         }
         int sample = data.getElem(y * scanlineStride + x);
-        return ((sample & bitMasks[b]) >>> bitOffsets[b]);
+        return bandFields[b].extract(sample);
     }
 
     /**
@@ -535,8 +521,7 @@ public class SinglePixelPackedSampleModel extends SampleModel
         for (int i = 0; i < h; i++) {
            for (int j = 0; j < w; j++) {
               int value = data.getElem(lineOffset+j);
-              samples[dstOffset++] =
-                 ((value & bitMasks[b]) >>> bitOffsets[b]);
+              samples[dstOffset++] = bandFields[b].extract(value);
            }
            lineOffset += scanlineStride;
         }
@@ -627,8 +612,7 @@ public class SinglePixelPackedSampleModel extends SampleModel
         int lineOffset = y * scanlineStride + x;
         int value = data.getElem(lineOffset);
         for (int i=0; i < numBands; i++) {
-            value &= ~bitMasks[i];
-            value |= ((iArray[i] << bitOffsets[i]) & bitMasks[i]);
+            value = bandFields[i].replace(value, iArray[i]);
         }
         data.setElem(lineOffset, value);
     }
@@ -659,10 +643,7 @@ public class SinglePixelPackedSampleModel extends SampleModel
            for (int j = 0; j < w; j++) {
                int value = data.getElem(lineOffset+j);
                for (int k=0; k < numBands; k++) {
-                   value &= ~bitMasks[k];
-                   int srcValue = iArray[srcOffset++];
-                   value |= ((srcValue << bitOffsets[k])
-                             & bitMasks[k]);
+                   value = bandFields[k].replace(value, iArray[srcOffset++]);
                }
                data.setElem(lineOffset+j, value);
            }
@@ -684,8 +665,7 @@ public class SinglePixelPackedSampleModel extends SampleModel
                 ("Coordinate out of bounds!");
         }
         int value = data.getElem(y*scanlineStride + x);
-        value &= ~bitMasks[b];
-        value |= (s << bitOffsets[b]) & bitMasks[b];
+        value = bandFields[b].replace(value, s);
         data.setElem(y*scanlineStride + x,value);
     }
 
@@ -709,9 +689,7 @@ public class SinglePixelPackedSampleModel extends SampleModel
         for (int i = 0; i < h; i++) {
            for (int j = 0; j < w; j++) {
               int value = data.getElem(lineOffset+j);
-              value &= ~bitMasks[b];
-              int sample = iArray[srcOffset++];
-              value |= (sample << bitOffsets[b]) & bitMasks[b];
+              value = bandFields[b].replace(value, iArray[srcOffset++]);
               data.setElem(lineOffset+j,value);
            }
            lineOffset += scanlineStride;

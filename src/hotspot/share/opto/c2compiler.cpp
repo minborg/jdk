@@ -332,11 +332,16 @@ bool C2Compiler::is_intrinsic_supported(vmIntrinsics::ID id) {
     break;
   case vmIntrinsics::_compress_i:
   case vmIntrinsics::_compress_l:
+#ifndef AARCH64
     if (!Matcher::match_rule_supported(Op_CompressBits)) return false;
+#endif
+    // On AArch64, LibraryCallKit can lower some constant masks without SVE2 BitPerm.
     break;
   case vmIntrinsics::_expand_i:
   case vmIntrinsics::_expand_l:
+#ifndef AARCH64
     if (!Matcher::match_rule_supported(Op_ExpandBits)) return false;
+#endif
     break;
   case vmIntrinsics::_numberOfLeadingZeros_i:
     if (!Matcher::match_rule_supported(Op_CountLeadingZerosI)) return false;

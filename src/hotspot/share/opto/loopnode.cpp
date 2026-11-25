@@ -377,6 +377,49 @@ IdealLoopTree* PhaseIdealLoop::create_outer_strip_mined_loop(Node* init_control,
   return outer_ilt;
 }
 
+static void remove_loop_safepoint(PhaseIdealLoop* phase, IdealLoopTree* loop, SafePointNode* safepoint) {
+  phase->replace_node_and_forward_ctrl(safepoint, safepoint->in(TypeFunc::Control));
+  if (loop->_safepts != nullptr) {
+    loop->_safepts->yank(safepoint);
+  }
+}
+
+static IdealLoopTree* strip_mine_counted_loop(PhaseIdealLoop* phase, IdealLoopTree* loop, SafePointNode* safepoint) {
+  CountedLoopNode* head = loop->_head->as_CountedLoop();
+  CountedLoopEndNode* end = head->loopexit();
+  Node* exit = end->false_proj();
+  Node* entry = nullptr;
+  IdealLoopTree* outer = phase->create_outer_strip_mined_loop(head->in(LoopNode::EntryControl), loop,
+                                                             end->_prob, end->_fcnt, entry, exit);
+  PhaseIterGVN& igvn = phase->igvn();
+  igvn.replace_input_of(head, LoopNode::EntryControl, entry);
+  phase->set_idom(head, entry, phase->dom_depth(entry) + 1);
+
+  Node* outer_end = outer->_tail->in(0);
+  Node* poll = safepoint->clone();
+  poll->set_req(0, exit);
+  outer_end->set_req(0, poll);
+
+  Node* poll_address = poll->in(TypeFunc::Parms);
+  if (Node::is<LoadNode>(poll_address)) {
+    // Pin the polling load outside the inner loop as well.
+    Node* new_poll_address = poll_address->clone();
+    new_poll_address->set_req(0, exit);
+    igvn.register_new_node_with_optimizer(new_poll_address, poll_address);
+    phase->set_ctrl(new_poll_address, exit);
+    poll->set_req(TypeFunc::Parms, new_poll_address);
+  }
+  // Loop bodies have not yet been populated.
+  phase->register_control(poll, outer, exit, false);
+  phase->set_idom(outer_end, poll, phase->dom_depth(poll));
+  remove_loop_safepoint(phase, loop, safepoint);
+
+  head->mark_strip_mined();
+  head->verify_strip_mined(1);
+  outer->_head->as_Loop()->verify_strip_mined(1);
+  return outer;
+}
+
 
 void CountedLoopConverter::insert_loop_limit_check_predicate(const ParsePredicateSuccessProj* loop_limit_check_parse_proj,
                                                              Node* bol) const {
@@ -3680,23 +3723,12 @@ IdealLoopTree* CountedLoopConverter::convert() {
   assert(iff->outcnt() == 0, "should be dead now");
   _phase->replace_node_and_forward_ctrl(iff, loop_end_exit); // fix 'get_ctrl'
 
-  Node* init_control = _head->in(LoopNode::EntryControl);
-  Node* entry_control = init_control;
+  Node* entry_control = _head->in(LoopNode::EntryControl);
   bool strip_mine_loop = _iv_bt == T_INT &&
                          _loop->_child == nullptr &&
                          _structure.sfpt() != nullptr &&
                          !_loop->_has_call &&
                          _phase->is_deleteable_safept(_structure.sfpt());
-  IdealLoopTree* outer_ilt = nullptr;
-  if (strip_mine_loop) {
-    outer_ilt = _phase->create_outer_strip_mined_loop(init_control,
-                                                      _loop,
-                                                      _structure.exit_test().cl_prob(),
-                                                      loop_end_exit->_fcnt,
-                                                      entry_control,
-                                                      iffalse);
-  }
-
   // Now setup a new CountedLoopNode to replace the existing LoopNode
   BaseCountedLoopNode* l = BaseCountedLoopNode::make(entry_control, back_control, _iv_bt);
   l->set_unswitch_count(_head->as_Loop()->unswitch_count()); // Preserve
@@ -3712,34 +3744,12 @@ IdealLoopTree* CountedLoopConverter::convert() {
   _phase->replace_node_and_forward_ctrl(_head, l);
   _phase->set_idom(l, entry_control, _phase->dom_depth(entry_control) + 1);
 
-  if (_iv_bt == T_INT && (LoopStripMiningIter == 0 || strip_mine_loop)) {
-    // Check for immediately preceding SafePoint and remove
-    if (_structure.sfpt() != nullptr && (strip_mine_loop || _phase->is_deleteable_safept(_structure.sfpt()))) {
-      if (strip_mine_loop) {
-        Node* outer_le = outer_ilt->_tail->in(0);
-        Node* sfpt_clone = _structure.sfpt()->clone();
-        sfpt_clone->set_req(0, iffalse);
-        outer_le->set_req(0, sfpt_clone);
-
-        Node* polladdr = sfpt_clone->in(TypeFunc::Parms);
-        if (Node::is<LoadNode>(polladdr)) {
-          // Polling load should be pinned outside inner loop.
-          Node* new_polladdr = polladdr->clone();
-          new_polladdr->set_req(0, iffalse);
-          igvn->register_new_node_with_optimizer(new_polladdr, polladdr);
-          _phase->set_ctrl(new_polladdr, iffalse);
-          sfpt_clone->set_req(TypeFunc::Parms, new_polladdr);
-        }
-        // When this code runs, loop bodies have not yet been populated.
-        const bool body_populated = false;
-        _phase->register_control(sfpt_clone, outer_ilt, iffalse, body_populated);
-        _phase->set_idom(outer_le, sfpt_clone, _phase->dom_depth(sfpt_clone));
-      }
-      _phase->replace_node_and_forward_ctrl(_structure.sfpt(), _structure.sfpt()->in(TypeFunc::Control));
-      if (_loop->_safepts != nullptr) {
-        _loop->_safepts->yank(_structure.sfpt());
-      }
-    }
+  IdealLoopTree* loop = _loop;
+  if (strip_mine_loop) {
+    loop = strip_mine_counted_loop(_phase, _loop, _structure.sfpt());
+  } else if (_iv_bt == T_INT && LoopStripMiningIter == 0 && _structure.sfpt() != nullptr &&
+             _phase->is_deleteable_safept(_structure.sfpt())) {
+    remove_loop_safepoint(_phase, _loop, _structure.sfpt());
   }
 
 #ifdef ASSERT
@@ -3760,14 +3770,6 @@ IdealLoopTree* CountedLoopConverter::convert() {
   l->phi()->as_Phi()->set_type(l->phi()->Value(igvn));
 
   _phase->C->print_method(PHASE_AFTER_CLOOPS, 3, l);
-
-  IdealLoopTree* loop = _loop;
-  if (strip_mine_loop) {
-    l->mark_strip_mined();
-    l->verify_strip_mined(1);
-    outer_ilt->_head->as_Loop()->verify_strip_mined(1);
-    loop = outer_ilt;
-  }
 
 #ifndef PRODUCT
   if (_head->as_Loop()->is_loop_nest_inner_loop() && _iv_bt == T_LONG) {
@@ -5748,6 +5750,20 @@ void IdealLoopTree::counted_loop( PhaseIdealLoop *phase ) {
   }
 
   IdealLoopTree* loop = this;
+  if (LoopStripMiningIter != 0 && _child == nullptr && !_has_call && _safepts != nullptr &&
+      _safepts->size() != 0 && _head->is_CountedLoop()) {
+    CountedLoopNode* head = _head->as_CountedLoop();
+    // An outer loop may have become a leaf after its inner loops were fully unrolled.
+    if (!head->is_strip_mined() && head->is_normal_loop() &&
+        !head->is_loop_nest_inner_loop() && !head->is_loop_nest_outer_loop() &&
+        head->is_valid_counted_loop(T_INT)) {
+      SafePointNode* safepoint = phase->find_safepoint(head->in(LoopNode::LoopBackControl), head, this);
+      if (safepoint != nullptr && safepoint->Opcode() == Op_SafePoint && phase->get_loop(safepoint) == this &&
+          phase->is_deleteable_safept(safepoint)) {
+        loop = strip_mine_counted_loop(phase, this, safepoint);
+      }
+    }
+  }
   if (_head->is_CountedLoop() || phase->try_convert_to_counted_loop(_head, loop, T_INT)) {
     if (LoopStripMiningIter == 0 || _head->as_CountedLoop()->is_strip_mined()) {
       // Indicate we do not need a safepoint here
