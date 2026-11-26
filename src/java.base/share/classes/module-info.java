@@ -255,6 +255,8 @@ module java.base {
         jdk.unsupported;
     exports jdk.internal.vm.vector to
         jdk.incubator.vector;
+    exports jdk.internal.util.zip to
+        jdk.zipfs;
     exports jdk.internal.util.xml to
         jdk.jfr;
     exports jdk.internal.util.xml.impl to

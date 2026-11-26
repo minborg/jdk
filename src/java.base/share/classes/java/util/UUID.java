@@ -410,6 +410,13 @@ public final class UUID implements java.io.Serializable, Comparable<UUID> {
                       & (leastSigBits >> 63));
     }
 
+    private static class Version1 {
+        static final LongBits.Shuffle TIMESTAMP = LongBits.Shuffle.concatHighToLow(
+                LongBits.Field.of(0, 12),   // time_hi, below the version
+                LongBits.Field.of(16, 16),  // time_mid
+                LongBits.Field.of(32, 32)); // time_low
+    }
+
     /**
      * The timestamp value associated with this UUID.
      *
@@ -431,9 +438,7 @@ public final class UUID implements java.io.Serializable, Comparable<UUID> {
             throw new UnsupportedOperationException("Not a time-based UUID");
         }
 
-        return (mostSigBits & 0x0FFFL) << 48
-             | ((mostSigBits >> 16) & 0x0FFFFL) << 32
-             | mostSigBits >>> 32;
+        return Version1.TIMESTAMP.rearrange(mostSigBits);
     }
 
     /**

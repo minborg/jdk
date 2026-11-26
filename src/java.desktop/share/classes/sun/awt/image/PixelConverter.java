@@ -171,38 +171,34 @@ public class PixelConverter {
         private static final int GREEN_BITS = 6;
         private static final int BLUE_BITS = 5;
 
-        // Low bits dropped when packing and filled by replication when widening.
-        private static final int RED_PAD_BITS = Byte.SIZE - RED_BITS;
-        private static final int GREEN_PAD_BITS = Byte.SIZE - GREEN_BITS;
-        private static final int BLUE_PAD_BITS = Byte.SIZE - BLUE_BITS;
-
         // Lay out the fields from high to low. Each field ends where the
         // preceding field starts.
         private static final IntBits.Field RED = IntBits.Field.endingAt(Short.SIZE, RED_BITS);
         private static final IntBits.Field GREEN = IntBits.Field.endingAt(RED.offset(), GREEN_BITS);
         private static final IntBits.Field BLUE = IntBits.Field.endingAt(GREEN.offset(), BLUE_BITS);
 
-        // From 0xAARRGGBB, select the high bits of each color byte.
-        // Each field ends at the upper boundary of its byte.
-        // compress packs the selected bits from low to high, starting with blue.
-        private static final IntBits.Selection RGB565 = IntBits.Selection.ofFields(
-                IntBits.Field.endingAt(3 * Byte.SIZE, RED_BITS),    // RR
-                IntBits.Field.endingAt(2 * Byte.SIZE, GREEN_BITS),  // GG
-                IntBits.Field.endingAt(1 * Byte.SIZE, BLUE_BITS));  // BB
+        // Read 0xAARRGGBB from the top. Skip alpha, then take the high bits
+        // of each color byte. Compress packs these into the low 16 bits as RGB565.
+        //
+        // {16'b0, rgb[23:19], rgb[15:10], rgb[7:3]}
+        private static final IntBits.Selection RGB565 = IntBits.Selection.highToLow()
+                .skip(Byte.SIZE)
+                .takeHigh(Byte.SIZE, RED_BITS)
+                .takeHigh(Byte.SIZE, GREEN_BITS)
+                .takeHigh(Byte.SIZE, BLUE_BITS)
+                .build();
 
         // Build 0xAARRGGBB from high to low, starting with opaque alpha (0xff).
         // Each color byte starts with the original channel bits. Repeat its
         // high bits to fill the low positions. For example, blue expands
         // from b4 b3 b2 b1 b0 to b4 b3 b2 b1 b0 b4 b3 b2.
+        //
+        // {8'b11111111, pixel[15:11], pixel[15:13], pixel[10:5], pixel[10:9], pixel[4:0], pixel[4:2]}
         private static final IntBits.Shuffle WIDEN = IntBits.Shuffle.concatHighToLow(
-                IntBits.Shuffle.ones(Byte.SIZE),        // AA
-                RED, highBits(RED, RED_PAD_BITS),       // RR
-                GREEN, highBits(GREEN, GREEN_PAD_BITS), // GG
-                BLUE, highBits(BLUE, BLUE_PAD_BITS));   // BB
-
-        private static IntBits.Field highBits(IntBits.Field field, int width) {
-            return IntBits.Field.endingAt(field.endExclusive(), width);
-        }
+                IntBits.Shuffle.ones(Byte.SIZE),                  // AA
+                IntBits.Shuffle.repeatToWidth(RED,   Byte.SIZE),  // RR
+                IntBits.Shuffle.repeatToWidth(GREEN, Byte.SIZE),  // GG
+                IntBits.Shuffle.repeatToWidth(BLUE,  Byte.SIZE)); // BB
 
         private Ushort565Rgb() {}
 
@@ -261,35 +257,24 @@ public class PixelConverter {
     public static class Ushort4444Argb extends PixelConverter {
         public static final PixelConverter instance = new Ushort4444Argb();
 
+        // Packing maps 0xAaRrGgBb to 0x0000ARGB by keeping each byte's high nibble.
+        private static final IntBits.Shuffle PACK = IntBits.Shuffle.fromVerilogExpression(
+                "{16'b0, argb[31:28], argb[23:20], argb[15:12], argb[7:4]}");
+
+        // Widening maps 0xARGB to 0xAARRGGBB by repeating each nibble twice.
+        private static final IntBits.Shuffle WIDEN = IntBits.Shuffle.fromVerilogExpression(
+                "{{2{pixel[15:12]}}, {2{pixel[11:8]}}, {2{pixel[7:4]}}, {2{pixel[3:0]}}}");
+
         private Ushort4444Argb() {
             alphaMask = 0xf000;
         }
 
-        public int rgbToPixel(int rgb, ColorModel cm) {
-            // use upper 4 bits for each color
-            // 0xAaRrGgBb -> 0x0000ARGB
-            int a = (rgb >> 16) & 0xf000;
-            int r = (rgb >> 12) & 0x0f00;
-            int g = (rgb >>  8) & 0x00f0;
-            int b = (rgb >>  4) & 0x000f;
-
-            return (a | r | g | b);
+        public int rgbToPixel(int argb, ColorModel cm) {
+            return PACK.rearrange(argb);
         }
 
         public int pixelToRgb(int pixel, ColorModel cm) {
-            int a, r, g, b;
-            // replicate 4 bits for each color
-            // 0xARGB -> 0xAARRGGBB
-            a = pixel & 0xf000;
-            a = ((pixel << 16) | (pixel << 12)) & 0xff000000;
-            r = pixel & 0x0f00;
-            r = ((pixel << 12) | (pixel <<  8)) & 0x00ff0000;
-            g = pixel & 0x00f0;
-            g = ((pixel <<  8) | (pixel <<  4)) & 0x0000ff00;
-            b = pixel & 0x000f;
-            b = ((pixel <<  4) | (pixel <<  0)) & 0x000000ff;
-
-            return (a | r | g | b);
+            return WIDEN.rearrange(pixel);
         }
     }
     public static class Xbgr extends PixelConverter {

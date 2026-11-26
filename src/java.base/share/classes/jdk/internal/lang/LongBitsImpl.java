@@ -77,6 +77,10 @@ public final class LongBitsImpl {
         return selectionOfMask(mask);
     }
 
+    public static LongBits.Shuffle shuffleFromVerilogExpression(String expression) {
+        return new Shuffle(VerilogShuffleParser.parse(Long.SIZE, expression));
+    }
+
     public static LongBits.Shuffle shuffleOfBits(int[] sourceBits) {
         return new Shuffle(BitShuffle.ofBits(Long.SIZE, sourceBits));
     }
@@ -98,6 +102,15 @@ public final class LongBitsImpl {
         return new Literal(value, width);
     }
 
+    public static LongBits.Shuffle.Part shuffleRepeatToWidth(LongBits.Field field, int width) {
+        Objects.requireNonNull(field);
+        IntBitsImpl.checkRange(0, width, Long.SIZE);
+        if (field.width() == 0 && width > 0) {
+            throw new IllegalArgumentException("Cannot repeat an empty field to a positive width");
+        }
+        return new RepeatedField(field, width);
+    }
+
     private static Shuffle concat(LongBits.Shuffle.Part[] parts, boolean highToLow) {
         int[] sourceBits = new int[Long.SIZE];
         int destination = 0;
@@ -106,10 +119,28 @@ public final class LongBitsImpl {
             destination = switch (part) {
                 case LongBits.Field field -> BitShuffle.appendField(sourceBits, destination, field.offset(), field.width());
                 case Literal literal -> BitShuffle.appendLiteral(sourceBits, destination, literal.value, literal.width);
+                case RepeatedField repeat -> BitShuffle.appendRepeatedField(sourceBits, destination,
+                        repeat.field.endExclusive(), repeat.field.width(), repeat.width);
             };
         }
         Arrays.fill(sourceBits, destination, sourceBits.length, LongBits.Shuffle.ZERO);
         return new Shuffle(new BitShuffle(sourceBits));
+    }
+
+    @TrustFinalFields
+    public static final class RepeatedField implements LongBits.Shuffle.Part {
+        private final LongBits.Field field;
+        private final int width;
+
+        private RepeatedField(LongBits.Field field, int width) {
+            this.field = field;
+            this.width = width;
+        }
+
+        @Override
+        public int width() {
+            return width;
+        }
     }
 
     @TrustFinalFields
@@ -140,6 +171,11 @@ public final class LongBitsImpl {
             this.width = width;
             this.valueMask = valueMask;
             this.signBit = valueMask ^ (valueMask >>> 1);
+        }
+
+        @Override
+        public String toVerilogExpression(String methodName, String... parameterNames) {
+            return VerilogExpression.field(Long.SIZE, offset, width, methodName, parameterNames);
         }
 
         @Override
@@ -194,6 +230,12 @@ public final class LongBitsImpl {
         }
 
         @Override
+        public String toVerilogExpression(String methodName, String... parameterNames) {
+            return VerilogExpression.indexedField(Long.SIZE, firstBit, Long.bitCount(valueMask),
+                    strideBits, count, methodName, parameterNames);
+        }
+
+        @Override
         public LongBits.Selection asSelection() {
             if (valueMask == 0 || strideBits == 0) {
                 return selectionOfMask(valueMask << firstBit);
@@ -222,11 +264,35 @@ public final class LongBitsImpl {
     }
 
     @TrustFinalFields
+    public static final class SelectionBuilder implements LongBits.Selection.Builder {
+        private int remaining = Long.SIZE;
+        private long mask;
+
+        @Override
+        public LongBits.Selection.Builder takeHigh(int groupWidth, int width) {
+            IntBitsImpl.checkSelectionWidths(groupWidth, width, remaining);
+            mask |= lowMask(width) << (remaining - width);
+            remaining -= groupWidth;
+            return this;
+        }
+
+        @Override
+        public LongBits.Selection build() {
+            return selectionOfMask(mask);
+        }
+    }
+
+    @TrustFinalFields
     public static final class Selection implements LongBits.Selection {
         private final long mask;
 
         private Selection(long mask) {
             this.mask = mask;
+        }
+
+        @Override
+        public String toVerilogExpression(String methodName, String... parameterNames) {
+            return VerilogExpression.selection(Long.SIZE, mask, methodName, parameterNames);
         }
 
         @Override
@@ -243,6 +309,11 @@ public final class LongBitsImpl {
         public long replace(long word, long value) {
             return (word & ~mask) | expand(value);
         }
+
+        @Override
+        public long blend(long base, long donor) {
+            return (base & ~mask) | (donor & mask);
+        }
     }
 
     @TrustFinalFields
@@ -251,6 +322,11 @@ public final class LongBitsImpl {
 
         private Shuffle(BitShuffle mapping) {
             this.mapping = mapping;
+        }
+
+        @Override
+        public String toVerilogExpression(String methodName, String... parameterNames) {
+            return mapping.toVerilogExpression(methodName, parameterNames);
         }
 
         @Override

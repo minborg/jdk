@@ -327,6 +327,57 @@ class BitRecipesTest {
     }
 
     @Test
+    void highToLowSelections() {
+        assertEquals(0, IntBits.Selection.highToLow().build().expand(-1));
+        assertEquals(0L, LongBits.Selection.highToLow().build().expand(-1L));
+
+        // Place a group at every cursor position. Taking the rest of the word
+        // after the group also checks that takeHigh consumed its skipped bits.
+        for (int remaining = 0; remaining <= Long.SIZE; remaining++) {
+            for (int group = 0; group <= remaining; group++) {
+                long tail = fieldMask(0, remaining - group);
+                for (int width = 0; width <= group; width++) {
+                    long high = fieldMask(remaining - width, width);
+                    var longs = LongBits.Selection.highToLow().skip(Long.SIZE - remaining);
+                    var longPrefix = longs.takeHigh(group, width).build();
+                    assertEquals(high | tail, longs.take(remaining - group).build().expand(-1L));
+                    assertEquals(high, longPrefix.expand(-1L));
+                    if (remaining <= Integer.SIZE) {
+                        var ints = IntBits.Selection.highToLow().skip(Integer.SIZE - remaining);
+                        var intPrefix = ints.takeHigh(group, width).build();
+                        assertEquals((int) (high | tail), ints.take(remaining - group).build().expand(-1));
+                        assertEquals((int) high, intPrefix.expand(-1));
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void invalidHighToLowSteps() {
+        var ints = IntBits.Selection.highToLow().take(1).skip(Integer.SIZE - 2);
+        var longs = LongBits.Selection.highToLow().take(1).skip(Long.SIZE - 2);
+        for (int invalid : new int[] {Integer.MIN_VALUE, -1, 2, Integer.MAX_VALUE}) {
+            assertThrows(IllegalArgumentException.class, () -> ints.take(invalid));
+            assertThrows(IllegalArgumentException.class, () -> ints.skip(invalid));
+            assertThrows(IllegalArgumentException.class, () -> ints.takeHigh(invalid, 1));
+            assertThrows(IllegalArgumentException.class, () -> ints.takeHigh(1, invalid));
+            assertThrows(IllegalArgumentException.class, () -> longs.take(invalid));
+            assertThrows(IllegalArgumentException.class, () -> longs.skip(invalid));
+            assertThrows(IllegalArgumentException.class, () -> longs.takeHigh(invalid, 1));
+            assertThrows(IllegalArgumentException.class, () -> longs.takeHigh(1, invalid));
+        }
+
+        // All rejected steps left the sign bit selected and the low bit available.
+        assertEquals(0x8000_0001, ints.take(1).build().expand(-1));
+        assertEquals(0x8000_0000_0000_0001L, longs.take(1).build().expand(-1L));
+        assertThrows(IllegalArgumentException.class, () -> ints.take(1));
+        assertThrows(IllegalArgumentException.class, () -> longs.take(1));
+        assertEquals(0x8000_0001, ints.skip(0).take(0).takeHigh(0, 0).build().expand(-1));
+        assertEquals(0x8000_0000_0000_0001L, longs.skip(0).take(0).takeHigh(0, 0).build().expand(-1L));
+    }
+
+    @Test
     void intSelectionsOfFields() {
         var high = IntBits.Field.ofClosedRange(28, 31);
         var overlap = IntBits.Field.ofClosedRange(25, 29);
@@ -552,6 +603,55 @@ class BitRecipesTest {
     }
 
     @Test
+    void repeatToWidth() {
+        var intField = IntBits.Field.endingAt(Integer.SIZE, 4);
+        var longField = LongBits.Field.endingAt(Long.SIZE, 4);
+        long repeated = 0xBBBB_BBBB_BBBB_BBBBL;
+        for (int width = 0; width <= Long.SIZE; width++) {
+            long expected = width == 0 ? 0 : repeated >>> (Long.SIZE - width);
+            var longPart = LongBits.Shuffle.repeatToWidth(longField, width);
+            assertEquals(width, longPart.width());
+            assertEquals(expected, LongBits.Shuffle.concatHighToLow(longPart).rearrange(0xB000_0000_0000_0001L));
+            if (width <= Integer.SIZE) {
+                var intPart = IntBits.Shuffle.repeatToWidth(intField, width);
+                assertEquals(width, intPart.width());
+                assertEquals((int) expected, IntBits.Shuffle.concatHighToLow(intPart).rearrange(0xB000_0001));
+            }
+        }
+
+        // Concatenate 1, the three bits 101 repeated to eight bits, and 00.
+        var intPart = IntBits.Shuffle.repeatToWidth(IntBits.Field.of(7, 3), 8);
+        var longPart = LongBits.Shuffle.repeatToWidth(LongBits.Field.of(39, 3), 8);
+        assertEquals(0b1_10110110_00, IntBits.Shuffle.concatHighToLow(
+                IntBits.Shuffle.ones(1), intPart, IntBits.Shuffle.zeros(2)).rearrange(0b101 << 7));
+        assertEquals(0b1_10110110_00L, LongBits.Shuffle.concatHighToLow(
+                LongBits.Shuffle.ones(1), longPart, LongBits.Shuffle.zeros(2)).rearrange(0b101L << 39));
+
+        var intEmpty = IntBits.Shuffle.repeatToWidth(IntBits.Field.of(Integer.SIZE, 0), 0);
+        var longEmpty = LongBits.Shuffle.repeatToWidth(LongBits.Field.of(Long.SIZE, 0), 0);
+        assertEquals(0, IntBits.Shuffle.concatHighToLow(intEmpty).rearrange(-1));
+        assertEquals(0L, LongBits.Shuffle.concatHighToLow(longEmpty).rearrange(-1L));
+    }
+
+    @Test
+    void invalidRepeatToWidth() {
+        var intBit = IntBits.Field.of(0, 1);
+        var longBit = LongBits.Field.of(0, 1);
+        assertThrows(NullPointerException.class, () -> IntBits.Shuffle.repeatToWidth(null, 0));
+        assertThrows(NullPointerException.class, () -> LongBits.Shuffle.repeatToWidth(null, 0));
+        assertThrows(IllegalArgumentException.class, () -> IntBits.Shuffle.repeatToWidth(IntBits.Field.of(0, 0), 1));
+        assertThrows(IllegalArgumentException.class, () -> LongBits.Shuffle.repeatToWidth(LongBits.Field.of(0, 0), 1));
+        assertThrows(IllegalArgumentException.class, () -> IntBits.Shuffle.repeatToWidth(intBit, -1));
+        assertThrows(IllegalArgumentException.class, () -> LongBits.Shuffle.repeatToWidth(longBit, -1));
+        assertThrows(IllegalArgumentException.class, () -> IntBits.Shuffle.repeatToWidth(intBit, Integer.SIZE + 1));
+        assertThrows(IllegalArgumentException.class, () -> LongBits.Shuffle.repeatToWidth(longBit, Long.SIZE + 1));
+        assertThrows(IllegalArgumentException.class, () -> IntBits.Shuffle.concatHighToLow(
+                IntBits.Shuffle.repeatToWidth(intBit, Integer.SIZE), intBit));
+        assertThrows(IllegalArgumentException.class, () -> LongBits.Shuffle.concatHighToLow(
+                LongBits.Shuffle.repeatToWidth(longBit, Long.SIZE), longBit));
+    }
+
+    @Test
     void invalidHighToLowShuffles() {
         assertThrows(IllegalArgumentException.class, () -> IntBits.Shuffle.literal(0, -1));
         assertThrows(IllegalArgumentException.class, () -> IntBits.Shuffle.ones(Integer.SIZE + 1));
@@ -615,6 +715,7 @@ class BitRecipesTest {
         assertEquals(Integer.compress(word, mask), selection.compress(word));
         assertEquals(Integer.expand(value, mask), selection.expand(value));
         assertEquals((word & ~mask) | Integer.expand(value, mask), selection.replace(word, value));
+        assertEquals(word ^ ((word ^ value) & mask), selection.blend(word, value));
     }
 
     private static void checkLongSelection(long mask, long word, long value) {
@@ -625,6 +726,7 @@ class BitRecipesTest {
         assertEquals(Long.compress(word, mask), selection.compress(word));
         assertEquals(Long.expand(value, mask), selection.expand(value));
         assertEquals((word & ~mask) | Long.expand(value, mask), selection.replace(word, value));
+        assertEquals(word ^ ((word ^ value) & mask), selection.blend(word, value));
     }
 
     private static List<IndexLayout> indexedLayouts(int size) {

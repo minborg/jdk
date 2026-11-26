@@ -35,6 +35,8 @@ import java.time.ZoneId;
 
 import static java.util.zip.ZipConstants64.*;
 
+import jdk.internal.util.zip.DosTime;
+
 /**
  * This class is used to represent a ZIP file entry.
  *
@@ -238,12 +240,7 @@ public class ZipEntry implements ZipConstants, Cloneable {
         if (year < 0) {
             this.xdostime = DOSTIME_BEFORE_1980;
         } else {
-            this.xdostime = ((year << 25 |
-                time.getMonthValue() << 21 |
-                time.getDayOfMonth() << 16 |
-                time.getHour() << 11 |
-                time.getMinute() << 5 |
-                time.getSecond() >> 1) & 0xffffffffL)
+            this.xdostime = DosTime.pack(time)
                 + ((long)(((time.getSecond() & 0x1) * 1000) +
                       time.getNano() / 1000_000) << 32);
         }
@@ -276,14 +273,7 @@ public class ZipEntry implements ZipConstants, Cloneable {
         if (mtime != null) {
             return LocalDateTime.ofInstant(mtime.toInstant(), ZoneId.systemDefault());
         }
-        int ms = (int)(xdostime >> 32);
-        return LocalDateTime.of((int)(((xdostime >> 25) & 0x7f) + 1980),
-                             (int)((xdostime >> 21) & 0x0f),
-                             (int)((xdostime >> 16) & 0x1f),
-                             (int)((xdostime >> 11) & 0x1f),
-                             (int)((xdostime >> 5) & 0x3f),
-                             (int)((xdostime << 1) & 0x3e) + ms / 1000,
-                             (ms % 1000) * 1000_000);
+        return DosTime.toLocalDateTime(xdostime);
     }
 
 

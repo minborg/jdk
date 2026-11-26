@@ -35,6 +35,21 @@ public final class Bits {
 
     private Bits() { }
 
+    private static class PaddedInt {
+        // Least significant payload group first on the wire. The high bit
+        // marks continuation in each byte except the last.
+        static final IntBits.Shuffle ENCODE = IntBits.Shuffle.concatHighToLow(
+                IntBits.Shuffle.ones(1),  IntBits.Field.of(0, 7),
+                IntBits.Shuffle.ones(1),  IntBits.Field.of(7, 7),
+                IntBits.Shuffle.ones(1),  IntBits.Field.of(14, 7),
+                IntBits.Shuffle.zeros(1), IntBits.Field.of(21, 7));
+    }
+
+    // Four wire bytes in big-endian order, carrying the low 28 bits of value.
+    public static int makePaddedInt(int value) {
+        return PaddedInt.ENCODE.rearrange(value);
+    }
+
     // -- Swapping --
 
     private static int swap(int x) {

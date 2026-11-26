@@ -81,6 +81,15 @@ final class BitShuffle {
         return destination + width;
     }
 
+    static int appendRepeatedField(int[] sourceBits, int destination, int fieldEnd, int fieldWidth, int width) {
+        checkRemainingWidth(sourceBits, destination, width);
+        int end = destination + width;
+        for (int i = 0; i < width; i++) {
+            sourceBits[end - 1 - i] = fieldEnd - 1 - (i % fieldWidth);
+        }
+        return end;
+    }
+
     static int appendLiteral(int[] sourceBits, int destination, long value, int width) {
         checkRemainingWidth(sourceBits, destination, width);
         for (int i = 0; i < width; i++) {
@@ -156,6 +165,10 @@ final class BitShuffle {
             result |= shift < 0 ? bits >>> -shift : bits << shift;
         }
         return result;
+    }
+
+    String toVerilogExpression(String methodName, String[] parameterNames) {
+        return VerilogExpression.shuffle(sourceBits, methodName, parameterNames);
     }
 
     BitShuffle inverse() {

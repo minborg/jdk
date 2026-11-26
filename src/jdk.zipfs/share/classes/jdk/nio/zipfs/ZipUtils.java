@@ -28,15 +28,15 @@ package jdk.nio.zipfs;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.attribute.PosixFilePermission;
-import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.PatternSyntaxException;
+
+import jdk.internal.util.zip.DosTime;
 
 /**
  * @author Xueming Shen
@@ -204,32 +204,7 @@ class ZipUtils {
      * Converts DOS time to Java time (number of milliseconds since epoch).
      */
     public static long dosToJavaTime(long dtime) {
-        int year = (int) (((dtime >> 25) & 0x7f) + 1980);
-        int month = (int) ((dtime >> 21) & 0x0f);
-        int day = (int) ((dtime >> 16) & 0x1f);
-        int hour = (int) ((dtime >> 11) & 0x1f);
-        int minute = (int) ((dtime >> 5) & 0x3f);
-        int second = (int) ((dtime << 1) & 0x3e);
-
-        if (month > 0 && month < 13 && day > 0 && hour < 24 && minute < 60 && second < 60) {
-            try {
-                LocalDateTime ldt = LocalDateTime.of(year, month, day, hour, minute, second);
-                return TimeUnit.SECONDS.toMillis(ldt.toEpochSecond(
-                        ZoneId.systemDefault().getRules().getOffset(ldt)));
-            } catch (DateTimeException dte) {
-                // ignore
-            }
-        }
-        return overflowDosToJavaTime(year, month, day, hour, minute, second);
-    }
-
-    /*
-     * Deal with corner cases where an arguably mal-formed DOS time is used
-     */
-    @SuppressWarnings("deprecation") // Use of Date constructor
-    private static long overflowDosToJavaTime(int year, int month, int day,
-                                              int hour, int minute, int second) {
-        return new Date(year - 1900, month - 1, day, hour, minute, second).getTime();
+        return DosTime.toEpochMillis(dtime);
     }
 
     /*
@@ -243,12 +218,7 @@ class ZipUtils {
         if (year < 0) {
             return (1 << 21) | (1 << 16);
         }
-        return (year << 25 |
-            ldt.getMonthValue() << 21 |
-            ldt.getDayOfMonth() << 16 |
-            ldt.getHour() << 11 |
-            ldt.getMinute() << 5 |
-            ldt.getSecond() >> 1) & 0xffffffffL;
+        return DosTime.pack(ldt);
     }
 
     // used to adjust values between Windows and java epoch

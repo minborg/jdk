@@ -77,6 +77,10 @@ public final class IntBitsImpl {
         return selectionOfMask(mask);
     }
 
+    public static IntBits.Shuffle shuffleFromVerilogExpression(String expression) {
+        return new Shuffle(VerilogShuffleParser.parse(Integer.SIZE, expression));
+    }
+
     public static IntBits.Shuffle shuffleOfBits(int[] sourceBits) {
         return new Shuffle(BitShuffle.ofBits(Integer.SIZE, sourceBits));
     }
@@ -98,6 +102,15 @@ public final class IntBitsImpl {
         return new Literal(value, width);
     }
 
+    public static IntBits.Shuffle.Part shuffleRepeatToWidth(IntBits.Field field, int width) {
+        Objects.requireNonNull(field);
+        checkRange(0, width, Integer.SIZE);
+        if (field.width() == 0 && width > 0) {
+            throw new IllegalArgumentException("Cannot repeat an empty field to a positive width");
+        }
+        return new RepeatedField(field, width);
+    }
+
     private static Shuffle concat(IntBits.Shuffle.Part[] parts, boolean highToLow) {
         int[] sourceBits = new int[Integer.SIZE];
         int destination = 0;
@@ -106,10 +119,28 @@ public final class IntBitsImpl {
             destination = switch (part) {
                 case IntBits.Field field -> BitShuffle.appendField(sourceBits, destination, field.offset(), field.width());
                 case Literal literal -> BitShuffle.appendLiteral(sourceBits, destination, literal.value, literal.width);
+                case RepeatedField repeat -> BitShuffle.appendRepeatedField(sourceBits, destination,
+                        repeat.field.endExclusive(), repeat.field.width(), repeat.width);
             };
         }
         Arrays.fill(sourceBits, destination, sourceBits.length, IntBits.Shuffle.ZERO);
         return new Shuffle(new BitShuffle(sourceBits));
+    }
+
+    @TrustFinalFields
+    public static final class RepeatedField implements IntBits.Shuffle.Part {
+        private final IntBits.Field field;
+        private final int width;
+
+        private RepeatedField(IntBits.Field field, int width) {
+            this.field = field;
+            this.width = width;
+        }
+
+        @Override
+        public int width() {
+            return width;
+        }
     }
 
     @TrustFinalFields
@@ -140,6 +171,11 @@ public final class IntBitsImpl {
             this.width = width;
             this.valueMask = valueMask;
             this.signBit = valueMask ^ (valueMask >>> 1);
+        }
+
+        @Override
+        public String toVerilogExpression(String methodName, String... parameterNames) {
+            return VerilogExpression.field(Integer.SIZE, offset, width, methodName, parameterNames);
         }
 
         @Override
@@ -194,6 +230,12 @@ public final class IntBitsImpl {
         }
 
         @Override
+        public String toVerilogExpression(String methodName, String... parameterNames) {
+            return VerilogExpression.indexedField(Integer.SIZE, firstBit, Integer.bitCount(valueMask),
+                    strideBits, count, methodName, parameterNames);
+        }
+
+        @Override
         public IntBits.Selection asSelection() {
             if (valueMask == 0 || strideBits == 0) {
                 return selectionOfMask(valueMask << firstBit);
@@ -222,11 +264,35 @@ public final class IntBitsImpl {
     }
 
     @TrustFinalFields
+    public static final class SelectionBuilder implements IntBits.Selection.Builder {
+        private int remaining = Integer.SIZE;
+        private int mask;
+
+        @Override
+        public IntBits.Selection.Builder takeHigh(int groupWidth, int width) {
+            checkSelectionWidths(groupWidth, width, remaining);
+            mask |= lowMask(width) << (remaining - width);
+            remaining -= groupWidth;
+            return this;
+        }
+
+        @Override
+        public IntBits.Selection build() {
+            return selectionOfMask(mask);
+        }
+    }
+
+    @TrustFinalFields
     public static final class Selection implements IntBits.Selection {
         private final int mask;
 
         private Selection(int mask) {
             this.mask = mask;
+        }
+
+        @Override
+        public String toVerilogExpression(String methodName, String... parameterNames) {
+            return VerilogExpression.selection(Integer.SIZE, mask, methodName, parameterNames);
         }
 
         @Override
@@ -243,6 +309,11 @@ public final class IntBitsImpl {
         public int replace(int word, int value) {
             return (word & ~mask) | expand(value);
         }
+
+        @Override
+        public int blend(int base, int donor) {
+            return (base & ~mask) | (donor & mask);
+        }
     }
 
     @TrustFinalFields
@@ -251,6 +322,11 @@ public final class IntBitsImpl {
 
         private Shuffle(BitShuffle mapping) {
             this.mapping = mapping;
+        }
+
+        @Override
+        public String toVerilogExpression(String methodName, String... parameterNames) {
+            return mapping.toVerilogExpression(methodName, parameterNames);
         }
 
         @Override
@@ -270,6 +346,13 @@ public final class IntBitsImpl {
 
     private static int replaceRange(int word, int value, int offset, int valueMask) {
         return (word & ~(valueMask << offset)) | ((value & valueMask) << offset);
+    }
+
+    static void checkSelectionWidths(int groupWidth, int width, int remaining) {
+        if (groupWidth < 0 || groupWidth > remaining || width < 0 || width > groupWidth) {
+            throw new IllegalArgumentException("Cannot select " + width + " high bits from a group of "
+                    + groupWidth + " with " + remaining + " bits remaining");
+        }
     }
 
     static void checkRange(int offset, int width, int wordSize) {

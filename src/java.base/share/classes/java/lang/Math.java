@@ -2951,6 +2951,11 @@ public final class Math {
         return StrictMath.log1p(x);
     }
 
+    private static final class SignBits {
+        static final LongBits.Selection DOUBLE = LongBits.Selection.ofMask(DoubleConsts.SIGN_BIT_MASK);
+        static final IntBits.Selection FLOAT = IntBits.Selection.ofMask(FloatConsts.SIGN_BIT_MASK);
+    }
+
     /**
      * Returns the first floating-point argument with the sign of the
      * second floating-point argument.  Note that unlike the {@link
@@ -2972,11 +2977,8 @@ public final class Math {
      */
     @IntrinsicCandidate
     public static double copySign(double magnitude, double sign) {
-        return Double.longBitsToDouble((Double.doubleToRawLongBits(sign) &
-                                        (DoubleConsts.SIGN_BIT_MASK)) |
-                                       (Double.doubleToRawLongBits(magnitude) &
-                                        (DoubleConsts.EXP_BIT_MASK |
-                                         DoubleConsts.SIGNIF_BIT_MASK)));
+        return Double.longBitsToDouble(SignBits.DOUBLE.blend(Double.doubleToRawLongBits(magnitude),
+                                                             Double.doubleToRawLongBits(sign)));
     }
 
     /**
@@ -3000,11 +3002,8 @@ public final class Math {
      */
     @IntrinsicCandidate
     public static float copySign(float magnitude, float sign) {
-        return Float.intBitsToFloat((Float.floatToRawIntBits(sign) &
-                                     (FloatConsts.SIGN_BIT_MASK)) |
-                                    (Float.floatToRawIntBits(magnitude) &
-                                     (FloatConsts.EXP_BIT_MASK |
-                                      FloatConsts.SIGNIF_BIT_MASK)));
+        return Float.intBitsToFloat(SignBits.FLOAT.blend(Float.floatToRawIntBits(magnitude),
+                                                        Float.floatToRawIntBits(sign)));
     }
 
     /**

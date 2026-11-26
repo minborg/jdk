@@ -27,11 +27,9 @@ package java.util.zip;
 
 import java.nio.ByteBuffer;
 import java.nio.file.attribute.FileTime;
-import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.zip.ZipConstants.ENDHDR;
@@ -40,6 +38,7 @@ import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.Preconditions;
+import jdk.internal.util.zip.DosTime;
 
 class ZipUtils {
 
@@ -92,34 +91,8 @@ class ZipUtils {
      * Converts DOS time to Java time (number of milliseconds since epoch).
      */
     public static long dosToJavaTime(long dtime) {
-        int year = (int) (((dtime >> 25) & 0x7f) + 1980);
-        int month = (int) ((dtime >> 21) & 0x0f);
-        int day = (int) ((dtime >> 16) & 0x1f);
-        int hour = (int) ((dtime >> 11) & 0x1f);
-        int minute = (int) ((dtime >> 5) & 0x3f);
-        int second = (int) ((dtime << 1) & 0x3e);
-
-        if (month > 0 && month < 13 && day > 0 && hour < 24 && minute < 60 && second < 60) {
-            try {
-                LocalDateTime ldt = LocalDateTime.of(year, month, day, hour, minute, second);
-                return TimeUnit.SECONDS.toMillis(ldt.toEpochSecond(
-                        ZoneId.systemDefault().getRules().getOffset(ldt)));
-            } catch (DateTimeException dte) {
-                // ignore
-            }
-        }
-        return overflowDosToJavaTime(year, month, day, hour, minute, second);
+        return DosTime.toEpochMillis(dtime);
     }
-
-    /*
-     * Deal with corner cases where an arguably mal-formed DOS time is used
-     */
-    @SuppressWarnings("deprecation") // Use of Date constructor
-    private static long overflowDosToJavaTime(int year, int month, int day,
-                                              int hour, int minute, int second) {
-        return new Date(year - 1900, month - 1, day, hour, minute, second).getTime();
-    }
-
 
     /**
      * Converts extended DOS time to Java time, where up to 1999 milliseconds
@@ -134,19 +107,6 @@ class ZipUtils {
     }
 
     /**
-     * Converts Java time to DOS time.
-     */
-    private static long javaToDosTime(LocalDateTime ldt) {
-        int year = ldt.getYear() - 1980;
-        return (year << 25 |
-            ldt.getMonthValue() << 21 |
-            ldt.getDayOfMonth() << 16 |
-            ldt.getHour() << 11 |
-            ldt.getMinute() << 5 |
-            ldt.getSecond() >> 1) & 0xffffffffL;
-    }
-
-    /**
      * Converts Java time to DOS time, encoding any milliseconds lost
      * in the conversion into the upper half of the returned long.
      *
@@ -156,7 +116,7 @@ class ZipUtils {
     static long javaToExtendedDosTime(long time) {
         LocalDateTime ldt = javaEpochToLocalDateTime(time);
         if (ldt.getYear() >= 1980) {
-            return javaToDosTime(ldt) + ((time % 2000) << 32);
+            return DosTime.pack(ldt) + ((time % 2000) << 32);
         }
         return ZipEntry.DOSTIME_BEFORE_1980;
     }

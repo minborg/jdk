@@ -79,6 +79,8 @@ import java.time.ZoneOffset;
 import java.time.chrono.IsoChronology;
 import java.util.Objects;
 
+import jdk.internal.util.IntFieldLayout;
+
 /**
  * A rule expressing how to create a transition.
  * <p>
@@ -103,6 +105,29 @@ public final class ZoneOffsetTransitionRule implements Serializable {
      * Serialization version.
      */
     private static final long serialVersionUID = 6889046316657758795L;
+
+    private static final class Header {
+        static final IntBits.Field MONTH;
+        static final IntBits.Field DAY_OF_MONTH;
+        static final IntBits.Field DAY_OF_WEEK;
+        static final IntBits.Field TIME;
+        static final IntBits.Field TIME_DEFINITION;
+        static final IntBits.Field STANDARD_OFFSET;
+        static final IntBits.Field OFFSET_BEFORE;
+        static final IntBits.Field OFFSET_AFTER;
+
+        static {
+            var layout = new IntFieldLayout();
+            MONTH = layout.next(4);
+            DAY_OF_MONTH = layout.next(6);
+            DAY_OF_WEEK = layout.next(3);
+            TIME = layout.next(5);
+            TIME_DEFINITION = layout.next(2);
+            STANDARD_OFFSET = layout.next(8);
+            OFFSET_BEFORE = layout.next(2);
+            OFFSET_AFTER = layout.next(2);
+        }
+    }
 
     /**
      * @serial The month of the month-day of the first day of the cutover week.
@@ -312,14 +337,14 @@ public final class ZoneOffsetTransitionRule implements Serializable {
         final int beforeByte = (beforeDiff == 0 || beforeDiff == 1800 || beforeDiff == 3600 ? beforeDiff / 1800 : 3);
         final int afterByte = (afterDiff == 0 || afterDiff == 1800 || afterDiff == 3600 ? afterDiff / 1800 : 3);
         final int dowByte = (dow == null ? 0 : dow.getValue());
-        int b = (month.getValue() << 28) +          // 4 bits
-                ((dom + 32) << 22) +                // 6 bits
-                (dowByte << 19) +                   // 3 bits
-                (timeByte << 14) +                  // 5 bits
-                (timeDefinition.ordinal() << 12) +  // 2 bits
-                (stdOffsetByte << 4) +              // 8 bits
-                (beforeByte << 2) +                 // 2 bits
-                afterByte;                          // 2 bits
+        int b = Header.MONTH.replace(0, month.getValue());
+        b = Header.DAY_OF_MONTH.replace(b, dom + 32);
+        b = Header.DAY_OF_WEEK.replace(b, dowByte);
+        b = Header.TIME.replace(b, timeByte);
+        b = Header.TIME_DEFINITION.replace(b, timeDefinition.ordinal());
+        b = Header.STANDARD_OFFSET.replace(b, stdOffsetByte);
+        b = Header.OFFSET_BEFORE.replace(b, beforeByte);
+        b = Header.OFFSET_AFTER.replace(b, afterByte);
         out.writeInt(b);
         if (timeByte == 31) {
             out.writeInt(timeSecs);
@@ -344,15 +369,15 @@ public final class ZoneOffsetTransitionRule implements Serializable {
      */
     static ZoneOffsetTransitionRule readExternal(DataInput in) throws IOException {
         int data = in.readInt();
-        Month month = Month.of(data >>> 28);
-        int dom = ((data & (63 << 22)) >>> 22) - 32;
-        int dowByte = (data & (7 << 19)) >>> 19;
+        Month month = Month.of(Header.MONTH.extract(data));
+        int dom = Header.DAY_OF_MONTH.extract(data) - 32;
+        int dowByte = Header.DAY_OF_WEEK.extract(data);
         DayOfWeek dow = dowByte == 0 ? null : DayOfWeek.of(dowByte);
-        int timeByte = (data & (31 << 14)) >>> 14;
-        TimeDefinition defn = TimeDefinition.values()[(data & (3 << 12)) >>> 12];
-        int stdByte = (data & (255 << 4)) >>> 4;
-        int beforeByte = (data & (3 << 2)) >>> 2;
-        int afterByte = (data & 3);
+        int timeByte = Header.TIME.extract(data);
+        TimeDefinition defn = TimeDefinition.values()[Header.TIME_DEFINITION.extract(data)];
+        int stdByte = Header.STANDARD_OFFSET.extract(data);
+        int beforeByte = Header.OFFSET_BEFORE.extract(data);
+        int afterByte = Header.OFFSET_AFTER.extract(data);
         LocalTime time = (timeByte == 31 ? LocalTime.ofSecondOfDay(in.readInt()) : LocalTime.of(timeByte % 24, 0));
         ZoneOffset std = (stdByte == 255 ? ZoneOffset.ofTotalSeconds(in.readInt()) : ZoneOffset.ofTotalSeconds((stdByte - 128) * 900));
         ZoneOffset before = (beforeByte == 3 ? ZoneOffset.ofTotalSeconds(in.readInt()) : ZoneOffset.ofTotalSeconds(std.getTotalSeconds() + beforeByte * 1800));

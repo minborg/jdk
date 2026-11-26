@@ -30,6 +30,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import jdk.jfr.internal.Bits;
+
 /**
  * Write cache and LEB128 encoder
  */
@@ -72,14 +74,11 @@ final class RecordingOutput implements Closeable {
         if (value >= 1 << 28) {
             throw new IOException("Padded value must fit four bytes");
         }
-        byte b0 = (byte) (value | 0x80);
-        byte b1 = (byte) (value >> 7 | 0x80);
-        byte b2 = (byte) (value >> 14 | 0x80);
-        byte b3 = (byte) (value >> 21);
-        writeByte(b0);
-        writeByte(b1);
-        writeByte(b2);
-        writeByte(b3);
+        int encoded = Bits.makePaddedInt((int) value);
+        writeByte((byte) (encoded >>> 24));
+        writeByte((byte) (encoded >>> 16));
+        writeByte((byte) (encoded >>> 8));
+        writeByte((byte) encoded);
     }
 
     // Essentially copied from EventWriter#putLong

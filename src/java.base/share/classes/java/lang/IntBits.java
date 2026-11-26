@@ -38,6 +38,36 @@ public sealed interface IntBits
         permits IntBits.Field, IntBits.IndexedField, IntBits.Selection, IntBits.Shuffle {
 
     /**
+     * Returns a Verilog-2005 expression describing the result bits of an
+     * instance operation on this descriptor. Operands are packed vectors
+     * numbered down to bit zero, with the width of the declared Java
+     * parameter. The result has the width of the Java return type.
+     *
+     * <p>A field supports {@code extract}, {@code extractSigned}, {@code replace},
+     * {@code offset}, {@code width}, {@code endExclusive}, and {@code mask}.
+     * An indexed field supports {@code extract}, {@code extractSigned}, and
+     * {@code replace}. For an out-of-range index the expression yields unknown
+     * bits ({@code x}). A selection supports {@code compress}, {@code expand},
+     * {@code replace}, and {@code blend}. A shuffle supports {@code rearrange}.
+     *
+     * <p>Names are substituted in declaration order. Omitted trailing names
+     * retain their declared Java spelling. Each supplied name denotes one
+     * signal and is escaped if required by Verilog.
+     *
+     * @apiNote For example, {@code Field.of(11, 5).toVerilogExpression("extract", "pixel")}
+     * describes the zero-extended slice {@code {27'b0, pixel[15:11]}}.
+     *
+     * @param methodName the Java name of the operation
+     * @param parameterNames zero or more signal names, each consisting of
+     *        one or more printable, non-whitespace ASCII characters
+     * @return the expression
+     * @throws IllegalArgumentException if the operation is unsupported by this
+     *         descriptor, too many names are supplied, or a name is invalid
+     * @throws NullPointerException if the method name, array, or any name is null
+     */
+    String toVerilogExpression(String methodName, String... parameterNames);
+
+    /**
      * A contiguous range of bits in an {@code int}.
      *
      * @since 28
@@ -236,6 +266,72 @@ public sealed interface IntBits
      */
     sealed interface Selection extends IntBits permits IntBitsImpl.Selection {
         /**
+         * Creates a builder that selects bits starting at the most significant
+         * bit of an {@code int} and proceeds toward the least significant bit.
+         *
+         * @return a new builder with all {@link Integer#SIZE} bits remaining
+         */
+        static Builder highToLow() {
+            return new IntBitsImpl.SelectionBuilder();
+        }
+
+        /**
+         * A mutable builder that consumes consecutive groups of bits from
+         * most to least significant. Each step advances past the whole group.
+         * A step with invalid widths throws before changing the builder.
+         *
+         * @since 28
+         */
+        sealed interface Builder permits IntBitsImpl.SelectionBuilder {
+            /**
+             * Selects the next {@code width} bits and advances past them.
+             *
+             * @param width the number of bits to select
+             * @return this builder
+             * @throws IllegalArgumentException if the width is negative or
+             *         exceeds the number of remaining bits
+             */
+            default Builder take(int width) {
+                return takeHigh(width, width);
+            }
+
+            /**
+             * Advances past the next {@code width} bits, leaving them unselected.
+             *
+             * @param width the number of bits to skip
+             * @return this builder
+             * @throws IllegalArgumentException if the width is negative or
+             *         exceeds the number of remaining bits
+             */
+            default Builder skip(int width) {
+                return takeHigh(width, 0);
+            }
+
+            /**
+             * Selects the highest {@code width} bits of the next group and
+             * advances past all {@code groupWidth} bits. For example,
+             * {@code takeHigh(8, 5)} takes the next five bits and skips three.
+             *
+             * @param groupWidth the number of bits to consume
+             * @param width the number of high bits to select within the group
+             * @return this builder
+             * @throws IllegalArgumentException if the group width is negative or
+             *         exceeds the number of remaining bits, or if {@code width}
+             *         is outside the range from zero through {@code groupWidth}
+             */
+            Builder takeHigh(int groupWidth, int width);
+
+            /**
+             * Builds a selection from the bits taken so far. Any remaining
+             * low bits are unselected. The builder may continue from its
+             * current position independently of the returned selection.
+             *
+             * @return the selection
+             */
+            Selection build();
+        }
+
+        /**
          * Creates a selection of the set bits in the mask.
          *
          * @param mask the bits to select
@@ -285,6 +381,17 @@ public sealed interface IntBits
          * @return the updated word
          */
         int replace(int word, int value);
+
+        /**
+         * Copies the selected bits from {@code donor} into the same positions
+         * in {@code base}, preserving all unselected bits of {@code base}.
+         * Equivalent to {@code replace(base, compress(donor))}.
+         *
+         * @param base the source of the unselected bits
+         * @param donor the source of the selected bits
+         * @return the blended word
+         */
+        int blend(int base, int donor);
     }
 
     /**
@@ -301,14 +408,33 @@ public sealed interface IntBits
         int ONE = -2;
 
         /**
-         * An immutable part of a concatenation, either a source field or a
-         * literal bit pattern.
+         * An immutable part of a concatenation representing a source field,
+         * a repeated source field, or a literal bit pattern.
          *
          * @since 28
          */
-        sealed interface Part permits Field, IntBitsImpl.Literal {
+        sealed interface Part permits Field, IntBitsImpl.Literal, IntBitsImpl.RepeatedField {
             /** {@return the number of bits in this part} */
             int width();
+        }
+
+        /**
+         * Creates a part by reading {@code field} from most to least significant
+         * bit, starting over as needed until {@code width} bits have been read.
+         * For example, the five bits {@code abcde} give {@code abcdeabc} at
+         * width eight and {@code abc} at width three. A width of zero yields
+         * an empty part.
+         *
+         * @param field the source field to repeat
+         * @param width the number of bits in the resulting part
+         * @return the shuffle part
+         * @throws IllegalArgumentException if the width is outside the range
+         *         from zero through {@link Integer#SIZE}, or the field is empty
+         *         and the width is positive
+         * @throws NullPointerException if the field is null
+         */
+        static Part repeatToWidth(Field field, int width) {
+            return IntBitsImpl.shuffleRepeatToWidth(field, width);
         }
 
         /**
@@ -347,6 +473,33 @@ public sealed interface IntBits
          */
         static Part ones(int width) {
             return literal(-1, width);
+        }
+
+        /**
+         * Creates a shuffle from a Verilog wiring expression whose result is exactly
+         * 32 bits wide. The expression may name a single 32-bit input signal,
+         * or consist entirely of literals. A signal name may be a simple or escaped
+         * Verilog identifier.
+         *
+         * <p>Supported forms are a whole signal, a bit or descending range selected
+         * with decimal indices, unsigned sized binary, octal, decimal, or hexadecimal
+         * literals with known bits, concatenation, and replication by a positive
+         * decimal count. Concatenations are written most significant part first.
+         * Parentheses may group expressions. For example, {@code {2{word[15:0]}}}
+         * copies the low half of the input into both halves of the result.
+         *
+         * <p>Parsing the result of {@code shuffle.toVerilogExpression("rearrange")}
+         * produces a shuffle with the same bit mapping.
+         *
+         * @param expression the Verilog expression
+         * @return the shuffle described by the expression
+         * @throws IllegalArgumentException if the expression is outside the supported
+         *         syntax, names multiple signals, selects a bit outside the input,
+         *         or has a result width other than 32
+         * @throws NullPointerException if the expression is null
+         */
+        static Shuffle fromVerilogExpression(String expression) {
+            return IntBitsImpl.shuffleFromVerilogExpression(expression);
         }
 
         /**
@@ -399,13 +552,13 @@ public sealed interface IntBits
         }
 
         /**
-         * Creates a shuffle that concatenates source fields and literals from
+         * Creates a shuffle that concatenates the given parts from
          * most to least significant within the result. The last part supplies
          * the lowest bits. Bits within each part retain their order, and any
          * unused high bits are filled with zeros. Parts of width zero
          * contribute no bits. Source fields may overlap or repeat.
          *
-         * @param parts the source fields and literals to concatenate
+         * @param parts the parts to concatenate
          * @return the shuffle
          * @throws IllegalArgumentException if the total width exceeds
          *         {@link Integer#SIZE}
